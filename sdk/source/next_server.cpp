@@ -192,7 +192,7 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
 next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t packet_type, uint8_t * packet_data, int packet_bytes );
 
-void next_server_internal_update_near_relays( next_server_internal_t * server );
+void next_server_internal_update_server_relays( next_server_internal_t * server );
 
 void next_server_internal_update_route( next_server_internal_t * server );
 
@@ -968,7 +968,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     return entry;
 }
 
-void next_server_internal_update_near_relays( next_server_internal_t * server )
+void next_server_internal_update_server_relays( next_server_internal_t * server )
 {
     next_assert( server );
 
@@ -994,7 +994,7 @@ void next_server_internal_update_near_relays( next_server_internal_t * server )
         (void) entry;
         (void) current_time;
 
-        // todo: near relay logic
+        // todo: server relay logic
 /*
         if ( entry->update_dirty && !entry->client_ping_timed_out && !entry->stats_fallback_to_direct && entry->update_last_send_time + NEXT_UPDATE_SEND_TIME <= current_time )
         {
@@ -2264,14 +2264,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_rtt = packet.next_rtt;
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
-            session->stats_has_near_relay_pings = packet.num_near_relays > 0;
-            session->stats_num_near_relays = packet.num_near_relays;
-            for ( int i = 0; i < packet.num_near_relays; ++i )
+            session->stats_has_client_relay_pings = packet.num_client_relays > 0;
+            session->stats_num_client_relays = packet.num_client_relays;
+            for ( int i = 0; i < packet.num_client_relays; ++i )
             {
-                session->stats_near_relay_ids[i] = packet.near_relay_ids[i];
-                session->stats_near_relay_rtt[i] = packet.near_relay_rtt[i];
-                session->stats_near_relay_jitter[i] = packet.near_relay_jitter[i];
-                session->stats_near_relay_packet_loss[i] = packet.near_relay_packet_loss[i];
+                session->stats_client_relay_ids[i] = packet.client_relay_ids[i];
+                session->stats_client_relay_rtt[i] = packet.client_relay_rtt[i];
+                session->stats_client_relay_jitter[i] = packet.client_relay_jitter[i];
+                session->stats_client_relay_packet_loss[i] = packet.client_relay_packet_loss[i];
             }
             session->stats_packets_sent_client_to_server = packet.packets_sent_client_to_server;
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
@@ -3270,18 +3270,20 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             }
 
-            // IMPORTANT: hold near relay stats for the rest of the session
-            if ( session->num_held_near_relays == 0 && session->stats_num_near_relays != 0 )
+            // IMPORTANT: hold clinet relay stats for the rest of the session
+            if ( session->num_held_client_relays == 0 && session->stats_num_client_relays != 0 )
             {
-                session->num_held_near_relays = session->stats_num_near_relays;
-                for ( int j = 0; j < session->stats_num_near_relays; j++ )
+                session->num_held_client_relays = session->stats_num_client_relays;
+                for ( int j = 0; j < session->stats_num_client_relays; j++ )
                 {
-                    session->held_near_relay_ids[j] = session->stats_near_relay_ids[j];    
-                    session->held_near_relay_rtt[j] = session->stats_near_relay_rtt[j];
-                    session->held_near_relay_jitter[j] = session->stats_near_relay_jitter[j];
-                    session->held_near_relay_packet_loss[j] = session->stats_near_relay_packet_loss[j];    
+                    session->held_client_relay_ids[j] = session->stats_client_relay_ids[j];    
+                    session->held_client_relay_rtt[j] = session->stats_client_relay_rtt[j];
+                    session->held_client_relay_jitter[j] = session->stats_client_relay_jitter[j];
+                    session->held_client_relay_packet_loss[j] = session->stats_client_relay_packet_loss[j];    
                 }
             }
+
+            // todo: hold server relay stats too
 
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
@@ -3298,15 +3300,16 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
             packet.direct_max_packet_loss_seen = session->stats_direct_max_packet_loss_seen;
-            packet.has_near_relay_pings = session->num_held_near_relays != 0;
-            packet.num_near_relays = session->num_held_near_relays;
-            for ( int j = 0; j < packet.num_near_relays; ++j )
+            packet.has_client_relay_pings = session->num_held_client_relays != 0;
+            packet.num_client_relays = session->num_held_client_relays;
+            for ( int j = 0; j < packet.num_client_relays; ++j )
             {
-                packet.near_relay_ids[j] = session->held_near_relay_ids[j];
-                packet.near_relay_rtt[j] = session->held_near_relay_rtt[j];
-                packet.near_relay_jitter[j] = session->held_near_relay_jitter[j];
-                packet.near_relay_packet_loss[j] = session->held_near_relay_packet_loss[j];
+                packet.client_relay_ids[j] = session->held_client_relay_ids[j];
+                packet.client_relay_rtt[j] = session->held_client_relay_rtt[j];
+                packet.client_relay_jitter[j] = session->held_client_relay_jitter[j];
+                packet.client_relay_packet_loss[j] = session->held_client_relay_packet_loss[j];
             }
+            // todo: server relays            
             packet.client_address = session->address;
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
@@ -3459,7 +3462,7 @@ static void next_server_update_internal( next_server_internal_t * server )
 
     next_server_internal_update_pending_upgrades( server );
 
-    next_server_internal_update_near_relays( server );
+    next_server_internal_update_server_relays( server );
 
     next_server_internal_update_route( server );
 

@@ -43,19 +43,19 @@ struct next_relay_stats_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint64_t relay_ids[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(2)
 
-    float relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    float relay_rtt[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
-    float relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    float relay_jitter[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    float relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    float relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 };
@@ -95,19 +95,19 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(1)
 
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint64_t relay_ids[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(2)
 
-    double relay_last_ping_time[NEXT_MAX_NEAR_RELAYS];
+    double relay_last_ping_time[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
-    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    next_address_t relay_addresses[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
+    uint8_t relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS * NEXT_PING_TOKEN_BYTES];
 
     NEXT_DECLARE_SENTINEL(5)
 
@@ -115,7 +115,7 @@ struct next_relay_manager_t
 
     NEXT_DECLARE_SENTINEL(6)
 
-    next_ping_history_t relay_ping_history[NEXT_MAX_NEAR_RELAYS];
+    next_ping_history_t relay_ping_history[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(7)
 };
@@ -135,7 +135,7 @@ inline void next_relay_manager_initialize_sentinels( next_relay_manager_t * mana
     NEXT_INITIALIZE_SENTINEL( manager, 6 )
     NEXT_INITIALIZE_SENTINEL( manager, 7 )
 
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
         next_ping_history_initialize_sentinels( &manager->relay_ping_history[i] );
 }
 
@@ -152,7 +152,7 @@ inline void next_relay_manager_verify_sentinels( next_relay_manager_t * manager 
     NEXT_VERIFY_SENTINEL( manager, 5 )
     NEXT_VERIFY_SENTINEL( manager, 6 )
     NEXT_VERIFY_SENTINEL( manager, 7 )
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
         next_ping_history_verify_sentinels( &manager->relay_ping_history[i] );
 #endif // #if NEXT_ENABLE_MEMORY_CHECKS
 }
@@ -190,7 +190,7 @@ inline void next_relay_manager_reset( next_relay_manager_t * manager )
     memset( manager->relay_ping_tokens, 0, sizeof(manager->relay_ping_tokens) );
     manager->relay_ping_expire_timestamp = 0;
 
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
     {
         next_ping_history_clear( &manager->relay_ping_history[i] );
     }
@@ -201,7 +201,7 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
     next_relay_manager_verify_sentinels( manager );
 
     next_assert( num_relays >= 0 );
-    next_assert( num_relays <= NEXT_MAX_NEAR_RELAYS );
+    next_assert( num_relays <= NEXT_MAX_CLIENT_RELAYS );
     next_assert( relay_ids );
     next_assert( relay_addresses );
 
@@ -227,7 +227,7 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
 
     double current_time = next_platform_time();
 
-    const double ping_time = 1.0 / NEXT_NEAR_RELAY_PINGS_PER_SECOND;
+    const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -249,7 +249,7 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        const double ping_time = 1.0 / NEXT_NEAR_RELAY_PINGS_PER_SECOND;
+        const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {

@@ -66,8 +66,10 @@ struct next_replay_protection_t;
 #define NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET                     53
 #define NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET                     54
 #define NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET                    55
-#define NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET                         56
-#define NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET                        57
+#define NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET                       56
+#define NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET                      57
+#define NEXT_BACKEND_SERVER_RELAY_REQUEST_PACKET                       58
+#define NEXT_BACKEND_SERVER_RELAY_RESPONSE_PACKET                      59
 
 // ------------------------------------------------------------------------------------------------------
 
@@ -211,11 +213,11 @@ struct NextClientStatsPacket
     float next_jitter;
     float next_packet_loss;
     float max_jitter_seen;
-    int num_near_relays;
-    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    int num_client_relays;
+    uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
+    float client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
     uint64_t packets_sent_client_to_server;
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
@@ -249,21 +251,21 @@ struct NextClientStatsPacket
             serialize_float( stream, next_jitter );
             serialize_float( stream, next_packet_loss );
         }
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        bool has_near_relay_pings = false;
+        serialize_int( stream, num_client_relays, 0, NEXT_MAX_CLIENT_RELAYS );
+        bool has_client_relay_pings = false;
         if ( Stream::IsWriting )
         {
-            has_near_relay_pings = num_near_relays > 0;
+            has_client_relay_pings = num_client_relays > 0;
         }
-        serialize_bool( stream, has_near_relay_pings );
-        if ( has_near_relay_pings )
+        serialize_bool( stream, has_client_relay_pings );
+        if ( has_client_relay_pings )
         {
-            for ( int i = 0; i < num_near_relays; ++i )
+            for ( int i = 0; i < num_client_relays; ++i )
             {
-                serialize_uint64( stream, near_relay_ids[i] );
-                serialize_int( stream, near_relay_rtt[i], 0, 255 );
-                serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                serialize_float( stream, near_relay_packet_loss[i] );
+                serialize_uint64( stream, client_relay_ids[i] );
+                serialize_int( stream, client_relay_rtt[i], 0, 255 );
+                serialize_int( stream, client_relay_jitter[i], 0, 255 );
+                serialize_float( stream, client_relay_packet_loss[i] );
             }
         }
         serialize_uint64( stream, packets_sent_client_to_server );
@@ -479,7 +481,7 @@ struct NextBackendServerUpdateResponsePacket
 
 // ------------------------------------------------------------------------------------------------------
 
-struct NextBackendNearRelayRequestPacket
+struct NextBackendClientRelayRequestPacket
 {
     int version_major;
     int version_minor;
@@ -489,7 +491,7 @@ struct NextBackendNearRelayRequestPacket
     uint64_t request_id;
     next_address_t client_address;
    
-    NextBackendNearRelayRequestPacket()
+    NextBackendClientRelayRequestPacket()
     {
         version_major = NEXT_VERSION_MAJOR_INT;
         version_minor = NEXT_VERSION_MINOR_INT;
@@ -515,20 +517,20 @@ struct NextBackendNearRelayRequestPacket
 
 // ------------------------------------------------------------------------------------------------------
 
-struct NextBackendNearRelayResponsePacket
+struct NextBackendClientRelayResponsePacket
 {
     uint64_t request_id;
     float latitude;
     float longitude;
-    int num_near_relays;
-    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    next_address_t near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_ping_tokens[NEXT_MAX_NEAR_RELAYS][NEXT_PING_TOKEN_BYTES];
+    int num_client_relays;
+    uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    next_address_t client_relay_addresses[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS][NEXT_PING_TOKEN_BYTES];
     uint64_t expire_timestamp;
 
-    NextBackendNearRelayResponsePacket()
+    NextBackendClientRelayResponsePacket()
     {
-        memset( this, 0, sizeof(NextBackendNearRelayResponsePacket) );
+        memset( this, 0, sizeof(NextBackendClientRelayResponsePacket) );
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -536,12 +538,76 @@ struct NextBackendNearRelayResponsePacket
         serialize_uint64( stream, request_id );
         serialize_float( stream, latitude );
         serialize_float( stream, longitude );
-        serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < num_near_relays; i++ )
+        serialize_int( stream, num_client_relays, 0, NEXT_MAX_CLIENT_RELAYS );
+        for ( int i = 0; i < num_client_relays; i++ )
         {
-            serialize_uint64( stream, near_relay_ids[i] );
-            serialize_address( stream, near_relay_addresses[i] );
-            serialize_bytes( stream, near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+            serialize_uint64( stream, client_relay_ids[i] );
+            serialize_address( stream, client_relay_addresses[i] );
+            serialize_bytes( stream, client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+        }
+        serialize_uint64( stream, expire_timestamp );
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
+
+struct NextBackendServerRelayRequestPacket
+{
+    int version_major;
+    int version_minor;
+    int version_patch;
+    uint64_t buyer_id;
+    uint64_t datacenter_id;
+    uint64_t request_id;
+   
+    NextBackendServerRelayRequestPacket()
+    {
+        version_major = NEXT_VERSION_MAJOR_INT;
+        version_minor = NEXT_VERSION_MINOR_INT;
+        version_patch = NEXT_VERSION_PATCH_INT;
+        buyer_id = 0;
+        datacenter_id = 0;
+        request_id = 0;
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_bits( stream, version_major, 8 );
+        serialize_bits( stream, version_minor, 8 );
+        serialize_bits( stream, version_patch, 8 );
+        serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, datacenter_id );
+        serialize_uint64( stream, request_id );
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
+
+struct NextBackendServerRelayResponsePacket
+{
+    uint64_t request_id;
+    int num_server_relays;
+    uint64_t server_relay_ids[NEXT_MAX_SERVER_RELAYS];
+    next_address_t server_relay_addresses[NEXT_MAX_SERVER_RELAYS];
+    uint8_t server_relay_ping_tokens[NEXT_MAX_SERVER_RELAYS][NEXT_PING_TOKEN_BYTES];
+    uint64_t expire_timestamp;
+
+    NextBackendServerRelayResponsePacket()
+    {
+        memset( this, 0, sizeof(NextBackendServerRelayResponsePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_int( stream, num_server_relays, 0, NEXT_MAX_SERVER_RELAYS );
+        for ( int i = 0; i < num_server_relays; i++ )
+        {
+            serialize_uint64( stream, server_relay_ids[i] );
+            serialize_address( stream, server_relay_addresses[i] );
+            serialize_bytes( stream, server_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
         }
         serialize_uint64( stream, expire_timestamp );
         return true;
@@ -576,7 +642,8 @@ struct NextBackendSessionUpdateRequestPacket
     bool client_bandwidth_over_limit;
     bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
-    bool has_near_relay_pings;
+    bool has_client_relay_pings;
+    bool has_server_relay_pings;
     uint64_t session_events;
     uint64_t internal_events;
     float direct_rtt;
@@ -586,11 +653,16 @@ struct NextBackendSessionUpdateRequestPacket
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
-    int num_near_relays;
-    uint64_t near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    uint8_t near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    int num_client_relays;
+    uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
+    float client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
+    int num_server_relays;
+    uint64_t server_relay_ids[NEXT_MAX_SERVER_RELAYS];
+    uint8_t server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
+    uint8_t server_relay_jitter[NEXT_MAX_SERVER_RELAYS];
+    float server_relay_packet_loss[NEXT_MAX_SERVER_RELAYS];
     uint32_t direct_kbps_up;
     uint32_t direct_kbps_down;
     uint32_t next_kbps_up;
@@ -651,7 +723,8 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_bool( stream, client_bandwidth_over_limit );
         serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
-        serialize_bool( stream, has_near_relay_pings );
+        serialize_bool( stream, has_client_relay_pings );
+        serialize_bool( stream, has_server_relay_pings );
 
         bool has_session_events = Stream::IsWriting && session_events != 0;
         bool has_internal_events = Stream::IsWriting && internal_events != 0;
@@ -685,18 +758,34 @@ struct NextBackendSessionUpdateRequestPacket
             serialize_float( stream, next_packet_loss );
         }
 
-        if ( has_near_relay_pings )
+        if ( has_client_relay_pings )
         {
-            serialize_int( stream, num_near_relays, 0, NEXT_MAX_NEAR_RELAYS );
+            serialize_int( stream, num_client_relays, 0, NEXT_MAX_CLIENT_RELAYS );
 
-            for ( int i = 0; i < num_near_relays; ++i )
+            for ( int i = 0; i < num_client_relays; ++i )
             {
-                serialize_uint64( stream, near_relay_ids[i] );
-                if ( has_near_relay_pings )
+                serialize_uint64( stream, client_relay_ids[i] );
+                if ( has_client_relay_pings )
                 {
-                    serialize_int( stream, near_relay_rtt[i], 0, 255 );
-                    serialize_int( stream, near_relay_jitter[i], 0, 255 );
-                    serialize_float( stream, near_relay_packet_loss[i] );
+                    serialize_int( stream, client_relay_rtt[i], 0, 255 );
+                    serialize_int( stream, client_relay_jitter[i], 0, 255 );
+                    serialize_float( stream, client_relay_packet_loss[i] );
+                }
+            }
+        }
+
+        if ( has_server_relay_pings )
+        {
+            serialize_int( stream, num_server_relays, 0, NEXT_MAX_SERVER_RELAYS );
+
+            for ( int i = 0; i < num_server_relays; ++i )
+            {
+                serialize_uint64( stream, server_relay_ids[i] );
+                if ( has_server_relay_pings )
+                {
+                    serialize_int( stream, server_relay_rtt[i], 0, 255 );
+                    serialize_int( stream, server_relay_jitter[i], 0, 255 );
+                    serialize_float( stream, server_relay_packet_loss[i] );
                 }
             }
         }

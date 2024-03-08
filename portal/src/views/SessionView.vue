@@ -109,13 +109,13 @@
 
           </table>
 
-          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Near Relays</p>
+          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Client Relays</p>
    
           <table class="table">
 
             <tbody>
 
-              <tr v-for="item in this.data['near_relays']" :key="item.id">
+              <tr v-for="item in this.data['client_relays']" :key="item.id">
                 <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
@@ -241,15 +241,15 @@
 
         </div>
 
-        <div class="near_relay_info">
+        <div class="client_relay_info">
 
-          <p class="bold">Near Relays</p>
+          <p class="bold">Client Relays</p>
    
           <table class="table">
 
             <tbody>
 
-              <tr v-for="item in this.data['near_relays']" :key="item.id">
+              <tr v-for="item in this.data['client_relays']" :key="item.id">
                 <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
@@ -460,26 +460,26 @@ async function getData(page, session_id) {
         data['route_relays'] = route_relays
       }
 
-      // near relays
+      // client relays
   
-      let near_relay_data = res.data.near_relay_data
-      if (near_relay_data.length > 0) {
-        near_relay_data = near_relay_data[near_relay_data.length-1]
+      let client_relay_data = res.data.client_relay_data
+      if (client_relay_data.length > 0) {
+        client_relay_data = client_relay_data[client_relay_data.length-1]
         let i = 0
-        let near_relays = []
-        while (i < near_relay_data.num_near_relays) {
-          if (near_relay_data.near_relay_rtt[i] != 0) {
-            near_relays.push({
-              id:          near_relay_data.near_relay_id[i],
-              name:        near_relay_data.near_relay_name[i],
-              rtt:         near_relay_data.near_relay_rtt[i],
-              jitter:      near_relay_data.near_relay_jitter[i],
-              packet_loss: near_relay_data.near_relay_packet_loss[i],
+        let client_relays = []
+        while (i < client_relay_data.num_client_relays) {
+          if (client_relay_data.client_relay_rtt[i] != 0) {
+            client_relays.push({
+              id:          client_relay_data.client_relay_id[i],
+              name:        client_relay_data.client_relay_name[i],
+              rtt:         client_relay_data.client_relay_rtt[i],
+              jitter:      client_relay_data.client_relay_jitter[i],
+              packet_loss: client_relay_data.client_relay_packet_loss[i],
             })
           }
           i++
         }
-        near_relays.sort( function(a,b) {
+        client_relays.sort( function(a,b) {
           if (a.name < b.name) {
             return -1
           }
@@ -488,8 +488,10 @@ async function getData(page, session_id) {
           }
           return 0
         })
-        data['near_relays'] = near_relays
+        data['client_relays'] = client_relays
       }
+
+      // todo: server relays
 
       // timestamps (same for all graphs...)
   
@@ -891,7 +893,7 @@ export default {
   padding-top: 25px;
 }
 
-.near_relay_info {
+.client_relay_info {
   width: 100%;
   flex-direction: column;
   justify-content: space-between;

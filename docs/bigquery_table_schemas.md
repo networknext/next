@@ -10,7 +10,7 @@ For example, once every 10 seconds network performance data such as accelerated 
 
 At the end of each session a summary data entry is written, which makes it much faster and cheaper to query data on a per-session basis.
 
-There is also data written each time a client pings near relays at the start of each session, so you can look at direct ping results from clients to nearby relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
+There is also data written each time a client pings relays at the start of each session, so you can look at direct ping results from clients to relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
 Data in bigquery is retained for 90 days by default to comply with GDPR. Within this dataset the "user hash" is considered pseudonymized data within the GDPR, and is personal data if you have the ability to identify the player from the user hash plus other data youh ave for this player. The client IP address and port are also considered personal data.
 
@@ -153,7 +153,8 @@ This data is updated once every 10 seconds per-relay. It is useful for tracking 
 | packets_received_per_second | FLOAT64 | The number of packets received per-second by this relay |
 | bandwidth_sent_kbps | FLOAT64 | The amount of bandwidth sent by this relay in kilobits per-second |
 | bandwidth_received_kbps | FLOAT64 | The amount of bandwidth received by this relay in kilobits per-second |
-| near_pings_per_second | FLOAT64 | The number of near relay pings received by this relay per-second |
+| client_pings_per_second | FLOAT64 | The number of client relay pings received by this relay per-second |
+| server_pings_per_second | FLOAT64 | The number of server relay pings received by this relay per-second |
 | relay_pings_per_second | FLOAT64 | The number of relay pings sent from other relays received by this relay per-second |
 | relay_flags | INT64 | The current value of the relay flags. See RelayFlags_* in the source code |
 | num_routable | INT64 | The number of other relays this relay can route to |
@@ -162,13 +163,13 @@ This data is updated once every 10 seconds per-relay. It is useful for tracking 
 | current_time | INT64 | The start time of the relay as a unix timestamp according to the clock on the relay. Together with start_time and timestamp this can be used to determine relay uptime, and clock desynchronization between the relay and the backend. |
 | relay_counters | []INT64 | Array of counters used to diagnose what is going on with a relay. Search for RELAY_COUNTER_ in the codebase for counter names |
 
-## Near Relay Ping
+## Client Relay Ping
 
-These entries are written to bigquery at the start of each session when near relays are pinged by the client.
+These entries are written to bigquery at the start of each session when relays are pinged by the client.
 
 | Field | Type | Description |
 | ------------- | ------------- | ------------- |
-| timestamp | TIMESTAMP | The timestamp when the near relay ping occurred |
+| timestamp | TIMESTAMP | The timestamp when the client relay ping occurred |
 | buyer_id | INT64 | The buyer this player belongs to |
 | session_id | INT64 | Unique id for the session |
 | user_hash | INT64 | Pseudonymized hash of a user id passed up from the SDK |
@@ -177,10 +178,26 @@ These entries are written to bigquery at the start of each session when near rel
 | client_address | STRING | Client address and port number |
 | connection_type | INT64 | Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular |
 | platform_type | INT64 | Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5 |
-| near_relay_id | INT64 | Relay id being pinged by the client |
-| near_relay_rtt | INT64 | Round trip time ping between the client and the relay (milliseconds) |
-| near_relay_jitter | INT64 | Jitter between the client and the relay (milliseconds) |
-| near_relay_packet_loss | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because near relay pings are sent infrequently. |
+| client_relay_id | INT64 | Relay id being pinged by the client |
+| client_relay_rtt | INT64 | Round trip time ping between the client and the relay (milliseconds) |
+| client_relay_jitter | INT64 | Jitter between the client and the relay (milliseconds) |
+| client_relay_packet_loss | FLOAT64 | Packet loss between the client and the relay (%). Generally inaccurate and higher than true value because client relay pings are sent infrequently. |
+
+## Server Relay Ping
+
+These entries are written to bigquery at the start of each session contining pings from the server and destination relays in the same datacenter.
+
+| Field | Type | Description |
+| ------------- | ------------- | ------------- |
+| timestamp | TIMESTAMP | The timestamp when the server relay ping occurred |
+| buyer_id | INT64 | The buyer this player belongs to |
+| session_id | INT64 | Unique id for the session |
+| datacenter_id | INT64 | Unique id for the datacenter |
+| server_address | STRING | Server address and port number |
+| server_relay_id | INT64 | Relay id being pinged by the server |
+| server_relay_rtt | INT64 | Round trip time ping between the server and the relay (milliseconds) |
+| server_relay_jitter | INT64 | Jitter between the server and the relay (milliseconds) |
+| server_relay_packet_loss | FLOAT64 | Packet loss between the server and the relay (%). Generally inaccurate and higher than true value because server relay pings are sent infrequently. |
 
 ## Route Matrix update
 

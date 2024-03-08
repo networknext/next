@@ -54,7 +54,7 @@ struct next_session_entry_t
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
-    bool stats_has_near_relay_pings;
+    bool stats_has_client_relay_pings;
     int stats_platform_id;
     int stats_connection_type;
     float stats_direct_kbps_up;
@@ -69,23 +69,23 @@ struct next_session_entry_t
     float stats_next_rtt;
     float stats_next_jitter;
     float stats_next_packet_loss;
-    int stats_num_near_relays;
+    int stats_num_client_relays;
 
     NEXT_DECLARE_SENTINEL(2)
 
-    uint64_t stats_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint64_t stats_client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(3)
 
-    uint8_t stats_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(4)
 
-    uint8_t stats_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
+    uint8_t stats_client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(5)
 
-    float stats_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    float stats_client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(6)
 
@@ -107,10 +107,10 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(7)
 
-    double near_relay_last_send_time;
-    double near_relay_expire_time;
-    NextBackendSessionUpdateRequestPacket near_relay_update_request_packet;
-    NextBackendSessionUpdateResponsePacket near_relay_update_response_packet;
+    double client_relay_last_send_time;
+    double client_relay_expire_time;
+    NextBackendSessionUpdateRequestPacket client_relay_update_request_packet;
+    NextBackendSessionUpdateResponsePacket client_relay_update_response_packet;
 
     NEXT_DECLARE_SENTINEL(8)
 
@@ -129,26 +129,26 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(10)
 
-    // todo: refactor these -- bring together under the near relay section as needed
+    // todo: refactor these -- bring together under the client relay section as needed
 
-    bool update_has_near_relays;
-    int update_num_near_relays;
+    bool update_has_client_relays;
+    int update_num_client_relays;
 
     NEXT_DECLARE_SENTINEL(11)
 
-    uint64_t update_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
+    uint64_t update_client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(12)
 
-    next_address_t update_near_relay_addresses[NEXT_MAX_NEAR_RELAYS];
+    next_address_t update_client_relay_addresses[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(13)
 
-    uint8_t update_near_relay_ping_tokens[NEXT_MAX_NEAR_RELAYS*NEXT_PING_TOKEN_BYTES];
+    uint8_t update_client_relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS*NEXT_PING_TOKEN_BYTES];
 
     NEXT_DECLARE_SENTINEL(14)
 
-    uint64_t update_near_relay_expire_timestamp;
+    uint64_t update_client_relay_expire_timestamp;
 
     NEXT_DECLARE_SENTINEL(15)
 
@@ -249,11 +249,11 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(31)
 
-    int num_held_near_relays;
-    uint64_t held_near_relay_ids[NEXT_MAX_NEAR_RELAYS];
-    uint8_t held_near_relay_rtt[NEXT_MAX_NEAR_RELAYS];
-    uint8_t held_near_relay_jitter[NEXT_MAX_NEAR_RELAYS];
-    float held_near_relay_packet_loss[NEXT_MAX_NEAR_RELAYS];
+    int num_held_client_relays;
+    uint64_t held_client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t held_client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t held_client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
+    float held_client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(32)
 };

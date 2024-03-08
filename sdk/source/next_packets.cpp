@@ -690,17 +690,33 @@ int next_write_backend_packet( uint8_t packet_id, void * packet_object, uint8_t 
         }
         break;
 
-        case NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET:
+        case NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET:
         {
-            NextBackendNearRelayRequestPacket * packet = (NextBackendNearRelayRequestPacket*) packet_object;
+            NextBackendClientRelayRequestPacket * packet = (NextBackendClientRelayRequestPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
         break;
 
-        case NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET:
+        case NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET:
         {
-            NextBackendNearRelayResponsePacket * packet = (NextBackendNearRelayResponsePacket*) packet_object;
+            NextBackendClientRelayResponsePacket * packet = (NextBackendClientRelayResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_RELAY_REQUEST_PACKET:
+        {
+            NextBackendServerRelayRequestPacket * packet = (NextBackendServerRelayRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_RELAY_RESPONSE_PACKET:
+        {
+            NextBackendServerRelayResponsePacket * packet = (NextBackendServerRelayResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
@@ -802,17 +818,33 @@ int next_read_backend_packet( uint8_t packet_id, uint8_t * packet_data, int begi
         }
         break;
 
-        case NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET:
+        case NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET:
         {
-            NextBackendNearRelayRequestPacket * packet = (NextBackendNearRelayRequestPacket*) packet_object;
+            NextBackendClientRelayRequestPacket * packet = (NextBackendClientRelayRequestPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }
         break;
 
-        case NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET:
+        case NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET:
         {
-            NextBackendNearRelayResponsePacket * packet = (NextBackendNearRelayResponsePacket*) packet_object;
+            NextBackendClientRelayResponsePacket * packet = (NextBackendClientRelayResponsePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_RELAY_REQUEST_PACKET:
+        {
+            NextBackendServerRelayRequestPacket * packet = (NextBackendServerRelayRequestPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_BACKEND_SERVER_RELAY_RESPONSE_PACKET:
+        {
+            NextBackendServerRelayResponsePacket * packet = (NextBackendServerRelayResponsePacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }

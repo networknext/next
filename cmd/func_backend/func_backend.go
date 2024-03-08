@@ -65,7 +65,8 @@ const BACKEND_MODE_BANDWIDTH = 11
 const BACKEND_MODE_JITTER = 12
 const BACKEND_MODE_DIRECT_STATS = 13
 const BACKEND_MODE_NEXT_STATS = 14
-const BACKEND_MODE_NEAR_RELAY_STATS = 15
+const BACKEND_MODE_CLIENT_RELAY_STATS = 15
+// todo: server relay stats
 const BACKEND_MODE_ZERO_MAGIC = 16
 
 type Backend struct {
@@ -193,8 +194,8 @@ func (backend *Backend) GetRelays() (relayIds []uint64, relayAddresses []net.UDP
 	currentTime := time.Now().Unix()
 	activeRelays := backend.relayManager.GetActiveRelays(currentTime)
 	backend.mutex.Unlock()
-	if len(activeRelays) > constants.MaxNearRelays {
-		activeRelays = activeRelays[:constants.MaxNearRelays]
+	if len(activeRelays) > constants.MaxClientRelays {
+		activeRelays = activeRelays[:constants.MaxClientRelays]
 	}
 	numRelays := len(activeRelays)
 	relayIds = make([]uint64, numRelays)
@@ -368,8 +369,8 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 			fmt.Printf("bandwidth received kbps = %.2f\n", requestPacket.BandwidthReceivedKbps)
 		}
 
-		if requestPacket.NearPingsPerSecond > 0 {
-			fmt.Printf("near pings per-second = %.2f\n", requestPacket.NearPingsPerSecond)
+		if requestPacket.ClientPingsPerSecond > 0 {
+			fmt.Printf("client pings per-second = %.2f\n", requestPacket.ClientPingsPerSecond)
 		}
 
 		if requestPacket.RelayPingsPerSecond > 0 {
@@ -726,11 +727,13 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		}
 	}
 
-	if backend.mode == BACKEND_MODE_NEAR_RELAY_STATS {
-		for i := 0; i <= int(requestPacket.NumNearRelays); i++ {
-			fmt.Printf("near relay: id = %x, rtt = %d, jitter = %d, packet loss = %.2f\n", requestPacket.NearRelayIds[i], requestPacket.NearRelayRTT[i], requestPacket.NearRelayJitter[i], requestPacket.NearRelayPacketLoss[i])
+	if backend.mode == BACKEND_MODE_CLIENT_RELAY_STATS {
+		for i := 0; i <= int(requestPacket.NumClientRelays); i++ {
+			fmt.Printf("client relay: id = %x, rtt = %d, jitter = %d, packet loss = %.2f\n", requestPacket.ClientRelayIds[i], requestPacket.ClientRelayRTT[i], requestPacket.ClientRelayJitter[i], requestPacket.ClientRelayPacketLoss[i])
 		}
 	}
+
+	// todo: server relays
 
 	// read the session data
 

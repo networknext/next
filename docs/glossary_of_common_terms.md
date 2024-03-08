@@ -40,7 +40,9 @@
 
 * **Jitter** - _The amount of time variance in packet delivery time. When jitter is happening some packets arrive late. Jitter is often expressed in milliseconds units, representing some measurement of the amount of jitter in milliseconds._ 
 
-* **Near Relays** - _Network Next gets the approximate latitude and longitude of the player and looks up (ideally) 16 relays that are physically close to the player. For example, a player in Helsinki, Finland would ideally find 16 different near relays, all in Helsinki, Finland, or relatively close to it, perhaps in Stockholm, Sweden as well. These near relays are then pinged for 10 seconds at the start of each session, to determine the initial hop costs onto the relays. This initial hop cost is then added to the total cost for all routes in the route matrix the destination relay, to determine the total route cost from client to server. If 16 near relays cannot be found within some threshold distance, the system falls back to searching for 16 relays close to the destination relay._
+* **Client Relays** - _Network Next gets the approximate latitude and longitude of the player and looks up (ideally) 16 relays that are physically close to the player. For example, a player in Helsinki, Finland would ideally find 16 different client relays, all in Helsinki, Finland, or relatively close to it, perhaps in Stockholm, Sweden as well. These client relays are then pinged for 10 seconds at the start of each session, to determine the initial hop costs onto the relays. This initial hop cost is then added to the total cost for all routes in the route matrix the destination relay, to determine the total route cost from client to server. If 16 client relays cannot be found within some threshold distance, the system falls back to searching for 16 relays close to the destination relay._
+
+* **Server Relays** - _Network Next pings relays in the same datacenter as the server, to ensure that the final hop cost is considered when planning routes. The set of server relays for a game server is equivalent to the destination relays in the datacenter that server is in._
 
 * **Network Next Backend** - _Refers to the entire backend of Network Next that runs in Google Cloud. It is written in Golang._
 
@@ -78,7 +80,7 @@
 
 * **Semaphore CI** - _We use the Semaphore CI (continuous integration) build tool to build and upload artifacts and run tests for Network Next, and perform deployments to the backend. You can learn more at https://semaphoreci.com_
 
-* **Server Backend** - _The server backend refers to the service in the Network Next backend that the game server talks to (via the SDK), in order to upload near relay ping results from the client for the session, and get the current route that the session should take (if any), every 10 seconds. It's the part that creates routes for sessions across your relay fleet._
+* **Server Backend** - _The server backend refers to the service in the Network Next backend that the game server talks to (via the SDK), in order to upload client relay ping results from the client for the session, and get the current route that the session should take (if any), every 10 seconds. It's the part that creates routes for sessions across your relay fleet._
 
 * **Session** - _A session is a connection between a client and server across the Network Next environment_.
 

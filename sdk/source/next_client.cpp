@@ -144,7 +144,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
 void next_client_internal_update_next_pings( next_client_internal_t * client );
 
-void next_client_internal_send_pings_to_near_relays( next_client_internal_t * client );
+void next_client_internal_send_pings_to_client_relays( next_client_internal_t * client );
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client );
 
@@ -206,7 +206,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    next_relay_manager_t * near_relay_manager;
+    next_relay_manager_t * client_relay_manager;
     next_route_manager_t * route_manager;
     next_platform_mutex_t route_manager_mutex;
 
@@ -233,7 +233,7 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(6)
 
-    next_relay_stats_t near_relay_stats;
+    next_relay_stats_t client_relay_stats;
 
     NEXT_DECLARE_SENTINEL(7)
 
@@ -299,7 +299,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     next_replay_protection_initialize_sentinels( &client->special_replay_protection );
     next_replay_protection_initialize_sentinels( &client->internal_replay_protection );
 
-    next_relay_stats_initialize_sentinels( &client->near_relay_stats );
+    next_relay_stats_initialize_sentinels( &client->client_relay_stats );
 
     next_ping_history_initialize_sentinels( &client->next_ping_history );
     next_ping_history_initialize_sentinels( &client->direct_ping_history );
@@ -336,10 +336,10 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     next_replay_protection_verify_sentinels( &client->special_replay_protection );
     next_replay_protection_verify_sentinels( &client->internal_replay_protection );
 
-    next_relay_stats_verify_sentinels( &client->near_relay_stats );
+    next_relay_stats_verify_sentinels( &client->client_relay_stats );
 
-    if ( client->near_relay_manager )
-        next_relay_manager_verify_sentinels( client->near_relay_manager );
+    if ( client->client_relay_manager )
+        next_relay_manager_verify_sentinels( client->client_relay_manager );
 
     next_ping_history_verify_sentinels( &client->next_ping_history );
     next_ping_history_verify_sentinels( &client->direct_ping_history );
@@ -449,10 +449,10 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    client->near_relay_manager = next_relay_manager_create( context );
-    if ( !client->near_relay_manager )
+    client->client_relay_manager = next_relay_manager_create( context );
+    if ( !client->client_relay_manager )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create near relay manager" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create client relay manager" );
         next_client_internal_destroy( client );
         return NULL;
     }
@@ -524,9 +524,9 @@ void next_client_internal_destroy( next_client_internal_t * client )
     {
         next_queue_destroy( client->notify_queue );
     }
-    if ( client->near_relay_manager )
+    if ( client->client_relay_manager )
     {
-        next_relay_manager_destroy( client->near_relay_manager );
+        next_relay_manager_destroy( client->client_relay_manager );
     }
     if ( client->route_manager )
     {
@@ -1213,7 +1213,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
-    // client pong packet from near relay
+    // client pong packet from relay
 
     if ( packet_id == NEXT_CLIENT_PONG_PACKET )
     {
@@ -1239,7 +1239,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_relay_manager_process_pong( client->near_relay_manager, from, ping_sequence );
+        next_relay_manager_process_pong( client->client_relay_manager, from, ping_sequence );
 
         return;
     }
@@ -1612,10 +1612,10 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->packets_sent = 0;
 
                 memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
-                memset( &client->near_relay_stats, 0, sizeof(next_relay_stats_t ) );
-                next_relay_stats_initialize_sentinels( &client->near_relay_stats );
+                memset( &client->client_relay_stats, 0, sizeof(next_relay_stats_t ) );
+                next_relay_stats_initialize_sentinels( &client->client_relay_stats );
 
-                next_relay_manager_reset( client->near_relay_manager );
+                next_relay_manager_reset( client->client_relay_manager );
 
                 memset( client->client_kx_public_key, 0, NEXT_CRYPTO_KX_PUBLICKEYBYTES );
                 memset( client->client_kx_private_key, 0, NEXT_CRYPTO_KX_SECRETKEYBYTES );
@@ -1801,7 +1801,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         client->client_stats.packets_sent_client_to_server = client->packets_sent;
 
-        next_relay_manager_get_stats( client->near_relay_manager, &client->near_relay_stats );
+        next_relay_manager_get_stats( client->client_relay_manager, &client->client_relay_stats );
 
         next_client_notify_stats_updated_t * notify = (next_client_notify_stats_updated_t*) next_malloc( client->context, sizeof( next_client_notify_stats_updated_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_STATS_UPDATED;
@@ -1860,12 +1860,12 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         if ( !client->fallback_to_direct )
         {
-            packet.num_near_relays = client->near_relay_stats.num_relays;
-            for ( int i = 0; i < packet.num_near_relays; ++i )
+            packet.num_client_relays = client->client_relay_stats.num_relays;
+            for ( int i = 0; i < packet.num_client_relays; ++i )
             {
-                int rtt = (int) ceil( client->near_relay_stats.relay_rtt[i] );
-                int jitter = (int) ceil( client->near_relay_stats.relay_jitter[i] );
-                float packet_loss = client->near_relay_stats.relay_packet_loss[i];
+                int rtt = (int) ceil( client->client_relay_stats.relay_rtt[i] );
+                int jitter = (int) ceil( client->client_relay_stats.relay_jitter[i] );
+                float packet_loss = client->client_relay_stats.relay_packet_loss[i];
 
                 if ( rtt > 255 )
                     rtt = 255;
@@ -1876,10 +1876,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
                 if ( packet_loss > 100 )
                     packet_loss = 100;
 
-                packet.near_relay_ids[i] = client->near_relay_stats.relay_ids[i];
-                packet.near_relay_rtt[i] = uint8_t( rtt );
-                packet.near_relay_jitter[i] = uint8_t( jitter );
-                packet.near_relay_packet_loss[i] = packet_loss;
+                packet.client_relay_ids[i] = client->client_relay_stats.relay_ids[i];
+                packet.client_relay_rtt[i] = uint8_t( rtt );
+                packet.client_relay_jitter[i] = uint8_t( jitter );
+                packet.client_relay_packet_loss[i] = packet_loss;
             }
         }
 
@@ -2024,7 +2024,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     }
 }
 
-void next_client_internal_send_pings_to_near_relays( next_client_internal_t * client )
+void next_client_internal_send_pings_to_client_relays( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
@@ -2037,7 +2037,7 @@ void next_client_internal_send_pings_to_near_relays( next_client_internal_t * cl
     if ( client->fallback_to_direct )
         return;
 
-    next_relay_manager_send_pings( client->near_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address );
+    next_relay_manager_send_pings( client->client_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address );
 }
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
@@ -2209,7 +2209,7 @@ void next_client_internal_update( next_client_internal_t * client )
 
     next_client_internal_update_next_pings( client );
 
-    next_client_internal_send_pings_to_near_relays( client );
+    next_client_internal_send_pings_to_client_relays( client );
 
     next_client_internal_update_stats( client );
 

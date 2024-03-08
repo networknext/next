@@ -559,8 +559,10 @@ int next_init( void * context, next_config_t * config_in )
     next_signed_packets[NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_REQUEST_PACKET] = 1;
     next_signed_packets[NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET] = 1;
-    next_signed_packets[NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET] = 1;
-    next_signed_packets[NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_RELAY_REQUEST_PACKET] = 1;
+    next_signed_packets[NEXT_BACKEND_SERVER_RELAY_RESPONSE_PACKET] = 1;
 
     next_encrypted_packets[NEXT_DIRECT_PING_PACKET] = 1;
     next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;

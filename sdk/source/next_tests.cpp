@@ -2218,12 +2218,12 @@ void test_session_manager()
 
 void test_relay_manager()
 {
-    uint64_t relay_ids[NEXT_MAX_NEAR_RELAYS];
-    next_address_t relay_addresses[NEXT_MAX_NEAR_RELAYS];
-    uint8_t relay_ping_tokens[NEXT_MAX_NEAR_RELAYS * NEXT_PING_TOKEN_BYTES];
+    uint64_t relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    next_address_t relay_addresses[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS * NEXT_PING_TOKEN_BYTES];
     uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
 
-    for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+    for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
     {
         relay_ids[i] = i;
         char address_string[256];
@@ -2242,12 +2242,12 @@ void test_relay_manager()
 
     // add max relays
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
+    next_relay_manager_update( manager, NEXT_MAX_CLIENT_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+        next_check( stats.num_relays == NEXT_MAX_CLIENT_RELAYS );
+        for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
         {
             next_check( relay_ids[i] == stats.relay_ids[i] );
             next_check( stats.relay_rtt[i] == 0 );
@@ -2269,12 +2269,12 @@ void test_relay_manager()
 
     for ( int j = 0; j < 2; ++j )
     {
-        next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
+        next_relay_manager_update( manager, NEXT_MAX_CLIENT_RELAYS, relay_ids, relay_addresses, relay_ping_tokens, relay_ping_expire_timestamp );
         {
             next_relay_stats_t stats;
             next_relay_manager_get_stats( manager, &stats );
-            next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-            for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS; ++i )
+            next_check( stats.num_relays == NEXT_MAX_CLIENT_RELAYS );
+            for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
             {
                 next_check( relay_ids[i] == stats.relay_ids[i] );
             }
@@ -2283,12 +2283,12 @@ void test_relay_manager()
 
     // now add a few new relays, while some relays remain the same
 
-    next_relay_manager_update( manager, NEXT_MAX_NEAR_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
+    next_relay_manager_update( manager, NEXT_MAX_CLIENT_RELAYS, relay_ids + 4, relay_addresses + 4, relay_ping_tokens, relay_ping_expire_timestamp );
     {
         next_relay_stats_t stats;
         next_relay_manager_get_stats( manager, &stats );
-        next_check( stats.num_relays == NEXT_MAX_NEAR_RELAYS );
-        for ( int i = 0; i < NEXT_MAX_NEAR_RELAYS - 4; ++i )
+        next_check( stats.num_relays == NEXT_MAX_CLIENT_RELAYS );
+        for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS - 4; ++i )
         {
             next_check( relay_ids[i+4] == stats.relay_ids[i] );
         }
@@ -2914,7 +2914,7 @@ void test_continue_response_packet()
     }
 }
 
-void test_client_stats_packet_with_near_relays()
+void test_client_stats_packet_with_client_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -2943,13 +2943,13 @@ void test_client_stats_packet_with_near_relays()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
+        in.num_client_relays = NEXT_MAX_CLIENT_RELAYS;
+        for ( int j = 0; j < NEXT_MAX_CLIENT_RELAYS; ++j )
         {
-            in.near_relay_ids[j] = uint64_t(10000000) + j;
-            in.near_relay_rtt[j] = 5 * j;
-            in.near_relay_jitter[j] = 0.01f * j;
-            in.near_relay_packet_loss[j] = j;
+            in.client_relay_ids[j] = uint64_t(10000000) + j;
+            in.client_relay_rtt[j] = 5 * j;
+            in.client_relay_jitter[j] = 0.01f * j;
+            in.client_relay_packet_loss[j] = j;
         }
         in.packets_lost_server_to_client = 1000;
 
@@ -2982,20 +2982,20 @@ void test_client_stats_packet_with_near_relays()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
+        next_check( in.num_client_relays == out.num_client_relays );
+        for ( int j = 0; j < NEXT_MAX_CLIENT_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
-            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
-            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
+            next_check( in.client_relay_ids[j] == out.client_relay_ids[j] );
+            next_check( in.client_relay_rtt[j] == out.client_relay_rtt[j] );
+            next_check( in.client_relay_jitter[j] == out.client_relay_jitter[j] );
+            next_check( in.client_relay_packet_loss[j] == out.client_relay_packet_loss[j] );
         }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
 }
 
-void test_client_stats_packet_without_near_relays()
+void test_client_stats_packet_without_client_relays()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3024,7 +3024,7 @@ void test_client_stats_packet_without_near_relays()
         in.next_rtt = 50.0f;
         in.next_jitter = 5.0f;
         in.next_packet_loss = 0.01f;
-        in.num_near_relays = 0;
+        in.num_client_relays = 0;
         in.packets_lost_server_to_client = 1000;
 
         static next_replay_protection_t replay_protection;
@@ -3056,7 +3056,7 @@ void test_client_stats_packet_without_near_relays()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
+        next_check( in.num_client_relays == out.num_client_relays );
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
     }
@@ -3579,17 +3579,25 @@ void test_session_update_request_packet()
         in.direct_packet_loss = 0.1f;
         in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
-        in.has_near_relay_pings = true;
+        in.has_client_relay_pings = true;
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
-        in.num_near_relays = NEXT_MAX_NEAR_RELAYS;
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
+        in.num_client_relays = NEXT_MAX_CLIENT_RELAYS;
+        for ( int j = 0; j < NEXT_MAX_CLIENT_RELAYS; ++j )
         {
-            in.near_relay_ids[j] = j;
-            in.near_relay_rtt[j] = j + 10.0f;
-            in.near_relay_jitter[j] = j + 11.0f;
-            in.near_relay_packet_loss[j] = j + 12.0f;
+            in.client_relay_ids[j] = j;
+            in.client_relay_rtt[j] = j + 10.0f;
+            in.client_relay_jitter[j] = j + 11.0f;
+            in.client_relay_packet_loss[j] = j + 12.0f;
+        }
+        in.num_server_relays = NEXT_MAX_SERVER_RELAYS;
+        for ( int j = 0; j < NEXT_MAX_SERVER_RELAYS; ++j )
+        {
+            in.server_relay_ids[j] = j;
+            in.server_relay_rtt[j] = j + 10.0f;
+            in.server_relay_jitter[j] = j + 11.0f;
+            in.server_relay_packet_loss[j] = j + 12.0f;
         }
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
@@ -3643,13 +3651,13 @@ void test_session_update_request_packet()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int j = 0; j < NEXT_MAX_NEAR_RELAYS; ++j )
+        next_check( in.num_client_relays == out.num_client_relays );
+        for ( int j = 0; j < NEXT_MAX_CLIENT_RELAYS; ++j )
         {
-            next_check( in.near_relay_ids[j] == out.near_relay_ids[j] );
-            next_check( in.near_relay_rtt[j] == out.near_relay_rtt[j] );
-            next_check( in.near_relay_jitter[j] == out.near_relay_jitter[j] );
-            next_check( in.near_relay_packet_loss[j] == out.near_relay_packet_loss[j] );
+            next_check( in.client_relay_ids[j] == out.client_relay_ids[j] );
+            next_check( in.client_relay_rtt[j] == out.client_relay_rtt[j] );
+            next_check( in.client_relay_jitter[j] == out.client_relay_jitter[j] );
+            next_check( in.client_relay_packet_loss[j] == out.client_relay_packet_loss[j] );
         }
         next_check( next_address_equal( &in.client_address, &out.client_address ) );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
@@ -3839,7 +3847,7 @@ void test_session_update_response_packet_continue()
     }
 }
 
-void test_near_relay_request_packet()
+void test_client_relay_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3856,17 +3864,17 @@ void test_near_relay_request_packet()
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
 
-        static NextBackendNearRelayRequestPacket in, out;
+        static NextBackendClientRelayRequestPacket in, out;
         in.buyer_id = next_random_uint64();
         in.datacenter_id = next_random_uint64();
         in.request_id = next_random_uint64();
         next_address_parse( &in.client_address, "127.0.0.1:40000" );
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET );
+        next_check( packet_id == NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
@@ -3874,7 +3882,7 @@ void test_near_relay_request_packet()
         const int begin = 18;
         const int end = packet_bytes;
 
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_NEAR_RELAY_REQUEST_PACKET );
+        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET );
 
         next_check( in.version_major == out.version_major );
         next_check( in.version_minor == out.version_minor );
@@ -3886,7 +3894,7 @@ void test_near_relay_request_packet()
     }
 }
 
-void test_near_relay_response_packet()
+void test_client_relay_response_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3903,24 +3911,24 @@ void test_near_relay_response_packet()
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
 
-        static NextBackendNearRelayResponsePacket in, out;
+        static NextBackendClientRelayResponsePacket in, out;
         in.request_id = next_random_uint64();
         in.latitude = next_random_float();
         in.longitude = next_random_float();
-        in.num_near_relays = rand() % ( NEXT_MAX_NEAR_RELAYS + 1 );
-        for ( int i = 0; i < in.num_near_relays; i++ )
+        in.num_client_relays = rand() % ( NEXT_MAX_CLIENT_RELAYS + 1 );
+        for ( int i = 0; i < in.num_client_relays; i++ )
         {
-            in.near_relay_ids[i] = next_random_uint64();
-            next_address_parse( &in.near_relay_addresses[i], "127.0.0.1:50000" );
-            next_crypto_random_bytes( in.near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+            in.client_relay_ids[i] = next_random_uint64();
+            next_address_parse( &in.client_relay_addresses[i], "127.0.0.1:50000" );
+            next_crypto_random_bytes( in.client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
         }
         in.expire_timestamp = next_random_uint64();
 
         int packet_bytes = 0;
-        next_check( next_write_backend_packet( NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
+        next_check( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, private_key, magic, from_address, to_address ) == NEXT_OK );
 
         const uint8_t packet_id = packet_data[0];
-        next_check( packet_id == NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET );
+        next_check( packet_id == NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET );
 
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
@@ -3928,17 +3936,17 @@ void test_near_relay_response_packet()
         const int begin = 18;
         const int end = packet_bytes;
 
-        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_NEAR_RELAY_RESPONSE_PACKET );
+        next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET );
 
         next_check( in.request_id == out.request_id );
         next_check( in.latitude == out.latitude );
         next_check( in.longitude == out.longitude );
-        next_check( in.num_near_relays == out.num_near_relays );
-        for ( int i = 0; i < in.num_near_relays; i++ )
+        next_check( in.num_client_relays == out.num_client_relays );
+        for ( int i = 0; i < in.num_client_relays; i++ )
         {
-            next_check( in.near_relay_ids[i] == out.near_relay_ids[i] );
-            next_check( next_address_equal( &in.near_relay_addresses[i], &out.near_relay_addresses[i] ) );
-            next_check( memcmp( in.near_relay_ping_tokens[i], out.near_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES ) == 0 );
+            next_check( in.client_relay_ids[i] == out.client_relay_ids[i] );
+            next_check( next_address_equal( &in.client_relay_addresses[i], &out.client_relay_addresses[i] ) );
+            next_check( memcmp( in.client_relay_ping_tokens[i], out.client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES ) == 0 );
         }
         next_check( in.expire_timestamp == out.expire_timestamp );
     }
@@ -3974,7 +3982,7 @@ void test_passthrough_packets_client_packet_received_callback( next_client_t * c
     test_passthrough_packets_client_packets_received++;
 }
 
-void test_passthrough_packets_ipv4()
+void test_passthrough_packets()
 {
     next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", test_passthrough_packets_server_packet_received_callback );
 
@@ -4100,8 +4108,8 @@ void next_run_tests()
         RUN_TEST( test_session_pong_packet );
         RUN_TEST( test_continue_request_packet );
         RUN_TEST( test_continue_response_packet );
-        RUN_TEST( test_client_stats_packet_with_near_relays );
-        RUN_TEST( test_client_stats_packet_without_near_relays );
+        RUN_TEST( test_client_stats_packet_with_client_relays );
+        RUN_TEST( test_client_stats_packet_without_client_relays );
         RUN_TEST( test_route_update_packet_direct );
         RUN_TEST( test_route_update_packet_new_route );
         RUN_TEST( test_route_update_packet_continue_route );
@@ -4116,10 +4124,11 @@ void next_run_tests()
         RUN_TEST( test_session_update_response_packet_direct );
         RUN_TEST( test_session_update_response_packet_route );
         RUN_TEST( test_session_update_response_packet_continue );
-        RUN_TEST( test_near_relay_request_packet );
-        RUN_TEST( test_near_relay_response_packet );
+        RUN_TEST( test_client_relay_request_packet );
+        RUN_TEST( test_client_relay_response_packet );
+        // todo: server relay
 #if NEXT_PLATFORM_CAN_RUN_SERVER
-        RUN_TEST( test_passthrough_packets_ipv4 );
+        RUN_TEST( test_passthrough_packets );
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
     }
 }

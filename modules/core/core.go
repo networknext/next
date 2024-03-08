@@ -1361,13 +1361,13 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	}
 
 	if debug != nil {
-		numNearRelays := 0
+		numClientRelays := 0
 		for i := range sourceRelays {
 			if sourceRelayCost[i] != 255 {
-				numNearRelays++
+				numClientRelays++
 			}
 		}
-		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d near relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numNearRelays, len(sourceRelays))
+		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d client relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numClientRelays, len(sourceRelays))
 	}
 
 	randomIndex := math_rand.Intn(numBestRoutes)
@@ -1630,7 +1630,7 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 			if sliceNumber != 0 {
 				*debug += fmt.Sprintf("%d/%d source relays are routable\n", numRoutableSourceRelays, numSourceRelays)
 			} else {
-				*debug += "first slice. sending down near relays to ping\n"
+				*debug += "first slice. sending down client relays to ping\n"
 				return false
 			}
 			numDestRelays := len(destRelays)

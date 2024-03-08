@@ -74,7 +74,8 @@
 #define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128
-#define NEXT_MAX_NEAR_RELAYS                                           16
+#define NEXT_MAX_CLIENT_RELAYS                                         16
+#define NEXT_MAX_SERVER_RELAYS                                          8
 #define NEXT_ROUTE_TOKEN_BYTES                                         71
 #define NEXT_ENCRYPTED_ROUTE_TOKEN_BYTES                              111
 #define NEXT_CONTINUE_TOKEN_BYTES                                      17
@@ -147,7 +148,8 @@
 
 #define NEXT_CLIENT_ROUTE_UPDATE_TIMEOUT                               15
 
-#define NEXT_NEAR_RELAY_PINGS_PER_SECOND                                2
+#define NEXT_CLIENT_RELAY_PINGS_PER_SECOND                              2
+#define NEXT_SERVER_RELAY_PINGS_PER_SECOND                              2
 
 #define NEXT_IPV4_HEADER_BYTES                                         20
 #define NEXT_UDP_HEADER_BYTES                                           8

@@ -872,9 +872,9 @@ func test_unknown_packets() {
 
 // =======================================================================================================================
 
-func test_near_ping_packet_wrong_size() {
+func test_client_ping_packet_wrong_size() {
 
-	fmt.Printf("test_near_ping_packet_wrong_size\n")
+	fmt.Printf("test_client_ping_packet_wrong_size\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -907,7 +907,7 @@ func test_near_ping_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 20 // NEAR_PING_PACKET
+			packet[0] = 20 // CLIENT_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -931,13 +931,13 @@ func test_near_ping_packet_wrong_size() {
 		panic("could not initialize relay")
 	}
 
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_WRONG_SIZE", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE", relay_stdout.String())
 }
 
-func test_near_ping_packet_expired() {
+func test_client_ping_packet_expired() {
 
-	fmt.Printf("test_near_ping_packet_expired\n")
+	fmt.Printf("test_client_ping_packet_expired\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -969,7 +969,7 @@ func test_near_ping_packet_expired() {
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // NEAR_PING_PACKET
+			packet[0] = 20 // CLIENT_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -993,13 +993,15 @@ func test_near_ping_packet_expired() {
 		panic("could not initialize relay")
 	}
 
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_EXPIRED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_EXPIRED", relay_stdout.String())
 }
 
-func test_near_ping_packet_did_not_verify() {
+// todo: server ping packet tests
 
-	fmt.Printf("test_near_ping_packet_did_not_verify\n")
+func test_client_ping_packet_did_not_verify() {
+
+	fmt.Printf("test_client_ping_packet_did_not_verify\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -1032,7 +1034,7 @@ func test_near_ping_packet_did_not_verify() {
 		expireTimestamp := time.Now().Unix() + 10
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // NEAR_PING_PACKET
+			packet[0] = 20 // CLIENT_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18+8+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
@@ -1057,13 +1059,13 @@ func test_near_ping_packet_did_not_verify() {
 		panic("could not initialize relay")
 	}
 
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
 }
 
-func test_near_ping_packet_responded_with_pong() {
+func test_client_ping_packet_responded_with_pong() {
 
-	fmt.Printf("test_near_ping_packet_responded_with_pong\n")
+	fmt.Printf("test_client_ping_packet_responded_with_pong\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -1123,7 +1125,7 @@ func test_near_ping_packet_responded_with_pong() {
 
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // NEAR_PING_PACKET
+			packet[0] = 20 // CLIENT_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18:], sequence)
 			binary.LittleEndian.PutUint64(packet[18+1:], sessionId)
 			binary.LittleEndian.PutUint64(packet[18+8+8:], expireTimestamp)
@@ -1153,8 +1155,8 @@ func test_near_ping_packet_responded_with_pong() {
 		panic("could not initialize relay")
 	}
 
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_NEAR_PING_PACKET_RESPONDED_WITH_PONG", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RESPONDED_WITH_PONG", relay_stdout.String())
 
 	if !receivedPong {
 		panic("did not receive any pong packets")
@@ -7092,10 +7094,10 @@ func main() {
 		test_advanced_packet_filter,
 		test_clean_shutdown,
 		test_unknown_packets,
-		test_near_ping_packet_wrong_size,
-		test_near_ping_packet_expired,
-		test_near_ping_packet_did_not_verify,
-		test_near_ping_packet_responded_with_pong,
+		test_client_ping_packet_wrong_size,
+		test_client_ping_packet_expired,
+		test_client_ping_packet_did_not_verify,
+		test_client_ping_packet_responded_with_pong,
 		test_relay_pong_packet_wrong_size,
 		test_relay_ping_packet_wrong_size,
 		test_relay_ping_packet_expired,
