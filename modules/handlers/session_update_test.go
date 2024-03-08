@@ -1299,7 +1299,7 @@ func Test_SessionUpdate_MakeRouteDecision_StayDirect(t *testing.T) {
 
 	state.Buyer.RouteShader = core.NewRouteShader()
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{10, 10, 10}
@@ -1420,7 +1420,7 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -1634,7 +1634,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -1863,7 +1863,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2146,7 +2146,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2263,7 +2263,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	assert.True(t, (state.Error&constants.SessionError_RouteNoLongerExists) != 0)
 }
 
-func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *testing.T) {
+func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_ClientRelays(t *testing.T) {
 
 	t.Parallel()
 
@@ -2370,7 +2370,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2456,7 +2456,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_NearRelays(t *test
 
 	assert.NotEqual(t, *state.Debug, "")
 
-	// make all near relays unroutable
+	// make all source relays unroutable
 
 	state.Input = state.Output
 
@@ -2588,7 +2588,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2817,7 +2817,7 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2963,7 +2963,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
-	// setup near relays
+	// setup source relays
 
 	state.SourceRelays = []int32{0, 1, 2}
 	state.SourceRelayRTT = []int32{1, 100, 100}
@@ -2982,7 +2982,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	assert.True(t, state.Output.RouteState.Next)
 	assert.False(t, state.Response.Multipath)
 
-	// make all near relays very expensive
+	// make all source relays very expensive
 
 	state.SourceRelayRTT = []int32{100, 100, 100}
 
@@ -3004,7 +3004,7 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 
 // --------------------------------------------------------------
 
-func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
+func Test_SessionUpdate_UpdateClientRelays_AnalysisOnly(t *testing.T) {
 
 	t.Parallel()
 
@@ -3012,13 +3012,13 @@ func Test_SessionUpdate_UpdateNearRelays_AnalysisOnly(t *testing.T) {
 
 	state.Buyer.RouteShader.AnalysisOnly = true
 
-	result := handlers.SessionUpdate_UpdateNearRelays(state)
+	result := handlers.SessionUpdate_UpdateClientRelays(state)
 
 	assert.False(t, result)
-	assert.True(t, state.NotUpdatingNearRelaysAnalysisOnly)
+	assert.True(t, state.NotUpdatingClientRelaysAnalysisOnly)
 }
 
-func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
+func Test_SessionUpdate_UpdateClientRelays_DatacenterNotEnabled(t *testing.T) {
 
 	t.Parallel()
 
@@ -3026,13 +3026,13 @@ func Test_SessionUpdate_UpdateNearRelays_DatacenterNotEnabled(t *testing.T) {
 
 	state.Error |= constants.SessionError_DatacenterNotEnabled
 
-	result := handlers.SessionUpdate_UpdateNearRelays(state)
+	result := handlers.SessionUpdate_UpdateClientRelays(state)
 
 	assert.False(t, result)
-	assert.True(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+	assert.True(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 }
 
-func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
+func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 
 	t.Parallel()
 
@@ -3105,25 +3105,25 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	state.RouteMatrix.RelayAddresses[1] = relay_address_b
 	state.RouteMatrix.RelayAddresses[2] = relay_address_c
 
-	// setup near relays
+	// setup client relays
 
-	state.Request.NumNearRelays = 3
-	copy(state.Request.NearRelayIds[:], []uint64{1, 2, 3})
-	copy(state.Request.NearRelayRTT[:], []int32{10, 20, 30})
-	copy(state.Request.NearRelayJitter[:], []int32{0, 0, 0})
-	copy(state.Request.NearRelayPacketLoss[:], []float32{0, 0, 0})
+	state.Request.NumClientRelays = 3
+	copy(state.Request.ClientRelayIds[:], []uint64{1, 2, 3})
+	copy(state.Request.ClientRelayRTT[:], []int32{10, 20, 30})
+	copy(state.Request.ClientRelayJitter[:], []int32{0, 0, 0})
+	copy(state.Request.ClientRelayPacketLoss[:], []float32{0, 0, 0})
 
-	// update near relays
+	// update client relays
 
 	state.Input.SliceNumber = 1
 
-	result := handlers.SessionUpdate_UpdateNearRelays(state)
+	result := handlers.SessionUpdate_UpdateClientRelays(state)
 
 	// validate
 
 	assert.True(t, result)
-	assert.False(t, state.NotUpdatingNearRelaysAnalysisOnly)
-	assert.False(t, state.NotUpdatingNearRelaysDatacenterNotEnabled)
+	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
+	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.DestRelays), 3)
 	assert.Equal(t, state.DestRelays[0], int32(0))
@@ -3141,6 +3141,10 @@ func Test_SessionUpdate_UpdateNearRelays(t *testing.T) {
 	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
 	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
 }
+
+// --------------------------------------------------------------
+
+// todo: UpdateServerRelays
 
 // --------------------------------------------------------------
 

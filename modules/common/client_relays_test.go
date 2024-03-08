@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetNearRelays_Basic(t *testing.T) {
+func TestGetClientRelays_Basic(t *testing.T) {
 
 	t.Parallel()
 
@@ -51,21 +51,21 @@ func TestGetNearRelays_Basic(t *testing.T) {
 		}
 	}
 
-	// get near relays -- we should find that all near relays are near the player
+	// get client relays -- we should find that all client relays are near the player
 
-	const MaxNearRelays = 20
+	const MaxClientRelays = 20
 	const DistanceThreshold = 2500
 	const LatencyThreshold = 30
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(MaxNearRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
+	clientRelayIds, clientRelayAddresses := common.GetClientRelays(MaxClientRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
 
-	for i := range nearRelayIds {
-		assert.True(t, nearRelayIds[i] < 50)
-		assert.Equal(t, nearRelayAddresses[i].String(), relayAddresses[nearRelayIds[i]].String())
+	for i := range clientRelayIds {
+		assert.True(t, clientRelayIds[i] < 50)
+		assert.Equal(t, clientRelayAddresses[i].String(), relayAddresses[clientRelayIds[i]].String())
 	}
 }
 
-func TestGetNearRelays_Dest(t *testing.T) {
+func TestGetClientRelays_Dest(t *testing.T) {
 
 	t.Parallel()
 
@@ -93,20 +93,20 @@ func TestGetNearRelays_Dest(t *testing.T) {
 		relayLongitudes[i] = DestinationLongitude + float32(common.RandomInt(-10, +10))
 	}
 
-	// get near relays -- we should not be able to find any near relays, but find dest relays
+	// get client relays -- we should not be able to find any near relays, but find dest relays
 
-	const MaxNearRelays = 20
+	const MaxClientRelays = 20
 	const DistanceThreshold = 100
 	const LatencyThreshold = 30
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(MaxNearRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
+	clientRelayIds, clientRelayAddresses := common.GetClientRelays(MaxClientRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
 
-	for i := range nearRelayIds {
-		assert.Equal(t, nearRelayAddresses[i].String(), relayAddresses[nearRelayIds[i]].String())
+	for i := range clientRelayIds {
+		assert.Equal(t, clientRelayAddresses[i].String(), relayAddresses[clientRelayIds[i]].String())
 	}
 }
 
-func TestGetNearRelays_OutOfWay(t *testing.T) {
+func TestGetClientRelays_OutOfWay(t *testing.T) {
 
 	t.Parallel()
 
@@ -143,17 +143,17 @@ func TestGetNearRelays_OutOfWay(t *testing.T) {
 		}
 	}
 
-	// get near relays -- the out of the way relays should be excluded
+	// get client relays -- the out of the way relays should be excluded
 
-	const MaxNearRelays = 250
+	const MaxClientRelays = 250
 	const DistanceThreshold = 2500
 	const LatencyThreshold = 30
 
-	nearRelayIds, nearRelayAddresses := common.GetNearRelays(MaxNearRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
+	clientRelayIds, clientRelayAddresses := common.GetClientRelays(MaxClientRelays, DistanceThreshold, LatencyThreshold, relayIds, relayAddresses, relayLatitudes, relayLongitudes, PlayerLatitude, PlayerLongitude, DestinationLatitude, DestinationLongitude)
 
-	assert.Equal(t, 100, len(nearRelayIds))
+	assert.Equal(t, 100, len(clientRelayIds))
 
-	for i := range nearRelayIds {
-		assert.Equal(t, nearRelayAddresses[i].String(), relayAddresses[nearRelayIds[i]].String())
+	for i := range clientRelayIds {
+		assert.Equal(t, clientRelayAddresses[i].String(), relayAddresses[clientRelayIds[i]].String())
 	}
 }

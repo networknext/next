@@ -4842,7 +4842,7 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 }
 
 func TestPingTokenSignatures(t *testing.T) {
-	const NumTokens = constants.MaxNearRelays
+	const NumTokens = constants.MaxClientRelays
 	key := crypto.Auth_Key()
 	clientPublicAddress := common.RandomAddress()
 	relayPublicAddresses := make([]net.UDPAddr, NumTokens)
@@ -4855,7 +4855,7 @@ func TestPingTokenSignatures(t *testing.T) {
 	core.GeneratePingTokens(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key, pingTokens)
 	from := clientPublicAddress
 	from.Port = 0
-	for i := 0; i < constants.MaxNearRelays; i++ {
+	for i := 0; i < constants.MaxClientRelays; i++ {
 		to := relayPublicAddresses[i]
 		data := make([]byte, 32+20)
 		index := 0

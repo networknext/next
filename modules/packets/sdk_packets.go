@@ -664,7 +664,7 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
 	stream.SerializeBool(&sessionData.SentClientRelaysToPortal)
-	stream.SerializeBool(&sessionData.SentClientRelaysToPortal)
+	stream.SerializeBool(&sessionData.SentServerRelaysToPortal)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesDownSum)
 	stream.SerializeUint32(&sessionData.DurationOnNext)

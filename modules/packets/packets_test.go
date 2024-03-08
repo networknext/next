@@ -91,7 +91,7 @@ func TestVersionAtLeast(t *testing.T) {
 
 func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *testing.T) {
 
-	const BufferSize = 10 * 1024
+	const BufferSize = constants.MaxPacketBytes
 
 	buffer := [BufferSize]byte{}
 
@@ -194,8 +194,8 @@ func GenerateRandomServerRelayRequestPacket() packets.SDK_ServerRelayRequestPack
 	packet := packets.SDK_ServerRelayRequestPacket{
 		Version:       packets.SDKVersion{1, 0, 0},
 		BuyerId:       rand.Uint64(),
+		RequestId:     rand.Uint64(),
 		DatacenterId:  rand.Uint64(),
-		ServerAddress: common.RandomAddress(),
 	}
 
 	return packet
@@ -233,7 +233,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		ClientAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		ServerAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		UserHash:                        rand.Uint64(),
-		HasNearRelayPings:               common.RandomBool(),
+		HasClientRelayPings:             common.RandomBool(),
 		Next:                            common.RandomBool(),
 		Reported:                        common.RandomBool(),
 		FallbackToDirect:                common.RandomBool(),
@@ -271,14 +271,14 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		packet.ServerRoutePublicKey[i] = uint8((i + 13) % 256)
 	}
 
-	if packet.HasNearRelayPings {
-		packet.NumNearRelays = int32(common.RandomInt(0, packets.SDK_MaxNearRelays))
-		for i := 0; i < int(packet.NumNearRelays); i++ {
-			packet.NearRelayIds[i] = rand.Uint64()
-			if packet.HasNearRelayPings {
-				packet.NearRelayRTT[i] = int32(common.RandomInt(1, packets.SDK_MaxNearRelayRTT))
-				packet.NearRelayJitter[i] = int32(common.RandomInt(1, packets.SDK_MaxNearRelayJitter))
-				packet.NearRelayPacketLoss[i] = rand.Float32()
+	if packet.HasClientRelayPings {
+		packet.NumClientRelays = int32(common.RandomInt(0, packets.SDK_MaxClientRelays))
+		for i := 0; i < int(packet.NumClientRelays); i++ {
+			packet.ClientRelayIds[i] = rand.Uint64()
+			if packet.HasClientRelayPings {
+				packet.ClientRelayRTT[i] = int32(common.RandomInt(1, packets.SDK_MaxRelayRTT))
+				packet.ClientRelayJitter[i] = int32(common.RandomInt(1, packets.SDK_MaxRelayJitter))
+				packet.ClientRelayPacketLoss[i] = rand.Float32()
 			}
 		}
 	}
@@ -397,31 +397,59 @@ func Test_SDK_ServerUpdateResponsePacket(t *testing.T) {
 	}
 }
 
-func Test_SDK_NearRelayRequestPacket(t *testing.T) {
+func Test_SDK_ClientRelayRequestPacket(t *testing.T) {
 
 	t.Parallel()
 
-	//for i := 0; i < NumIterations; i++ {
-	{
-		writePacket := GenerateRandomNearRelayRequestPacket()
+	for i := 0; i < NumIterations; i++ {
 
-		readPacket := packets.SDK_NearRelayRequestPacket{}
+		writePacket := GenerateRandomClientRelayRequestPacket()
 
-		PacketSerializationTest[*packets.SDK_NearRelayRequestPacket](&writePacket, &readPacket, t)
+		readPacket := packets.SDK_ClientRelayRequestPacket{}
+
+		PacketSerializationTest[*packets.SDK_ClientRelayRequestPacket](&writePacket, &readPacket, t)
 	}
 }
 
-func Test_SDK_NearRelayResponsePacket(t *testing.T) {
+func Test_SDK_ClientRelayResponsePacket(t *testing.T) {
 
 	t.Parallel()
 
-	// for i := 0; i < NumIterations; i++ {
-	{
-		writePacket := GenerateRandomNearRelayResponsePacket()
+	for i := 0; i < NumIterations; i++ {
 
-		readPacket := packets.SDK_NearRelayResponsePacket{}
+		writePacket := GenerateRandomClientRelayResponsePacket()
 
-		PacketSerializationTest[*packets.SDK_NearRelayResponsePacket](&writePacket, &readPacket, t)
+		readPacket := packets.SDK_ClientRelayResponsePacket{}
+
+		PacketSerializationTest[*packets.SDK_ClientRelayResponsePacket](&writePacket, &readPacket, t)
+	}
+}
+
+func Test_SDK_ServerRelayRequestPacket(t *testing.T) {
+
+	t.Parallel()
+
+	for i := 0; i < NumIterations; i++ {
+
+		writePacket := GenerateRandomServerRelayRequestPacket()
+
+		readPacket := packets.SDK_ServerRelayRequestPacket{}
+
+		PacketSerializationTest[*packets.SDK_ServerRelayRequestPacket](&writePacket, &readPacket, t)
+	}
+}
+
+func Test_SDK_ServerRelayResponsePacket(t *testing.T) {
+
+	t.Parallel()
+
+	for i := 0; i < NumIterations; i++ {
+
+		writePacket := GenerateRandomServerRelayResponsePacket()
+
+		readPacket := packets.SDK_ServerRelayResponsePacket{}
+
+		PacketSerializationTest[*packets.SDK_ServerRelayResponsePacket](&writePacket, &readPacket, t)
 	}
 }
 
@@ -495,7 +523,8 @@ func GenerateRandomRelayUpdateRequestPacket() packets.RelayUpdateRequestPacket {
 	packet.PacketsReceivedPerSecond = float32(common.RandomInt(0, 1000))
 	packet.BandwidthSentKbps = float32(common.RandomInt(0, 1000))
 	packet.BandwidthReceivedKbps = float32(common.RandomInt(0, 1000))
-	packet.NearPingsPerSecond = float32(common.RandomInt(0, 1000))
+	packet.ClientPingsPerSecond = float32(common.RandomInt(0, 1000))
+	packet.ServerPingsPerSecond = float32(common.RandomInt(0, 1000))
 	packet.RelayPingsPerSecond = float32(common.RandomInt(0, 1000))
 
 	packet.RelayFlags = rand.Uint64()

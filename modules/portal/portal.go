@@ -682,7 +682,7 @@ type RelaySample struct {
 }
 
 func (data *RelaySample) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%x|%d|%d|%x",
+	return fmt.Sprintf("%x|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%.2f|%x|%d|%d|%x",
 		data.Timestamp,
 		data.NumSessions,
 		data.EnvelopeBandwidthUpKbps,
