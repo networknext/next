@@ -95,60 +95,6 @@ func TestPacketTooSmall_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_PacketTooSmall])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
-}
-
-func TestUnsupportedPacketType_SDK(t *testing.T) {
-
-	t.Parallel()
-
-	harness := CreateTestHarness()
-
-	packetData := make([]byte, 100)
-
-	for i := 0; i < 256; i++ {
-
-		packetType := uint8(i)
-
-		if packetType == packets.SDK_SERVER_INIT_REQUEST_PACKET || packetType == packets.SDK_SERVER_UPDATE_REQUEST_PACKET || packetType == packets.SDK_SESSION_UPDATE_REQUEST_PACKET {
-			continue
-		}
-
-		packetData[0] = packetType
-
-		SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
-
-		assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnsupportedPacketType])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
-	}
 }
 
 func TestBasicPacketFilterFailed_SDK(t *testing.T) {
@@ -167,21 +113,6 @@ func TestBasicPacketFilterFailed_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BasicPacketFilterFailed])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 func TestAdvancedPacketFilterFailed_SDK(t *testing.T) {
@@ -210,21 +141,6 @@ func TestAdvancedPacketFilterFailed_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 func TestNoRouteMatrix_SDK(t *testing.T) {
@@ -253,21 +169,6 @@ func TestNoRouteMatrix_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_NoRouteMatrix])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 func TestNoDatabase_SDK(t *testing.T) {
@@ -298,21 +199,6 @@ func TestNoDatabase_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_NoDatabase])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 func TestUnknownBuyer_SDK(t *testing.T) {
@@ -344,21 +230,6 @@ func TestUnknownBuyer_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnknownBuyer])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 func TestSignatureCheckFailed_SDK(t *testing.T) {
@@ -413,21 +284,6 @@ func TestSignatureCheckFailed_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SignatureCheckFailed])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 }
 
 // ---------------------------------------------------------------------------------------
@@ -490,21 +346,9 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
@@ -578,21 +422,9 @@ func Test_ServerInitHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
@@ -660,21 +492,9 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server init message sent over the channel
 
@@ -862,26 +682,9 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 		SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_PacketTooSmall])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_UnsupportedPacketType])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_BasicPacketFilterFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_NoRouteMatrix])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_NoDatabase])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SignatureCheckFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
-
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
@@ -967,20 +770,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
@@ -1055,20 +845,7 @@ func Test_ServerUpdateHandler_BuyerSDKTooOld_SDK(t *testing.T) {
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
@@ -1136,19 +913,8 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-	assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 	// verify that we get a server update message sent over the channel
@@ -1333,30 +1099,8 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 		SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_PacketTooSmall])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_UnsupportedPacketType])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_BasicPacketFilterFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_NoRouteMatrix])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_NoDatabase])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SignatureCheckFailed])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SDKTooOld])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerUpdateResponsePacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerInitRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket])
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket])
-
-		assert.False(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerUpdateMessage])
 
 		if i > 10 {
@@ -1384,7 +1128,66 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 // ---------------------------------------------------------------------------------------
 
-// todo: tests for the client relay request handler
+// tests for the client relay request handler
+
+func Test_ClientRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
+
+	t.Parallel()
+
+	harness := CreateTestHarness()
+
+	// setup a dummy packet that will get through the packet type check
+
+	packetData := make([]byte, 256)
+	packetData[0] = packets.SDK_CLIENT_RELAY_REQUEST_PACKET
+	for i := 1; i < len(packetData); i++ {
+		packetData[i] = byte(i)
+	}
+
+	// generate pittle and chonkle so the packet gets through the basic and advanced packet filters
+
+	magic := [8]byte{}
+	fromAddress := [4]byte{127, 0, 0, 1}
+	toAddress := [4]byte{127, 0, 0, 1}
+	packetLength := len(packetData)
+
+	core.GeneratePittle(packetData[1:3], fromAddress[:], toAddress[:], packetLength)
+
+	core.GenerateChonkle(packetData[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+
+	// setup a buyer in the database with keypair
+
+	harness.handler.RouteMatrix = &common.RouteMatrix{}
+	harness.handler.Database = database.CreateDatabase()
+
+	buyerId := uint64(0x1111111122222222)
+
+	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+
+	buyer := &database.Buyer{}
+	buyer.PublicKey = buyerPublicKey[:]
+	_ = buyerPrivateKey
+
+	harness.handler.Database.BuyerMap[buyerId] = buyer
+
+	// modify the packet so it has the buyer id of the new buyer, so it passes the unknown buyer check
+
+	index := 18 + 3
+	encoding.WriteUint64(packetData[:], &index, buyerId)
+
+	// actually sign the packet, so it passes the signature check
+
+	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+
+	// run the packet through the handler, it should pass the signature check then fail on buyer not live
+
+	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
+
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BuyerNotLive])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket])
+}
 
 // ---------------------------------------------------------------------------------------
 

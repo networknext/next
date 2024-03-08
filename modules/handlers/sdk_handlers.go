@@ -15,43 +15,42 @@ import (
 
 const (
 	SDK_HandlerEvent_PacketTooSmall             = 0
-	SDK_HandlerEvent_UnsupportedPacketType      = 1
-	SDK_HandlerEvent_BasicPacketFilterFailed    = 2
-	SDK_HandlerEvent_AdvancedPacketFilterFailed = 3
-	SDK_HandlerEvent_NoRouteMatrix              = 4
-	SDK_HandlerEvent_NoDatabase                 = 5
-	SDK_HandlerEvent_UnknownBuyer               = 6
-	SDK_HandlerEvent_SignatureCheckFailed       = 7
-	SDK_HandlerEvent_BuyerNotLive               = 8
-	SDK_HandlerEvent_SDKTooOld                  = 9
-	SDK_HandlerEvent_UnknownDatacenter          = 10
-	SDK_HandlerEvent_UnknownRelay               = 11
+	SDK_HandlerEvent_BasicPacketFilterFailed    = 1
+	SDK_HandlerEvent_AdvancedPacketFilterFailed = 2
+	SDK_HandlerEvent_NoRouteMatrix              = 3
+	SDK_HandlerEvent_NoDatabase                 = 4
+	SDK_HandlerEvent_UnknownBuyer               = 5
+	SDK_HandlerEvent_SignatureCheckFailed       = 6
+	SDK_HandlerEvent_BuyerNotLive               = 7
+	SDK_HandlerEvent_SDKTooOld                  = 8
+	SDK_HandlerEvent_UnknownDatacenter          = 9
+	SDK_HandlerEvent_UnknownRelay               = 10
 
-	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 12
-	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 13
-	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 14
-	SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket   = 15
-	SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket   = 16
+	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
+	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
+	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
+	SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket   = 14
+	SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket   = 15
 
-	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 17
-	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 18
-	SDK_HandlerEvent_ProcessClientRelayRequestPacket   = 19
-	SDK_HandlerEvent_ProcessServerRelayRequestPacket   = 20
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 21
+	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 16
+	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 17
+	SDK_HandlerEvent_ProcessClientRelayRequestPacket   = 18
+	SDK_HandlerEvent_ProcessServerRelayRequestPacket   = 19
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 20
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 22
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 23
-	SDK_HandlerEvent_SentClientRelayResponsePacket   = 24
-	SDK_HandlerEvent_SentServerRelayResponsePacket   = 25
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 26
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 21
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 22
+	SDK_HandlerEvent_SentClientRelayResponsePacket   = 23
+	SDK_HandlerEvent_SentServerRelayResponsePacket   = 24
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 25
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 27
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 28
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 29
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 26
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 27
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 28
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 30
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 29
 
-	SDK_HandlerEvent_NumEvents = 31
+	SDK_HandlerEvent_NumEvents = 30
 )
 
 type SDK_Handler struct {
@@ -92,16 +91,6 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 	if len(packetData) < packets.SDK_MinPacketBytes {
 		core.Debug("packet is too small")
 		handler.Events[SDK_HandlerEvent_PacketTooSmall] = true
-		return
-	}
-
-	// ignore packet types we don't support
-
-	packetType := packetData[0]
-
-	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET {
-		core.Debug("unsupported packet type %d", packetType)
-		handler.Events[SDK_HandlerEvent_UnsupportedPacketType] = true
 		return
 	}
 
@@ -164,6 +153,8 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 	}
 
 	// process the packet according to type
+
+	packetType := packetData[0]
 
 	packetData = packetData[18:]
 
