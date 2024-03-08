@@ -129,8 +129,6 @@ struct next_session_entry_t
 
     NEXT_DECLARE_SENTINEL(10)
 
-    // todo: refactor these -- bring together under the client relay section as needed
-
     bool update_has_client_relays;
     int update_num_client_relays;
 

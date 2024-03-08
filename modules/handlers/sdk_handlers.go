@@ -25,32 +25,33 @@ const (
 	SDK_HandlerEvent_BuyerNotLive               = 8
 	SDK_HandlerEvent_SDKTooOld                  = 9
 	SDK_HandlerEvent_UnknownDatacenter          = 10
+	SDK_HandlerEvent_UnknownRelay               = 11
 
-	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 11
-	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 12
-	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 13
-	SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket   = 14
-	SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket   = 15
+	SDK_HandlerEvent_CouldNotReadServerInitRequestPacket    = 12
+	SDK_HandlerEvent_CouldNotReadServerUpdateRequestPacket  = 13
+	SDK_HandlerEvent_CouldNotReadSessionUpdateRequestPacket = 14
+	SDK_HandlerEvent_CouldNotReadClientRelayRequestPacket   = 15
+	SDK_HandlerEvent_CouldNotReadServerRelayRequestPacket   = 16
 
-	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 16
-	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 17
-	SDK_HandlerEvent_ProcessClientRelayRequestPacket   = 18
-	SDK_HandlerEvent_ProcessServerRelayRequestPacket   = 19
-	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 20
+	SDK_HandlerEvent_ProcessServerInitRequestPacket    = 17
+	SDK_HandlerEvent_ProcessServerUpdateRequestPacket  = 18
+	SDK_HandlerEvent_ProcessClientRelayRequestPacket   = 19
+	SDK_HandlerEvent_ProcessServerRelayRequestPacket   = 20
+	SDK_HandlerEvent_ProcessSessionUpdateRequestPacket = 21
 
-	SDK_HandlerEvent_SentServerInitResponsePacket    = 21
-	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 22
-	SDK_HandlerEvent_SentClientRelayResponsePacket   = 23
-	SDK_HandlerEvent_SentServerRelayResponsePacket   = 24
-	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 25
+	SDK_HandlerEvent_SentServerInitResponsePacket    = 22
+	SDK_HandlerEvent_SentServerUpdateResponsePacket  = 23
+	SDK_HandlerEvent_SentClientRelayResponsePacket   = 24
+	SDK_HandlerEvent_SentServerRelayResponsePacket   = 25
+	SDK_HandlerEvent_SentSessionUpdateResponsePacket = 26
 
-	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 26
-	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 27
-	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 28
+	SDK_HandlerEvent_SentAnalyticsServerInitMessage    = 27
+	SDK_HandlerEvent_SentAnalyticsServerUpdateMessage  = 28
+	SDK_HandlerEvent_SentAnalyticsSessionUpdateMessage = 29
 
-	SDK_HandlerEvent_SentPortalServerUpdateMessage = 28
+	SDK_HandlerEvent_SentPortalServerUpdateMessage = 30
 
-	SDK_HandlerEvent_NumEvents = 29
+	SDK_HandlerEvent_NumEvents = 31
 )
 
 type SDK_Handler struct {
@@ -670,26 +671,29 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 		return
 	}
 
-	/*
-		serverLatitude := datacenter.Latitude
-		serverLongitude := datacenter.Longitude
-	*/
+	datacenterRelays := handler.Database.GetDatacenterRelays(requestPacket.DatacenterId)
 
-	// todo: just get dest relays in the datacenter from database
-	numServerRelays := 0
+	if len(datacenterRelays) > constants.MaxDestRelays {
+		datacenterRelays = datacenterRelays[:constants.MaxDestRelays]
+	}
+
+	numServerRelays := len(datacenterRelays)
 
 	core.Debug("found %d server relays", numServerRelays)
 
 	responsePacket := &packets.SDK_ServerRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
 	responsePacket.NumServerRelays = int32(numServerRelays)
-	// todo: fill
-	/*
-		for i := 0; i < numServerRelays; i++ {
-			responsePacket.ServerRelayIds[i] = serverRelayIds[i]
-			responsePacket.ServerRelayAddresses[i] = serverRelayAddresses[i]
+	for i := 0; i < numServerRelays; i++ {
+		relay := handler.Database.GetRelay(datacenterRelays[i])
+		if relay == nil {
+			core.Debug("unknown relay %x", datacenterRelays[i])
+			handler.Events[SDK_HandlerEvent_UnknownRelay] = true
+			return
 		}
-	*/
+		responsePacket.ServerRelayIds[i] = datacenterRelays[i]
+		responsePacket.ServerRelayAddresses[i] = relay.PublicAddress
+	}
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_RELAY_RESPONSE_PACKET, responsePacket)
 }
