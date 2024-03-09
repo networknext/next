@@ -621,17 +621,15 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 
 	responsePacket := &packets.SDK_ClientRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
-	responsePacket.Latitude = clientLatitude
-	responsePacket.Longitude = clientLongitude
 	responsePacket.NumClientRelays = int32(numClientRelays)
+	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+
 	for i := 0; i < numClientRelays; i++ {
 		responsePacket.ClientRelayIds[i] = clientRelayIds[i]
 		responsePacket.ClientRelayAddresses[i] = clientRelayAddresses[i]
+
+		core.GeneratePingToken(responsePacket.ExpireTimestamp, from, &responsePacket.ClientRelayAddresses[i], handler.PingKey, responsePacket.ClientRelayPingTokens[i][:])
 	}
-
-	// todo: expire time
-
-	// todo: generate ping tokens
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_CLIENT_RELAY_RESPONSE_PACKET, responsePacket)
 }
