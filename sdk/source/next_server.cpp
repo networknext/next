@@ -321,16 +321,25 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(9)
 
-    std::atomic<uint64_t> quit;
+    bool requesting_server_relays;
+    double next_server_relay_request_time;
+    double next_server_relay_request_packet_send_time;
+    double server_relay_request_timeout_time;
+    NextBackendServerRelayRequestPacket server_relay_request_packet;    
+    NextBackendServerRelayResponsePacket server_relay_response_packet;    
 
     NEXT_DECLARE_SENTINEL(10)
+
+    std::atomic<uint64_t> quit;
+
+    NEXT_DECLARE_SENTINEL(11)
 
     bool flushing;
     bool flushed;
     uint64_t num_session_updates_to_flush;
     uint64_t num_flushed_session_updates;
 
-    NEXT_DECLARE_SENTINEL(11)
+    NEXT_DECLARE_SENTINEL(12)
 
     void (*packet_receive_callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
     void * packet_receive_callback_data;
@@ -341,7 +350,7 @@ struct next_server_internal_t
     int (*payload_receive_callback)( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
     void * payload_receive_callback_data;
 
-    NEXT_DECLARE_SENTINEL(12)
+    NEXT_DECLARE_SENTINEL(13)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -361,6 +370,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 10 )
     NEXT_INITIALIZE_SENTINEL( server, 11 )
     NEXT_INITIALIZE_SENTINEL( server, 12 )
+    NEXT_INITIALIZE_SENTINEL( server, 13 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -380,6 +390,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 10 )
     NEXT_VERIFY_SENTINEL( server, 11 )
     NEXT_VERIFY_SENTINEL( server, 12 )
+    NEXT_VERIFY_SENTINEL( server, 13 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -1010,11 +1021,60 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
     if ( server->flushing )
         return;
 
+    if ( !server->received_init_response )
+        return;
+
     const double current_time = next_platform_time();
-    
-    // todo: logic for server relays
-    
-    (void) current_time;
+
+    // todo: change ready so it's not event based but checks each frame for !ready -> ready transition, with built in ready on timeout (->fallback to direct)
+
+    // todo: I probably want to do something to delay the server from reporting that it is "ready" until it has finished pinging server relays
+
+    /*
+    bool requesting_server_relays;
+    double next_server_relay_request_time;
+    double next_server_relay_request_packet_send_time;
+    double server_relay_request_timeout_time;
+    NextBackendServerRelayRequestPacket server_relay_request_packet;    
+    NextBackendServerRelayResponsePacket server_relay_response_packet;    
+    */
+
+    if ( !server->requesting_server_relays )
+    {
+        // should we start requesting server relays?
+
+        if ( server->next_server_relay_request_packet_send_time < current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "requesting server relays" );
+
+            server->server_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
+            server->server_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
+            server->server_relay_request_packet.version_patch = NEXT_VERSION_PATCH_INT;
+            server->server_relay_request_packet.buyer_id = server->buyer_id;
+            server->server_relay_request_packet.datacenter_id = server->datacenter_id;
+            server->server_relay_request_packet.request_id = next_random_uint64();
+
+            server->requesting_server_relays = true;                     
+            server->next_server_relay_request_packet_send_time = current_time;   
+        }
+    }
+
+    if ( server->requesting_server_relays )
+    {
+        // have we timed out?
+
+        if ( server->next_server_relay_request_packet_send_time + NEXT_SERVER_RELAYS_TIMEOUT < current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "timed out requesting server relays" );
+            memset( &server->server_relay_response_packet, 0, sizeof(NextBackendServerRelayResponsePacket) );
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
+            server->requesting_server_relays = false;
+            // todo: need to clear any stored server ping results here
+            return;
+        }
+
+        // should we resend the server relay request packet?
+    }
 }
 
 void next_server_internal_update_route( next_server_internal_t * server )
@@ -2982,8 +3042,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     if ( !server->autodetect_finished )
         return;
-
-    // wait until the backend 
 
     // if we have started flushing, abort the init...
 
