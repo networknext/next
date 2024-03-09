@@ -33,6 +33,7 @@
 #include "next_autodetect.h"
 #include "next_internal_config.h"
 #include "next_platform.h"
+#include "next_relay_manager.h"
 
 #include <atomic>
 #include <stdio.h>
@@ -326,20 +327,25 @@ struct next_server_internal_t
     double next_server_relay_request_packet_send_time;
     double server_relay_request_timeout_time;
     NextBackendServerRelayRequestPacket server_relay_request_packet;    
-    NextBackendServerRelayResponsePacket server_relay_response_packet;    
 
     NEXT_DECLARE_SENTINEL(10)
 
-    std::atomic<uint64_t> quit;
+    bool pinging_server_relays;
+    NextBackendServerRelayResponsePacket server_relay_response_packet;    
+    next_relay_manager_t * server_relay_manager;
 
     NEXT_DECLARE_SENTINEL(11)
+
+    std::atomic<uint64_t> quit;
+
+    NEXT_DECLARE_SENTINEL(12)
 
     bool flushing;
     bool flushed;
     uint64_t num_session_updates_to_flush;
     uint64_t num_flushed_session_updates;
 
-    NEXT_DECLARE_SENTINEL(12)
+    NEXT_DECLARE_SENTINEL(13)
 
     void (*packet_receive_callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
     void * packet_receive_callback_data;
@@ -350,7 +356,7 @@ struct next_server_internal_t
     int (*payload_receive_callback)( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
     void * payload_receive_callback_data;
 
-    NEXT_DECLARE_SENTINEL(13)
+    NEXT_DECLARE_SENTINEL(14)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -371,6 +377,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 11 )
     NEXT_INITIALIZE_SENTINEL( server, 12 )
     NEXT_INITIALIZE_SENTINEL( server, 13 )
+    NEXT_INITIALIZE_SENTINEL( server, 14 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -391,10 +398,13 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 11 )
     NEXT_VERIFY_SENTINEL( server, 12 )
     NEXT_VERIFY_SENTINEL( server, 13 )
+    NEXT_VERIFY_SENTINEL( server, 14 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
         next_pending_session_manager_verify_sentinels( server->pending_session_manager );
+    if ( server->server_relay_manager )
+        next_relay_manager_verify_sentinels( server->server_relay_manager );
 }
 
 static void next_server_internal_resolve_hostname_thread_function( void * context );
@@ -637,6 +647,14 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
+    server->server_relay_manager = next_relay_manager_create( context );
+    if ( !server->server_relay_manager )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create server relay manager" );
+        next_server_internal_destroy( server );
+        return NULL;
+    }
+
     const bool datacenter_is_local = datacenter[0] == 'l' &&
                                      datacenter[1] == 'o' &&
                                      datacenter[2] == 'c' &&
@@ -703,31 +721,43 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_platform_socket_destroy( server->socket );
     }
+
     if ( server->resolve_hostname_thread )
     {
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
+
     if ( server->autodetect_thread )
     {
         next_platform_thread_destroy( server->autodetect_thread );
     }
+
     if ( server->command_queue )
     {
         next_queue_destroy( server->command_queue );
     }
+
     if ( server->notify_queue )
     {
         next_queue_destroy( server->notify_queue );
     }
+
     if ( server->session_manager )
     {
         next_session_manager_destroy( server->session_manager );
         server->session_manager = NULL;
     }
+
     if ( server->pending_session_manager )
     {
         next_pending_session_manager_destroy( server->pending_session_manager );
         server->pending_session_manager = NULL;
+    }
+
+    if ( server->server_relay_manager )
+    {
+        next_relay_manager_destroy( server->server_relay_manager );
+        server->server_relay_manager = NULL;
     }
 
     next_platform_mutex_destroy( &server->session_mutex );
@@ -1030,22 +1060,13 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
     // todo: I probably want to do something to delay the server from reporting that it is "ready" until it has finished pinging server relays
 
-    /*
-    bool requesting_server_relays;
-    double next_server_relay_request_time;
-    double next_server_relay_request_packet_send_time;
-    double server_relay_request_timeout_time;
-    NextBackendServerRelayRequestPacket server_relay_request_packet;    
-    NextBackendServerRelayResponsePacket server_relay_response_packet;    
-    */
-
     if ( !server->requesting_server_relays )
     {
         // should we start requesting server relays?
 
         if ( server->next_server_relay_request_packet_send_time < current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_INFO, "requesting server relays" );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server requesting server relays" );
 
             server->server_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
             server->server_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
@@ -1065,7 +1086,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
         if ( server->next_server_relay_request_packet_send_time + NEXT_SERVER_RELAYS_TIMEOUT < current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "timed out requesting server relays" );
+            next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting server relays" );
             memset( &server->server_relay_response_packet, 0, sizeof(NextBackendServerRelayResponsePacket) );
             server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
             server->requesting_server_relays = false;
@@ -1074,6 +1095,38 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
         }
 
         // should we resend the server relay request packet?
+
+        if ( server->next_server_relay_request_packet_send_time < current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "send server relay request packet" );
+                    
+            uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+            next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+            uint8_t magic[8];
+            memset( magic, 0, sizeof(magic) );
+
+            uint8_t from_address_data[4];
+            uint8_t to_address_data[4];
+
+            next_address_data( &server->server_address, from_address_data );
+            next_address_data( &server->backend_address, to_address_data );
+            int packet_bytes = 0;
+            if ( next_write_backend_packet( NEXT_BACKEND_SERVER_RELAY_REQUEST_PACKET, &server->server_relay_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, to_address_data ) != NEXT_OK )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write server relay request packet for backend" );
+                return;
+            }
+
+            next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+            next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_bytes ) );
+
+            next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
+
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_REQUEST_SEND_RATE;
+        }
+
     }
 }
 
@@ -1346,11 +1399,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_address_data( from, from_address_data );
         next_address_data( &server->server_address, to_address_data );
 
-        if ( packet_id != NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET &&
-             packet_id != NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET &&
-             packet_id != NEXT_BACKEND_SERVER_UPDATE_REQUEST_PACKET &&
-             packet_id != NEXT_BACKEND_SERVER_UPDATE_RESPONSE_PACKET &&
-             packet_id != NEXT_BACKEND_SESSION_UPDATE_RESPONSE_PACKET )
+        if ( packet_id < NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET )
         {
             if ( !next_advanced_packet_filter( packet_data + begin, server->current_magic, from_address_data, to_address_data, end - begin ) )
             {
@@ -1755,6 +1804,42 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
 
         return;
+    }
+
+    // backend server relay response
+
+    if ( packet_id == NEXT_BACKEND_SERVER_RELAY_RESPONSE_PACKET )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing server relay response packet" );
+
+        if ( !server->requesting_server_relays )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server relay response packet from backend. not requesting server relays" );
+            return;
+        }
+
+        NextBackendServerRelayResponsePacket packet;
+
+        if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server relay response packet from backend. packet failed to read" );
+            return;
+        }
+
+        if ( packet.request_id != server->server_relay_request_packet.request_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server relay response packet from backend. request id does not match" );
+            return;
+        }
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "received server relay response" );
+
+        server->requesting_server_relays = false;
+        server->pinging_server_relays = true;
+        server->server_relay_response_packet = packet;
+        server->next_server_relay_request_packet_send_time = next_platform_time() + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
+
+        // todo: will need to update the server relay manager here to load in the set of server relays
     }
 
     // upgrade response packet

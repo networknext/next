@@ -1725,17 +1725,17 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         client->client_stats.connection_type = next_platform_connection_type();
 
-        double start_time = current_time - NEXT_CLIENT_STATS_WINDOW;
+        double start_time = current_time - NEXT_PING_STATS_WINDOW;
         if ( start_time < client->last_route_switch_time + NEXT_PING_SAFETY )
         {
             start_time = client->last_route_switch_time + NEXT_PING_SAFETY;
         }
 
         next_route_stats_t next_route_stats;
-        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &next_route_stats );
+        next_route_stats_from_ping_history( &client->next_ping_history, current_time - NEXT_PING_STATS_WINDOW, current_time, &next_route_stats );
 
         next_route_stats_t direct_route_stats;
-        next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &direct_route_stats );
+        next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_PING_STATS_WINDOW, current_time, &direct_route_stats );
 
         {
             next_platform_mutex_guard( &client->direct_bandwidth_mutex );

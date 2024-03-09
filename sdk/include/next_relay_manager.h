@@ -227,7 +227,7 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
 
     double current_time = next_platform_time();
 
-    const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;
+    const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;      // todo: this needs to be passed in as a parameter
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -249,7 +249,7 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;
+        const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;          // todo: needs to be passed in as a parameter
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {
@@ -322,7 +322,7 @@ inline void next_relay_manager_get_stats( next_relay_manager_t * manager, next_r
     {
         next_route_stats_t route_stats;
 
-        next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_CLIENT_STATS_WINDOW, current_time, &route_stats );
+        next_route_stats_from_ping_history( &manager->relay_ping_history[i], current_time - NEXT_PING_STATS_WINDOW, current_time, &route_stats );
 
         stats->relay_ids[i] = manager->relay_ids[i];
         stats->relay_rtt[i] = route_stats.rtt;
