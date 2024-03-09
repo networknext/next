@@ -331,6 +331,7 @@ struct next_server_internal_t
     NEXT_DECLARE_SENTINEL(10)
 
     bool pinging_server_relays;
+    double server_relay_ping_start_time;
     NextBackendServerRelayResponsePacket server_relay_response_packet;    
     next_relay_manager_t * server_relay_manager;
 
@@ -1087,10 +1088,13 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
         if ( server->next_server_relay_request_packet_send_time + NEXT_SERVER_RELAYS_TIMEOUT < current_time )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting server relays" );
+
             memset( &server->server_relay_response_packet, 0, sizeof(NextBackendServerRelayResponsePacket) );
             server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
             server->requesting_server_relays = false;
+            
             // todo: need to clear any stored server ping results here
+
             return;
         }
 
@@ -1133,6 +1137,17 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
         // send pings to server relays
 
         next_relay_manager_send_pings( server->server_relay_manager, server->socket, 0, server->current_magic, &server->server_address, true );
+
+        // stop pinging after 10 seconds
+
+        if ( server->server_relay_ping_start_time + 10 < current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server finished pinging server relays" );
+
+            server->pinging_server_relays = false;
+
+            // todo: grab server relay ping stats and store them
+        }
     }
 }
 
@@ -1838,12 +1853,15 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "received server relay response" );
+        double current_time = next_platform_time();
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "server started pinging server relays" );
 
         server->pinging_server_relays = true;
+        server->server_relay_ping_start_time = current_time;
         server->requesting_server_relays = false;
         server->server_relay_response_packet = packet;
-        server->next_server_relay_request_packet_send_time = next_platform_time() + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
+        server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
 
         next_relay_manager_reset( server->server_relay_manager );
 
