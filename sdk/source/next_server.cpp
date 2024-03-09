@@ -1316,8 +1316,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
     }
 
-    begin += 16;
-    end -= 2;
+    begin += 18;
 
     if ( server->state == NEXT_SERVER_STATE_INITIALIZING )
     {
