@@ -3358,6 +3358,78 @@ void test_client_pong_packet()
     }
 }
 
+void test_server_ping_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+
+        uint8_t ping_token[NEXT_PING_TOKEN_BYTES];
+        next_crypto_random_bytes( ping_token, NEXT_PING_TOKEN_BYTES );
+
+        uint64_t ping_sequence = i;
+        uint64_t ping_expire_timestamp = 0x123415817414;
+
+        int packet_bytes = next_write_server_ping_packet( packet_data, ping_token, ping_sequence, ping_expire_timestamp, magic, from_address, to_address );
+
+        next_check( packet_bytes >= 0 );
+        next_check( packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        next_check( packet_data[0] == NEXT_SERVER_PING_PACKET );
+
+        const uint8_t * p = packet_data + 18;
+        uint64_t read_ping_sequence = next_read_uint64( &p );
+        uint64_t read_ping_expire_timestamp = next_read_uint64( &p );
+
+        next_check( read_ping_sequence == ping_sequence );
+        next_check( read_ping_expire_timestamp == ping_expire_timestamp );
+
+        next_check( memcmp( packet_data + 18 + 8 + 8, ping_token, NEXT_PING_TOKEN_BYTES ) == 0 );
+    }
+}
+
+void test_server_pong_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+
+        uint64_t pong_sequence = i;
+
+        int packet_bytes = next_write_server_pong_packet( packet_data, pong_sequence, magic, from_address, to_address );
+
+        next_check( packet_bytes >= 0 );
+        next_check( packet_bytes <= NEXT_MAX_PACKET_BYTES );
+
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        next_check( packet_data[0] == NEXT_SERVER_PONG_PACKET );
+
+        const uint8_t * p = packet_data + 18;
+        uint64_t read_pong_sequence = next_read_uint64( &p );
+
+        next_check( read_pong_sequence == pong_sequence );
+    }
+}
+
 void test_server_init_request_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
@@ -4217,6 +4289,8 @@ void next_run_tests()
         RUN_TEST( test_route_update_ack_packet );
         RUN_TEST( test_client_ping_packet );
         RUN_TEST( test_client_pong_packet );
+        RUN_TEST( test_server_ping_packet );
+        RUN_TEST( test_server_pong_packet );
         RUN_TEST( test_server_init_request_packet );
         RUN_TEST( test_server_init_response_packet );
         RUN_TEST( test_server_update_request_packet );

@@ -2037,7 +2037,7 @@ void next_client_internal_send_pings_to_client_relays( next_client_internal_t * 
     if ( client->fallback_to_direct )
         return;
 
-    next_relay_manager_send_pings( client->client_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address );
+    next_relay_manager_send_pings( client->client_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address, false );
 }
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )

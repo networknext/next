@@ -289,6 +289,38 @@ int next_write_client_pong_packet( uint8_t * packet_data, uint64_t ping_sequence
     return packet_length;
 }
 
+int next_write_server_ping_packet( uint8_t * packet_data, const uint8_t * ping_token, uint64_t ping_sequence, uint64_t expire_timestamp, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
+{
+    packet_data[0] = NEXT_SERVER_PING_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
+    next_write_uint64( &p, ping_sequence );
+    next_write_uint64( &p, expire_timestamp );
+    next_write_bytes( &p, ping_token, NEXT_PING_TOKEN_BYTES );
+
+    int packet_length = p - packet_data;
+    next_generate_pittle( a, from_address, to_address, packet_length );
+    next_generate_chonkle( b, magic, from_address, to_address, packet_length );
+    return packet_length;
+}
+
+int next_write_server_pong_packet( uint8_t * packet_data, uint64_t ping_sequence, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
+{
+    packet_data[0] = NEXT_SERVER_PONG_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
+    next_write_uint64( &p, ping_sequence );
+
+    int packet_length = p - packet_data;
+    next_generate_pittle( a, from_address, to_address, packet_length );
+    next_generate_chonkle( b, magic, from_address, to_address, packet_length );
+    return packet_length;
+}
+
 int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet_data, int * packet_bytes, const int * signed_packet, const int * encrypted_packet, uint64_t * sequence, const uint8_t * sign_private_key, const uint8_t * encrypt_private_key, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address )
 {
     next_assert( packet_object );

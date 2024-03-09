@@ -1126,7 +1126,13 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
             server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_REQUEST_SEND_RATE;
         }
+    }
 
+    if ( server->pinging_server_relays )
+    {
+        // send pings to server relays
+
+        next_relay_manager_send_pings( server->server_relay_manager, server->socket, 0, server->current_magic, &server->server_address, true );
     }
 }
 
@@ -1834,12 +1840,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_printf( NEXT_LOG_LEVEL_INFO, "received server relay response" );
 
-        server->requesting_server_relays = false;
         server->pinging_server_relays = true;
+        server->requesting_server_relays = false;
         server->server_relay_response_packet = packet;
         server->next_server_relay_request_packet_send_time = next_platform_time() + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
 
-        // todo: will need to update the server relay manager here to load in the set of server relays
+        next_relay_manager_reset( server->server_relay_manager );
+
+        next_relay_manager_update( server->server_relay_manager, packet.num_server_relays, packet.server_relay_ids, packet.server_relay_addresses, (const uint8_t*)packet.server_relay_ping_tokens, packet.expire_timestamp );
     }
 
     // upgrade response packet
