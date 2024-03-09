@@ -189,6 +189,7 @@ func (packet *SDK_ClientRelayRequestPacket) Serialize(stream encoding.Stream) er
 // ------------------------------------------------------------
 
 type SDK_ClientRelayResponsePacket struct {
+	ClientAddress         net.UDPAddr
 	RequestId             uint64
 	Latitude              float32
 	Longitude             float32
@@ -200,6 +201,7 @@ type SDK_ClientRelayResponsePacket struct {
 }
 
 func (packet *SDK_ClientRelayResponsePacket) Serialize(stream encoding.Stream) error {
+	stream.SerializeAddress(&packet.ClientAddress)
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeFloat32(&packet.Latitude)
 	stream.SerializeFloat32(&packet.Longitude)

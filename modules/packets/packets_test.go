@@ -173,6 +173,7 @@ func GenerateRandomClientRelayRequestPacket() packets.SDK_ClientRelayRequestPack
 func GenerateRandomClientRelayResponsePacket() packets.SDK_ClientRelayResponsePacket {
 
 	packet := packets.SDK_ClientRelayResponsePacket{
+		ClientAddress:   common.RandomAddress(),
 		RequestId:       rand.Uint64(),
 		Latitude:        rand.Float32(),
 		Longitude:       rand.Float32(),

@@ -3912,6 +3912,7 @@ void test_client_relay_response_packet()
         next_crypto_random_bytes( to_address, 4 );
 
         static NextBackendClientRelayResponsePacket in, out;
+        next_address_parse( &in.client_address, "127.0.0.1:40000" );
         in.request_id = next_random_uint64();
         in.latitude = next_random_float();
         in.longitude = next_random_float();
@@ -3938,6 +3939,7 @@ void test_client_relay_response_packet()
 
         next_check( next_read_backend_packet( packet_id, packet_data, begin, end, &out, next_signed_packets, public_key ) == NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET );
 
+        next_check( next_address_equal( &in.client_address, &out.client_address ) );
         next_check( in.request_id == out.request_id );
         next_check( in.latitude == out.latitude );
         next_check( in.longitude == out.longitude );

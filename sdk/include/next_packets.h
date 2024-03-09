@@ -519,6 +519,7 @@ struct NextBackendClientRelayRequestPacket
 
 struct NextBackendClientRelayResponsePacket
 {
+    next_address_t client_address;
     uint64_t request_id;
     float latitude;
     float longitude;
@@ -535,6 +536,7 @@ struct NextBackendClientRelayResponsePacket
 
     template <typename Stream> bool Serialize( Stream & stream )
     {
+        serialize_address( stream, client_address );
         serialize_uint64( stream, request_id );
         serialize_float( stream, latitude );
         serialize_float( stream, longitude );

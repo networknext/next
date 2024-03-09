@@ -3,6 +3,7 @@ package handlers
 import (
 	"net"
 	"time"
+	"fmt"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -242,6 +243,14 @@ func SDK_SendResponsePacket[P packets.Packet](handler *SDK_Handler, conn *net.UD
 
 	case packets.SDK_SESSION_UPDATE_RESPONSE_PACKET:
 		handler.Events[SDK_HandlerEvent_SentSessionUpdateResponsePacket] = true
+		break
+
+	case packets.SDK_CLIENT_RELAY_RESPONSE_PACKET:
+		handler.Events[SDK_HandlerEvent_SentClientRelayResponsePacket] = true
+		break
+
+	case packets.SDK_SERVER_RELAY_RESPONSE_PACKET:
+		handler.Events[SDK_HandlerEvent_SentServerRelayResponsePacket] = true
 		break
 
 	default:
@@ -587,6 +596,9 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 	}
 
 	clientLatitude, clientLongitude := handler.LocateIP(requestPacket.ClientAddress.IP)
+
+	// todo
+	fmt.Printf("client latitude is %.1f, client longitude is %.1f\n", clientLatitude, clientLongitude)
 
 	serverLatitude := datacenter.Latitude
 	serverLongitude := datacenter.Longitude
