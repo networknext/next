@@ -629,6 +629,10 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 		responsePacket.ClientRelayAddresses[i] = clientRelayAddresses[i]
 	}
 
+	// todo: expire time
+
+	// todo: generate ping tokens
+
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_CLIENT_RELAY_RESPONSE_PACKET, responsePacket)
 }
 
@@ -694,6 +698,10 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 		responsePacket.ServerRelayIds[i] = datacenterRelays[i]
 		responsePacket.ServerRelayAddresses[i] = relay.PublicAddress
 	}
+
+	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+
+	// todo: generate ping tokens
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_RELAY_RESPONSE_PACKET, responsePacket)
 }

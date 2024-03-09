@@ -1873,8 +1873,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
                 if ( jitter > 255 )
                     jitter = 255;
 
-                if ( packet_loss > 100 )
-                    packet_loss = 100;
+                if ( packet_loss > 100.0 )
+                    packet_loss = 100.0;
 
                 packet.client_relay_ids[i] = client->client_relay_stats.relay_ids[i];
                 packet.client_relay_rtt[i] = uint8_t( rtt );

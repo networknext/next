@@ -264,7 +264,8 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 // -----------------------------------------------------------------------------
 
-#if RELAY_DEBUG || RELAY_TEST
+// todo
+//#if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
     {
@@ -276,6 +277,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
         va_end( args );
     }
 
+/*
 #else // #if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
@@ -284,6 +286,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     }
 
 #endif // #if RELAY_DEBUG || RELAY_TEST
+*/
 
 // -----------------------------------------------------------------------------
 

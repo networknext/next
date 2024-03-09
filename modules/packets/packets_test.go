@@ -206,8 +206,6 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 
 	packet := packets.SDK_ServerRelayResponsePacket{
 		RequestId:       rand.Uint64(),
-		Latitude:        rand.Float32(),
-		Longitude:       rand.Float32(),
 		NumServerRelays: int32(common.RandomInt(0, constants.MaxServerRelays)),
 		ExpireTimestamp: rand.Uint64(),
 	}

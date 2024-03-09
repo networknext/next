@@ -271,11 +271,11 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
             if ( server )
             {
-                next_write_server_ping_packet( packet_data, ping_token, ping_sequence, manager->relay_ping_expire_timestamp, magic, from_address_data, to_address_data );
+                packet_bytes = next_write_server_ping_packet( packet_data, ping_token, ping_sequence, manager->relay_ping_expire_timestamp, magic, from_address_data, to_address_data );
             }
             else
             {
-                next_write_client_ping_packet( packet_data, ping_token, ping_sequence, session_id, manager->relay_ping_expire_timestamp, magic, from_address_data, to_address_data );
+                packet_bytes = next_write_client_ping_packet( packet_data, ping_token, ping_sequence, session_id, manager->relay_ping_expire_timestamp, magic, from_address_data, to_address_data );
             }
 
             next_assert( packet_bytes > 0 );

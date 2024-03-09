@@ -236,8 +236,6 @@ func (packet *SDK_ServerRelayRequestPacket) Serialize(stream encoding.Stream) er
 
 type SDK_ServerRelayResponsePacket struct {
 	RequestId             uint64
-	Latitude              float32
-	Longitude             float32
 	NumServerRelays       int32
 	ServerRelayIds        [constants.MaxServerRelays]uint64
 	ServerRelayAddresses  [constants.MaxServerRelays]net.UDPAddr
@@ -247,8 +245,6 @@ type SDK_ServerRelayResponsePacket struct {
 
 func (packet *SDK_ServerRelayResponsePacket) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&packet.RequestId)
-	stream.SerializeFloat32(&packet.Latitude)
-	stream.SerializeFloat32(&packet.Longitude)
 	stream.SerializeInteger(&packet.NumServerRelays, 0, constants.MaxServerRelays)
 	for i := 0; i < int(packet.NumServerRelays); i++ {
 		stream.SerializeUint64(&packet.ServerRelayIds[i])
