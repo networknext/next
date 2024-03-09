@@ -1219,6 +1219,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         next_printf( NEXT_LOG_LEVEL_SPAM, "client processing client pong packet" );
 
+        if ( packet_bytes != 18 + 8 + 8 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored client pong packet. wrong size" );
+            return;
+        }
+
         if ( !client->upgraded )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored client pong packet. not upgraded yet" );
@@ -1226,7 +1232,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         packet_data += 18;
-        packet_bytes -= 18;
 
         const uint8_t * p = packet_data;
 

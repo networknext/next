@@ -688,6 +688,8 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 	responsePacket := &packets.SDK_ServerRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
 	responsePacket.NumServerRelays = int32(numServerRelays)
+	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
+
 	for i := 0; i < numServerRelays; i++ {
 		relay := handler.Database.GetRelay(datacenterRelays[i])
 		if relay == nil {
@@ -697,11 +699,9 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 		}
 		responsePacket.ServerRelayIds[i] = datacenterRelays[i]
 		responsePacket.ServerRelayAddresses[i] = relay.PublicAddress
+
+		core.GeneratePingToken(responsePacket.ExpireTimestamp, from, &responsePacket.ServerRelayAddresses[i], handler.PingKey, responsePacket.ServerRelayPingTokens[i][:])
 	}
-
-	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
-
-	// todo: generate ping tokens
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_SERVER_RELAY_RESPONSE_PACKET, responsePacket)
 }

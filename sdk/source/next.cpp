@@ -347,6 +347,8 @@ int next_init( void * context, next_config_t * config_in )
         return NEXT_ERROR;
     }
 
+    next_printf( NEXT_LOG_LEVEL_INFO, "network next version is %s", NEXT_VERSION_FULL );
+
     const char * platform_string = next_platform_string( next_platform_id() );
     const char * connection_string = next_connection_string( next_platform_connection_type() );
 

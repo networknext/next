@@ -310,6 +310,7 @@ inline void next_relay_manager_process_pong( next_relay_manager_t * manager, con
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
+        // todo: O(n) is lame
         if ( next_address_equal( from, &manager->relay_addresses[i] ) )
         {
             next_ping_history_pong_received( &manager->relay_ping_history[i], sequence, next_platform_time() );

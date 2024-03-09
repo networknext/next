@@ -2365,9 +2365,25 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         next_printf( NEXT_LOG_LEVEL_SPAM, "server processing server pong packet" );
 
-        // todo
+        const int packet_bytes = end - begin;
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "server pong" );
+        if ( packet_bytes != 8 )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server pong packet. wrong size" );
+            return;
+        }
+
+        if ( !server->pinging_server_relays )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored server pong packet. server is not pinging server relays" );
+            return;
+        }
+
+        const uint8_t * p = packet_data + begin;
+
+        uint64_t ping_sequence = next_read_uint64( &p );
+
+        next_relay_manager_process_pong( server->server_relay_manager, from, ping_sequence );
     }
 
     // ----------------------------------

@@ -264,8 +264,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 // -----------------------------------------------------------------------------
 
-// todo
-//#if RELAY_DEBUG || RELAY_TEST
+#if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
     {
@@ -277,7 +276,6 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
         va_end( args );
     }
 
-/*
 #else // #if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
@@ -286,7 +284,6 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     }
 
 #endif // #if RELAY_DEBUG || RELAY_TEST
-*/
 
 // -----------------------------------------------------------------------------
 
@@ -5730,6 +5727,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             uint64_t ping_sequence = relay_read_uint64( &const_p );
             uint64_t expire_timestamp = relay_read_uint64( &const_p );
+
+            // todo
+            relay_printf( "ping sequence is %d", (int) ping_sequence );
 
             uint64_t current_timestamp = relay->control.current_timestamp;
             
