@@ -3,8 +3,7 @@ package handlers
 import (
 	"net"
 	"time"
-	"fmt"
-
+	
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -597,9 +596,6 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 
 	clientLatitude, clientLongitude := handler.LocateIP(requestPacket.ClientAddress.IP)
 
-	// todo
-	fmt.Printf("client latitude is %.1f, client longitude is %.1f\n", clientLatitude, clientLongitude)
-
 	serverLatitude := datacenter.Latitude
 	serverLongitude := datacenter.Longitude
 
@@ -644,6 +640,7 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 	core.Debug("received server relay request packet from %s", from.String())
 	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 	core.Debug("buyer id: %016x", requestPacket.BuyerId)
+	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 	core.Debug("request id: %016x", requestPacket.RequestId)
 	core.Debug("---------------------------------------------------------------------------")
 
