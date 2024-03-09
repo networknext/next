@@ -647,7 +647,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    server->server_relay_manager = next_relay_manager_create( context );
+    server->server_relay_manager = next_relay_manager_create( context, NEXT_SERVER_RELAY_PINGS_PER_SECOND );
     if ( !server->server_relay_manager )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "server could not create server relay manager" );

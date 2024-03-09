@@ -92,6 +92,7 @@ struct next_relay_manager_t
 
     void * context;
     int num_relays;
+    int pings_per_second;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -159,8 +160,10 @@ inline void next_relay_manager_verify_sentinels( next_relay_manager_t * manager 
 
 void next_relay_manager_reset( next_relay_manager_t * manager );
 
-inline next_relay_manager_t * next_relay_manager_create( void * context )
+inline next_relay_manager_t * next_relay_manager_create( void * context, int pings_per_second )
 {
+    next_assert( pings_per_second > 0 );
+
     next_relay_manager_t * manager = (next_relay_manager_t*) next_malloc( context, sizeof(next_relay_manager_t) );
     if ( !manager )
         return NULL;
@@ -168,6 +171,7 @@ inline next_relay_manager_t * next_relay_manager_create( void * context )
     memset( manager, 0, sizeof(next_relay_manager_t) );
 
     manager->context = context;
+    manager->pings_per_second = pings_per_second;
 
     next_relay_manager_initialize_sentinels( manager );
 
@@ -227,7 +231,7 @@ inline void next_relay_manager_update( next_relay_manager_t * manager, int num_r
 
     double current_time = next_platform_time();
 
-    const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;      // todo: this needs to be passed in as a parameter
+    const double ping_time = 1.0 / manager->pings_per_second;
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
@@ -249,7 +253,7 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
     for ( int i = 0; i < manager->num_relays; ++i )
     {
-        const double ping_time = 1.0 / NEXT_CLIENT_RELAY_PINGS_PER_SECOND;          // todo: needs to be passed in as a parameter
+        const double ping_time = 1.0 / manager->pings_per_second;
 
         if ( manager->relay_last_ping_time[i] + ping_time <= current_time )
         {

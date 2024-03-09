@@ -2231,7 +2231,7 @@ void test_relay_manager()
         next_address_parse( &relay_addresses[i], address_string );
     }
 
-    next_relay_manager_t * manager = next_relay_manager_create( NULL );
+    next_relay_manager_t * manager = next_relay_manager_create( NULL, 10 );
 
     // should be no relays when manager is first created
     {

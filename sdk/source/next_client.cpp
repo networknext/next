@@ -449,7 +449,7 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    client->client_relay_manager = next_relay_manager_create( context );
+    client->client_relay_manager = next_relay_manager_create( context, NEXT_CLIENT_RELAY_PINGS_PER_SECOND );
     if ( !client->client_relay_manager )
     {
         next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create client relay manager" );
