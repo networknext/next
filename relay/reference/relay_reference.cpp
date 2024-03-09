@@ -3794,8 +3794,7 @@ struct main_t
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
-    uint64_t last_update_response_timestamp;
-    double last_update_response_time;
+    uint64_t current_timestamp;
     relay_queue_t ** relay_control_queue;
     relay_platform_mutex_t ** relay_control_mutex;
     relay_queue_t * ping_control_queue;
@@ -4239,11 +4238,13 @@ int main_update( main_t * main )
 
     uint64_t response_timestamp = relay_read_uint64( &q );
 
-    if ( main->last_update_response_time == 0 )
+    if ( main->current_timestamp == 0 )
     {
         printf( "Relay initialized\n" );
         fflush( stdout );
     }
+
+    main->current_timestamp = response_timestamp;
 
     int num_relays = relay_read_uint32( &q );
 
