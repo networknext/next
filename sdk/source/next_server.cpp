@@ -193,9 +193,11 @@ int next_server_internal_send_packet( next_server_internal_t * server, const nex
 
 next_session_entry_t * next_server_internal_process_client_to_server_packet( next_server_internal_t * server, uint8_t packet_type, uint8_t * packet_data, int packet_bytes );
 
-void next_server_internal_update_client_relays( next_server_internal_t * server );
+void next_server_internal_update_ready( next_server_internal_t * server );
 
 void next_server_internal_update_server_relays( next_server_internal_t * server );
+
+void next_server_internal_update_client_relays( next_server_internal_t * server );
 
 void next_server_internal_update_route( next_server_internal_t * server );
 
@@ -337,6 +339,7 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
+    bool has_server_ping_stats;
     int num_server_relays;
     uint64_t server_relay_ids[NEXT_MAX_SERVER_RELAYS];
     uint8_t server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
@@ -345,16 +348,20 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(12)
 
-    std::atomic<uint64_t> quit;
+    bool ready;
 
     NEXT_DECLARE_SENTINEL(13)
+
+    std::atomic<uint64_t> quit;
+
+    NEXT_DECLARE_SENTINEL(14)
 
     bool flushing;
     bool flushed;
     uint64_t num_session_updates_to_flush;
     uint64_t num_flushed_session_updates;
 
-    NEXT_DECLARE_SENTINEL(14)
+    NEXT_DECLARE_SENTINEL(15)
 
     void (*packet_receive_callback) ( void * data, next_address_t * from, uint8_t * packet_data, int * begin, int * end );
     void * packet_receive_callback_data;
@@ -365,7 +372,7 @@ struct next_server_internal_t
     int (*payload_receive_callback)( void * data, const next_address_t * client_address, const uint8_t * payload_data, int payload_bytes );
     void * payload_receive_callback_data;
 
-    NEXT_DECLARE_SENTINEL(15)
+    NEXT_DECLARE_SENTINEL(16)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -388,6 +395,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 13 )
     NEXT_INITIALIZE_SENTINEL( server, 14 )
     NEXT_INITIALIZE_SENTINEL( server, 15 )
+    NEXT_INITIALIZE_SENTINEL( server, 16 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -410,6 +418,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 13 )
     NEXT_VERIFY_SENTINEL( server, 14 )
     NEXT_VERIFY_SENTINEL( server, 15 )
+    NEXT_VERIFY_SENTINEL( server, 16 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -1022,7 +1031,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
     return entry;
 }
 
-void next_server_internal_update_client_relays( next_server_internal_t * server )
+void next_server_internal_update_ready( next_server_internal_t * server )
 {
     next_assert( server );
 
@@ -1030,24 +1039,56 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
     next_assert( !next_global_config.disable_network_next );
 
-    if ( server->flushing )
+    if ( server->ready )
         return;
 
-    const double current_time = next_platform_time();
+    // check for ready timeout
 
-    const int max_index = server->session_manager->max_entry_index;
-
-    for ( int i = 0; i <= max_index; ++i )
+    if ( server->start_time + NEXT_SERVER_READY_TIMEOUT < (uint64_t) time( NULL ) )
     {
-        if ( server->session_manager->session_ids[i] == 0 )
-            continue;
+        next_printf( NEXT_LOG_LEVEL_WARN, "server ready timed out" );
 
-        next_session_entry_t * entry = &server->session_manager->entries[i];
+        server->ready = true;
 
-        // todo: logic for near relays
+        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+        notify->type = NEXT_SERVER_NOTIFY_READY;
+        next_copy_string( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+        {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+            next_platform_mutex_guard( &server->notify_mutex );
+            next_queue_push( server->notify_queue, notify );
+        }
+    }
 
-        (void) entry;
-        (void) current_time;
+    // check ready conditions are met
+
+    if ( !server->resolve_hostname_finished )
+        return;
+
+    if ( !server->autodetect_finished )
+        return;
+
+    if ( !server->received_init_response )
+        return;
+
+    if ( !server->has_server_ping_stats )
+        return;
+
+    // server is ready
+
+    server->ready = true;
+
+    next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
+    notify->type = NEXT_SERVER_NOTIFY_READY;
+    next_copy_string( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
+    {
+#if NEXT_SPIKE_TRACKING
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+        next_platform_mutex_guard( &server->notify_mutex );
+        next_queue_push( server->notify_queue, notify );
     }
 }
 
@@ -1066,10 +1107,6 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
         return;
 
     const double current_time = next_platform_time();
-
-    // todo: change ready so it's not event based but checks each frame for !ready -> ready transition, with built in ready on timeout (->fallback to direct)
-
-    // todo: I probably want to do something to delay the server from reporting that it is "ready" until it has finished pinging server relays
 
     if ( !server->requesting_server_relays )
     {
@@ -1159,6 +1196,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
             next_relay_manager_get_stats( server->server_relay_manager, &server_relay_stats );
 
+            server->has_server_ping_stats = true;
             server->num_server_relays = server_relay_stats.num_relays;
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
@@ -1193,6 +1231,35 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
             }
             next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
         }
+    }
+}
+
+void next_server_internal_update_client_relays( next_server_internal_t * server )
+{
+    next_assert( server );
+
+    next_server_internal_verify_sentinels( server );
+
+    next_assert( !next_global_config.disable_network_next );
+
+    if ( server->flushing )
+        return;
+
+    const double current_time = next_platform_time();
+
+    const int max_index = server->session_manager->max_entry_index;
+
+    for ( int i = 0; i <= max_index; ++i )
+    {
+        if ( server->session_manager->session_ids[i] == 0 )
+            continue;
+
+        next_session_entry_t * entry = &server->session_manager->entries[i];
+
+        // todo: logic for near relays
+
+        (void) entry;
+        (void) current_time;
     }
 }
 
@@ -1920,6 +1987,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             server->pinging_server_relays = false;
             server->requesting_server_relays = false;
+            server->has_server_ping_stats = true;               // IMPORTANT: so we don't time out ready
         }
     }
 
@@ -3186,10 +3254,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
         server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
 
-        next_server_notify_ready_t * notify_ready = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-        notify_ready->type = NEXT_SERVER_NOTIFY_READY;
-        next_copy_string( notify_ready->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-
         next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
         next_assert( notify_direct_only );
         notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
@@ -3200,7 +3264,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
 #endif // #if NEXT_SPIKE_TRACKING                
             next_platform_mutex_guard( &server->notify_mutex );
             next_queue_push( server->notify_queue, notify_direct_only );
-            next_queue_push( server->notify_queue, notify_ready );
         }
 
         return;
@@ -3210,17 +3273,6 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     if ( server->resolve_hostname_finished && server->autodetect_finished && server->received_init_response )
     {
-        next_assert( server->backend_address.type == NEXT_ADDRESS_IPV4 || server->backend_address.type == NEXT_ADDRESS_IPV6 );
-        next_server_notify_ready_t * notify = (next_server_notify_ready_t*) next_malloc( server->context, sizeof( next_server_notify_ready_t ) );
-        notify->type = NEXT_SERVER_NOTIFY_READY;
-        next_copy_string( notify->datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
-        {
-#if NEXT_SPIKE_TRACKING
-            next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_READY at %s:%d", __FILE__, __LINE__ );
-#endif // #if NEXT_SPIKE_TRACKING
-            next_platform_mutex_guard( &server->notify_mutex );
-            next_queue_push( server->notify_queue, notify );
-        }
         server->state = NEXT_SERVER_STATE_INITIALIZED;
     }
 
@@ -3701,7 +3753,11 @@ static void next_server_update_internal( next_server_internal_t * server )
 
     next_server_internal_update_pending_upgrades( server );
 
+    next_server_internal_update_ready( server );
+
     next_server_internal_update_server_relays( server );
+
+    next_server_internal_update_client_relays( server );
 
     next_server_internal_update_route( server );
 

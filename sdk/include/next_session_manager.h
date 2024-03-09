@@ -254,6 +254,14 @@ struct next_session_entry_t
     float held_client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
 
     NEXT_DECLARE_SENTINEL(32)
+
+    bool requesting_client_relays;
+    double next_client_relay_request_time;
+    double next_client_relay_request_packet_send_time;
+    double client_relay_request_timeout_time;
+    NextBackendClientRelayRequestPacket client_relay_request_packet;
+
+    NEXT_DECLARE_SENTINEL(33)
 };
 
 inline void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -293,6 +301,7 @@ inline void next_session_entry_initialize_sentinels( next_session_entry_t * entr
     NEXT_INITIALIZE_SENTINEL( entry, 30 )
     NEXT_INITIALIZE_SENTINEL( entry, 31 )
     NEXT_INITIALIZE_SENTINEL( entry, 32 )
+    NEXT_INITIALIZE_SENTINEL( entry, 33 )
     next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );
@@ -338,6 +347,7 @@ inline void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 30 )
     NEXT_VERIFY_SENTINEL( entry, 31 )
     NEXT_VERIFY_SENTINEL( entry, 32 )
+    NEXT_VERIFY_SENTINEL( entry, 33 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
