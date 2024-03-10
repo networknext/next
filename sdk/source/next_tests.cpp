@@ -3365,14 +3365,14 @@ void test_client_relay_ack_packet()
         uint64_t in_sequence = 1000;
         next_check( next_write_packet( NEXT_CLIENT_RELAY_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, to_address ) == NEXT_OK );
 
-        next_check( packet_data[0] == NEXT_CLIENT_RELAY_UPDATE_PACKET );
+        next_check( packet_data[0] == NEXT_CLIENT_RELAY_ACK_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 18;
         const int end = packet_bytes;
-        next_check( next_read_packet( NEXT_CLIENT_RELAY_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_RELAY_ACK_PACKET );
+        next_check( next_read_packet( NEXT_CLIENT_RELAY_ACK_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_RELAY_ACK_PACKET );
 
         next_check( in_sequence == out_sequence + 1 );
 
