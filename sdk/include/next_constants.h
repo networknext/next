@@ -146,6 +146,11 @@
 #define NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION                      300
 #define NEXT_SERVER_RELAYS_REQUEST_SEND_RATE                          1.0
 
+#define NEXT_CLIENT_RELAYS_TIMEOUT                                      5
+#define NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE                           300
+#define NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION                      300
+#define NEXT_CLIENT_RELAYS_REQUEST_SEND_RATE                          1.0
+
 #define NEXT_SERVER_READY_TIMEOUT                                      15
 
 #endif // #ifndef NEXT_CONSTANTS_H

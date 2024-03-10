@@ -747,10 +747,10 @@ void test_ping_stats()
 
         next_check( route_stats.rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
+        next_check( route_stats.packet_loss == 100.0f );
     }
 
-    // add some pings without pong response, packet loss should be 0%, but latency is 0ms indicating no responses yet (not routable)
+    // add some pings without pong response, packet loss should be 100%
     {
         static next_ping_history_t history;
         next_ping_history_clear( &history );
@@ -765,7 +765,7 @@ void test_ping_stats()
 
         next_check( route_stats.rtt == 0.0f );
         next_check( route_stats.jitter == 0.0f );
-        next_check( route_stats.packet_loss == 0.0f );
+        next_check( route_stats.packet_loss == 100.0f );
     }
 
     // add some pings and set them to have a pong response, packet loss should be 0%
@@ -2252,7 +2252,7 @@ void test_relay_manager()
             next_check( relay_ids[i] == stats.relay_ids[i] );
             next_check( stats.relay_rtt[i] == 0 );
             next_check( stats.relay_jitter[i] == 0 );
-            next_check( stats.relay_packet_loss[i] == 0 );
+            next_check( stats.relay_packet_loss[i] == 100.0 );
         }
     }
 

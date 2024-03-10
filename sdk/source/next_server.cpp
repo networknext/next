@@ -1245,6 +1245,9 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
     if ( server->flushing )
         return;
 
+    if ( !server->received_init_response )
+        return;
+
     const double current_time = next_platform_time();
 
     const int max_index = server->session_manager->max_entry_index;
@@ -1256,10 +1259,135 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
         next_session_entry_t * entry = &server->session_manager->entries[i];
 
-        // todo: logic for near relays
+        if ( !entry->requesting_client_relays )
+        {
+            // should we start requesting client relays?
 
-        (void) entry;
-        (void) current_time;
+            if ( entry->next_client_relay_request_packet_send_time < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "client requesting client relays for session" ); // todo: log session id
+
+                // todo: we are missing stuff like session id here
+                entry->client_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
+                entry->client_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
+                entry->client_relay_request_packet.version_patch = NEXT_VERSION_PATCH_INT;
+                entry->client_relay_request_packet.buyer_id = server->buyer_id;
+                entry->client_relay_request_packet.datacenter_id = server->datacenter_id;
+                entry->client_relay_request_packet.request_id = next_random_uint64();
+                entry->client_relay_request_packet.client_address = entry->address;
+
+                entry->requesting_client_relays = true;                     
+                entry->next_client_relay_request_packet_send_time = current_time;   
+            }
+        }
+
+        if ( entry->requesting_client_relays )
+        {
+            // have we timed out?
+
+            if ( entry->next_client_relay_request_packet_send_time + NEXT_CLIENT_RELAYS_TIMEOUT < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session" ); // todo: log session id
+
+                memset( &entry->client_relay_response_packet, 0, sizeof(NextBackendClientRelayResponsePacket) );
+                entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
+                entry->requesting_client_relays = false;
+                entry->num_client_relays = 0;
+
+                return;
+            }
+
+            // should we resend the client relay request packet?
+
+            if ( entry->next_client_relay_request_packet_send_time < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay request packet" );
+                        
+                uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+
+                next_assert( ( size_t(packet_data) % 4 ) == 0 );
+
+                uint8_t magic[8];
+                memset( magic, 0, sizeof(magic) );
+
+                uint8_t from_address_data[4];
+                uint8_t to_address_data[4];
+
+                next_address_data( &entry->address, from_address_data );
+                next_address_data( &server->backend_address, to_address_data );
+                int packet_bytes = 0;
+                if ( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET, &entry->client_relay_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, to_address_data ) != NEXT_OK )
+                {
+                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write client relay request packet for session" ); // todo: log session id
+                    return;
+                }
+
+                next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
+                next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_bytes ) );
+
+                next_server_internal_send_packet_to_backend( server, packet_data, packet_bytes );
+
+                entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_REQUEST_SEND_RATE;
+            }
+        }
+
+// todo
+/*
+        if ( server->pinging_server_relays )
+        {
+            // send pings to server relays
+
+            next_relay_manager_send_pings( server->server_relay_manager, server->socket, 0, server->current_magic, &server->server_address, true );
+
+            // stop pinging after 10 seconds and store the results
+
+            if ( server->server_relay_ping_start_time + 10 < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "server finished pinging server relays" );
+
+                server->pinging_server_relays = false;
+
+                next_relay_stats_t server_relay_stats;
+
+                next_relay_manager_get_stats( server->server_relay_manager, &server_relay_stats );
+
+                server->has_server_ping_stats = true;
+                server->num_server_relays = server_relay_stats.num_relays;
+
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
+                for ( int i = 0; i < server_relay_stats.num_relays; i++ )
+                {
+                    int rtt = (int) ceil( server_relay_stats.relay_rtt[i] );
+                    int jitter = (int) ceil( server_relay_stats.relay_jitter[i] );
+                    float packet_loss = server_relay_stats.relay_packet_loss[i];
+
+                    if ( rtt > 255 )
+                        rtt = 255;
+
+                    if ( jitter > 255 )
+                        jitter = 255;
+
+                    if ( packet_loss > 100.0 )
+                        packet_loss = 100.0;
+
+                    server->server_relay_ids[i] = server_relay_stats.relay_ids[i];
+
+                    server->server_relay_rtt[i] = rtt;
+                    server->server_relay_jitter[i] = jitter;
+                    server->server_relay_packet_loss[i] = packet_loss;
+
+                    char relay_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "server relay %s | rtt = %d, jitter = %d, packet loss = %.1f", 
+                        next_address_to_string( &server->server_relay_manager->relay_addresses[i], relay_address_buffer ), 
+                        server->server_relay_rtt[i], 
+                        server->server_relay_jitter[i],
+                        server->server_relay_packet_loss[i] 
+                    );
+                }
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
+            }
+        }
+*/
     }
 }
 
@@ -1977,7 +2105,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             server->server_relay_ping_start_time = current_time;
             server->requesting_server_relays = false;
             server->server_relay_response_packet = packet;
-            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
 
             next_relay_manager_reset( server->server_relay_manager );
 
