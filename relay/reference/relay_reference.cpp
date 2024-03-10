@@ -264,8 +264,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 // -----------------------------------------------------------------------------
 
-// todo
-//#if RELAY_DEBUG || RELAY_TEST
+#if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
     {
@@ -277,7 +276,6 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
         va_end( args );
     }
 
-/*
 #else // #if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
@@ -286,7 +284,6 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     }
 
 #endif // #if RELAY_DEBUG || RELAY_TEST
-*/
 
 // -----------------------------------------------------------------------------
 
@@ -2532,8 +2529,8 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->prev_address.type = RELAY_ADDRESS_IPV4;
     token->next_address.data.ip = relay_read_uint32( &buffer );
     token->prev_address.data.ip = relay_read_uint32( &buffer );
-    token->next_address.port = relay_ntohs( relay_read_uint16( &buffer ) );
-    token->prev_address.port = relay_ntohs( relay_read_uint16( &buffer ) );
+    token->next_address.port = relay_read_uint16( &buffer );
+    token->prev_address.port = relay_read_uint16( &buffer );
     token->session_version = relay_read_uint8( &buffer );
     token->next_internal = relay_read_uint8( &buffer );
     token->prev_internal = relay_read_uint8( &buffer );
@@ -2651,18 +2648,16 @@ struct header_data
 };
 #pragma pack(pop)
 
-int relay_write_header( uint8_t packet_type, uint64_t packet_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * buffer )
+int relay_write_header( uint8_t packet_type, uint64_t packet_sequence, uint64_t session_id, uint8_t session_version, const uint8_t * private_key, uint8_t * header )
 {
     assert( private_key );
-    assert( buffer );
+    assert( header );
 
-    uint8_t * start = buffer;
+    uint8_t * p = header;
 
-    (void) start;
-
-    relay_write_uint64( &buffer, packet_sequence );
-    relay_write_uint64( &buffer, session_id );
-    relay_write_uint8( &buffer, session_version );
+    relay_write_uint64( &p, packet_sequence );
+    relay_write_uint64( &p, session_id );
+    relay_write_uint8( &p, session_version );
 
     struct header_data data;
     memcpy( data.session_private_key, private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2671,7 +2666,7 @@ int relay_write_header( uint8_t packet_type, uint64_t packet_sequence, uint64_t 
     data.session_id = session_id;
     data.session_version = session_version;
 
-    crypto_hash_sha256( buffer + 8 + 8 + 1, (const unsigned char*) &data, sizeof(struct header_data) );
+    crypto_hash_sha256( p, (const unsigned char*) &data, sizeof(struct header_data) );
 
     return RELAY_OK;
 }
@@ -3219,6 +3214,8 @@ int relay_write_route_response_packet( uint8_t * packet_data, uint64_t send_sequ
     if ( relay_write_header( RELAY_ROUTE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
 
+    p += RELAY_HEADER_BYTES;
+
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
     relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
@@ -3250,6 +3247,8 @@ int relay_write_continue_response_packet( uint8_t * packet_data, uint64_t send_s
     if ( relay_write_header( RELAY_CONTINUE_RESPONSE_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
 
+    p += RELAY_HEADER_BYTES;
+
     int packet_length = p - packet_data;
     relay_generate_pittle( a, from_address, to_address, packet_length );
     relay_generate_chonkle( b, magic, from_address, to_address, packet_length );
@@ -3265,6 +3264,8 @@ int relay_write_client_to_server_packet( uint8_t * packet_data, uint64_t send_se
 
     if ( relay_write_header( RELAY_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
+
+    p += RELAY_HEADER_BYTES;
 
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
 
@@ -3284,6 +3285,8 @@ int relay_write_server_to_client_packet( uint8_t * packet_data, uint64_t send_se
     if ( relay_write_header( RELAY_SERVER_TO_CLIENT_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
 
+    p += RELAY_HEADER_BYTES;
+
     relay_write_bytes( &p, game_packet_data, game_packet_bytes );
 
     int packet_length = p - packet_data;
@@ -3299,8 +3302,10 @@ int relay_write_session_ping_packet( uint8_t * packet_data, uint64_t send_sequen
     uint8_t * b = packet_data + 3;
     uint8_t * p = packet_data + 18;
 
-    if ( relay_write_header( RELAY_CLIENT_TO_SERVER_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
+    if ( relay_write_header( RELAY_SESSION_PING_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
+
+    p += RELAY_HEADER_BYTES;
 
     relay_write_uint64( &p, ping_sequence );
 
@@ -3319,6 +3324,8 @@ int relay_write_session_pong_packet( uint8_t * packet_data, uint64_t send_sequen
 
     if ( relay_write_header( RELAY_SESSION_PONG_PACKET, send_sequence, session_id, session_version, private_key, p ) != RELAY_OK )
         return 0;
+
+    p += RELAY_HEADER_BYTES;
 
     relay_write_uint64( &p, ping_sequence );
 
@@ -4928,7 +4935,13 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             uint8_t next_address_data[4];
             relay_address_data( token.next_address.data.ip, next_address_data );
 
-            relay_printf( "forward to next hop" );
+            relay_printf( "forward to next hop %d.%d.%d.%d:%d", 
+                token.next_address.data.ipv4[0],  
+                token.next_address.data.ipv4[1],  
+                token.next_address.data.ipv4[2],  
+                token.next_address.data.ipv4[3],  
+                token.next_address.port
+            );
 
             if ( !token.next_internal )
             {
@@ -4971,7 +4984,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-                relay_printf( "wrong size" );
+                relay_printf( "wrong size: expected %d, got %d", RELAY_HEADER_BYTES, packet_bytes );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5527,7 +5540,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-               relay_printf( "forward to next hop" );
+            relay_printf( "forward to next hop" );
 
             session->client_to_server_sequence = sequence;
 
@@ -5574,7 +5587,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_SESSION_PONG_PACKET )
         {
-               relay_printf( "received session pong packet" );
+            relay_printf( "received session pong packet" );
 
             relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED]++;
 
@@ -5744,9 +5757,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             uint64_t ping_sequence = relay_read_uint64( &const_p );
             uint64_t expire_timestamp = relay_read_uint64( &const_p );
-
-            // todo
-            relay_printf( "ping sequence is %d", (int) ping_sequence );
 
             uint64_t current_timestamp = relay->control.current_timestamp;
             
@@ -6147,12 +6157,6 @@ int main( int argc, const char ** argv )
     {
         printf( "Session destroy disabled\n" );
         disable_destroy = true;
-    }
-
-    const char * log_level_override = relay_platform_getenv( "RELAY_LOG_LEVEL" );
-    if ( log_level_override )
-    {
-        relay_log_level = atoi( log_level_override );
     }
 
 #endif // #if RELAY_TEST

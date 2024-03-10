@@ -101,7 +101,7 @@ dist/test: dist/$(SDKNAME5).so sdk/test.cpp
 # Build relay
 
 dist/relay-debug: relay/reference/*
-	@$(CXX) $(CXX_FLAGS) -o dist/relay-debug relay/reference/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -DRELAY_TEST=1 -o dist/relay-debug relay/reference/*.cpp $(LDFLAGS)
 	@echo $@
 
 # Functional tests (sdk)

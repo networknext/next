@@ -724,6 +724,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_crypto_box_keypair( server->server_route_public_key, server->server_route_private_key );
 
+    next_crypto_kx_client_session_keys( server->server_secret_key, NULL, server->server_route_public_key, server->server_route_private_key, next_relay_backend_public_key );
+
     server->server_update_last_time = next_platform_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
 
     server->server_update_first = true;
