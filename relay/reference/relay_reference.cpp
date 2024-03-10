@@ -3728,6 +3728,7 @@ struct relay_stats_message_t
     float bandwidth_sent_kbps;
     float bandwidth_received_kbps;
     float client_pings_per_second;
+    float server_pings_per_second;
     float relay_pings_per_second;
     uint64_t counters[RELAY_NUM_COUNTERS];
 };
@@ -3845,6 +3846,7 @@ struct relay_t
     uint64_t last_stats_bytes_sent;
     uint64_t last_stats_bytes_received;
     uint64_t last_stats_client_pings_received;
+    uint64_t last_stats_server_pings_received;
     uint64_t last_stats_relay_pings_received;
     uint64_t envelope_bandwidth_kbps_up;
     uint64_t envelope_bandwidth_kbps_down;
@@ -4052,6 +4054,7 @@ int main_update( main_t * main )
         main->relay_stats.bandwidth_sent_kbps += relay_thread_stats[i].bandwidth_sent_kbps;
         main->relay_stats.bandwidth_received_kbps += relay_thread_stats[i].bandwidth_received_kbps;
         main->relay_stats.client_pings_per_second += relay_thread_stats[i].client_pings_per_second;
+        main->relay_stats.server_pings_per_second += relay_thread_stats[i].server_pings_per_second;
         main->relay_stats.relay_pings_per_second += relay_thread_stats[i].relay_pings_per_second;
         
         for ( int j = 0; j < RELAY_NUM_COUNTERS; j++ )
@@ -4122,6 +4125,7 @@ int main_update( main_t * main )
     float bandwidth_sent_kbps = 0.0f;
     float bandwidth_received_kbps = 0.0f;
     float client_pings_per_second = 0.0f;
+    float server_pings_per_second = 0.0f;
     float relay_pings_per_second = 0.0f;
 
     session_count = main->relay_stats.session_count;
@@ -4132,6 +4136,7 @@ int main_update( main_t * main )
     bandwidth_sent_kbps = main->relay_stats.bandwidth_sent_kbps;
     bandwidth_received_kbps = main->relay_stats.bandwidth_received_kbps;
     client_pings_per_second = main->relay_stats.client_pings_per_second;
+    server_pings_per_second = main->relay_stats.server_pings_per_second;
     relay_pings_per_second = main->relay_stats.relay_pings_per_second;
 
     relay_write_uint32( &p, session_count );
@@ -4142,6 +4147,7 @@ int main_update( main_t * main )
     relay_write_float32( &p, bandwidth_sent_kbps );
     relay_write_float32( &p, bandwidth_received_kbps );
     relay_write_float32( &p, client_pings_per_second );
+    relay_write_float32( &p, server_pings_per_second );
     relay_write_float32( &p, relay_pings_per_second );
 
     const uint64_t SHUTTING_DOWN = 1;
@@ -4483,6 +4489,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 uint64_t bytes_received_since_last_update = ( relay->counters[RELAY_COUNTER_BYTES_RECEIVED] > relay->last_stats_bytes_received ) ? relay->counters[RELAY_COUNTER_BYTES_RECEIVED] - relay->last_stats_bytes_received : 0;
 
                 uint64_t client_pings_since_last_update = ( relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED] > relay->last_stats_client_pings_received ) ? relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED] - relay->last_stats_client_pings_received : 0;
+                uint64_t server_pings_since_last_update = ( relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED] > relay->last_stats_server_pings_received ) ? relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED] - relay->last_stats_server_pings_received : 0;
                 uint64_t relay_pings_since_last_update = ( relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] > relay->last_stats_relay_pings_received ) ? relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] - relay->last_stats_relay_pings_received : 0;
 
                 double packets_sent_per_second = 0.0;
@@ -4490,6 +4497,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 double bytes_sent_per_second = 0.0;
                 double bytes_received_per_second = 0.0;
                 double client_pings_per_second = 0.0;
+                double server_pings_per_second = 0.0;
                 double relay_pings_per_second = 0.0;
 
                 if ( time_since_last_update > 0.0 )
@@ -4499,6 +4507,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                     bytes_sent_per_second = bytes_sent_since_last_update / time_since_last_update;
                     bytes_received_per_second = bytes_received_since_last_update / time_since_last_update;
                     client_pings_per_second = client_pings_since_last_update / time_since_last_update;
+                    server_pings_per_second = server_pings_since_last_update / time_since_last_update;
                     relay_pings_per_second = relay_pings_since_last_update / time_since_last_update;
                 }
 
@@ -4523,6 +4532,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;
                 message->bandwidth_received_kbps = (float) bandwidth_received_kbps;
                 message->client_pings_per_second = (float) client_pings_per_second;
+                message->server_pings_per_second = (float) server_pings_per_second;
                 message->relay_pings_per_second = (float) relay_pings_per_second;
                 memcpy( message->counters, relay->counters, sizeof(uint64_t) * RELAY_NUM_COUNTERS );
 
