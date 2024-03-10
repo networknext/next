@@ -2723,8 +2723,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_packet_loss = packet.next_packet_loss;
             session->stats_has_client_relay_pings = packet.num_client_relays > 0;
 
-            // todo: need to edge detect here somehow
-            session->stats_client_relay_pings_have_changed = true;
+            if ( packet.client_relay_request_id != session->stats_last_client_relay_request_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_INFO, "server sees client relays have changed for session %" PRIx64, session->session_id );
+                session->stats_client_relay_pings_have_changed = true;
+                session->stats_last_client_relay_request_id = packet.client_relay_request_id;
+            }
 
             session->stats_num_client_relays = packet.num_client_relays;
             for ( int i = 0; i < packet.num_client_relays; ++i )

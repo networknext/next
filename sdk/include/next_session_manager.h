@@ -73,6 +73,7 @@ struct next_session_entry_t
 
     bool stats_has_client_relay_pings;
     bool stats_client_relay_pings_have_changed;
+    uint64_t stats_last_client_relay_request_id;
     int stats_num_client_relays;
     uint64_t stats_client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
     uint8_t stats_client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];

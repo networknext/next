@@ -985,6 +985,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             next_printf( NEXT_LOG_LEVEL_INFO, "client started pinging %d client relays", packet.num_client_relays );
 
             client->sending_client_relay_pings = true;
+            client->client_relay_update_packet = packet;
 
             next_relay_manager_reset( client->client_relay_manager );
 
