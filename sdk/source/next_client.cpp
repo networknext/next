@@ -1611,6 +1611,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->last_stats_report_time = next_platform_time() + next_random_float();
                 next_crypto_kx_keypair( client->client_kx_public_key, client->client_kx_private_key );
                 next_crypto_box_keypair( client->client_route_public_key, client->client_route_private_key );
+                next_crypto_kx_client_session_keys( client->client_secret_key, NULL, client->client_route_public_key, client->client_route_private_key, next_relay_backend_public_key );
                 char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_INFO, "client opened session to %s", next_address_to_string( &open_session_command->server_address, buffer ) );
                 client->counters[NEXT_CLIENT_COUNTER_OPEN_SESSION]++;

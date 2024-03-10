@@ -264,7 +264,8 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
 
 // -----------------------------------------------------------------------------
 
-#if RELAY_DEBUG || RELAY_TEST
+// todo
+//#if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
     {
@@ -276,6 +277,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
         va_end( args );
     }
 
+/*
 #else // #if RELAY_DEBUG || RELAY_TEST
 
     void relay_printf( const char * format, ... )
@@ -284,6 +286,7 @@ relay_mutex_helper_t::~relay_mutex_helper_t()
     }
 
 #endif // #if RELAY_DEBUG || RELAY_TEST
+*/
 
 // -----------------------------------------------------------------------------
 
@@ -4363,6 +4366,8 @@ int main_update( main_t * main )
 
         memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
+        memcpy( message->relay_secret_key, main->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+
         relay_platform_mutex_acquire( main->relay_control_mutex[i] );
         relay_queue_push( main->relay_control_queue[i], message );
         relay_platform_mutex_release( main->relay_control_mutex[i] );
@@ -4388,6 +4393,8 @@ int main_update( main_t * main )
     memcpy( message->previous_magic, &previous_magic, 8 );
 
     memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
+
+    memcpy( message->relay_secret_key, main->relay_secret_key, RELAY_SECRET_KEY_BYTES );
 
     relay_platform_mutex_acquire( main->ping_control_mutex );
     relay_queue_push( main->ping_control_queue, message );
