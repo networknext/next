@@ -533,7 +533,7 @@ func SessionUpdate_BuildNextTokens(state *SessionUpdateState, routeNumRelays int
 
 	routeSecretKeys[0], _ = crypto.SecretKey_GenerateRemote(state.RelayBackendPublicKey, state.RelayBackendPrivateKey, state.Request.ClientRoutePublicKey[:])
 	routePublicAddresses[0] = state.Request.ClientAddress
-	routePublicAddresses[0].Port = 0 // IMPORTANT: Set client port to zero, it will be replaced with whatever port is in from addr
+	routePublicAddresses[0].Port = 0 // IMPORTANT: Set client port to zero, it will be replaced with whatever port is in from addr by the relay
 
 	// relay nodes
 

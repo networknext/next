@@ -224,6 +224,7 @@ struct NextClientStatsPacket
     uint64_t packets_lost_server_to_client;
     uint64_t packets_out_of_order_server_to_client;
     float jitter_server_to_client;
+    uint64_t client_relay_request_id;
 
     NextClientStatsPacket()
     {
@@ -274,6 +275,7 @@ struct NextClientStatsPacket
         serialize_uint64( stream, packets_lost_server_to_client );
         serialize_uint64( stream, packets_out_of_order_server_to_client );
         serialize_float( stream, jitter_server_to_client );
+        serialize_uint64( stream, client_relay_request_id );
         return true;
     }
 };

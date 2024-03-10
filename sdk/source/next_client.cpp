@@ -1940,6 +1940,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.packets_out_of_order_server_to_client = client->client_stats.packets_out_of_order_server_to_client;
         packet.jitter_server_to_client = client->client_stats.jitter_server_to_client;
 
+        packet.client_relay_request_id = client->client_relay_update_packet.request_id;
+
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to send stats packet to server" );

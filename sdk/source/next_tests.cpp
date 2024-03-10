@@ -2952,6 +2952,7 @@ void test_client_stats_packet_with_client_relays()
             in.client_relay_packet_loss[j] = j;
         }
         in.packets_lost_server_to_client = 1000;
+        in.client_relay_request_id = 0x12345124761ULL;
 
         static next_replay_protection_t replay_protection;
         next_replay_protection_reset( &replay_protection );
@@ -2992,6 +2993,7 @@ void test_client_stats_packet_with_client_relays()
         }
         next_check( in.packets_sent_client_to_server == out.packets_sent_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
+        next_check( in.client_relay_request_id == out.client_relay_request_id );
     }
 }
 

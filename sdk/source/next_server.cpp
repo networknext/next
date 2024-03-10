@@ -340,6 +340,7 @@ struct next_server_internal_t
     NEXT_DECLARE_SENTINEL(11)
 
     bool stats_has_server_relay_pings;
+    bool stats_server_relay_pings_have_changed;
     int stats_num_server_relays;
     uint64_t stats_server_relay_ids[NEXT_MAX_SERVER_RELAYS];
     uint8_t stats_server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
@@ -1199,6 +1200,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
             next_relay_manager_get_stats( server->server_relay_manager, &server_relay_stats );
 
             server->stats_has_server_relay_pings = true;
+            server->stats_server_relay_pings_have_changed = true;
             server->stats_num_server_relays = server_relay_stats.num_relays;
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
@@ -2720,6 +2722,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_next_jitter = packet.next_jitter;
             session->stats_next_packet_loss = packet.next_packet_loss;
             session->stats_has_client_relay_pings = packet.num_client_relays > 0;
+
+            // todo: need to edge detect here somehow
+            session->stats_client_relay_pings_have_changed = true;
+
             session->stats_num_client_relays = packet.num_client_relays;
             for ( int i = 0; i < packet.num_client_relays; ++i )
             {
@@ -3754,7 +3760,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_packet_loss = session->stats_direct_packet_loss;
             packet.direct_max_packet_loss_seen = session->stats_direct_max_packet_loss_seen;
 
-            packet.has_client_relay_pings = session->stats_has_client_relay_pings;
+            packet.has_client_relay_pings = session->stats_client_relay_pings_have_changed;
             packet.num_client_relays = session->stats_num_client_relays;
             for ( int j = 0; j < packet.num_client_relays; ++j )
             {
@@ -3764,7 +3770,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 packet.client_relay_packet_loss[j] = session->stats_client_relay_packet_loss[j];
             }
 
-            packet.has_server_relay_pings = server->stats_has_server_relay_pings;
+            packet.has_server_relay_pings = server->stats_server_relay_pings_have_changed;
             packet.num_server_relays = server->stats_num_server_relays;
             for ( int j = 0; j < packet.num_server_relays; ++j )
             {
@@ -3786,6 +3792,9 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             memcpy( packet.session_data_signature, session->session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
             session->session_update_request_packet = packet;
+
+            server->stats_server_relay_pings_have_changed = false;
+            session->stats_client_relay_pings_have_changed = false;
 
 #if NEXT_DEVELOPMENT
             // This is used by the raspberry pi clients in dev to give a normal distribution of latencies across all sessions, so I can test the portal
