@@ -1125,6 +1125,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
             server->requesting_server_relays = true;                     
             server->next_server_relay_request_packet_send_time = current_time;   
+            server->server_relay_request_timeout_time = current_time + NEXT_SERVER_RELAYS_TIMEOUT;
         }
     }
 
@@ -1132,7 +1133,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
     {
         // have we timed out?
 
-        if ( server->next_server_relay_request_packet_send_time + NEXT_SERVER_RELAYS_TIMEOUT < current_time )
+        if ( server->server_relay_request_timeout_time < current_time )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting server relays" );
 
@@ -1265,7 +1266,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client requesting client relays for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "server requesting client relays for session %" PRIx64, entry->session_id );
 
                 entry->client_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
                 entry->client_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
@@ -1275,8 +1276,9 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 entry->client_relay_request_packet.request_id = next_random_uint64();
                 entry->client_relay_request_packet.client_address = entry->address;
 
-                entry->requesting_client_relays = true;                     
+                entry->requesting_client_relays = true;                  
                 entry->next_client_relay_request_packet_send_time = current_time;   
+                entry->client_relay_request_timeout_time = current_time + NEXT_CLIENT_RELAYS_TIMEOUT;
             }
         }
 
@@ -1284,7 +1286,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
         {
             // have we timed out?
 
-            if ( entry->next_client_relay_request_packet_send_time + NEXT_CLIENT_RELAYS_TIMEOUT < current_time )
+            if ( entry->client_relay_request_timeout_time < current_time )
             {
                 next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session %" PRIx64, entry->session_id );
 
@@ -1328,6 +1330,29 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
                 entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_REQUEST_SEND_RATE;
             }
+        }
+
+        if ( entry->sending_client_relay_update_down_to_client )
+        {
+            // have we timed out sending the client relay update down to the client?
+
+            if ( entry->client_relay_update_timeout_time < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out sending client relay update down to client for session %" PRIx64, entry->session_id );
+                entry->sending_client_relay_update_down_to_client = false;
+                return;
+            }
+
+            // should we send a client relay update packet down to the client?
+
+            if ( entry->next_client_relay_update_packet_send_time < current_time )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay update packet to client for for session %" PRIx64, entry->session_id );
+
+                next_server_internal_send_packet( server, &entry->address, NEXT_CLIENT_RELAY_UPDATE_PACKET, &entry->client_relay_update_packet );
+
+                entry->next_client_relay_update_packet_send_time = current_time + NEXT_CLIENT_RELAY_UPDATE_SEND_RATE;
+            }            
         }
     }
 }
@@ -2103,7 +2128,20 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet.num_client_relays > 0 )
         {
-            // todo: do something here to trigger client relay update packets sent down to client until ack
+            session->sending_client_relay_update_down_to_client = true;
+
+            session->client_relay_update_packet.request_id = packet.request_id;
+            session->client_relay_update_packet.expire_timestamp = packet.expire_timestamp;
+            session->client_relay_update_packet.num_client_relays = packet.num_client_relays;
+            for ( int i = 0; i < packet.num_client_relays; i++ )
+            {
+                session->client_relay_update_packet.client_relay_ids[i] = packet.client_relay_ids[i];
+                session->client_relay_update_packet.client_relay_addresses[i] = packet.client_relay_addresses[i];
+                memcpy( session->client_relay_update_packet.client_relay_ping_tokens[i], packet.client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+            }
+
+            session->next_client_relay_update_packet_send_time = current_time;
+            session->client_relay_update_timeout_time = current_time + NEXT_CLIENT_RELAY_UPDATE_TIMEOUT;
         }
     }
 

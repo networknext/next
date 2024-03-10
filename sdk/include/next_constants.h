@@ -153,4 +153,7 @@
 
 #define NEXT_SERVER_READY_TIMEOUT                                      15
 
+#define NEXT_CLIENT_RELAY_UPDATE_SEND_RATE                            0.1
+#define NEXT_CLIENT_RELAY_UPDATE_TIMEOUT                                5
+
 #endif // #ifndef NEXT_CONSTANTS_H

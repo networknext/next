@@ -254,11 +254,14 @@ struct next_session_entry_t
     double next_client_relay_request_packet_send_time;
     double client_relay_request_timeout_time;
     NextBackendClientRelayRequestPacket client_relay_request_packet;
+    NextBackendClientRelayResponsePacket client_relay_response_packet;
 
     NEXT_DECLARE_SENTINEL(32)
 
-    NextBackendClientRelayResponsePacket client_relay_response_packet;
-    // todo: stuff for sending client relays down to client
+    bool sending_client_relay_update_down_to_client;
+    double next_client_relay_update_packet_send_time;
+    double client_relay_update_timeout_time;
+    NextClientRelayUpdatePacket client_relay_update_packet;
 
     NEXT_DECLARE_SENTINEL(33)
 
