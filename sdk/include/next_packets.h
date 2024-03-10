@@ -57,8 +57,10 @@ struct next_replay_protection_t;
 #define NEXT_UPGRADE_RESPONSE_PACKET                                   24
 #define NEXT_UPGRADE_CONFIRM_PACKET                                    25
 #define NEXT_ROUTE_UPDATE_PACKET                                       26
-#define NEXT_ROUTE_UPDATE_ACK_PACKET                                   27
+#define NEXT_ROUTE_ACK_PACKET                                          27
 #define NEXT_CLIENT_STATS_PACKET                                       28
+#define NEXT_CLIENT_RELAY_UPDATE_PACKET                                29
+#define NEXT_CLIENT_RELAY_ACK_PACKET                                   30
 
 #define NEXT_BACKEND_SERVER_INIT_REQUEST_PACKET                        50
 #define NEXT_BACKEND_SERVER_INIT_RESPONSE_PACKET                       51
@@ -278,6 +280,55 @@ struct NextClientStatsPacket
 
 // ------------------------------------------------------------------------------------------------------
 
+struct NextClientRelayUpdatePacket
+{
+    uint64_t request_id;
+    int num_client_relays;
+    uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    next_address_t client_relay_addresses[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS][NEXT_PING_TOKEN_BYTES];
+    uint64_t expire_timestamp;
+
+    NextClientRelayUpdatePacket()
+    {
+        memset( this, 0, sizeof(NextClientRelayUpdatePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        serialize_int( stream, num_client_relays, 0, NEXT_MAX_CLIENT_RELAYS );
+        for ( int i = 0; i < num_client_relays; i++ )
+        {
+            serialize_uint64( stream, client_relay_ids[i] );
+            serialize_address( stream, client_relay_addresses[i] );
+            serialize_bytes( stream, client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+        }
+        serialize_uint64( stream, expire_timestamp );
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
+
+struct NextClientRelayAckPacket
+{
+    uint64_t request_id;
+
+    NextClientRelayAckPacket()
+    {
+        memset( this, 0, sizeof(NextClientRelayUpdatePacket) );
+    }
+
+    template <typename Stream> bool Serialize( Stream & stream )
+    {
+        serialize_uint64( stream, request_id );
+        return true;
+    }
+};
+
+// ------------------------------------------------------------------------------------------------------
+
 struct NextRouteUpdatePacket
 {
     uint64_t sequence;
@@ -335,11 +386,11 @@ struct NextRouteUpdatePacket
 
 // ------------------------------------------------------------------------------------------------------
 
-struct NextRouteUpdateAckPacket
+struct NextRouteAckPacket
 {
     uint64_t sequence;
 
-    NextRouteUpdateAckPacket()
+    NextRouteAckPacket()
     {
         sequence = 0;
     }

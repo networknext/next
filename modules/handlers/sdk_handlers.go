@@ -621,6 +621,7 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 
 	responsePacket := &packets.SDK_ClientRelayResponsePacket{}
 	responsePacket.RequestId = requestPacket.RequestId
+	responsePacket.ClientAddress = requestPacket.ClientAddress
 	responsePacket.NumClientRelays = int32(numClientRelays)
 	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 

@@ -2046,7 +2046,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             server->server_relay_ping_start_time = current_time;
             server->requesting_server_relays = false;
             server->server_relay_response_packet = packet;
-            server->next_server_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
 
             next_relay_manager_reset( server->server_relay_manager );
 
@@ -2064,8 +2064,47 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
     if ( packet_id == NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET )
     {
-        // todo
-        next_printf( NEXT_LOG_LEVEL_INFO, "*** received backend client relay response packet ***" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing client relay response packet" );
+
+        NextBackendClientRelayResponsePacket packet;
+
+        if ( next_read_backend_packet( packet_id, packet_data, begin, end, &packet, next_signed_packets, next_server_backend_public_key ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client relay response packet from backend. packet failed to read" );
+            return;
+        }
+
+        next_session_entry_t * session = next_session_manager_find_by_address( server->session_manager, &packet.client_address );
+        if ( !session )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server dropped client relay response packet because it couldn't find any matching session" );
+            return;
+        }
+
+        if ( !session->requesting_client_relays )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server dropped client relay response packet because the session is not requesting client relays" );
+            return;
+        }
+
+        if ( session->client_relay_request_packet.request_id != packet.request_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server dropped client relay response packet because the request id does not match" );
+            return;
+        }
+
+        double current_time = next_platform_time();
+
+        next_printf( NEXT_LOG_LEVEL_INFO, "server found %d client relays for session %" PRIx64, packet.num_client_relays, session->session_id );
+
+        session->requesting_client_relays = false;
+        session->client_relay_response_packet = packet;
+        session->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
+
+        if ( packet.num_client_relays > 0 )
+        {
+            // todo: do something here to trigger client relay update packets sent down to client until ack
+        }
     }
 
     // upgrade response packet
@@ -2661,17 +2700,17 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         return;
     }
 
-    // route update ack packet
+    // route ack packet
 
-    if ( packet_id == NEXT_ROUTE_UPDATE_ACK_PACKET && session != NULL )
+    if ( packet_id == NEXT_ROUTE_ACK_PACKET && session != NULL )
     {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing route update ack packet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing route ack packet" );
 
-        NextRouteUpdateAckPacket packet;
+        NextRouteUpdatePacket packet;
 
         uint64_t packet_sequence = 0;
 
-        if ( next_read_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        if ( next_read_packet( NEXT_ROUTE_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
             return;
@@ -2683,7 +2722,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_post_validate_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
+        next_post_validate_packet( NEXT_ROUTE_ACK_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route update ack from client for session %" PRIx64, session->session_id );
 

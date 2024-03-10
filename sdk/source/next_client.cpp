@@ -1412,12 +1412,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        NextRouteUpdateAckPacket ack;
+        NextRouteUpdatePacket ack;
         ack.sequence = packet.sequence;
 
-        if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_UPDATE_ACK_PACKET, &ack ) != NEXT_OK )
+        if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_ACK_PACKET, &ack ) != NEXT_OK )
         {
-            next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route update ack packet to server" );
+            next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route ack packet to server" );
             return;
         }
 

@@ -425,12 +425,34 @@ int next_write_packet( uint8_t packet_id, void * packet_object, uint8_t * packet
         }
         break;
 
-        case NEXT_ROUTE_UPDATE_ACK_PACKET:
+        case NEXT_ROUTE_ACK_PACKET:
         {
-            NextRouteUpdateAckPacket * packet = (NextRouteUpdateAckPacket*) packet_object;
+            NextRouteAckPacket * packet = (NextRouteAckPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write route update ack packet" );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write route ack packet" );
+                return NEXT_ERROR;
+            }
+        }
+        break;
+
+        case NEXT_CLIENT_RELAY_UPDATE_PACKET:
+        {
+            NextClientRelayUpdatePacket * packet = (NextClientRelayUpdatePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write client relay update packet" );
+                return NEXT_ERROR;
+            }
+        }
+        break;
+
+        case NEXT_CLIENT_RELAY_ACK_PACKET:
+        {
+            NextClientRelayAckPacket * packet = (NextClientRelayAckPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to write client relay ack packet" );
                 return NEXT_ERROR;
             }
         }
@@ -629,9 +651,25 @@ int next_read_packet( uint8_t packet_id, uint8_t * packet_data, int begin, int e
         }
         break;
 
-        case NEXT_ROUTE_UPDATE_ACK_PACKET:
+        case NEXT_ROUTE_ACK_PACKET:
         {
-            NextRouteUpdateAckPacket * packet = (NextRouteUpdateAckPacket*) packet_object;
+            NextRouteAckPacket * packet = (NextRouteAckPacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_CLIENT_RELAY_UPDATE_PACKET:
+        {
+            NextClientRelayUpdatePacket * packet = (NextClientRelayUpdatePacket*) packet_object;
+            if ( !packet->Serialize( stream ) )
+                return NEXT_ERROR;
+        }
+        break;
+
+        case NEXT_CLIENT_RELAY_ACK_PACKET:
+        {
+            NextClientRelayAckPacket * packet = (NextClientRelayAckPacket*) packet_object;
             if ( !packet->Serialize( stream ) )
                 return NEXT_ERROR;
         }

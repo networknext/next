@@ -3240,7 +3240,7 @@ void test_route_update_packet_continue_route()
     }
 }
 
-void test_route_update_ack_packet()
+void test_route_ack_packet()
 {
     uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
     uint64_t iterations = 100;
@@ -3256,7 +3256,7 @@ void test_route_update_ack_packet()
         next_crypto_random_bytes( from_address, 4 );
         next_crypto_random_bytes( to_address, 4 );
 
-        static NextRouteUpdateAckPacket in, out;
+        static NextRouteAckPacket in, out;
         in.sequence = 100000;
 
         static next_replay_protection_t replay_protection;
@@ -3264,19 +3264,136 @@ void test_route_update_ack_packet()
 
         int packet_bytes = 0;
         uint64_t in_sequence = 1000;
-        next_check( next_write_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, to_address ) == NEXT_OK );
+        next_check( next_write_packet( NEXT_ROUTE_ACK_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, to_address ) == NEXT_OK );
 
-        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_ACK_PACKET );
+        next_check( packet_data[0] == NEXT_ROUTE_ACK_PACKET );
         next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
 
         uint64_t out_sequence = 0;
         const int begin = 18;
         const int end = packet_bytes;
-        next_check( next_read_packet( NEXT_ROUTE_UPDATE_ACK_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_ACK_PACKET );
+        next_check( next_read_packet( NEXT_ROUTE_ACK_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_ACK_PACKET );
 
         next_check( in_sequence == out_sequence + 1 );
         next_check( in.sequence == out.sequence );
+    }
+}
+
+void test_client_relay_update_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        uint8_t private_key[NEXT_SESSION_PRIVATE_KEY_BYTES];
+        next_crypto_random_bytes( private_key, sizeof(private_key) );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+        
+        static NextClientRelayUpdatePacket in, out;
+
+        in.request_id = next_random_uint64();
+        in.num_client_relays = rand() % ( NEXT_MAX_CLIENT_RELAYS + 1 );
+        for ( int i = 0; i < in.num_client_relays; i++ )
+        {
+            in.client_relay_ids[i] = next_random_uint64();
+            next_address_parse( &in.client_relay_addresses[i], "127.0.0.1:50000" );
+            next_crypto_random_bytes( in.client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES );
+        }
+        in.expire_timestamp = next_random_uint64();
+
+        static next_replay_protection_t replay_protection;
+        next_replay_protection_reset( &replay_protection );
+
+        int packet_bytes = 0;
+        uint64_t in_sequence = 1000;
+        next_check( next_write_packet( NEXT_CLIENT_RELAY_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, to_address ) == NEXT_OK );
+
+        next_check( packet_data[0] == NEXT_CLIENT_RELAY_UPDATE_PACKET );
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        uint64_t out_sequence = 0;
+        const int begin = 18;
+        const int end = packet_bytes;
+        next_check( next_read_packet( NEXT_CLIENT_RELAY_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_CLIENT_RELAY_UPDATE_PACKET );
+
+        next_check( in_sequence == out_sequence + 1 );
+
+        next_check( in.request_id == out.request_id );
+        next_check( in.num_client_relays == out.num_client_relays );
+        for ( int i = 0; i < in.num_client_relays; i++ )
+        {
+            next_check( in.client_relay_ids[i] == out.client_relay_ids[i] );
+            next_check( next_address_equal( &in.client_relay_addresses[i], &out.client_relay_addresses[i] ) );
+            next_check( memcmp( in.client_relay_ping_tokens[i], out.client_relay_ping_tokens[i], NEXT_PING_TOKEN_BYTES ) == 0 );
+        }
+        next_check( in.expire_timestamp == out.expire_timestamp );
+    }
+}
+
+void test_client_relay_ack_packet()
+{
+    uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
+    uint64_t iterations = 100;
+    for ( uint64_t i = 0; i < iterations; ++i )
+    {
+        // todo
+        (void) packet_data;
+        /*
+        uint8_t private_key[NEXT_SESSION_PRIVATE_KEY_BYTES];
+        next_crypto_random_bytes( private_key, sizeof(private_key) );
+
+        uint8_t magic[8];
+        uint8_t from_address[4];
+        uint8_t to_address[4];
+        next_crypto_random_bytes( magic, 8 );
+        next_crypto_random_bytes( from_address, 4 );
+        next_crypto_random_bytes( to_address, 4 );
+        
+        static NextRouteUpdatePacket in, out;
+        in.sequence = 100000;
+
+        in.update_type = NEXT_UPDATE_TYPE_CONTINUE;
+        in.multipath = true;
+        in.num_tokens = NEXT_MAX_TOKENS;
+        next_crypto_random_bytes( in.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS );
+        in.packets_lost_client_to_server = 10000;
+
+        static next_replay_protection_t replay_protection;
+        next_replay_protection_reset( &replay_protection );
+
+        int packet_bytes = 0;
+        uint64_t in_sequence = 1000;
+        next_check( next_write_packet( NEXT_ROUTE_UPDATE_PACKET, &in, packet_data, &packet_bytes, next_signed_packets, next_encrypted_packets, &in_sequence, NULL, private_key, magic, from_address, to_address ) == NEXT_OK );
+
+        next_check( packet_data[0] == NEXT_ROUTE_UPDATE_PACKET );
+        next_check( next_basic_packet_filter( packet_data, packet_bytes ) );
+        next_check( next_advanced_packet_filter( packet_data, magic, from_address, to_address, packet_bytes ) );
+
+        uint64_t out_sequence = 0;
+        const int begin = 18;
+        const int end = packet_bytes;
+        next_check( next_read_packet( NEXT_ROUTE_UPDATE_PACKET, packet_data, begin, end, &out, next_signed_packets, next_encrypted_packets, &out_sequence, NULL, private_key, &replay_protection ) == NEXT_ROUTE_UPDATE_PACKET );
+
+        next_check( in_sequence == out_sequence + 1 );
+        next_check( in.sequence == out.sequence );
+
+        next_check( in.update_type == out.update_type );
+        next_check( in.multipath == out.multipath );
+        next_check( in.num_tokens == out.num_tokens );
+        next_check( memcmp( in.tokens, out.tokens, NEXT_ENCRYPTED_CONTINUE_TOKEN_BYTES * NEXT_MAX_TOKENS ) == 0 );
+        next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
+        next_check( memcmp( in.upcoming_magic, out.upcoming_magic, 8 ) == 0 );
+        next_check( memcmp( in.current_magic, out.current_magic, 8 ) == 0 );
+        next_check( memcmp( in.previous_magic, out.previous_magic, 8 ) == 0 );
+        */
     }
 }
 
@@ -4286,7 +4403,9 @@ void next_run_tests()
         RUN_TEST( test_route_update_packet_direct );
         RUN_TEST( test_route_update_packet_new_route );
         RUN_TEST( test_route_update_packet_continue_route );
-        RUN_TEST( test_route_update_ack_packet );
+        RUN_TEST( test_route_ack_packet );
+        RUN_TEST( test_client_relay_update_packet );
+        RUN_TEST( test_client_relay_ack_packet );
         RUN_TEST( test_client_ping_packet );
         RUN_TEST( test_client_pong_packet );
         RUN_TEST( test_server_ping_packet );

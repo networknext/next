@@ -443,6 +443,9 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		Debug print client relay ping results on slice 1
 	*/
 
+	// todo: this needs to be changed. the server will now upload these for all slices
+
+	/*
 	if state.Request.SliceNumber == 1 {
 		core.Debug("sdk uploaded client relay stats for %d relays:", state.Request.NumClientRelays)
 		for i := 0; i < int(state.Request.NumClientRelays); i++ {
@@ -460,6 +463,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
 		}
 	}
+	*/
 
 	/*
 		Reframe dest relays to get them relative to the current route matrix.

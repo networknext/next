@@ -570,7 +570,9 @@ int next_init( void * context, next_config_t * config_in )
     next_encrypted_packets[NEXT_DIRECT_PONG_PACKET] = 1;
     next_encrypted_packets[NEXT_CLIENT_STATS_PACKET] = 1;
     next_encrypted_packets[NEXT_ROUTE_UPDATE_PACKET] = 1;
-    next_encrypted_packets[NEXT_ROUTE_UPDATE_ACK_PACKET] = 1;
+    next_encrypted_packets[NEXT_ROUTE_ACK_PACKET] = 1;
+    next_encrypted_packets[NEXT_CLIENT_RELAY_UPDATE_PACKET] = 1;
+    next_encrypted_packets[NEXT_CLIENT_RELAY_ACK_PACKET] = 1;
 
     return NEXT_OK;
 }
