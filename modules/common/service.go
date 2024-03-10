@@ -218,7 +218,9 @@ func (service *Service) LoadDatabase(relayBackendPublicKey []byte, relayBackendP
 		os.Exit(1)
 	}
 
-	service.database.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
+	if relayBackendPublicKey != nil && relayBackendPrivateKey != nil {
+		service.database.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
+	}
 
 	service.databaseRelayData = generateRelayData(service.database)
 	if service.databaseRelayData == nil {
@@ -228,7 +230,7 @@ func (service *Service) LoadDatabase(relayBackendPublicKey []byte, relayBackendP
 
 	core.Log("loaded database: %s", databasePath)
 
-	service.watchDatabase(service.Context, databasePath)
+	service.watchDatabase(service.Context, databasePath, relayBackendPublicKey, relayBackendPrivateKey)
 }
 
 func (service *Service) LoadIP2Location() {
@@ -749,7 +751,7 @@ func generateRelayData(database *db.Database) *RelayData {
 	return relayData
 }
 
-func (service *Service) watchDatabase(ctx context.Context, databasePath string) {
+func (service *Service) watchDatabase(ctx context.Context, databasePath string, relayBackendPublicKey []byte, relayBackendPrivateKey []byte) {
 
 	databaseURL := envvar.GetString("DATABASE_URL", "")
 
@@ -810,6 +812,10 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string) 
 					if newRelayData == nil {
 						core.Warn("new database failed to generate relay data")
 						break
+					}
+
+					if relayBackendPublicKey != nil && relayBackendPrivateKey != nil {
+						newDatabase.GenerateRelaySecretKeys(relayBackendPublicKey, relayBackendPrivateKey)
 					}
 
 					os.Rename(tempFile, databasePath)
