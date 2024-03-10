@@ -339,12 +339,12 @@ struct next_server_internal_t
 
     NEXT_DECLARE_SENTINEL(11)
 
-    bool has_server_ping_stats;
-    int num_server_relays;
-    uint64_t server_relay_ids[NEXT_MAX_SERVER_RELAYS];
-    uint8_t server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
-    uint8_t server_relay_jitter[NEXT_MAX_SERVER_RELAYS];
-    float server_relay_packet_loss[NEXT_MAX_SERVER_RELAYS];
+    bool stats_has_server_relay_pings;
+    int stats_num_server_relays;
+    uint64_t stats_server_relay_ids[NEXT_MAX_SERVER_RELAYS];
+    uint8_t stats_server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
+    uint8_t stats_server_relay_jitter[NEXT_MAX_SERVER_RELAYS];
+    float stats_server_relay_packet_loss[NEXT_MAX_SERVER_RELAYS];
 
     NEXT_DECLARE_SENTINEL(12)
 
@@ -1073,7 +1073,7 @@ void next_server_internal_update_ready( next_server_internal_t * server )
     if ( !server->received_init_response )
         return;
 
-    if ( !server->has_server_ping_stats )
+    if ( !server->stats_has_server_relay_pings )
         return;
 
     // server is ready
@@ -1140,7 +1140,6 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
             memset( &server->server_relay_response_packet, 0, sizeof(NextBackendServerRelayResponsePacket) );
             server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
             server->requesting_server_relays = false;
-            server->num_server_relays = 0;
 
             return;
         }
@@ -1197,8 +1196,8 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
 
             next_relay_manager_get_stats( server->server_relay_manager, &server_relay_stats );
 
-            server->has_server_ping_stats = true;
-            server->num_server_relays = server_relay_stats.num_relays;
+            server->stats_has_server_relay_pings = true;
+            server->stats_num_server_relays = server_relay_stats.num_relays;
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
             for ( int i = 0; i < server_relay_stats.num_relays; i++ )
@@ -1216,18 +1215,18 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
                 if ( packet_loss > 100.0 )
                     packet_loss = 100.0;
 
-                server->server_relay_ids[i] = server_relay_stats.relay_ids[i];
+                server->stats_server_relay_ids[i] = server_relay_stats.relay_ids[i];
 
-                server->server_relay_rtt[i] = rtt;
-                server->server_relay_jitter[i] = jitter;
-                server->server_relay_packet_loss[i] = packet_loss;
+                server->stats_server_relay_rtt[i] = rtt;
+                server->stats_server_relay_jitter[i] = jitter;
+                server->stats_server_relay_packet_loss[i] = packet_loss;
 
                 char relay_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "server relay %s | rtt = %d, jitter = %d, packet loss = %.1f", 
                     next_address_to_string( &server->server_relay_manager->relay_addresses[i], relay_address_buffer ), 
-                    server->server_relay_rtt[i], 
-                    server->server_relay_jitter[i],
-                    server->server_relay_packet_loss[i] 
+                    server->stats_server_relay_rtt[i], 
+                    server->stats_server_relay_jitter[i],
+                    server->stats_server_relay_packet_loss[i] 
                 );
             }
             next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
@@ -1293,7 +1292,6 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 memset( &entry->client_relay_response_packet, 0, sizeof(NextBackendClientRelayResponsePacket) );
                 entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
                 entry->requesting_client_relays = false;
-                entry->num_client_relays = 0;
 
                 return;
             }
@@ -2081,7 +2079,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             server->pinging_server_relays = false;
             server->requesting_server_relays = false;
-            server->has_server_ping_stats = true;               // IMPORTANT: so we don't time out ready
+            server->stats_has_server_relay_pings = true;               // IMPORTANT: so we don't time out ready
         }
     }
 
@@ -2744,19 +2742,19 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         next_printf( NEXT_LOG_LEVEL_SPAM, "server processing route ack packet" );
 
-        NextRouteUpdatePacket packet;
+        NextRouteAckPacket packet;
 
         uint64_t packet_sequence = 0;
 
         if ( next_read_packet( NEXT_ROUTE_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client stats packet. could not read" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route ack packet. could not read" );
             return;
         }
 
         if ( packet.sequence != session->update_sequence )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route update ack packet. wrong update sequence number" );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route ack packet. wrong update sequence number" );
             return;
         }
 
@@ -2768,6 +2766,37 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         {
             session->update_dirty = false;
         }
+
+        return;
+    }
+
+    // client relay ack packet
+
+    if ( packet_id == NEXT_CLIENT_RELAY_ACK_PACKET && session != NULL )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "server processing client relay ack packet" );
+
+        NextClientRelayAckPacket packet;
+
+        uint64_t packet_sequence = 0;
+
+        if ( next_read_packet( NEXT_CLIENT_RELAY_ACK_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, session->receive_key, &session->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client relay ack packet packet. could not read" );
+            return;
+        }
+
+        if ( packet.request_id != session->client_relay_update_packet.request_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client relay ack packet. wrong request id" );
+            return;
+        }
+
+        next_post_validate_packet( NEXT_CLIENT_RELAY_ACK_PACKET, next_encrypted_packets, &packet_sequence, &session->internal_replay_protection );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client relay ack from client for session %" PRIx64, session->session_id );
+
+        session->sending_client_relay_update_down_to_client = false;
 
         return;
     }
@@ -3707,19 +3736,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 packet.packets_sent_server_to_client = session->stats_packets_sent_server_to_client;
             }
 
-            // IMPORTANT: hold client relay stats for the rest of the session
-            if ( session->num_held_client_relays == 0 && session->stats_num_client_relays != 0 )
-            {
-                session->num_held_client_relays = session->stats_num_client_relays;
-                for ( int j = 0; j < session->stats_num_client_relays; j++ )
-                {
-                    session->held_client_relay_ids[j] = session->stats_client_relay_ids[j];    
-                    session->held_client_relay_rtt[j] = session->stats_client_relay_rtt[j];
-                    session->held_client_relay_jitter[j] = session->stats_client_relay_jitter[j];
-                    session->held_client_relay_packet_loss[j] = session->stats_client_relay_packet_loss[j];    
-                }
-            }
-
             packet.packets_lost_client_to_server = session->stats_packets_lost_client_to_server;
             packet.packets_lost_server_to_client = session->stats_packets_lost_server_to_client;
             packet.packets_out_of_order_client_to_server = session->stats_packets_out_of_order_client_to_server;
@@ -3735,24 +3751,25 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_jitter = session->stats_direct_jitter;
             packet.direct_packet_loss = session->stats_direct_packet_loss;
             packet.direct_max_packet_loss_seen = session->stats_direct_max_packet_loss_seen;
-            packet.has_client_relay_pings = session->num_held_client_relays != 0;
 
-            packet.num_client_relays = session->num_held_client_relays;
+            packet.has_client_relay_pings = session->stats_has_client_relay_pings;
+            packet.num_client_relays = session->stats_num_client_relays;
             for ( int j = 0; j < packet.num_client_relays; ++j )
             {
-                packet.client_relay_ids[j] = session->held_client_relay_ids[j];
-                packet.client_relay_rtt[j] = session->held_client_relay_rtt[j];
-                packet.client_relay_jitter[j] = session->held_client_relay_jitter[j];
-                packet.client_relay_packet_loss[j] = session->held_client_relay_packet_loss[j];
+                packet.client_relay_ids[j] = session->stats_client_relay_ids[j];
+                packet.client_relay_rtt[j] = session->stats_client_relay_rtt[j];
+                packet.client_relay_jitter[j] = session->stats_client_relay_jitter[j];
+                packet.client_relay_packet_loss[j] = session->stats_client_relay_packet_loss[j];
             }
 
-            packet.num_server_relays = server->num_server_relays;
+            packet.has_server_relay_pings = server->stats_has_server_relay_pings;
+            packet.num_server_relays = server->stats_num_server_relays;
             for ( int j = 0; j < packet.num_server_relays; ++j )
             {
-                packet.server_relay_ids[j] = server->server_relay_ids[j];
-                packet.server_relay_rtt[j] = server->server_relay_rtt[j];
-                packet.server_relay_jitter[j] = server->server_relay_jitter[j];
-                packet.server_relay_packet_loss[j] = server->server_relay_packet_loss[j];
+                packet.server_relay_ids[j] = server->stats_server_relay_ids[j];
+                packet.server_relay_rtt[j] = server->stats_server_relay_rtt[j];
+                packet.server_relay_jitter[j] = server->stats_server_relay_jitter[j];
+                packet.server_relay_packet_loss[j] = server->stats_server_relay_packet_loss[j];
             }
 
             packet.client_address = session->address;

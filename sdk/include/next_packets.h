@@ -317,7 +317,7 @@ struct NextClientRelayAckPacket
 
     NextClientRelayAckPacket()
     {
-        memset( this, 0, sizeof(NextClientRelayUpdatePacket) );
+        request_id = 0;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )

@@ -144,7 +144,7 @@ void next_client_internal_update_direct_pings( next_client_internal_t * client )
 
 void next_client_internal_update_next_pings( next_client_internal_t * client );
 
-void next_client_internal_send_pings_to_client_relays( next_client_internal_t * client );
+void next_client_internal_update_client_pings( next_client_internal_t * client );
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client );
 
@@ -206,7 +206,6 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    next_relay_manager_t * client_relay_manager;
     next_route_manager_t * route_manager;
     next_platform_mutex_t route_manager_mutex;
 
@@ -233,26 +232,22 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(6)
 
-    next_relay_stats_t client_relay_stats;
-
-    NEXT_DECLARE_SENTINEL(7)
-
     next_ping_history_t next_ping_history;
     next_ping_history_t direct_ping_history;
 
-    NEXT_DECLARE_SENTINEL(8)
+    NEXT_DECLARE_SENTINEL(7)
 
     next_replay_protection_t payload_replay_protection;
     next_replay_protection_t special_replay_protection;
     next_replay_protection_t internal_replay_protection;
 
-    NEXT_DECLARE_SENTINEL(9)
+    NEXT_DECLARE_SENTINEL(8)
 
     next_platform_mutex_t direct_bandwidth_mutex;
     float direct_bandwidth_usage_kbps_up;
     float direct_bandwidth_usage_kbps_down;
 
-    NEXT_DECLARE_SENTINEL(10)
+    NEXT_DECLARE_SENTINEL(9)
 
     next_platform_mutex_t next_bandwidth_mutex;
     bool next_bandwidth_over_limit;
@@ -261,7 +256,7 @@ struct next_client_internal_t
     float next_bandwidth_envelope_kbps_up;
     float next_bandwidth_envelope_kbps_down;
 
-    NEXT_DECLARE_SENTINEL(11)
+    NEXT_DECLARE_SENTINEL(10)
 
     bool sending_upgrade_response;
     double upgrade_response_start_time;
@@ -269,11 +264,27 @@ struct next_client_internal_t
     int upgrade_response_packet_bytes;
     uint8_t upgrade_response_packet_data[NEXT_MAX_PACKET_BYTES];
 
+    NEXT_DECLARE_SENTINEL(11)
+
+    bool sending_client_relay_pings;
+    double client_relay_ping_stop_time;
+    NextClientRelayUpdatePacket client_relay_update_packet;
+    next_relay_manager_t * client_relay_manager;
+
     NEXT_DECLARE_SENTINEL(12)
+
+    bool has_client_ping_stats;
+    int num_client_relays;
+    uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
+    uint8_t client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
+    float client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
+
+    NEXT_DECLARE_SENTINEL(13)
 
     std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(13)
+    NEXT_DECLARE_SENTINEL(14)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -294,12 +305,11 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 11 )
     NEXT_INITIALIZE_SENTINEL( client, 12 )
     NEXT_INITIALIZE_SENTINEL( client, 13 )
+    NEXT_INITIALIZE_SENTINEL( client, 14 )
 
     next_replay_protection_initialize_sentinels( &client->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &client->special_replay_protection );
     next_replay_protection_initialize_sentinels( &client->internal_replay_protection );
-
-    next_relay_stats_initialize_sentinels( &client->client_relay_stats );
 
     next_ping_history_initialize_sentinels( &client->next_ping_history );
     next_ping_history_initialize_sentinels( &client->direct_ping_history );
@@ -325,6 +335,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 11 )
     NEXT_VERIFY_SENTINEL( client, 12 )
     NEXT_VERIFY_SENTINEL( client, 13 )
+    NEXT_VERIFY_SENTINEL( client, 14 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -335,8 +346,6 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     next_replay_protection_verify_sentinels( &client->payload_replay_protection );
     next_replay_protection_verify_sentinels( &client->special_replay_protection );
     next_replay_protection_verify_sentinels( &client->internal_replay_protection );
-
-    next_relay_stats_verify_sentinels( &client->client_relay_stats );
 
     if ( client->client_relay_manager )
         next_relay_manager_verify_sentinels( client->client_relay_manager );
@@ -940,6 +949,53 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         return;
     }
 
+    // client relay update packet
+
+    if ( packet_id == NEXT_CLIENT_RELAY_UPDATE_PACKET && client->upgraded && from_server_address )
+    {
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client processing client relay update packet" );
+
+        uint64_t packet_sequence = 0;
+
+        int begin = 18;
+        int end = packet_bytes;
+
+        NextClientRelayUpdatePacket packet;
+        if ( next_read_packet( NEXT_CLIENT_RELAY_UPDATE_PACKET, packet_data, begin, end, &packet, next_signed_packets, next_encrypted_packets, &packet_sequence, NULL, client->client_receive_key, &client->internal_replay_protection ) != packet_id )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored client relay update packet from server. could not read packet" );
+            return;
+            return;
+        }
+
+        NextClientRelayAckPacket ack;
+        ack.request_id = packet.request_id;
+        if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_RELAY_ACK_PACKET, &ack ) != NEXT_OK )
+        {
+            next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send client relay ack packet to server" );
+            return;
+        }
+
+        next_post_validate_packet( NEXT_CLIENT_RELAY_UPDATE_PACKET, next_encrypted_packets, &packet_sequence, &client->internal_replay_protection );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "client sent route update ack packet to server" );
+
+        if ( !client->sending_client_relay_pings )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "client started pinging %d client relays", packet.num_client_relays );
+
+            client->sending_client_relay_pings = true;
+
+            next_relay_manager_reset( client->client_relay_manager );
+
+            next_relay_manager_update( client->client_relay_manager, packet.num_client_relays, packet.client_relay_ids, packet.client_relay_addresses, (const uint8_t*)packet.client_relay_ping_tokens, packet.expire_timestamp );
+
+            client->client_relay_ping_stop_time = next_platform_time() + NEXT_CLIENT_RELAY_PING_TIME;
+        }
+
+        return;
+    }
+
     // -------------------
     // PACKETS FROM RELAYS
     // -------------------
@@ -1231,6 +1287,12 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
+        if ( !client->sending_client_relay_pings )
+        {
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored client pong packet. not pinging client relays" );
+            return;
+        }
+
         packet_data += 18;
 
         const uint8_t * p = packet_data;
@@ -1412,9 +1474,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        NextRouteUpdatePacket ack;
+        NextRouteAckPacket ack;
         ack.sequence = packet.sequence;
-
         if ( next_client_internal_send_packet_to_server( client, NEXT_ROUTE_ACK_PACKET, &ack ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_WARN, "client failed to send route ack packet to server" );
@@ -1617,8 +1678,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 client->packets_sent = 0;
 
                 memset( &client->client_stats, 0, sizeof(next_client_stats_t) );
-                memset( &client->client_relay_stats, 0, sizeof(next_relay_stats_t ) );
-                next_relay_stats_initialize_sentinels( &client->client_relay_stats );
 
                 next_relay_manager_reset( client->client_relay_manager );
 
@@ -1806,8 +1865,6 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         client->client_stats.packets_sent_client_to_server = client->packets_sent;
 
-        next_relay_manager_get_stats( client->client_relay_manager, &client->client_relay_stats );
-
         next_client_notify_stats_updated_t * notify = (next_client_notify_stats_updated_t*) next_malloc( client->context, sizeof( next_client_notify_stats_updated_t ) );
         notify->type = NEXT_CLIENT_NOTIFY_STATS_UPDATED;
         notify->stats = client->client_stats;
@@ -1863,28 +1920,16 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
         packet.direct_max_packet_loss_seen = client->client_stats.direct_max_packet_loss_seen;
 
-        if ( !client->fallback_to_direct )
+        if ( !client->fallback_to_direct && client->has_client_ping_stats )
         {
-            packet.num_client_relays = client->client_relay_stats.num_relays;
+            packet.num_client_relays = client->num_client_relays;
+
             for ( int i = 0; i < packet.num_client_relays; ++i )
             {
-                int rtt = (int) ceil( client->client_relay_stats.relay_rtt[i] );
-                int jitter = (int) ceil( client->client_relay_stats.relay_jitter[i] );
-                float packet_loss = client->client_relay_stats.relay_packet_loss[i];
-
-                if ( rtt > 255 )
-                    rtt = 255;
-
-                if ( jitter > 255 )
-                    jitter = 255;
-
-                if ( packet_loss > 100.0 )
-                    packet_loss = 100.0;
-
-                packet.client_relay_ids[i] = client->client_relay_stats.relay_ids[i];
-                packet.client_relay_rtt[i] = uint8_t( rtt );
-                packet.client_relay_jitter[i] = uint8_t( jitter );
-                packet.client_relay_packet_loss[i] = packet_loss;
+                packet.client_relay_ids[i] = client->client_relay_ids[i];
+                packet.client_relay_rtt[i] = client->client_relay_rtt[i];
+                packet.client_relay_jitter[i] = client->client_relay_jitter[i];
+                packet.client_relay_packet_loss[i] = client->client_relay_packet_loss[i];
             }
         }
 
@@ -2029,7 +2074,7 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
     }
 }
 
-void next_client_internal_send_pings_to_client_relays( next_client_internal_t * client )
+void next_client_internal_update_client_relays( next_client_internal_t * client )
 {
     next_client_internal_verify_sentinels( client );
 
@@ -2042,7 +2087,64 @@ void next_client_internal_send_pings_to_client_relays( next_client_internal_t * 
     if ( client->fallback_to_direct )
         return;
 
-    next_relay_manager_send_pings( client->client_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address, false );
+    double current_time = next_platform_time();
+
+    if ( client->sending_client_relay_pings )
+    {
+        // should we stop sending pings?
+
+        if ( client->client_relay_ping_stop_time < current_time )
+        {
+            next_printf( NEXT_LOG_LEVEL_INFO, "client finished sending pings to client relays" );
+
+            client->sending_client_relay_pings = false;
+
+            next_relay_stats_t client_relay_stats;
+
+            next_relay_manager_get_stats( client->client_relay_manager, &client_relay_stats );
+
+            client->has_client_ping_stats = true;
+            client->num_client_relays = client_relay_stats.num_relays;
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
+            for ( int i = 0; i < client_relay_stats.num_relays; i++ )
+            {
+                int rtt = (int) ceil( client_relay_stats.relay_rtt[i] );
+                int jitter = (int) ceil( client_relay_stats.relay_jitter[i] );
+                float packet_loss = client_relay_stats.relay_packet_loss[i];
+
+                if ( rtt > 255 )
+                    rtt = 255;
+
+                if ( jitter > 255 )
+                    jitter = 255;
+
+                if ( packet_loss > 100.0 )
+                    packet_loss = 100.0;
+
+                client->client_relay_ids[i] = client_relay_stats.relay_ids[i];
+
+                client->client_relay_rtt[i] = rtt;
+                client->client_relay_jitter[i] = jitter;
+                client->client_relay_packet_loss[i] = packet_loss;
+
+                char relay_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client relay %s | rtt = %d, jitter = %d, packet loss = %.1f", 
+                    next_address_to_string( &client->client_relay_manager->relay_addresses[i], relay_address_buffer ), 
+                    client->client_relay_rtt[i], 
+                    client->client_relay_jitter[i],
+                    client->client_relay_packet_loss[i] 
+                );
+            }
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
+
+            return;
+        }
+
+        // send pings
+
+        next_relay_manager_send_pings( client->client_relay_manager, client->socket, client->session_id, client->current_magic, &client->client_external_address, false );
+    }
 }
 
 void next_client_internal_update_fallback_to_direct( next_client_internal_t * client )
@@ -2214,7 +2316,7 @@ void next_client_internal_update( next_client_internal_t * client )
 
     next_client_internal_update_next_pings( client );
 
-    next_client_internal_send_pings_to_client_relays( client );
+    next_client_internal_update_client_relays( client );
 
     next_client_internal_update_stats( client );
 
