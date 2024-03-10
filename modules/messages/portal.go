@@ -46,8 +46,8 @@ type PortalRelayUpdateMessage struct {
 	BandwidthSentKbps         float32
 	BandwidthReceivedKbps     float32
 	ClientPingsPerSecond      float32
+	ServerPingsPerSecond      float32
 	RelayPingsPerSecond       float32
-	ServerPingsPerSecond      float32 // todo
 	RelayFlags                uint64
 	NumRoutable               uint32
 	NumUnroutable             uint32
