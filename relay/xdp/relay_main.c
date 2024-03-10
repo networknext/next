@@ -275,13 +275,15 @@ int main_update( struct main_t * main )
     uint64_t bytes_received_since_last_update = ( counters[RELAY_COUNTER_BYTES_RECEIVED] > main->last_stats_bytes_received ) ? counters[RELAY_COUNTER_BYTES_RECEIVED] - main->last_stats_bytes_received : 0;
 
     uint64_t client_pings_since_last_update = ( counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED] > main->last_stats_client_pings_received ) ? counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED] - main->last_stats_client_pings_received : 0;
-    uint64_t relay_pings_since_last_update = ( counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED] > main->last_stats_relay_pings_received ) ? counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] - main->last_stats_relay_pings_received : 0;
+    uint64_t server_pings_since_last_update = ( counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED] > main->last_stats_server_pings_received ) ? counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED] - main->last_stats_server_pings_received : 0;
+    uint64_t relay_pings_since_last_update = ( counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] > main->last_stats_relay_pings_received ) ? counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED] - main->last_stats_relay_pings_received : 0;
 
     double packets_sent_per_second = 0.0;
     double packets_received_per_second = 0.0;
     double bytes_sent_per_second = 0.0;
     double bytes_received_per_second = 0.0;
     double client_pings_per_second = 0.0;
+    double server_pings_per_second = 0.0;
     double relay_pings_per_second = 0.0;
 
     if ( time_since_last_update > 0.0 )
@@ -291,6 +293,7 @@ int main_update( struct main_t * main )
         bytes_sent_per_second = bytes_sent_since_last_update / time_since_last_update;
         bytes_received_per_second = bytes_received_since_last_update / time_since_last_update;
         client_pings_per_second = client_pings_since_last_update / time_since_last_update;
+        server_pings_per_second = server_pings_since_last_update / time_since_last_update;
         relay_pings_per_second = relay_pings_since_last_update / time_since_last_update;
     }
 
@@ -302,6 +305,7 @@ int main_update( struct main_t * main )
     main->last_stats_bytes_sent = counters[RELAY_COUNTER_BYTES_SENT];
     main->last_stats_bytes_received = counters[RELAY_COUNTER_BYTES_RECEIVED];
     main->last_stats_client_pings_received = counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED];
+    main->last_stats_server_pings_received = counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED];
     main->last_stats_relay_pings_received = counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED];
 
     uint64_t session_count = counters[RELAY_COUNTER_SESSIONS];
@@ -359,8 +363,8 @@ int main_update( struct main_t * main )
     relay_write_float32( &p, (float) bandwidth_sent_kbps );
     relay_write_float32( &p, (float) bandwidth_received_kbps );
     relay_write_float32( &p, (float) client_pings_per_second );
+    relay_write_float32( &p, (float) server_pings_per_second );
     relay_write_float32( &p, (float) relay_pings_per_second );
-    // todo: server_pings_per_second
 
     const uint64_t SHUTTING_DOWN = 1;
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
