@@ -677,7 +677,7 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         }
 
         NextUpgradeRequestPacket packet;
-        int begin = 8;
+        int begin = 18;
         int end = packet_bytes;
         if ( next_read_packet( NEXT_UPGRADE_REQUEST_PACKET, packet_data, begin, end, &packet, NULL, NULL, NULL, NULL, NULL, NULL ) != packet_id )
         {

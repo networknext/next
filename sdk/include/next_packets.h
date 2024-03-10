@@ -487,8 +487,8 @@ struct NextBackendClientRelayRequestPacket
     int version_minor;
     int version_patch;
     uint64_t buyer_id;
-    uint64_t datacenter_id;
     uint64_t request_id;
+    uint64_t datacenter_id;
     next_address_t client_address;
    
     NextBackendClientRelayRequestPacket()
@@ -497,8 +497,8 @@ struct NextBackendClientRelayRequestPacket
         version_minor = NEXT_VERSION_MINOR_INT;
         version_patch = NEXT_VERSION_PATCH_INT;
         buyer_id = 0;
-        datacenter_id = 0;
         request_id = 0;
+        datacenter_id = 0;
         memset( &client_address, 0, sizeof(next_address_t) );
     }
 
@@ -508,8 +508,8 @@ struct NextBackendClientRelayRequestPacket
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, buyer_id );
-        serialize_uint64( stream, datacenter_id );
         serialize_uint64( stream, request_id );
+        serialize_uint64( stream, datacenter_id );
         serialize_address( stream, client_address );
         return true;
     }

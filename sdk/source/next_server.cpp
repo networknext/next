@@ -1265,9 +1265,8 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "client requesting client relays for session" ); // todo: log session id
+                next_printf( NEXT_LOG_LEVEL_INFO, "client requesting client relays for session %" PRIx64, entry->session_id );
 
-                // todo: we are missing stuff like session id here
                 entry->client_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
                 entry->client_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
                 entry->client_relay_request_packet.version_patch = NEXT_VERSION_PATCH_INT;
@@ -1287,7 +1286,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time + NEXT_CLIENT_RELAYS_TIMEOUT < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session" ); // todo: log session id
+                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session %" PRIx64, entry->session_id );
 
                 memset( &entry->client_relay_response_packet, 0, sizeof(NextBackendClientRelayResponsePacket) );
                 entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
@@ -1301,7 +1300,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay request packet" );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay request packet for session %" PRIx64, entry->session_id );
                         
                 uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
@@ -1318,7 +1317,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 int packet_bytes = 0;
                 if ( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET, &entry->client_relay_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, to_address_data ) != NEXT_OK )
                 {
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write client relay request packet for session" ); // todo: log session id
+                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write client relay request packet for session %" PRIx64, entry->session_id );
                     return;
                 }
 
@@ -1330,64 +1329,6 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_REQUEST_SEND_RATE;
             }
         }
-
-// todo
-/*
-        if ( server->pinging_server_relays )
-        {
-            // send pings to server relays
-
-            next_relay_manager_send_pings( server->server_relay_manager, server->socket, 0, server->current_magic, &server->server_address, true );
-
-            // stop pinging after 10 seconds and store the results
-
-            if ( server->server_relay_ping_start_time + 10 < current_time )
-            {
-                next_printf( NEXT_LOG_LEVEL_INFO, "server finished pinging server relays" );
-
-                server->pinging_server_relays = false;
-
-                next_relay_stats_t server_relay_stats;
-
-                next_relay_manager_get_stats( server->server_relay_manager, &server_relay_stats );
-
-                server->has_server_ping_stats = true;
-                server->num_server_relays = server_relay_stats.num_relays;
-
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
-                for ( int i = 0; i < server_relay_stats.num_relays; i++ )
-                {
-                    int rtt = (int) ceil( server_relay_stats.relay_rtt[i] );
-                    int jitter = (int) ceil( server_relay_stats.relay_jitter[i] );
-                    float packet_loss = server_relay_stats.relay_packet_loss[i];
-
-                    if ( rtt > 255 )
-                        rtt = 255;
-
-                    if ( jitter > 255 )
-                        jitter = 255;
-
-                    if ( packet_loss > 100.0 )
-                        packet_loss = 100.0;
-
-                    server->server_relay_ids[i] = server_relay_stats.relay_ids[i];
-
-                    server->server_relay_rtt[i] = rtt;
-                    server->server_relay_jitter[i] = jitter;
-                    server->server_relay_packet_loss[i] = packet_loss;
-
-                    char relay_address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "server relay %s | rtt = %d, jitter = %d, packet loss = %.1f", 
-                        next_address_to_string( &server->server_relay_manager->relay_addresses[i], relay_address_buffer ), 
-                        server->server_relay_rtt[i], 
-                        server->server_relay_jitter[i],
-                        server->server_relay_packet_loss[i] 
-                    );
-                }
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "------------------------------------------------------------------------------" );
-            }
-        }
-*/
     }
 }
 
@@ -2117,6 +2058,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             server->requesting_server_relays = false;
             server->has_server_ping_stats = true;               // IMPORTANT: so we don't time out ready
         }
+    }
+
+    // backend client relay response
+
+    if ( packet_id == NEXT_BACKEND_CLIENT_RELAY_RESPONSE_PACKET )
+    {
+        // todo
+        next_printf( NEXT_LOG_LEVEL_INFO, "*** received backend client relay response packet ***" );
     }
 
     // upgrade response packet
