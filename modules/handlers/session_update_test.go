@@ -3103,11 +3103,6 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
 	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
-	assert.Equal(t, len(state.DestRelays), 3)
-	assert.Equal(t, state.DestRelays[0], int32(0))
-	assert.Equal(t, state.DestRelays[1], int32(1))
-	assert.Equal(t, state.DestRelays[2], int32(2))
-
 	assert.Equal(t, len(state.SourceRelays), 3)
 	assert.Equal(t, len(state.SourceRelayRTT), 3)
 
@@ -3123,6 +3118,14 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 // --------------------------------------------------------------
 
 // todo: UpdateServerRelays
+
+/*
+	assert.Equal(t, len(state.DestRelays), 3)
+	assert.Equal(t, state.DestRelays[0], int32(0))
+	assert.Equal(t, state.DestRelays[1], int32(1))
+	assert.Equal(t, state.DestRelays[2], int32(2))
+
+*/
 
 // --------------------------------------------------------------
 

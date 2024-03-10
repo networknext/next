@@ -440,43 +440,6 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
-		Debug print client relay ping results on slice 1
-	*/
-
-	// todo: this needs to be changed. the server will now upload these for all slices
-
-	/*
-	if state.Request.SliceNumber == 1 {
-		core.Debug("sdk uploaded client relay stats for %d relays:", state.Request.NumClientRelays)
-		for i := 0; i < int(state.Request.NumClientRelays); i++ {
-			relayId := state.Request.ClientRelayIds[i]
-			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
-			var relayName string
-			if exists {
-				relayName = state.RouteMatrix.RelayNames[relayIndex]
-			} else {
-				relayName = "???" // client relay no longer exists in route matrix
-			}
-			rtt := state.Request.ClientRelayRTT[i]
-			jitter := state.Request.ClientRelayJitter[i]
-			pl := state.Request.ClientRelayPacketLoss[i]
-			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
-		}
-	}
-	*/
-
-	/*
-		Reframe dest relays to get them relative to the current route matrix.
-	*/
-
-	outputNumDestRelays := 0
-	outputDestRelays := make([]int32, len(state.DestRelayIds))
-
-	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, state.DestRelayIds, &outputNumDestRelays, outputDestRelays)
-
-	state.DestRelays = outputDestRelays[:outputNumDestRelays]
-
-	/*
 		Filter source relays and get them in a form relative to the current route matrix
 	*/
 
@@ -526,41 +489,30 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating server relay stats")
-		state.NotUpdatingServerRelaysAnalysisOnly = true
+		core.Debug("analysis only, not updating client relay stats")
+		state.NotUpdatingClientRelaysAnalysisOnly = true
 		return false
 	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
-		core.Debug("datacenter not enabled, not updating server relay stats")
-		state.NotUpdatingServerRelaysDatacenterNotEnabled = true
+		core.Debug("datacenter not enabled, not updating client relay stats")
+		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
 		return false
 	}
 
+	// todo: instead of using dest relays directly, use server relays from the request packet and filter any that are not suitable
+
 	/*
-		Debug print server relay ping results on slice 1
+		Reframe dest relays to get them relative to the current route matrix.
 	*/
 
-	if state.Request.SliceNumber == 1 {
-		core.Debug("sdk uploaded server relay stats for %d relays:", state.Request.NumServerRelays)
-		for i := 0; i < int(state.Request.NumServerRelays); i++ {
-			relayId := state.Request.ServerRelayIds[i]
-			relayIndex, exists := state.RouteMatrix.RelayIdToIndex[relayId]
-			var relayName string
-			if exists {
-				relayName = state.RouteMatrix.RelayNames[relayIndex]
-			} else {
-				relayName = "???" // server relay no longer exists in route matrix
-			}
-			rtt := state.Request.ServerRelayRTT[i]
-			jitter := state.Request.ServerRelayJitter[i]
-			pl := state.Request.ServerRelayPacketLoss[i]
-			core.Debug(" + %s [%016x] rtt = %d, jitter = %d, pl = %.2f", relayName, relayId, rtt, jitter, pl)
-		}
-	}
+	outputNumDestRelays := 0
+	outputDestRelays := make([]int32, len(state.DestRelayIds))
 
-	// todo: more stuff here, reframe dest relays here etc...
-	
+	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, state.DestRelayIds, &outputNumDestRelays, outputDestRelays)
+
+	state.DestRelays = outputDestRelays[:outputNumDestRelays]
+
 	return true
 }
 
