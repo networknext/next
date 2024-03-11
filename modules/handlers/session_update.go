@@ -468,6 +468,19 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 			sourceRelayPacketLoss,
 			state.Output.ExcludeClientRelay[:],
 		)
+
+		if core.DebugLogs && len(sourceRelayIds) > 0 {
+			core.Debug("------------------------------------------------------------------------------------------------")
+			core.Debug("client relays changed:")
+			for i := range sourceRelayIds {
+				if state.Output.ExcludeClientRelay[i] {
+					core.Debug("%d: %016x | rtt = %d, jitter = %d, packet loss = %.2f (excluded)", i, sourceRelayIds[i], sourceRelayLatency[i], sourceRelayJitter[i], sourceRelayPacketLoss[i])
+				} else {
+					core.Debug("%d: %016x | rtt = %d, jitter = %d, packet loss = %.2f", i, sourceRelayIds[i], sourceRelayLatency[i], sourceRelayJitter[i], sourceRelayPacketLoss[i])
+				}
+			}
+			core.Debug("------------------------------------------------------------------------------------------------")
+		}
 	}
 
 	/*
@@ -527,6 +540,19 @@ func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
 			destRelayPacketLoss,
 			state.Output.ExcludeServerRelay[:],
 		)
+
+		if core.DebugLogs && len(destRelayIds) > 0 {
+			core.Debug("------------------------------------------------------------------------------------------------")
+			core.Debug("server relays changed:")
+			for i := range destRelayIds {
+				if state.Output.ExcludeServerRelay[i] {
+					core.Debug("%d: %016x | rtt = %d, jitter = %d, packet loss = %.2f (excluded)", i, destRelayIds[i], destRelayLatency[i], destRelayJitter[i], destRelayPacketLoss[i])
+				} else {
+					core.Debug("%d: %016x | rtt = %d, jitter = %d, packet loss = %.2f", i, destRelayIds[i], destRelayLatency[i], destRelayJitter[i], destRelayPacketLoss[i])
+				}
+			}
+			core.Debug("------------------------------------------------------------------------------------------------")
+		}
 	}
 
 	/*

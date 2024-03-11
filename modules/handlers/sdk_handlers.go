@@ -263,13 +263,15 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket] = true
 
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received server init request packet from %s", from.String())
-	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
-	core.Debug("buyer id: %016x", requestPacket.BuyerId)
-	core.Debug("request id: %016x", requestPacket.RequestId)
-	core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
-	core.Debug("---------------------------------------------------------------------------")
+	if core.DebugLogs {
+		core.Debug("---------------------------------------------------------------------------")
+		core.Debug("received server init request packet from %s", from.String())
+		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
+		core.Debug("---------------------------------------------------------------------------")
+	}
 
 	upcomingMagic, currentMagic, previousMagic := handler.GetMagicValues()
 
@@ -333,13 +335,15 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 
 	handler.Events[SDK_HandlerEvent_ProcessServerUpdateRequestPacket] = true
 
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received server update request packet from %s", from.String())
-	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
-	core.Debug("buyer id: %016x", requestPacket.BuyerId)
-	core.Debug("request id: %016x", requestPacket.RequestId)
-	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
-	core.Debug("---------------------------------------------------------------------------")
+	if core.DebugLogs {
+		core.Debug("---------------------------------------------------------------------------")
+		core.Debug("received server update request packet from %s", from.String())
+		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
+		core.Debug("---------------------------------------------------------------------------")
+	}
 
 	defer func() {
 
@@ -425,9 +429,11 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	handler.Events[SDK_HandlerEvent_ProcessSessionUpdateRequestPacket] = true
 
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received session update request packet from %s", from.String())
-	core.Debug("---------------------------------------------------------------------------")
+	if core.DebugLogs {
+		core.Debug("---------------------------------------------------------------------------")
+		core.Debug("received session update request packet from %s", from.String())
+		core.Debug("---------------------------------------------------------------------------")
+	}
 
 	/*
 	   Build session handler state. Putting everything in a struct makes calling subroutines much easier.
@@ -537,15 +543,14 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	}
 
 	/*
-	   Process client relay ping statistics after the first slice.
+	   Process client and server relay ping stats.
 
 	   We use client and server relay latency, jitter and packet loss for route planning.
 	*/
 
-	if state.Request.SliceNumber > 0 {
-		SessionUpdate_UpdateClientRelays(&state)
-		SessionUpdate_UpdateServerRelays(&state)
-	}
+	SessionUpdate_UpdateClientRelays(&state)
+
+	SessionUpdate_UpdateServerRelays(&state)
 
 	/*
 	   Decide whether we should take network next or not.
@@ -560,12 +565,14 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 
 	handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket] = true
 
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received client relay request packet from %s", from.String())
-	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
-	core.Debug("buyer id: %016x", requestPacket.BuyerId)
-	core.Debug("request id: %016x", requestPacket.RequestId)
-	core.Debug("---------------------------------------------------------------------------")
+	if core.DebugLogs {
+		core.Debug("---------------------------------------------------------------------------")
+		core.Debug("received client relay request packet from %s", from.String())
+		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("---------------------------------------------------------------------------")
+	}
 
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
@@ -642,13 +649,15 @@ func SDK_ProcessServerRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 
 	handler.Events[SDK_HandlerEvent_ProcessServerRelayRequestPacket] = true
 
-	core.Debug("---------------------------------------------------------------------------")
-	core.Debug("received server relay request packet from %s", from.String())
-	core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
-	core.Debug("buyer id: %016x", requestPacket.BuyerId)
-	core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
-	core.Debug("request id: %016x", requestPacket.RequestId)
-	core.Debug("---------------------------------------------------------------------------")
+	if core.DebugLogs {
+		core.Debug("---------------------------------------------------------------------------")
+		core.Debug("received server relay request packet from %s", from.String())
+		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
+		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
+		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("---------------------------------------------------------------------------")
+	}
 
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
