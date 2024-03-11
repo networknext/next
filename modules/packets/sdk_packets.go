@@ -282,6 +282,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	ClientPingTimedOut              bool
 	HasClientRelayPings             bool
 	HasServerRelayPings             bool
+	ClientRelayPingsHaveChanged     bool
+	ServerRelayPingsHaveChanged     bool
 	SessionEvents                   uint64
 	InternalEvents                  uint64
 	DirectRTT                       float32
@@ -355,6 +357,8 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasClientRelayPings)
 	stream.SerializeBool(&packet.HasServerRelayPings)
+	stream.SerializeBool(&packet.ClientRelayPingsHaveChanged)
+	stream.SerializeBool(&packet.ServerRelayPingsHaveChanged)
 
 	hasSessionEvents := stream.IsWriting() && packet.SessionEvents != 0
 	hasInternalEvents := stream.IsWriting() && packet.InternalEvents != 0

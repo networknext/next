@@ -699,6 +699,8 @@ struct NextBackendSessionUpdateRequestPacket
     bool client_ping_timed_out;
     bool has_client_relay_pings;
     bool has_server_relay_pings;
+    bool client_relay_pings_have_changed;
+    bool server_relay_pings_have_changed;
     uint64_t session_events;
     uint64_t internal_events;
     float direct_rtt;
@@ -780,6 +782,8 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_bool( stream, client_ping_timed_out );
         serialize_bool( stream, has_client_relay_pings );
         serialize_bool( stream, has_server_relay_pings );
+        serialize_bool( stream, client_relay_pings_have_changed );
+        serialize_bool( stream, server_relay_pings_have_changed );
 
         bool has_session_events = Stream::IsWriting && session_events != 0;
         bool has_internal_events = Stream::IsWriting && internal_events != 0;

@@ -3754,6 +3754,9 @@ void test_session_update_request_packet()
         in.direct_max_packet_loss_seen = 0.25f;
         in.next = true;
         in.has_client_relay_pings = true;
+        in.has_server_relay_pings = true;
+        in.client_relay_pings_have_changed = true;
+        in.server_relay_pings_have_changed = true;
         in.next_rtt = 5.0f;
         in.next_jitter = 1.5f;
         in.next_packet_loss = 0.0f;
@@ -3825,6 +3828,10 @@ void test_session_update_request_packet()
         next_check( in.next_rtt == out.next_rtt );
         next_check( in.next_jitter == out.next_jitter );
         next_check( in.next_packet_loss == out.next_packet_loss );
+        next_check( in.has_client_relay_pings == out.has_client_relay_pings );
+        next_check( in.has_server_relay_pings == out.has_server_relay_pings );
+        next_check( in.client_relay_pings_have_changed == out.client_relay_pings_have_changed );
+        next_check( in.server_relay_pings_have_changed == out.server_relay_pings_have_changed );
         next_check( in.num_client_relays == out.num_client_relays );
         for ( int j = 0; j < NEXT_MAX_CLIENT_RELAYS; ++j )
         {
@@ -3832,6 +3839,14 @@ void test_session_update_request_packet()
             next_check( in.client_relay_rtt[j] == out.client_relay_rtt[j] );
             next_check( in.client_relay_jitter[j] == out.client_relay_jitter[j] );
             next_check( in.client_relay_packet_loss[j] == out.client_relay_packet_loss[j] );
+        }
+        next_check( in.num_server_relays == out.num_server_relays );
+        for ( int j = 0; j < NEXT_MAX_SERVER_RELAYS; ++j )
+        {
+            next_check( in.server_relay_ids[j] == out.server_relay_ids[j] );
+            next_check( in.server_relay_rtt[j] == out.server_relay_rtt[j] );
+            next_check( in.server_relay_jitter[j] == out.server_relay_jitter[j] );
+            next_check( in.server_relay_packet_loss[j] == out.server_relay_packet_loss[j] );
         }
         next_check( next_address_equal( &in.client_address, &out.client_address ) );
         next_check( next_address_equal( &in.server_address, &out.server_address ) );

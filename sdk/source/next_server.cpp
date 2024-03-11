@@ -3764,7 +3764,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.direct_packet_loss = session->stats_direct_packet_loss;
             packet.direct_max_packet_loss_seen = session->stats_direct_max_packet_loss_seen;
 
-            packet.has_client_relay_pings = session->stats_client_relay_pings_have_changed;
+            packet.has_client_relay_pings = session->stats_has_client_relay_pings;
+            packet.client_relay_pings_have_changed = session->stats_client_relay_pings_have_changed;
             packet.num_client_relays = session->stats_num_client_relays;
             for ( int j = 0; j < packet.num_client_relays; ++j )
             {
@@ -3774,7 +3775,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 packet.client_relay_packet_loss[j] = session->stats_client_relay_packet_loss[j];
             }
 
-            packet.has_server_relay_pings = server->stats_server_relay_pings_have_changed;
+            packet.has_server_relay_pings = server->stats_has_server_relay_pings;
+            packet.server_relay_pings_have_changed = server->stats_server_relay_pings_have_changed;
             packet.num_server_relays = server->stats_num_server_relays;
             for ( int j = 0; j < packet.num_server_relays; ++j )
             {
