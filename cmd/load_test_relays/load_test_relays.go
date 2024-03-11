@@ -109,7 +109,7 @@ func RunRelay(service *common.Service, index int) {
 				copy(packet.SampleRelayId[:], sampleRelayIds)
 
 				for i := 0; i < int(packet.NumSamples); i++ {
-					combo := fmt.Sprintf("%s-%d-%d", address, index, i)
+					combo := fmt.Sprintf("%s-%d-%d", address.String(), index, i)
 					hash := common.HashString(combo)
 					packet.SampleRTT[i] = uint8(hash % 10)
 				}

@@ -1612,7 +1612,7 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessClientRelayRequestPacket])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentClientRelayResponsePacket])
-	
+
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -1910,7 +1910,7 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 
 	// generate a route matrix with the relays
 
-	relayIds := []uint64{1,2,3}
+	relayIds := []uint64{1, 2, 3}
 
 	costMatrix := make([]uint8, 3)
 
@@ -1931,10 +1931,10 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 	requestId := uint64(0x12345)
 
 	packet := packets.SDK_ServerRelayRequestPacket{
-		Version:       packets.SDKVersion{1, 0, 0},
-		BuyerId:       buyerId,
-		RequestId:     requestId,
-		DatacenterId:  1,
+		Version:      packets.SDKVersion{1, 0, 0},
+		BuyerId:      buyerId,
+		RequestId:    requestId,
+		DatacenterId: 1,
 	}
 
 	packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &clientAddress, &harness.handler.ServerBackendAddress, buyerPrivateKey[:])
@@ -2025,7 +2025,7 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 			assert.Equal(t, responsePacket.RequestId, packet.RequestId)
 			assert.Equal(t, responsePacket.NumServerRelays, int32(1))
 			assert.Equal(t, responsePacket.ServerRelayIds[0], uint64(1))
-			assert.Equal(t, responsePacket.ServerRelayAddresses[0].String(), "127.0.0.1:40000" )
+			assert.Equal(t, responsePacket.ServerRelayAddresses[0].String(), "127.0.0.1:40000")
 
 			// success!
 
@@ -2049,7 +2049,7 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerRelayRequestPacket])
 		assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerRelayResponsePacket])
-	
+
 		if i > 10 {
 			time.Sleep(10 * time.Millisecond)
 		}

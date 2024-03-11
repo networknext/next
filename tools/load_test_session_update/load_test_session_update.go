@@ -90,15 +90,16 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 				for j := 0; j < NumSessions; j++ {
 
 					packet := packets.SDK_SessionUpdateRequestPacket{
-						Version:           packets.SDKVersion{1, 0, 0},
-						BuyerId:           BuyerId,
-						DatacenterId:      uint64(j),
-						SessionId:         SessionId,
-						SliceNumber:       10,
-						SessionDataBytes:  int32(len(sessionData_Output)),
-						ClientAddress:     clientAddress,
-						ServerAddress:     serverAddress,
-						HasNearRelayPings: true,
+						Version:             packets.SDKVersion{1, 0, 0},
+						BuyerId:             BuyerId,
+						DatacenterId:        uint64(j),
+						SessionId:           SessionId,
+						SliceNumber:         10,
+						SessionDataBytes:    int32(len(sessionData_Output)),
+						ClientAddress:       clientAddress,
+						ServerAddress:       serverAddress,
+						HasClientRelayPings: true,
+						HasServerRelayPings: true,
 					}
 
 					if (j % 10) == 0 {
@@ -111,10 +112,16 @@ func RunSessionUpdateThreads(threadCount int, updateChannels []chan *Update) {
 					copy(packet.ClientRoutePublicKey[:], ClientPublicKey)
 					copy(packet.ServerRoutePublicKey[:], ServerPublicKey)
 
-					packet.NumNearRelays = constants.MaxNearRelays
-					for i := 0; i < constants.MaxNearRelays; i++ {
-						packet.NearRelayIds[i] = uint64((j + i) % NumRelays)
-						packet.NearRelayRTT[i] = int32(common.RandomInt(0, 10))
+					packet.NumClientRelays = constants.MaxClientRelays
+					for i := 0; i < constants.MaxClientRelays; i++ {
+						packet.ClientRelayIds[i] = uint64((j + i) % NumRelays)
+						packet.ClientRelayRTT[i] = int32(common.RandomInt(0, 10))
+					}
+
+					packet.NumServerRelays = constants.MaxServerRelays
+					for i := 0; i < constants.MaxServerRelays; i++ {
+						packet.ServerRelayIds[i] = uint64((j + i) % NumRelays)
+						packet.ServerRelayRTT[i] = int32(common.RandomInt(0, 1))
 					}
 
 					packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, packets.SDK_MaxPacketBytes, &serverAddress, &ServerBackendAddress, BuyerPrivateKey[:])
@@ -247,6 +254,7 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 	handler.RouteMatrix = &routeMatrix
 	handler.ServerBackendAddress = ServerBackendAddress
 	handler.ServerBackendPublicKey = ServerBackendPublicKey
+	handler.RelayBackendPublicKey = RelayBackendPublicKey
 	handler.RelayBackendPrivateKey = RelayBackendPrivateKey
 	handler.ServerBackendPrivateKey = ServerBackendPrivateKey
 	handler.MaxPacketSize = packets.SDK_MaxPacketBytes

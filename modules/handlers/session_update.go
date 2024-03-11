@@ -452,7 +452,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 	sourceRelayJitter := state.Request.ClientRelayJitter[:numClientRelays]
 	sourceRelayPacketLoss := state.Request.ClientRelayPacketLoss[:numClientRelays]
 
-	if ( state.Request.ClientRelayPingsHaveChanged ) {
+	if state.Request.ClientRelayPingsHaveChanged {
 
 		directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
 		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
@@ -531,7 +531,7 @@ func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
 	destRelayJitter := state.Request.ServerRelayJitter[:numServerRelays]
 	destRelayPacketLoss := state.Request.ServerRelayPacketLoss[:numServerRelays]
 
-	if ( state.Request.ServerRelayPingsHaveChanged ) {
+	if state.Request.ServerRelayPingsHaveChanged {
 
 		core.FilterDestRelays(
 			destRelayIds,
@@ -911,16 +911,33 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 func SessionUpdate_Post(state *SessionUpdateState) {
 
 	/*
-		Logic for sending client relay messages to portal
-		This is somewhat complicated because at scale we usually only send next sessions to the portal
-		Thus, we send it right away if that flag is off, OR, if we are at scale, we must remember to send it only once
-		the first slice we are on next.
+		Logic for sending client relays to portal.
+
+		This is somewhat complicated because we only want to send client relays when they change (once every 5-10 minutes)
+		and at scale we usually only send accelerated sessions to the portal, thus if we are going direct, and we see new
+		client relay data, we have to remember to send the client relays to the portal later on, when the session is accelerated.
 	*/
 
-	shouldSendClientRelays := state.Input.SliceNumber >= 1 && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next)
+	if state.Request.ClientRelayPingsHaveChanged {
+		state.Output.ShouldSendClientRelaysToPortal = true
+	}
 
-	if !state.Input.SentClientRelaysToPortal && shouldSendClientRelays {
+	if !state.Input.SentClientRelaysToPortal && state.Output.ShouldSendClientRelaysToPortal && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next) {
 		state.Output.SentClientRelaysToPortal = true
+	}
+
+	/*
+		Logic for sending server relays to portal.
+
+		Same complications here as per-client relays...
+	*/
+
+	if state.Request.ServerRelayPingsHaveChanged {
+		state.Output.ShouldSendServerRelaysToPortal = true
+	}
+
+	if !state.Input.SentServerRelaysToPortal && state.Output.ShouldSendServerRelaysToPortal && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next) {
+		state.Output.SentServerRelaysToPortal = true
 	}
 
 	/*

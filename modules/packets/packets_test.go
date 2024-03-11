@@ -193,10 +193,10 @@ func GenerateRandomClientRelayResponsePacket() packets.SDK_ClientRelayResponsePa
 func GenerateRandomServerRelayRequestPacket() packets.SDK_ServerRelayRequestPacket {
 
 	packet := packets.SDK_ServerRelayRequestPacket{
-		Version:       packets.SDKVersion{1, 0, 0},
-		BuyerId:       rand.Uint64(),
-		RequestId:     rand.Uint64(),
-		DatacenterId:  rand.Uint64(),
+		Version:      packets.SDKVersion{1, 0, 0},
+		BuyerId:      rand.Uint64(),
+		RequestId:    rand.Uint64(),
+		DatacenterId: rand.Uint64(),
 	}
 
 	return packet

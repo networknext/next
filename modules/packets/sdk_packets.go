@@ -443,30 +443,32 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 func GenerateRandomSessionData() SDK_SessionData {
 
 	sessionData := SDK_SessionData{
-		Version:                       uint32(common.RandomInt(SDK_SessionDataVersion_Min, SDK_SessionDataVersion_Max)),
-		SessionId:                     rand.Uint64(),
-		SessionVersion:                uint32(common.RandomInt(0, 255)),
-		SliceNumber:                   rand.Uint32(),
-		ExpireTimestamp:               rand.Uint64(),
-		RouteChanged:                  common.RandomBool(),
-		RouteNumRelays:                int32(common.RandomInt(0, SDK_MaxRelaysPerRoute)),
-		RouteCost:                     int32(common.RandomInt(0, SDK_InvalidRouteValue)),
-		PrevPacketsSentClientToServer: rand.Uint64(),
-		PrevPacketsSentServerToClient: rand.Uint64(),
-		PrevPacketsLostClientToServer: rand.Uint64(),
-		PrevPacketsLostServerToClient: rand.Uint64(),
-		WriteSummary:                  common.RandomBool(),
-		WroteSummary:                  common.RandomBool(),
-		SentClientRelaysToPortal:      common.RandomBool(),
-		SentServerRelaysToPortal:      common.RandomBool(),
-		NextEnvelopeBytesUpSum:        rand.Uint64(),
-		NextEnvelopeBytesDownSum:      rand.Uint64(),
-		StartTimestamp:                rand.Uint64(),
-		DurationOnNext:                rand.Uint32(),
-		Error:                         rand.Uint64(),
-		BestScore:                     uint32(common.RandomInt(0, 999)),
-		BestDirectRTT:                 uint32(common.RandomInt(0, 500)),
-		BestNextRTT:                   uint32(common.RandomInt(0, 500)),
+		Version:                        uint32(common.RandomInt(SDK_SessionDataVersion_Min, SDK_SessionDataVersion_Max)),
+		SessionId:                      rand.Uint64(),
+		SessionVersion:                 uint32(common.RandomInt(0, 255)),
+		SliceNumber:                    rand.Uint32(),
+		ExpireTimestamp:                rand.Uint64(),
+		RouteChanged:                   common.RandomBool(),
+		RouteNumRelays:                 int32(common.RandomInt(0, SDK_MaxRelaysPerRoute)),
+		RouteCost:                      int32(common.RandomInt(0, SDK_InvalidRouteValue)),
+		PrevPacketsSentClientToServer:  rand.Uint64(),
+		PrevPacketsSentServerToClient:  rand.Uint64(),
+		PrevPacketsLostClientToServer:  rand.Uint64(),
+		PrevPacketsLostServerToClient:  rand.Uint64(),
+		WriteSummary:                   common.RandomBool(),
+		WroteSummary:                   common.RandomBool(),
+		ShouldSendClientRelaysToPortal: common.RandomBool(),
+		ShouldSendServerRelaysToPortal: common.RandomBool(),
+		SentClientRelaysToPortal:       common.RandomBool(),
+		SentServerRelaysToPortal:       common.RandomBool(),
+		NextEnvelopeBytesUpSum:         rand.Uint64(),
+		NextEnvelopeBytesDownSum:       rand.Uint64(),
+		StartTimestamp:                 rand.Uint64(),
+		DurationOnNext:                 rand.Uint32(),
+		Error:                          rand.Uint64(),
+		BestScore:                      uint32(common.RandomInt(0, 999)),
+		BestDirectRTT:                  uint32(common.RandomInt(0, 500)),
+		BestNextRTT:                    uint32(common.RandomInt(0, 500)),
 	}
 
 	for i := 0; i < int(sessionData.RouteNumRelays); i++ {
@@ -575,6 +577,8 @@ type SDK_SessionData struct {
 	RouteState                          core.RouteState
 	WriteSummary                        bool
 	WroteSummary                        bool
+	ShouldSendClientRelaysToPortal      bool
+	ShouldSendServerRelaysToPortal      bool
 	SentClientRelaysToPortal            bool
 	SentServerRelaysToPortal            bool
 	PrevPacketsSentClientToServer       uint64
@@ -663,6 +667,8 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeUint64(&sessionData.PrevPacketsLostServerToClient)
 	stream.SerializeBool(&sessionData.WriteSummary)
 	stream.SerializeBool(&sessionData.WroteSummary)
+	stream.SerializeBool(&sessionData.ShouldSendClientRelaysToPortal)
+	stream.SerializeBool(&sessionData.ShouldSendServerRelaysToPortal)
 	stream.SerializeBool(&sessionData.SentClientRelaysToPortal)
 	stream.SerializeBool(&sessionData.SentServerRelaysToPortal)
 	stream.SerializeUint64(&sessionData.NextEnvelopeBytesUpSum)

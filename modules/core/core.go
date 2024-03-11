@@ -2127,7 +2127,7 @@ func GetAddressData(address *net.UDPAddr) []byte {
 }
 
 func GeneratePingToken(expireTimestamp uint64, from *net.UDPAddr, to *net.UDPAddr, key []byte, output []byte) {
-	data := [32+20]byte{}
+	data := [32 + 20]byte{}
 	index := 0
 	copy(data[index:], key)
 	index += 32
