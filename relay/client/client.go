@@ -1595,13 +1595,12 @@ func main() {
 	// TestRelayPingPacket(clientAddress, serverAddress)
 	// TestClientPingPacket(clientAddress, serverAddress)
 	// TestServerPingPacket(clientAddress, serverAddress)
-	TestRouteRequestPacket(clientAddress, serverAddress, secretKey)
+	// TestRouteRequestPacket(clientAddress, serverAddress, secretKey)
 	// TestContinueRequestPacket(clientAddress, serverAddress, secretKey)
-
 	// TestClientToServerPacket(clientAddress, serverAddress, secretKey)
 	// TestServerToClientPacket(clientAddress, serverAddress, secretKey)
 	// TestSessionPingPacket(clientAddress, serverAddress, secretKey)
 	// TestSessionPongPacket(clientAddress, serverAddress, secretKey)
 	// TestRouteResponsePacket(clientAddress, serverAddress, secretKey)
-	// TestContinueResponsePacket(clientAddress, serverAddress, secretKey)
+	TestContinueResponsePacket(clientAddress, serverAddress, secretKey)
 }
