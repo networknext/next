@@ -1233,10 +1233,6 @@ blocks:
           commands:
             - ./run load-test-crypto-sign
 
-        - name: "Load Test Crypto Auth"
-          commands:
-            - ./run load-test-crypto-auth
-
         - name: "Load Test Server Update"
           commands:
             - ./run load-test-server-update

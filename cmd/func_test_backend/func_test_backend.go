@@ -812,6 +812,8 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("DATABASE_PATH=%s", databaseFilename))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "HTTP_PORT=30001")
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "INITIAL_DELAY=5")
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
 
 	var relay_backend_output bytes.Buffer
 	relay_backend_cmd.Stdout = &relay_backend_output
