@@ -6439,7 +6439,7 @@ int main( int argc, const char ** argv )
 
         memcpy( message->relay_secret_key, relay_secret_key, RELAY_SECRET_KEY_BYTES );
 
-        memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
+        memcpy( message->ping_key, relay_ping_key, RELAY_PING_KEY_BYTES );
 
         relay_platform_mutex_acquire( main->ping_control_mutex );
         relay_queue_push( main->ping_control_queue, message );

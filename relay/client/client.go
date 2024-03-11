@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const MaxPacketBytes = 1384
+
 const RouteTokenBytes = 71
 const EncryptedRouteTokenBytes = 111
 
@@ -466,7 +468,7 @@ func TestClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -580,7 +582,7 @@ func TestServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -679,7 +681,7 @@ func TestRelayPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) {
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -782,7 +784,7 @@ func TestClientPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) 
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -881,7 +883,7 @@ func TestServerPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) 
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -995,7 +997,7 @@ func TestSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -1109,7 +1111,7 @@ func TestSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -1220,7 +1222,7 @@ func TestRouteRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -1329,7 +1331,7 @@ func TestContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -1443,7 +1445,7 @@ func TestRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -1557,7 +1559,7 @@ func TestContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 	for {
 
-		buffer := make([]byte, constants.MaxPacketBytes)
+		buffer := make([]byte, MaxPacketBytes)
 
 		size, from, err := conn.ReadFromUDP(buffer)
 		if err != nil {
