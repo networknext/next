@@ -1315,6 +1315,9 @@ func test_connect_to_another_server_next() {
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
+	// IMPORTANT: give the relays time initialize with the backend
+	time.Sleep(time.Second*10)
+
 	serverConfig1 := &ServerConfig{}
 	serverConfig1.buyer_private_key = TestBuyerPrivateKey
 	server_1_cmd, _ := server(serverConfig1)
