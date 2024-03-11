@@ -428,60 +428,65 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating client relay stats")
+		core.Debug("analysis only, not updating client relays")
 		state.NotUpdatingClientRelaysAnalysisOnly = true
 		return false
 	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
-		core.Debug("datacenter not enabled, not updating client relay stats")
+		core.Debug("datacenter not enabled, not updating client relays")
 		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
 		return false
 	}
 
 	/*
-		Filter source relays and get them in a form relative to the current route matrix
+		If the client relays have changed, filter them to work out which ones need to be excluded moving forward.
+
+		These client relays will be excluded from routing, until the client relays change again.
 	*/
 
-	directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
-	directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
-	directPacketLoss := state.Request.DirectMaxPacketLossSeen
+	numClientRelays := state.Request.NumClientRelays
 
-	sourceRelayIds := state.Request.ClientRelayIds[:state.Request.NumClientRelays]
-	sourceRelayLatency := state.Request.ClientRelayRTT[:state.Request.NumClientRelays]
-	sourceRelayJitter := state.Request.ClientRelayJitter[:state.Request.NumClientRelays]
-	sourceRelayPacketLoss := state.Request.ClientRelayPacketLoss[:state.Request.NumClientRelays]
+	sourceRelayIds := state.Request.ClientRelayIds[:numClientRelays]
+	sourceRelayLatency := state.Request.ClientRelayRTT[:numClientRelays]
+	sourceRelayJitter := state.Request.ClientRelayJitter[:numClientRelays]
+	sourceRelayPacketLoss := state.Request.ClientRelayPacketLoss[:numClientRelays]
 
-	firstUpdate := state.Request.SliceNumber == 1
+	if ( state.Request.ClientRelayPingsHaveChanged ) {
 
-	core.FilterSourceRelays(state.RouteMatrix.RelayIdToIndex,
-		directLatency,
-		directJitter,
-		directPacketLoss,
-		sourceRelayIds,
-		sourceRelayLatency,
-		sourceRelayJitter,
-		sourceRelayPacketLoss,
-		firstUpdate,
-		state.Output.ExcludeClientRelay[:])
+		directLatency := int32(math.Ceil(float64(state.Request.DirectRTT)))
+		directJitter := int32(math.Ceil(float64(state.Request.DirectJitter)))
+		directPacketLoss := state.Request.DirectMaxPacketLossSeen
 
-	filteredSourceRelayLatency := [constants.MaxClientRelays]int32{}
-
-	for i := range sourceRelayLatency {
-		if state.Output.ExcludeClientRelay[i] {
-			filteredSourceRelayLatency[i] = 255
-		} else {
-			filteredSourceRelayLatency[i] = sourceRelayLatency[i]
-		}
+		core.FilterSourceRelays(
+			directLatency,
+			directJitter,
+			directPacketLoss,
+			sourceRelayIds,
+			sourceRelayLatency,
+			sourceRelayJitter,
+			sourceRelayPacketLoss,
+			state.Output.ExcludeClientRelay[:],
+		)
 	}
 
-	outputSourceRelays := make([]int32, len(sourceRelayIds))
-	outputSourceRelayLatency := make([]int32, len(sourceRelayIds))
+	/*
+		Reframe the client relays from relay ids to relay indices relative to the current route matrix.
 
-	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, filteredSourceRelayLatency[:], outputSourceRelays, outputSourceRelayLatency)
+		The route matrix and the position of relays in it can change over time, thus we need to perform this step each update.
+
+		At the same time we also set any source relays that are excluded, or do not exist in the route matrix to have RTT = 255.
+
+		(RTT 255 from this point forward means "do not route through this source relay")
+	*/
+
+	outputSourceRelays := make([]int32, numClientRelays)
+	outputSourceRelayRTT := make([]int32, numClientRelays)
+
+	core.ReframeSourceRelays(state.RouteMatrix.RelayIdToIndex, sourceRelayIds, sourceRelayLatency[:], state.Output.ExcludeClientRelay[:], outputSourceRelays, outputSourceRelayRTT)
 
 	state.SourceRelays = outputSourceRelays
-	state.SourceRelayRTT = outputSourceRelayLatency
+	state.SourceRelayRTT = outputSourceRelayRTT
 
 	return true
 }
@@ -489,29 +494,54 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
 
 	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating client relay stats")
-		state.NotUpdatingClientRelaysAnalysisOnly = true
+		core.Debug("analysis only, not updating server relay stats")
+		state.NotUpdatingServerRelaysAnalysisOnly = true
 		return false
 	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
-		core.Debug("datacenter not enabled, not updating client relay stats")
-		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
+		core.Debug("datacenter not enabled, not updating server relay stats")
+		state.NotUpdatingServerRelaysDatacenterNotEnabled = true
 		return false
 	}
 
-	// todo: instead of using dest relays directly, use server relays from the request packet and filter any that are not suitable
-
 	/*
-		Reframe dest relays to get them relative to the current route matrix.
+		If the server relays have changed, filter them to work out which ones need to be excluded moving forward.
+
+		These server relays will be excluded from routing, until the server relays change again.
 	*/
 
-	outputNumDestRelays := 0
-	outputDestRelays := make([]int32, len(state.DestRelayIds))
+	numServerRelays := state.Request.NumServerRelays
 
-	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, state.DestRelayIds, &outputNumDestRelays, outputDestRelays)
+	destRelayIds := state.Request.ServerRelayIds[:numServerRelays]
+	destRelayLatency := state.Request.ServerRelayRTT[:numServerRelays]
+	destRelayJitter := state.Request.ServerRelayJitter[:numServerRelays]
+	destRelayPacketLoss := state.Request.ServerRelayPacketLoss[:numServerRelays]
 
-	state.DestRelays = outputDestRelays[:outputNumDestRelays]
+	if ( state.Request.ServerRelayPingsHaveChanged ) {
+
+		core.FilterDestRelays(
+			destRelayIds,
+			destRelayLatency,
+			destRelayJitter,
+			destRelayPacketLoss,
+			state.Output.ExcludeServerRelay[:],
+		)
+	}
+
+	/*
+		Reframe the server relays from relay ids to relay indices relative to the current route matrix.
+
+		The route matrix and the position of relays in it can change over time, thus we need to perform this step each update.
+
+		This step also excludes dest relays that are marked to be excluded, or no longer exist in the route matrix.
+	*/
+
+	outputDestRelays := make([]int32, 0, numServerRelays)
+
+	core.ReframeDestRelays(state.RouteMatrix.RelayIdToIndex, destRelayIds, state.Output.ExcludeServerRelay[:], &outputDestRelays)
+
+	state.DestRelays = outputDestRelays
 
 	return true
 }

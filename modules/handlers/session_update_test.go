@@ -3086,6 +3086,7 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 	// setup client relays
 
 	state.Request.NumClientRelays = 3
+	state.Request.ClientRelayPingsHaveChanged = true
 	copy(state.Request.ClientRelayIds[:], []uint64{1, 2, 3})
 	copy(state.Request.ClientRelayRTT[:], []int32{10, 20, 30})
 	copy(state.Request.ClientRelayJitter[:], []int32{0, 0, 0})

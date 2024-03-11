@@ -1213,22 +1213,88 @@ func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_r
 	return true
 }
 
-func ReframeDestRelays(relayIdToIndex map[uint64]int32, destRelayId []uint64, out_numDestRelays *int, out_destRelays []int32) {
-	numDestRelays := 0
-	for i := range destRelayId {
-		destRelayIndex, ok := relayIdToIndex[destRelayId[i]]
-		if !ok {
+// -------------------------------------------
+
+func FilterSourceRelays(directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, filterSourceRelay []bool) {
+
+	// if direct has high jitter, and *most* source relays have high jitter
+	// it's a temporary jitter spike on the edge, and we should ignore it.
+
+	directHasHighJitter := directJitter >= 10.0
+
+	numRelaysWithHighJitter := 0
+	for i := range sourceRelayJitter {
+		if sourceRelayJitter[i] >= 10.0 {
+			numRelaysWithHighJitter++
+		}
+	}
+
+	if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId)*2.0/3.0 {
+		for i := range sourceRelayJitter {
+			sourceRelayJitter[i] = 0.0
+		}
+	}
+
+	// if direct has high packet loss, and *most* source relays have high packet loss
+	// it's a temporary packet loss spike on the edge, and we should ignore it.
+
+	directHasHighPacketLoss := directPacketLoss >= 1.0
+
+	numRelaysWithHighPacketLoss := 0
+	for i := range sourceRelayPacketLoss {
+		if sourceRelayPacketLoss[i] >= 1.0 {
+			numRelaysWithHighPacketLoss++
+		}
+	}
+
+	if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId)*2.0/3.0 {
+		for i := range sourceRelayPacketLoss {
+			sourceRelayPacketLoss[i] = 0.0
+		}
+	}
+
+	// exclude relays with significantly higher jitter than direct
+
+	for i := range sourceRelayJitter {
+		if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
+			filterSourceRelay[i] = true
+		}
+	}
+
+	// exclude relays with higher packet loss than direct
+
+	for i := range sourceRelayPacketLoss {
+		if sourceRelayPacketLoss[i] > directPacketLoss {
+			filterSourceRelay[i] = true
+		}
+	}
+
+	// exclude unsuitable source relays
+
+	for i := range sourceRelayLatency {
+
+		// IMPORTANT: In the past we've had problems where relays with no pings back (100% PL) reported as 0ms RTT
+		// This no longer occurs but it makes me very nervous, so we have this check here historically just in case
+		// Any latency with real RTT runs through ceil and thus must have an RTT value of 1ms or greater.
+
+		// you say your latency is 0ms? I don't believe you!
+		if sourceRelayLatency[i] <= 0 {
+			filterSourceRelay[i] = true
 			continue
 		}
-		out_destRelays[numDestRelays] = destRelayIndex
-		numDestRelays++
 	}
-	*out_numDestRelays = numDestRelays
 }
 
-func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
+func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64, sourceRelayLatency []int32, excludeSourceRelay []bool, out_sourceRelays []int32, out_sourceRelayLatency []int32) {
 
 	for i := range sourceRelayId {
+
+		// any excluded relay cannot be routed through
+		if excludeSourceRelay[i] {
+			out_sourceRelayLatency[i] = 255
+			out_sourceRelays[i] = -1
+			continue
+		}
 
 		// you say your latency is 0ms? I don't believe you!
 		if sourceRelayLatency[i] <= 0 {
@@ -1257,72 +1323,53 @@ func ReframeSourceRelays(relayIdToIndex map[uint64]int32, sourceRelayId []uint64
 	}
 }
 
-func FilterSourceRelays(relayIdToIndex map[uint64]int32, directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, firstTime bool, filterSourceRelay []bool) {
+// ----------------------------------------------
 
-	if firstTime {
+func FilterDestRelays(destRelayId []uint64, destRelayLatency []int32, destRelayJitter []int32, destRelayPacketLoss []float32, filterDestRelay []bool) {
 
-		// if direct has high jitter, and *most* source relays have high jitter
-		// it's a temporary jitter spike on the edge, and we should ignore it.
+	// exclude dest relays with high latency
+	// IMPORTANT: dest relays should be in the same physical datacenter as the game server
+	// if the dest relay has more than 2ms of round trip time, it's obviously not!
 
-		directHasHighJitter := directJitter >= 10.0
-
-		numRelaysWithHighJitter := 0
-		for i := range sourceRelayJitter {
-			if sourceRelayJitter[i] >= 10.0 {
-				numRelaysWithHighJitter++
-			}
-		}
-
-		if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId)*2.0/3.0 {
-			for i := range sourceRelayJitter {
-				sourceRelayJitter[i] = 0.0
-			}
-		}
-
-		// if direct has high packet loss, and *most* source relays have high packet loss
-		// it's a temporary packet loss spike on the edge, and we should ignore it.
-
-		directHasHighPacketLoss := directPacketLoss >= 1.0
-
-		numRelaysWithHighPacketLoss := 0
-		for i := range sourceRelayPacketLoss {
-			if sourceRelayPacketLoss[i] >= 1.0 {
-				numRelaysWithHighPacketLoss++
-			}
-		}
-
-		if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId)*2.0/3.0 {
-			for i := range sourceRelayPacketLoss {
-				sourceRelayPacketLoss[i] = 0.0
-			}
-		}
-
-		// exclude relays with significantly higher jitter than direct
-
-		for i := range sourceRelayJitter {
-			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
-				filterSourceRelay[i] = true
-			}
-		}
-
-		// exclude relays with higher packet loss than direct
-
-		for i := range sourceRelayPacketLoss {
-			if sourceRelayPacketLoss[i] > directPacketLoss {
-				filterSourceRelay[i] = true
-			}
+	for i := range destRelayLatency {
+		if destRelayLatency[i] > 2 {
+			filterDestRelay[i] = true
 		}
 	}
 
-	// exclude unsuitable source relays
+	// exclude dest relays with high jitter
 
-	for i := range sourceRelayLatency {
+	for i := range destRelayJitter {
+		if destRelayJitter[i] > 10 {
+			filterDestRelay[i] = true
+		}
+	}
 
-		// you say your latency is 0ms? I don't believe you!
-		if sourceRelayLatency[i] <= 0 {
-			filterSourceRelay[i] = true
+	// exclude dest relays with packet loss
+
+	for i := range destRelayPacketLoss {
+		if destRelayPacketLoss[i] > 0.1 {
+			filterDestRelay[i] = true
+		}
+	}
+}
+
+func ReframeDestRelays(relayIdToIndex map[uint64]int32, destRelayId []uint64, excludeDestRelay []bool, out_destRelays *[]int32) {
+
+	for i := range destRelayId {
+
+		// any excluded relay cannot be routed through
+		if excludeDestRelay[i] {
 			continue
 		}
+
+		// any dest relay that no longer exists cannot be routed through
+		relayIndex, ok := relayIdToIndex[destRelayId[i]]
+		if !ok {
+			continue
+		}
+
+		*out_destRelays = append(*out_destRelays, relayIndex)
 	}
 }
 
