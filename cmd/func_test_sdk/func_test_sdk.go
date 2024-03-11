@@ -1638,12 +1638,14 @@ func test_packet_loss_next() {
 
 	fmt.Printf("test_packet_loss_next\n")
 
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 60.0
-	clientConfig.buyer_public_key = TestBuyerPublicKey
-	clientConfig.packet_loss = true
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
 
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	// IMPORTANT: give the relays time to initialize with the backend
+	time.Sleep(time.Second*10)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.buyer_private_key = TestBuyerPrivateKey
@@ -1651,11 +1653,15 @@ func test_packet_loss_next() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	relay_1_cmd, _ := relay("relay.1", 2000)
-	relay_2_cmd, _ := relay("relay.2", 2001)
-	relay_3_cmd, _ := relay("relay.3", 2002)
+	// IMPORTANT: give the server time to ping server relays and get ready
+	time.Sleep(time.Second*10)
 
-	backend_cmd, backend_stdout := backend("DEFAULT")
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.buyer_public_key = TestBuyerPublicKey
+	clientConfig.packet_loss = true
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	client_cmd.Wait()
 
