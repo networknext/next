@@ -2535,6 +2535,10 @@ void relay_read_route_token( relay_route_token_t * token, const uint8_t * buffer
     token->next_internal = relay_read_uint8( &buffer );
     token->prev_internal = relay_read_uint8( &buffer );
 
+    // IMPORTANT: ports are stored in big endian order because it works better with xdp relay
+    token->next_address.port = relay_ntohs( token->next_address.port );
+    token->prev_address.port = relay_ntohs( token->prev_address.port );
+
     assert( buffer - start == RELAY_ROUTE_TOKEN_BYTES );
 }
 

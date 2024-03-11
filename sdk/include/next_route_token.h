@@ -24,6 +24,7 @@
 #define NEXT_ROUTE_TOKEN_H
 
 #include "next.h"
+#include "next_util.h"
 #include "next_crypto.h"
 #include "next_read_write.h"
 
@@ -65,8 +66,8 @@ inline void next_read_route_token( next_route_token_t * token, const uint8_t * b
 
     // IMPORTANT: ports are stored in big endian order because it works better with xdp relay
 #if NEXT_LITTLE_ENDIAN
-    token->next_port = next_bswap( token->next_port );
-    token->prev_port = next_bswap( token->prev_port );
+    token->next_port = next::bswap( token->next_port );
+    token->prev_port = next::bswap( token->prev_port );
 #endif // #if NEXT_LITTLE_ENDIAN
 
     next_assert( p - buffer == NEXT_ROUTE_TOKEN_BYTES );
