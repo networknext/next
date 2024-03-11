@@ -1309,14 +1309,6 @@ func test_connect_to_another_server_next() {
 
 	fmt.Printf("test_connect_to_another_server_next\n")
 
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 60.0
-	clientConfig.buyer_public_key = TestBuyerPublicKey
-	clientConfig.connect_time = 30.0
-	clientConfig.connect_address = "127.0.0.1:32203"
-
-	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
 	serverConfig1 := &ServerConfig{}
 	serverConfig1.buyer_private_key = TestBuyerPrivateKey
 	server_1_cmd, _ := server(serverConfig1)
@@ -1327,11 +1319,22 @@ func test_connect_to_another_server_next() {
 	serverConfig2.server_port = 32203
 	server_2_cmd, server_stdout := server(serverConfig2)
 
+	// IMPORTANT: give the server time to ping server relays and get ready
+	time.Sleep(time.Second*10)
+
 	relay_1_cmd, _ := relay("relay.1", 2000)
 	relay_2_cmd, _ := relay("relay.2", 2001)
 	relay_3_cmd, _ := relay("relay.3", 2002)
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 60.0
+	clientConfig.buyer_public_key = TestBuyerPublicKey
+	clientConfig.connect_time = 30.0
+	clientConfig.connect_address = "127.0.0.1:32203"
+
+	client_cmd, client_stdout, client_stderr := client(clientConfig)
 
 	client_cmd.Wait()
 
