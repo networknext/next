@@ -2446,16 +2446,33 @@ func test_server_ready_fallback_to_direct() {
 
 	fmt.Printf("test_server_ready_fallback_to_direct\n")
 
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
+
+	backend_cmd, _ := backend("DEFAULT")
+
+	// IMPORTANT: give the relays time to initialize with the backend
+	time.Sleep(time.Second*10)
+
 	serverConfig := &ServerConfig{}
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
+	serverConfig.buyer_private_key = "aosenuthoasnuthaosnh"
 
 	server_cmd, server_stdout := server(serverConfig)
 
 	time.Sleep(time.Second * 15)
 
 	server_cmd.Process.Signal(os.Interrupt)
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_1_cmd.Process.Signal(os.Interrupt)
+	relay_2_cmd.Process.Signal(os.Interrupt)
+	relay_3_cmd.Process.Signal(os.Interrupt)
 
 	server_cmd.Wait()
+	backend_cmd.Wait()
+	relay_1_cmd.Wait()
+	relay_2_cmd.Wait()
+	relay_3_cmd.Wait()
 
 	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
