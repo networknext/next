@@ -412,8 +412,7 @@ func RelayUpdateHandler(writer http.ResponseWriter, request *http.Request) {
 	copy(responsePacket.ExpectedRelayPublicKey[:], TestRelayPublicKey)
 	copy(responsePacket.ExpectedRelayBackendPublicKey[:], TestRelayBackendPublicKey)
 
-	// todo: generate test secret key from known keypairs, store it elsewhere (not calculated here), and pass down
-	testSecretKey := make([]byte, 32)
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(TestRelayPublicKey, TestRelayPrivateKey, TestRelayBackendPublicKey)
 
 	token := core.RouteToken{}
 	token.NextAddress = net.UDPAddr{IP: net.IPv4(0, 0, 0, 0), Port: 10000}

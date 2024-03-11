@@ -4625,7 +4625,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( relay->control.current_timestamp == 0 )
         {
-            relay_printf( "not ready" );
+            relay_printf( "relay is not ready yet" );
             continue;
         }
 
