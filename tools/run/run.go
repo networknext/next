@@ -187,8 +187,6 @@ func main() {
 		load_test_crypto_box()
 	} else if command == "load-test-crypto-sign" {
 		load_test_crypto_sign()
-	} else if command == "load-test-crypto-auth" {
-		load_test_crypto_sign()
 	} else if command == "load-test-server-update" {
 		load_test_server_update()
 	} else if command == "load-test-session-update" {
