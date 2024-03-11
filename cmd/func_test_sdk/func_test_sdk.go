@@ -1181,6 +1181,20 @@ func test_reconnect_next() {
 
 	fmt.Printf("test_reconnect_next\n")
 
+	relay_1_cmd, _ := relay("relay.1", 2000)
+	relay_2_cmd, _ := relay("relay.2", 2001)
+	relay_3_cmd, _ := relay("relay.3", 2002)
+
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	serverConfig := &ServerConfig{}
+	serverConfig.buyer_private_key = TestBuyerPrivateKey
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	// IMPORTANT: give the server time to ping server relays and get ready
+	time.Sleep(time.Second*10)
+
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
 	clientConfig.buyer_public_key = TestBuyerPublicKey
@@ -1188,17 +1202,6 @@ func test_reconnect_next() {
 	clientConfig.connect_address = "127.0.0.1:32202"
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
-
-	serverConfig := &ServerConfig{}
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	relay_1_cmd, _ := relay("relay.1", 2000)
-	relay_2_cmd, _ := relay("relay.2", 2001)
-	relay_3_cmd, _ := relay("relay.3", 2002)
-
-	backend_cmd, backend_stdout := backend("DEFAULT")
 
 	client_cmd.Wait()
 
