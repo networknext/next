@@ -753,10 +753,10 @@ func WriteRouteToken(data *RouteToken, buffer []byte) {
 	copy(buffer[index:], GetAddressData(&data.PrevAddress))
 	index += 4
 
-	binary.LittleEndian.PutUint16(buffer[index:], uint16(data.NextAddress.Port))
+	binary.BigEndian.PutUint16(buffer[index:], uint16(data.NextAddress.Port))
 	index += 2
 
-	binary.LittleEndian.PutUint16(buffer[index:], uint16(data.PrevAddress.Port))
+	binary.BigEndian.PutUint16(buffer[index:], uint16(data.PrevAddress.Port))
 	index += 2
 
 	buffer[index] = data.SessionVersion
@@ -794,10 +794,10 @@ func ReadRouteToken(token *RouteToken, buffer []byte) {
 	prevAddress := binary.LittleEndian.Uint32(buffer[index:])
 	index += 4
 
-	nextPort := binary.LittleEndian.Uint16(buffer[index:])
+	nextPort := binary.BigEndian.Uint16(buffer[index:])
 	index += 2
 
-	prevPort := binary.LittleEndian.Uint16(buffer[index:])
+	prevPort := binary.BigEndian.Uint16(buffer[index:])
 	index += 2
 
 	token.SessionVersion = buffer[index]

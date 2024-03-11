@@ -36,8 +36,8 @@ struct next_route_token_t
     int kbps_down;
     uint32_t next_address;              // big endian
     uint32_t prev_address;              // big endian
-    uint16_t next_port;
-    uint16_t prev_port;    
+    uint16_t next_port;                 // big endian
+    uint16_t prev_port;                 // big endian
     uint8_t session_version;
     uint8_t next_internal;
     uint8_t prev_internal;
@@ -62,6 +62,12 @@ inline void next_read_route_token( next_route_token_t * token, const uint8_t * b
     token->session_version = next_read_uint8( &p );
     token->next_internal = next_read_uint8( &p );
     token->prev_internal = next_read_uint8( &p );
+
+    // IMPORTANT: ports are stored in big endian order because it works better with xdp relay
+#if NEXT_LITTLE_ENDIAN
+    token->next_port = next_bswap( token->next_port );
+    token->prev_port = next_bswap( token->prev_port );
+#endif // #if NEXT_LITTLE_ENDIAN
 
     next_assert( p - buffer == NEXT_ROUTE_TOKEN_BYTES );
 }
