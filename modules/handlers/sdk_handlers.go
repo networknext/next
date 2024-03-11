@@ -632,14 +632,14 @@ func SDK_ProcessClientRelayRequestPacket(handler *SDK_Handler, conn *net.UDPConn
 	responsePacket.NumClientRelays = int32(numClientRelays)
 	responsePacket.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 
-	fromWithoutPort := *from
-	fromWithoutPort.Port = 0
+	clientAddressWithoutPort := requestPacket.ClientAddress
+	clientAddressWithoutPort.Port = 0
 
 	for i := 0; i < numClientRelays; i++ {
 		responsePacket.ClientRelayIds[i] = clientRelayIds[i]
 		responsePacket.ClientRelayAddresses[i] = clientRelayAddresses[i]
 
-		core.GeneratePingToken(responsePacket.ExpireTimestamp, &fromWithoutPort, &responsePacket.ClientRelayAddresses[i], handler.PingKey, responsePacket.ClientRelayPingTokens[i][:])
+		core.GeneratePingToken(responsePacket.ExpireTimestamp, &clientAddressWithoutPort, &responsePacket.ClientRelayAddresses[i], handler.PingKey, responsePacket.ClientRelayPingTokens[i][:])
 	}
 
 	SDK_SendResponsePacket(handler, conn, from, packets.SDK_CLIENT_RELAY_RESPONSE_PACKET, responsePacket)

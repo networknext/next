@@ -45,6 +45,7 @@ var TestRelayBackendPublicKey = Base64String("iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjx
 var TestRelayBackendPrivateKey = Base64String("lcLUfxZEhVLWrFL5FDUhCpS4a8hYzXtI5MQBqMXda5k=")
 var TestServerBackendPublicKey = Base64String("PHVHyBpounVY8+IJas6HWBTwDeDiZ8xfLFfLOkNUWK4=")
 var TestServerBackendPrivateKey = Base64String("uDGCOoOb4vk9/9e+uMbfyz+VF2GOBC21Xli3L88GGW48dUfIGmi6dVjz4glqzodYFPAN4OJnzF8sV8s6Q1RYrg==")
+var TestPingKey = Base64String("IFPpsoV9YTDtC3F4RXLZTJ6/lRqUikz2ewLonnS/26Y=") // todo: "next keygen" needs to be updated to rewrite this line
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000
@@ -590,7 +591,23 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		ProcessSessionUpdateRequestPacket(conn, from, &packet)
 		break
 
-	// todo: func backend needs implementation for client relay request, server relay request
+	case packets.SDK_CLIENT_RELAY_REQUEST_PACKET:
+		packet := packets.SDK_ClientRelayRequestPacket{}
+		if err := packets.ReadPacket(packetData, &packet); err != nil {
+			core.Error("could not read client relay request packet from %s: %v", from.String(), err)
+			return
+		}
+		ProcessClientRelayRequestPacket(conn, from, &packet)
+		break
+
+	case packets.SDK_SERVER_RELAY_REQUEST_PACKET:
+		packet := packets.SDK_ServerRelayRequestPacket{}
+		if err := packets.ReadPacket(packetData, &packet); err != nil {
+			core.Error("could not read server relay request packet from %s: %v", from.String(), err)
+			return
+		}
+		ProcessServerRelayRequestPacket(conn, from, &packet)
+		break
 
 	default:
 		panic("unknown packet type")
@@ -636,6 +653,70 @@ func ProcessServerUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requ
 	responsePacket.UpcomingMagic, responsePacket.CurrentMagic, responsePacket.PreviousMagic = GetMagic()
 
 	SendResponsePacket(conn, from, packets.SDK_SERVER_UPDATE_RESPONSE_PACKET, responsePacket)
+}
+
+func ProcessClientRelayRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ClientRelayRequestPacket) {
+
+	fmt.Printf("client relay request from %s\n", from.String())
+
+	relayIds, relayAddresses := backend.GetRelays()
+
+	numRelays := len(relayIds)
+	if numRelays > constants.MaxClientRelays {
+		numRelays = constants.MaxClientRelays
+	}
+
+	relayIds = relayIds[:numRelays]
+	relayAddresses = relayAddresses[:numRelays]
+
+	responsePacket := &packets.SDK_ClientRelayResponsePacket{
+		RequestId:       requestPacket.RequestId,
+		ClientAddress:   requestPacket.ClientAddress,
+		Latitude: 		  41, // iowa
+		Longitude: 		  -93,
+		NumClientRelays: int32(numRelays),
+		ExpireTimestamp: uint64(time.Now().Unix()) + 15,
+	}
+
+	clientAddressWithoutPort := requestPacket.ClientAddress
+	clientAddressWithoutPort.Port = 0
+
+	for i := 0; i < numRelays; i++ {
+		responsePacket.ClientRelayIds[i] = relayIds[i]
+		responsePacket.ClientRelayAddresses[i] = relayAddresses[i]
+		core.GeneratePingToken(responsePacket.ExpireTimestamp, &clientAddressWithoutPort, &responsePacket.ClientRelayAddresses[i], TestPingKey, responsePacket.ClientRelayPingTokens[i][:])
+	}
+
+	SendResponsePacket(conn, from, packets.SDK_CLIENT_RELAY_RESPONSE_PACKET, responsePacket)
+}
+
+func ProcessServerRelayRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_ServerRelayRequestPacket) {
+
+	fmt.Printf("server relay request from %s\n", from.String())
+
+	relayIds, relayAddresses := backend.GetRelays()
+
+	numRelays := len(relayIds)
+	if numRelays > constants.MaxServerRelays {
+		numRelays = constants.MaxServerRelays
+	}
+
+	relayIds = relayIds[:numRelays]
+	relayAddresses = relayAddresses[:numRelays]
+
+	responsePacket := &packets.SDK_ServerRelayResponsePacket{
+		RequestId:       requestPacket.RequestId,
+		NumServerRelays: int32(numRelays),
+		ExpireTimestamp: uint64(time.Now().Unix()) + 15,
+	}
+
+	for i := 0; i < numRelays; i++ {
+		responsePacket.ServerRelayIds[i] = relayIds[i]
+		responsePacket.ServerRelayAddresses[i] = relayAddresses[i]
+		core.GeneratePingToken(responsePacket.ExpireTimestamp, from, &responsePacket.ServerRelayAddresses[i], TestPingKey, responsePacket.ServerRelayPingTokens[i][:])
+	}
+
+	SendResponsePacket(conn, from, packets.SDK_SERVER_RELAY_RESPONSE_PACKET, responsePacket)
 }
 
 func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, requestPacket *packets.SDK_SessionUpdateRequestPacket) {
