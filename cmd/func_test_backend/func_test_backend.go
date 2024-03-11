@@ -794,9 +794,6 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("PING_KEY=%s", TestPingKey))
 
-	var relay_gateway_output bytes.Buffer
-	relay_gateway_cmd.Stdout = &relay_gateway_output
-	relay_gateway_cmd.Stderr = &relay_gateway_output
 	relay_gateway_cmd.Start()
 
 	// run the relay backend, such that it loads the temporary database file
@@ -815,26 +812,7 @@ func test_relay_backend() {
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_gateway_cmd.Env = append(relay_gateway_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
 
-	var relay_backend_output bytes.Buffer
-	relay_backend_cmd.Stdout = &relay_backend_output
-	relay_backend_cmd.Stderr = &relay_backend_output
 	relay_backend_cmd.Start()
-
-	// wait until the relay gateway and relay backend are ready to serve http
-
-	fmt.Printf("waiting until we are ready to serve http\n")
-
-	for i := 0; i < 10; i++ {
-
-		if strings.Contains(relay_gateway_output.String(), "starting http server on port 30000") &&
-			strings.Contains(relay_backend_output.String(), "starting http server on port 30001") {
-			break
-		}
-
-		time.Sleep(time.Second)
-	}
-
-	fmt.Printf("ready to serve http\n")
 
 	// hammer the relay backend with relay updates
 
@@ -1077,13 +1055,6 @@ func test_relay_backend() {
 	relay_backend_cmd.Wait()
 
 	if errorCount != 0 {
-		fmt.Printf("-----------------------------------------------\n")
-		fmt.Printf("%s", magic_backend_output.String())
-		fmt.Printf("-----------------------------------------------\n")
-		fmt.Printf("%s", relay_gateway_output.String())
-		fmt.Printf("-----------------------------------------------\n")
-		fmt.Printf("%s", relay_backend_output.String())
-		fmt.Printf("-----------------------------------------------\n")
 		panic("error count is not zero")
 	}
 
