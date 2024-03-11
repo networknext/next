@@ -920,6 +920,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Request.ClientRelayPingsHaveChanged {
 		state.Output.ShouldSendClientRelaysToPortal = true
+		state.Input.SentClientRelaysToPortal = false
+		state.Output.SentClientRelaysToPortal = false
 	}
 
 	if !state.Input.SentClientRelaysToPortal && state.Output.ShouldSendClientRelaysToPortal && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next) {
@@ -934,6 +936,8 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Request.ServerRelayPingsHaveChanged {
 		state.Output.ShouldSendServerRelaysToPortal = true
+		state.Input.SentServerRelaysToPortal = false
+		state.Output.SentServerRelaysToPortal = false
 	}
 
 	if !state.Input.SentServerRelaysToPortal && state.Output.ShouldSendServerRelaysToPortal && (!state.PortalNextSessionsOnly || state.Output.RouteState.Next) {
@@ -1209,7 +1213,7 @@ func sendPortalServerRelayUpdateMessage(state *SessionUpdateState) {
 
 func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 
-	if state.Request.SliceNumber != 1 {
+	if !state.Request.ClientRelayPingsHaveChanged {
 		return
 	}
 
@@ -1241,7 +1245,7 @@ func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 
 func sendAnalyticsServerRelayPingMessages(state *SessionUpdateState) {
 
-	if state.Request.SliceNumber != 1 {
+	if !state.Request.ServerRelayPingsHaveChanged {
 		return
 	}
 
