@@ -75,10 +75,7 @@ void server_packet_received( next_server_t * server, void * context, const next_
     next_server_send_packet( server, from, packet_data, packet_bytes );
 
     if ( !next_server_ready( server ) )
-    {
-        printf( "server is not ready\n" );
         return;
-    }
 
     if ( !no_upgrade && ( upgrade_count == 0 || ( upgrade_count > 0 && num_upgrades < upgrade_count ) ) )
     {

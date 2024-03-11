@@ -533,8 +533,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 
 	packetType := packetData[0]
 
-	if packetType != packets.SDK_SERVER_INIT_REQUEST_PACKET && packetType != packets.SDK_SERVER_UPDATE_REQUEST_PACKET && packetType != packets.SDK_SESSION_UPDATE_REQUEST_PACKET {
-		fmt.Printf("unsupported packet type %d", packetType)
+	if packetType < packets.SDK_SERVER_INIT_REQUEST_PACKET {
+		fmt.Printf("unsupported packet type %d\n", packetType)
 		return
 	}
 
@@ -589,6 +589,8 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 		}
 		ProcessSessionUpdateRequestPacket(conn, from, &packet)
 		break
+
+	// todo: func backend needs implementation for client relay request, server relay request
 
 	default:
 		panic("unknown packet type")
