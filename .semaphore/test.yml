@@ -98,6 +98,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_direct_upgraded
 
+        - name: "test_network_next_route"
+          commands:
+            - cd ./dist && ./func_test_sdk test_network_next_route
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"
