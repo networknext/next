@@ -1,5 +1,5 @@
 /*
- * Network Next Relay (reference)
+ * Network Next Reference Relay (not for production use)
  * Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
  */
 
@@ -6441,9 +6441,9 @@ int main( int argc, const char ** argv )
 
         memcpy( message->ping_key, relay_ping_key, RELAY_PING_KEY_BYTES );
 
-        relay_platform_mutex_acquire( main->ping_control_mutex );
-        relay_queue_push( main->ping_control_queue, message );
-        relay_platform_mutex_release( main->ping_control_mutex );
+        relay_platform_mutex_acquire( ping.control_mutex );
+        relay_queue_push( ping.control_queue, message );
+        relay_platform_mutex_release( ping.control_mutex );
 
         relay_platform_sleep( 1.0 );
     }
