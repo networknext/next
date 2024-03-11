@@ -2,10 +2,6 @@
    Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
-package ass
-
-// todo: disable for now
-/*
 package main
 
 import (
@@ -66,8 +62,8 @@ const BACKEND_MODE_JITTER = 12
 const BACKEND_MODE_DIRECT_STATS = 13
 const BACKEND_MODE_NEXT_STATS = 14
 const BACKEND_MODE_CLIENT_RELAY_STATS = 15
-// todo: server relay stats
-const BACKEND_MODE_ZERO_MAGIC = 16
+const BACKEND_MODE_SERVER_RELAY_STATS = 16
+const BACKEND_MODE_ZERO_MAGIC = 17
 
 type Backend struct {
 	mutex        sync.RWMutex
@@ -733,7 +729,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		}
 	}
 
-	// todo: server relays
+	if backend.mode == BACKEND_MODE_SERVER_RELAY_STATS {
+		for i := 0; i <= int(requestPacket.NumServerRelays); i++ {
+			fmt.Printf("server relay: id = %x, rtt = %d, jitter = %d, packet loss = %.2f\n", requestPacket.ServerRelayIds[i], requestPacket.ServerRelayRTT[i], requestPacket.ServerRelayJitter[i], requestPacket.ServerRelayPacketLoss[i])
+		}
+	}
 
 	// read the session data
 
@@ -884,17 +884,25 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			tokenPublicKeys[1+i] = TestRelayPublicKey
 		}
 
+		var routeSecretKeys [constants.NextMaxNodes][]byte
+		routeSecretKeys[0], _ = crypto.SecretKey_GenerateRemote(TestRelayBackendPublicKey, TestRelayBackendPrivateKey, requestPacket.ClientRoutePublicKey[:])
+		relaySecretKeys := routeSecretKeys[1 : numTokens-1]
+		for i := 0; i < numRouteRelays; i++ {
+			relaySecretKeys[i], _ = crypto.SecretKey_GenerateRemote(TestRelayBackendPublicKey, TestRelayBackendPrivateKey, TestRelayPublicKey)
+		}
+		routeSecretKeys[numTokens-1], _ = crypto.SecretKey_GenerateRemote(TestRelayBackendPublicKey, TestRelayBackendPrivateKey, requestPacket.ServerRoutePublicKey[:])
+
 		var tokenData []byte
 
 		if sameRoute {
 			tokenData = make([]byte, numTokens*packets.SDK_EncryptedContinueRouteTokenSize)
-			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), tokenPublicKeys, routerPrivateKey[:])
+			core.WriteContinueTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), int(numTokens), routeSecretKeys[:])
 			routeType = packets.SDK_RouteTypeContinue
 		} else {
 			sessionData.ExpireTimestamp += packets.SDK_SliceSeconds
 			sessionData.SessionVersion++
 			tokenData = make([]byte, numTokens*packets.SDK_EncryptedNextRouteTokenSize)
-			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenPublicAddresses, tokenHasInternalAddresses, tokenInternalAddresses, tokenInternalGroups, tokenSellers, tokenPublicKeys, routerPrivateKey[:])
+			core.WriteRouteTokens(tokenData, sessionData.ExpireTimestamp, sessionData.SessionId, uint8(sessionData.SessionVersion), 256, 256, int(numTokens), tokenPublicAddresses, tokenHasInternalAddresses, tokenInternalAddresses, tokenInternalGroups, tokenSellers, routeSecretKeys[:])
 			routeType = packets.SDK_RouteTypeNew
 		}
 
@@ -1011,4 +1019,3 @@ func main() {
 		return
 	}
 }
-*/
