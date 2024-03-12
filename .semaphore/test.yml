@@ -597,6 +597,70 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_continue_response_packet_forward_to_previous_hop
 
+  - name: "Run Functional Tests (relay) - B"
+    dependencies: ["Build Functional Tests (relay)"]
+    task:
+
+      agent:
+        machine:
+          type: e1-standard-2
+          os_image: ubuntu2004
+
+      prologue:
+        commands:
+
+            - sudo apt-get install -y libsodium-dev
+            - mkdir -p dist
+            - cd dist
+
+            - artifact pull workflow func_backend_relay
+            - artifact pull workflow func_test_relay
+            - artifact pull workflow relay-debug
+            - artifact pull workflow libnext.so
+
+            - mv func_backend_relay func_backend
+
+            - chmod +x func_backend
+            - chmod +x func_test_relay
+            - chmod +x relay-debug
+
+            - sudo mv libnext.so /usr/local/lib
+            - sudo ldconfig
+
+            - cd ~
+
+      epilogue:
+        commands:
+
+            - killall func_backend_relay || true
+            - killall relay-debug || true
+
+      jobs:
+
+        - name: "test_client_to_server_packet_too_small"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_too_small
+
+        - name: "test_client_to_server_packet_too_big"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_too_big
+
+        - name: "test_client_to_server_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_could_not_find_session
+
+        - name: "test_client_to_server_packet_already_received"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_already_received
+
+        - name: "test_client_to_server_packet_header_did_not_verify"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_header_did_not_verify
+
+        - name: "test_client_to_server_packet_forward_to_next_hop"
+          commands:
+            - cd ./dist && ./func_test_relay test_client_to_server_packet_forward_to_next_hop
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"
