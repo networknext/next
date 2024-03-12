@@ -4113,7 +4113,6 @@ func test_server_to_client_packet_forward_to_previous_hop() {
 
 // =======================================================================================================================
 
-/*
 func test_session_ping_packet_wrong_size() {
 
 	fmt.Printf("test_session_ping_packet_wrong_size\n")
@@ -4148,7 +4147,7 @@ func test_session_ping_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 13 // SESSION_PING_PACKET
+			packet[0] = SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -4208,8 +4207,8 @@ func test_session_ping_packet_could_not_find_session() {
 
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+33+8)
-			packet[0] = 13 // SESSION_PING_PACKET
+			packet := make([]byte, 18+25+8)
+			packet[0] = SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -4267,18 +4266,21 @@ func test_session_ping_packet_already_received() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	// send a route request packet to create a session on the relay
 
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -4292,8 +4294,8 @@ func test_session_ping_packet_already_received() {
 
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+33+8)
-			packet[0] = 13 // SESSION_PING_PACKET
+			packet := make([]byte, 18+25+8)
+			packet[0] = SESSION_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -4354,18 +4356,21 @@ func test_session_ping_packet_header_did_not_verify() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	// send a route request packet to create a session on the relay
 
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -4379,8 +4384,8 @@ func test_session_ping_packet_header_did_not_verify() {
 	// send a session ping packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18+33+8)
-		packet[0] = 13 // SESSION_PING_PACKET
+		packet := make([]byte, 18+25+8)
+		packet[0] = SESSION_PING_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
 		fromAddress := core.GetAddressData(&clientAddress)
@@ -4442,25 +4447,31 @@ func test_session_ping_packet_forward_to_next_hop() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	sessionId := uint64(0x12345)
+	sessionVersion := uint8(1)
+
 	sessionKey := make([]byte, crypto.Box_PrivateKeySize)
 	common.RandomBytes(sessionKey)
+
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// first send a route request packet to create the session
 	{
 		packet := make([]byte, 18+111*2)
 		common.RandomBytes(packet[:])
-		packet[0] = 9 // ROUTE_REQUEST_PACKET
+		packet[0] = ROUTE_REQUEST_PACKET
 		token := core.RouteToken{}
 		token.SessionId = sessionId
+		token.SessionVersion = sessionVersion
 		token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 		token.NextAddress = clientAddress
 		token.PrevAddress = clientAddress
 		copy(token.SessionPrivateKey[:], sessionKey)
-		core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+		core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 		var magic [constants.MagicBytes]byte
 		fromAddress := core.GetAddressData(&clientAddress)
 		toAddress := core.GetAddressData(&serverAddress)
@@ -4481,7 +4492,7 @@ func test_session_ping_packet_forward_to_next_hop() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18+33+8 && receiveBuffer[0] == 13 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+25+8 && receiveBuffer[0] == SESSION_PING_PACKET && from.String() == serverAddress.String() {
 				receivedSessionPingPacket = true
 				break
 			}
@@ -4491,45 +4502,24 @@ func test_session_ping_packet_forward_to_next_hop() {
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 
-			packet := make([]byte, 18+33+8)
+			packet := make([]byte, 18+25+8)
 
-			sequence := uint64(1)
+			sequenceNumber := uint64(i*1000+j)
 
-			packet[0] = 13 // SESSION_PING_PACKET
-			binary.LittleEndian.PutUint64(packet[18:], sequence)
+			packet[0] = SESSION_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[18:], sequenceNumber)
 			binary.LittleEndian.PutUint64(packet[18+8:], sessionId)
+			packet[18+8+8] = sessionVersion
 
-			nonce := [12]byte{}
-			binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
-			binary.LittleEndian.PutUint64(nonce[4:], sequence)
+			tag := GenerateHeaderTag(SESSION_PING_PACKET, sequenceNumber, sessionId, sessionVersion, sessionKey)
+			copy(packet[18+8+8+1:], tag)
 
-			additional := packet[18+8 : 18+8+8+1]
-
-			buffer := packet[18+8+8+1 : 18+33-2]
-
-			encryptedLength := uint64(0)
-
-			additionalLength := uint64(9)
-
-			result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-				(*C.uchar)(&buffer[0]),
-				(*C.ulonglong)(&encryptedLength),
-				(*C.uchar)(&buffer[0]),
-				(C.ulonglong)(0),
-				(*C.uchar)(&additional[0]),
-				(C.ulonglong)(additionalLength),
-				(*C.uchar)(nil),
-				(*C.uchar)(&nonce[0]),
-				(*C.uchar)(&sessionKey[0]),
-			)
-
-			if result != 0 {
-				panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-			}
+			binary.LittleEndian.PutUint64(packet[18+25:], sequenceNumber)
 
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
+
 			packetLength := len(packet)
 
 			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
@@ -4564,6 +4554,7 @@ func test_session_ping_packet_forward_to_next_hop() {
 
 // =======================================================================================================================
 
+/*
 func test_session_pong_packet_wrong_size() {
 
 	fmt.Printf("test_session_pong_packet_wrong_size\n")
@@ -6165,13 +6156,13 @@ func main() {
 		test_server_to_client_packet_header_did_not_verify,
 		test_server_to_client_packet_forward_to_previous_hop,
 
-		/*
 		test_session_ping_packet_wrong_size,
 		test_session_ping_packet_could_not_find_session,
 		test_session_ping_packet_already_received,
 		test_session_ping_packet_header_did_not_verify,
 		test_session_ping_packet_forward_to_next_hop,
 
+		/*
 		test_session_pong_packet_wrong_size,
 		test_session_pong_packet_could_not_find_session,
 		test_session_pong_packet_already_received,
