@@ -3882,7 +3882,7 @@ func test_server_to_client_packet_already_received() {
 
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_PREVIOUS_HOP", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED", relay_stdout.String())
 }
@@ -3973,14 +3973,14 @@ func test_server_to_client_packet_header_did_not_verify() {
 
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_PREVIOUS_HOP", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY", relay_stdout.String())
 }
 
-func test_server_to_client_packet_forward_to_next_hop() {
+func test_server_to_client_packet_forward_to_previous_hop() {
 
-	fmt.Printf("test_server_to_client_packet_forward_to_next_hop\n")
+	fmt.Printf("test_server_to_client_packet_forward_to_previous_hop\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -6163,7 +6163,7 @@ func main() {
 		test_server_to_client_packet_could_not_find_session,
 		test_server_to_client_packet_already_received,
 		test_server_to_client_packet_header_did_not_verify,
-		test_server_to_client_packet_forward_to_next_hop,
+		test_server_to_client_packet_forward_to_previous_hop,
 
 		/*
 		test_session_ping_packet_wrong_size,

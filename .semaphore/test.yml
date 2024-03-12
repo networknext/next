@@ -681,9 +681,9 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_server_to_client_packet_header_did_not_verify
 
-        - name: "test_server_to_client_packet_forward_to_next_hop"
+        - name: "test_server_to_client_packet_forward_to_previous_hop"
           commands:
-            - cd ./dist && ./func_test_relay test_server_to_client_packet_forward_to_next_hop
+            - cd ./dist && ./func_test_relay test_server_to_client_packet_forward_to_previous_hop
 
 # ------------------------------------------------------------------------------------------------------------
 
