@@ -1333,7 +1333,6 @@ func test_server_ping_packet_responded_with_pong() {
 
 // =======================================================================================================================
 
-/*
 func test_relay_pong_packet_wrong_size() {
 
 	fmt.Printf("test_relay_pong_packet_wrong_size\n")
@@ -1368,7 +1367,7 @@ func test_relay_pong_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 76 // RELAY_PONG_PACKET
+			packet[0] = RELAY_PONG_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1430,7 +1429,7 @@ func test_relay_ping_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 75 // RELAY_PING_PACKET
+			packet[0] = RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1490,8 +1489,8 @@ func test_relay_ping_packet_expired() {
 
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+1+8+8+32)
-			packet[0] = 75 // RELAY_PING_PACKET
+			packet := make([]byte, 18+8+8+1+32)
+			packet[0] = RELAY_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1552,9 +1551,9 @@ func test_relay_ping_packet_did_not_verify() {
 	for i := 0; i < 10; i++ {
 		expireTimestamp := time.Now().Unix() + 10
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+1+8+8+32)
-			packet[0] = 75 // RELAY_PING_PACKET
-			binary.LittleEndian.PutUint64(packet[18+1+8:], uint64(expireTimestamp))
+			packet := make([]byte, 18+8+8+1+32)
+			packet[0] = RELAY_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[18:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1584,6 +1583,7 @@ func test_relay_ping_packet_did_not_verify() {
 
 // =======================================================================================================================
 
+/*
 func test_route_request_packet_wrong_size() {
 
 	fmt.Printf("test_route_request_packet_wrong_size\n")
@@ -7179,8 +7179,10 @@ func main() {
 	initCounterNames()
 
 	allTests := []test_function{
+
 		test_initialize_success,
 		test_initialize_fail,
+
 		test_relay_name_not_set,
 		test_relay_public_address_not_set,
 		test_relay_public_address_invalid,
@@ -7193,12 +7195,17 @@ func main() {
 		test_relay_backend_public_key_invalid,
 		test_relay_backend_public_key_mismatch,
 		test_relay_backend_url_not_set,
+
 		test_relay_cant_bind_to_port_zero,
+
 		test_relay_pings,
 		test_cost_matrix,
+
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
+
 		test_clean_shutdown,
+
 		test_client_ping_packet_wrong_size,
 		test_client_ping_packet_expired,
 		test_client_ping_packet_did_not_verify,
@@ -7209,11 +7216,13 @@ func main() {
 		test_server_ping_packet_did_not_verify,
 		test_server_ping_packet_responded_with_pong,
 
-		/*
 		test_relay_pong_packet_wrong_size,
+
 		test_relay_ping_packet_wrong_size,
 		test_relay_ping_packet_expired,
 		test_relay_ping_packet_did_not_verify,
+
+		/*
 		test_route_request_packet_wrong_size,
 		test_route_request_packet_could_not_read_token,
 		test_route_request_packet_token_expired,
