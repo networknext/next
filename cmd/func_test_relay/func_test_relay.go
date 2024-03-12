@@ -1583,7 +1583,6 @@ func test_relay_ping_packet_did_not_verify() {
 
 // =======================================================================================================================
 
-/*
 func test_route_request_packet_wrong_size() {
 
 	fmt.Printf("test_route_request_packet_wrong_size\n")
@@ -1618,7 +1617,7 @@ func test_route_request_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 9 // ROUTE_REQUEST_PACKET
+			packet[0] = ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1646,9 +1645,9 @@ func test_route_request_packet_wrong_size() {
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE", relay_stdout.String())
 }
 
-func test_route_request_packet_could_not_read_token() {
+func test_route_request_packet_could_not_decrypt_route_token() {
 
-	fmt.Printf("test_route_request_packet_could_not_read_token\n")
+	fmt.Printf("test_route_request_packet_could_not_decrypt_route_token\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -1680,7 +1679,7 @@ func test_route_request_packet_could_not_read_token() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+111*2)
 			common.RandomBytes(packet[:])
-			packet[0] = 9 // ROUTE_REQUEST_PACKET
+			packet[0] = ROUTE_REQUEST_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1705,9 +1704,10 @@ func test_route_request_packet_could_not_read_token() {
 	}
 
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_READ_TOKEN", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN", relay_stdout.String())
 }
 
+/*
 func test_route_request_packet_token_expired() {
 
 	fmt.Printf("test_route_request_packet_token_expired\n")
@@ -7222,30 +7222,34 @@ func main() {
 		test_relay_ping_packet_expired,
 		test_relay_ping_packet_did_not_verify,
 
-		/*
 		test_route_request_packet_wrong_size,
-		test_route_request_packet_could_not_read_token,
+		test_route_request_packet_could_not_decrypt_route_token,
+		/*
 		test_route_request_packet_token_expired,
 		test_route_request_packet_forward_to_next_hop_public_address,
 		test_route_request_packet_forward_to_next_hop_internal_address,
+
 		test_route_response_packet_wrong_size,
 		test_route_response_packet_could_not_find_session,
 		test_route_response_packet_already_received,
 		test_route_response_packet_header_did_not_verify,
 		test_route_response_packet_forward_to_previous_hop_public_address,
 		test_route_response_packet_forward_to_previous_hop_internal_address,
+
 		test_continue_request_packet_wrong_size,
 		test_continue_request_packet_could_not_read_token,
 		test_continue_request_packet_token_expired,
 		test_continue_request_packet_could_not_find_session,
 		test_continue_request_packet_forward_to_next_hop_public_address,
 		test_continue_request_packet_forward_to_next_hop_internal_address,
+
 		test_continue_response_packet_wrong_size,
 		test_continue_response_packet_could_not_find_session,
 		test_continue_response_packet_already_received,
 		test_continue_response_packet_header_did_not_verify,
 		test_continue_response_packet_forward_to_previous_hop_public_address,
 		test_continue_response_packet_forward_to_previous_hop_internal_address,
+
 		test_client_to_server_packet_too_small,
 		test_client_to_server_packet_too_big,
 		test_client_to_server_packet_could_not_find_session,
@@ -7253,6 +7257,7 @@ func main() {
 		test_client_to_server_packet_header_did_not_verify,
 		test_client_to_server_packet_forward_to_next_hop_public_address,
 		test_client_to_server_packet_forward_to_next_hop_internal_address,
+
 		test_server_to_client_packet_too_small,
 		test_server_to_client_packet_too_big,
 		test_server_to_client_packet_could_not_find_session,
@@ -7260,26 +7265,32 @@ func main() {
 		test_server_to_client_packet_header_did_not_verify,
 		test_server_to_client_packet_forward_to_previous_hop_public_address,
 		test_server_to_client_packet_forward_to_previous_hop_internal_address,
+
 		test_session_ping_packet_wrong_size,
 		test_session_ping_packet_could_not_find_session,
 		test_session_ping_packet_already_received,
 		test_session_ping_packet_header_did_not_verify,
 		test_session_ping_packet_forward_to_next_hop_public_address,
 		test_session_ping_packet_forward_to_next_hop_internal_address,
+
 		test_session_pong_packet_wrong_size,
 		test_session_pong_packet_could_not_find_session,
 		test_session_pong_packet_already_received,
 		test_session_pong_packet_header_did_not_verify,
 		test_session_pong_packet_forward_to_previous_hop_public_address,
 		test_session_pong_packet_forward_to_previous_hop_internal_address,
+
 		test_session_destroy,
+
 		test_session_expired_route_response_packet,
 		test_session_expired_continue_response_packet,
 		test_session_expired_client_to_server_packet,
 		test_session_expired_server_to_client_packet,
 		test_session_expired_session_ping_packet,
 		test_session_expired_session_pong_packet,
+
 		test_relay_backend_stats,
+
 		test_relay_backend_counters,
 		*/
 	}
