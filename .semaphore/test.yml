@@ -729,6 +729,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_session_expired_route_response_packet
 
+        - name: "test_session_expired_continue_request_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_continue_request_packet
+
         - name: "test_session_expired_continue_response_packet"
           commands:
             - cd ./dist && ./func_test_relay test_session_expired_continue_response_packet
@@ -748,8 +752,6 @@ blocks:
         - name: "test_session_expired_session_pong_packet"
           commands:
             - cd ./dist && ./func_test_relay test_session_expired_session_pong_packet
-
-
 
 # ------------------------------------------------------------------------------------------------------------
 
