@@ -1553,7 +1553,7 @@ func test_relay_ping_packet_did_not_verify() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+1+32)
 			packet[0] = RELAY_PING_PACKET
-			binary.LittleEndian.PutUint64(packet[18:], uint64(expireTimestamp))
+			binary.LittleEndian.PutUint64(packet[18+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
