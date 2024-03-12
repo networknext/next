@@ -557,6 +557,26 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_route_response_packet_forward_to_previous_hop
 
+        - name: "test_continue_request_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_wrong_size
+
+        - name: "test_continue_request_packet_could_not_decrypt_continue_token"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_could_not_decrypt_continue_token
+
+        - name: "test_continue_request_packet_token_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_token_expired
+
+        - name: "test_continue_request_packet_could_not_find_session"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_could_not_find_session
+
+        - name: "test_continue_request_packet_forward_to_next_hop"
+          commands:
+            - cd ./dist && ./func_test_relay test_continue_request_packet_forward_to_next_hop
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"
