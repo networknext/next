@@ -11,7 +11,7 @@ import "C"
 import (
 	"bytes"
 	"context"
-	// "encoding/binary"
+	"encoding/binary"
 	"io"
 	"encoding/base64"
 	"fmt"
@@ -31,7 +31,20 @@ import (
 	// "github.com/networknext/next/modules/crypto"
 )
 
-// todo: packet type numbers need to be updated in here, ideally made constants
+const ROUTE_REQUEST_PACKET = 1
+const ROUTE_RESPONSE_PACKET = 2
+const CLIENT_TO_SERVER_PACKET = 3
+const SERVER_TO_CLIENT_PACKET = 4
+const SESSION_PING_PACKET = 5
+const SESSION_PONG_PACKET = 6
+const CONTINUE_REQUEST_PACKET = 7
+const CONTINUE_RESPONSE_PACKET = 8
+const CLIENT_PING_PACKET = 9
+const CLIENT_PONG_PACKET = 10
+const RELAY_PING_PACKET = 11
+const RELAY_PONG_PACKET = 12
+const SERVER_PING_PACKET = 13
+const SERVER_PONG_PACKET = 14
 
 func Base64String(value string) []byte {
 	data, err := base64.StdEncoding.DecodeString(value)
@@ -757,9 +770,6 @@ func test_clean_shutdown() {
 
 // =======================================================================================================================
 
-// =======================================================================================================================
-
-/*
 func test_client_ping_packet_wrong_size() {
 
 	fmt.Printf("test_client_ping_packet_wrong_size\n")
@@ -795,7 +805,7 @@ func test_client_ping_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 20 // CLIENT_PING_PACKET
+			packet[0] = CLIENT_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -857,7 +867,7 @@ func test_client_ping_packet_expired() {
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // CLIENT_PING_PACKET
+			packet[0] = CLIENT_PING_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -884,8 +894,6 @@ func test_client_ping_packet_expired() {
 	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_EXPIRED", relay_stdout.String())
 }
-
-// todo: server ping packet tests
 
 func test_client_ping_packet_did_not_verify() {
 
@@ -922,7 +930,7 @@ func test_client_ping_packet_did_not_verify() {
 		expireTimestamp := time.Now().Unix() + 10
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // CLIENT_PING_PACKET
+			packet[0] = CLIENT_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18+8+8:], uint64(expireTimestamp))
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
@@ -951,6 +959,7 @@ func test_client_ping_packet_did_not_verify() {
 	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
 }
 
+/*
 func test_client_ping_packet_responded_with_pong() {
 
 	fmt.Printf("test_client_ping_packet_responded_with_pong\n")
@@ -1050,9 +1059,15 @@ func test_client_ping_packet_responded_with_pong() {
 		panic("did not receive any pong packets")
 	}
 }
+*/
 
 // =======================================================================================================================
 
+// todo: server ping packet tests
+
+// =======================================================================================================================
+
+/*
 func test_relay_pong_packet_wrong_size() {
 
 	fmt.Printf("test_relay_pong_packet_wrong_size\n")
@@ -6981,11 +6996,13 @@ func main() {
 		test_advanced_packet_filter,
 		test_clean_shutdown,
 
-		/*
 		test_client_ping_packet_wrong_size,
 		test_client_ping_packet_expired,
 		test_client_ping_packet_did_not_verify,
+
+		/*
 		test_client_ping_packet_responded_with_pong,
+
 		test_relay_pong_packet_wrong_size,
 		test_relay_ping_packet_wrong_size,
 		test_relay_ping_packet_expired,
