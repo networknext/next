@@ -1067,17 +1067,20 @@ void next_server_internal_update_ready( next_server_internal_t * server )
 
     // check ready conditions are met
 
-    if ( !server->resolve_hostname_finished )
-        return;
+    if ( server->state != NEXT_SERVER_STATE_DIRECT_ONLY )       // IMPORTANT: if we are in direct mode only (eg. can't initialize backend, go STRAIGHT to ready)
+    {
+        if ( !server->resolve_hostname_finished )
+            return;
 
-    if ( !server->autodetect_finished )
-        return;
+        if ( !server->autodetect_finished )
+            return;
 
-    if ( !server->received_init_response )
-        return;
+        if ( !server->received_init_response )
+            return;
 
-    if ( !server->stats_has_server_relay_pings )
-        return;
+        if ( !server->stats_has_server_relay_pings )
+            return;
+    }
 
     // server is ready
 
