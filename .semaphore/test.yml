@@ -469,6 +469,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_relay_pings
 
+        - name: "test_cost_matrix"
+          commands:
+            - cd ./dist && ./func_test_relay test_cost_matrix
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"

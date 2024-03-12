@@ -12,11 +12,11 @@ import (
 	"bytes"
 	// "context"
 	// "encoding/binary"
-	// "io"
+	"io"
 	"encoding/base64"
 	"fmt"
 	// "net"
-	// "net/http"
+	"net/http"
 	"os"
 	"os/exec"
 	"reflect"
@@ -25,7 +25,7 @@ import (
 	// "syscall"
 	"time"
 
-	// "github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	// "github.com/networknext/next/modules/core"
 	// "github.com/networknext/next/modules/crypto"
@@ -529,7 +529,6 @@ func test_relay_pings() {
 	}
 }
 
-/*
 func getCostMatrix() *common.CostMatrix {
 
 	httpClient := &http.Client{
@@ -616,6 +615,7 @@ func test_cost_matrix() {
 	}
 }
 
+/*
 // =======================================================================================================================
 
 func test_basic_packet_filter() {
@@ -7053,10 +7053,9 @@ func main() {
 		test_relay_backend_public_key_mismatch,
 		test_relay_backend_url_not_set,
 		test_relay_cant_bind_to_port_zero,
-
 		test_relay_pings,
-		/*
 		test_cost_matrix,
+		/*
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
 		test_clean_shutdown,
