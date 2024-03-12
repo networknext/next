@@ -24,6 +24,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"crypto/sha256"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -1875,7 +1876,6 @@ func test_route_request_packet_forward_to_next_hop() {
 
 // =======================================================================================================================
 
-/*
 func test_route_response_packet_wrong_size() {
 
 	fmt.Printf("test_route_response_packet_wrong_size\n")
@@ -1910,7 +1910,7 @@ func test_route_response_packet_wrong_size() {
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
 			common.RandomBytes(packet[:])
-			packet[0] = 10 // ROUTE_RESPONSE_PACKET
+			packet[0] = ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -1970,8 +1970,8 @@ func test_route_response_packet_could_not_find_session() {
 
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+33)
-			packet[0] = 10 // ROUTE_RESPONSE_PACKET
+			packet := make([]byte, 18+25)
+			packet[0] = ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -2029,18 +2029,21 @@ func test_route_response_packet_already_received() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	// send a route request packet to create a session on the relay
 
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -2054,8 +2057,8 @@ func test_route_response_packet_already_received() {
 
 	for i := 0; i < 10; i++ {
 		for j := 0; j < 1000; j++ {
-			packet := make([]byte, 18+33)
-			packet[0] = 10 // ROUTE_RESPONSE_PACKET
+			packet := make([]byte, 18+25)
+			packet[0] = ROUTE_RESPONSE_PACKET
 			var magic [constants.MagicBytes]byte
 			fromAddress := core.GetAddressData(&clientAddress)
 			toAddress := core.GetAddressData(&serverAddress)
@@ -2081,7 +2084,7 @@ func test_route_response_packet_already_received() {
 
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED", relay_stdout.String())
 }
@@ -2116,18 +2119,21 @@ func test_route_response_packet_header_did_not_verify() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	// send a route request packet to create a session on the relay
 
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -2141,8 +2147,8 @@ func test_route_response_packet_header_did_not_verify() {
 	// send a route response packet with sequence number > 0, so it passes already received test, but does not verify
 
 	{
-		packet := make([]byte, 18+33)
-		packet[0] = 10 // ROUTE_RESPONSE_PACKET
+		packet := make([]byte, 18+25)
+		packet[0] = ROUTE_RESPONSE_PACKET
 		binary.LittleEndian.PutUint64(packet[18:], 1)
 		var magic [constants.MagicBytes]byte
 		fromAddress := core.GetAddressData(&clientAddress)
@@ -2169,145 +2175,30 @@ func test_route_response_packet_header_did_not_verify() {
 
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY", relay_stdout.String())
 }
 
-func test_route_response_packet_forward_to_previous_hop_public_address() {
-
-	fmt.Printf("test_route_response_packet_forward_to_previous_hop_public_address\n")
-
-	backend_cmd, _ := backend("ZERO_MAGIC")
-
-	time.Sleep(time.Second)
-
-	config := RelayConfig{}
-	config.print_counters = true
-
-	relay_cmd, relay_stdout := relay("relay", 2000, config)
-
-	time.Sleep(5 * time.Second)
-
-	lc := net.ListenConfig{}
-
-	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
-	if err != nil {
-		panic("could not bind socket")
-	}
-
-	conn := lp.(*net.UDPConn)
-
-	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
-
-	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
-
-	serverAddress := core.ParseAddress("127.0.0.1:2000")
-
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
-	sessionId := uint64(0x12345)
-	sessionKey := make([]byte, crypto.Box_PrivateKeySize)
-	common.RandomBytes(sessionKey)
-
-	// send a route request packet to create a session on the relay
-
-	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
-	token := core.RouteToken{}
-	token.SessionId = sessionId
-	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
-	token.NextAddress = clientAddress
-	token.PrevAddress = clientAddress
-	copy(token.SessionPrivateKey[:], sessionKey)
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
-	var magic [constants.MagicBytes]byte
-	fromAddress := core.GetAddressData(&clientAddress)
-	toAddress := core.GetAddressData(&serverAddress)
-	packetLength := len(packet)
-	core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-	core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-	conn.WriteToUDP(packet, &serverAddress)
-
-	time.Sleep(time.Second)
-
-	// send a valid route response packet so it gets forwarded to previous hop (client address)
-
-	{
-		packet := make([]byte, 18+33)
-
-		sequence := uint64(1)
-
-		packet[0] = 10 // ROUTE_RESPONSE_PACKET
-		binary.LittleEndian.PutUint64(packet[18:], sequence)
-		binary.LittleEndian.PutUint64(packet[18+8:], sessionId)
-
-		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
-		binary.LittleEndian.PutUint64(nonce[4:], sequence)
-
-		additional := packet[18+8 : 18+8+8+1]
-
-		buffer := packet[18+8+8+1 : 18+33-2]
-
-		encryptedLength := uint64(0)
-
-		additionalLength := uint64(9)
-
-		result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-			(*C.uchar)(&buffer[0]),
-			(*C.ulonglong)(&encryptedLength),
-			(*C.uchar)(&buffer[0]),
-			(C.ulonglong)(0),
-			(*C.uchar)(&additional[0]),
-			(C.ulonglong)(additionalLength),
-			(*C.uchar)(nil),
-			(*C.uchar)(&nonce[0]),
-			(*C.uchar)(&sessionKey[0]),
-		)
-
-		if result != 0 {
-			panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-		}
-
-		var magic [constants.MagicBytes]byte
-		fromAddress := core.GetAddressData(&clientAddress)
-		toAddress := core.GetAddressData(&serverAddress)
-
-		packetLength := len(packet)
-
-		core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-
-		core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-
-		conn.WriteToUDP(packet, &serverAddress)
-	}
-
-	time.Sleep(time.Second)
-
-	conn.Close()
-
-	backend_cmd.Process.Signal(os.Interrupt)
-	relay_cmd.Process.Signal(os.Interrupt)
-
-	backend_cmd.Wait()
-	relay_cmd.Wait()
-
-	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
-		panic("could not initialize relay")
-	}
-
-	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_PUBLIC_ADDRESS", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_PUBLIC_ADDRESS", relay_stdout.String())
+func GenerateHeaderTag(packetType uint8, packetSequence uint64, sessionId uint64, sessionVersion uint8, sessionPrivateKey []byte) []byte {
+	data := make([]byte, 32+1+8+8+1)
+	index := 0
+	copy(data[index:], sessionPrivateKey)
+	index += 32
+	data[index] = packetType
+	index += 1
+	binary.LittleEndian.PutUint64(data[index:], packetSequence)
+	index += 8
+	binary.LittleEndian.PutUint64(data[index:], sessionId)
+	index += 8
+	data[index] = sessionVersion
+	result := sha256.Sum256(data)
+	return result[0:8]
 }
 
-func test_route_response_packet_forward_to_previous_hop_internal_address() {
+func test_route_response_packet_forward_to_previous_hop() {
 
-	fmt.Printf("test_route_response_packet_forward_to_previous_hop_internal_address\n")
+	fmt.Printf("test_route_response_packet_forward_to_previous_hop\n")
 
 	backend_cmd, _ := backend("ZERO_MAGIC")
 
@@ -2335,26 +2226,30 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
-
 	sessionId := uint64(0x12345)
+	sessionVersion := uint8(0x1)
+
 	sessionKey := make([]byte, crypto.Box_PrivateKeySize)
 	common.RandomBytes(sessionKey)
 
 	// send a route request packet to create a session on the relay
 
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.SessionId = sessionId
+	token.SessionVersion = sessionVersion
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	token.NextInternal = 1
-	token.PrevInternal = 1
 	copy(token.SessionPrivateKey[:], sessionKey)
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -2368,41 +2263,17 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	// send a valid route response packet so it gets forwarded to previous hop (client address)
 
 	{
-		packet := make([]byte, 18+33)
+		packet := make([]byte, 18+25)
 
-		sequence := uint64(1)
+		sequenceNumber := uint64(1)
 
-		packet[0] = 10 // ROUTE_RESPONSE_PACKET
-		binary.LittleEndian.PutUint64(packet[18:], sequence)
+		packet[0] = ROUTE_RESPONSE_PACKET
+		binary.LittleEndian.PutUint64(packet[18:], sequenceNumber)
 		binary.LittleEndian.PutUint64(packet[18+8:], sessionId)
+		packet[18+8+8] = sessionVersion
 
-		nonce := [12]byte{}
-		binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
-		binary.LittleEndian.PutUint64(nonce[4:], sequence)
-
-		additional := packet[18+8 : 18+8+8+1]
-
-		buffer := packet[18+8+8+1 : 18+33-2]
-
-		encryptedLength := uint64(0)
-
-		additionalLength := uint64(9)
-
-		result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-			(*C.uchar)(&buffer[0]),
-			(*C.ulonglong)(&encryptedLength),
-			(*C.uchar)(&buffer[0]),
-			(C.ulonglong)(0),
-			(*C.uchar)(&additional[0]),
-			(C.ulonglong)(additionalLength),
-			(*C.uchar)(nil),
-			(*C.uchar)(&nonce[0]),
-			(*C.uchar)(&sessionKey[0]),
-		)
-
-		if result != 0 {
-			panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-		}
+		tag := GenerateHeaderTag(ROUTE_RESPONSE_PACKET, sequenceNumber, sessionId, sessionVersion, sessionKey)
+		copy(packet[18+8+8+1:], tag)
 
 		var magic [constants.MagicBytes]byte
 		fromAddress := core.GetAddressData(&clientAddress)
@@ -2433,13 +2304,14 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 
 	checkCounter("RELAY_COUNTER_SESSION_CREATED", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP_INTERNAL_ADDRESS", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP", relay_stdout.String())
 	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED", relay_stdout.String())
-	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP_INTERNAL_ADDRESS", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP", relay_stdout.String())
 }
 
 // =======================================================================================================================
 
+/*
 func test_continue_request_packet_wrong_size() {
 
 	fmt.Printf("test_continue_request_packet_wrong_size\n")
@@ -7140,14 +7012,13 @@ func main() {
 		test_route_request_packet_token_expired,
 		test_route_request_packet_forward_to_next_hop,
 
-		/*
 		test_route_response_packet_wrong_size,
 		test_route_response_packet_could_not_find_session,
 		test_route_response_packet_already_received,
 		test_route_response_packet_header_did_not_verify,
-		test_route_response_packet_forward_to_previous_hop_public_address,
-		test_route_response_packet_forward_to_previous_hop_internal_address,
+		test_route_response_packet_forward_to_previous_hop,
 
+		/*
 		test_continue_request_packet_wrong_size,
 		test_continue_request_packet_could_not_read_token,
 		test_continue_request_packet_token_expired,
