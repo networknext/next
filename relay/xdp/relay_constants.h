@@ -7,7 +7,7 @@
 
 #define MAX_RELAYS                                                                            1024
 
-#define MAX_SESSIONS                                                                       1000000
+#define MAX_SESSIONS                                                                        100000
 
 #define RELAY_HEADER_BYTES                                                                      25
 
@@ -15,14 +15,14 @@
 
 #define RELAY_MAX_PACKET_BYTES                                                                1384
 
-#define RELAY_ADDRESS_NONE                                                                          0
+#define RELAY_ADDRESS_NONE                                                                       0
 #define RELAY_ADDRESS_IPV4                                                                       1
 #define RELAY_ADDRESS_IPV6                                                                       2
 
 #define RELAY_OK                                                                                 0
 #define RELAY_ERROR                                                                             -1
 
-#define RELAY_MAX_UPDATE_ATTEMPTS                                                                 30
+#define RELAY_MAX_UPDATE_ATTEMPTS                                                               30
 
 #define RELAY_RESPONSE_MAX_BYTES                                                       1024 * 1024
 
@@ -31,7 +31,7 @@
 #define RELAY_PING_STATS_WINDOW                                                               10.0
 #define RELAY_PING_HISTORY_SIZE                                                                 64
 #define RELAY_PING_SAFETY                                                                      1.0
-#define RELAY_PING_TIME                                                                         0.1
+#define RELAY_PING_TIME                                                                        0.1
 
 #define RELAY_PING_TOKEN_BYTES                                                                  32
 #define RELAY_PING_KEY_BYTES                                                                    32

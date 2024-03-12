@@ -725,6 +725,32 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_session_pong_packet_forward_to_previous_hop
 
+        - name: "test_session_expired_route_response_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_route_response_packet
+
+        - name: "test_session_expired_continue_response_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_continue_response_packet
+
+        - name: "test_session_expired_client_to_server_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_client_to_server_packet
+
+        - name: "test_session_expired_server_to_client_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_server_to_client_packet
+
+        - name: "test_session_expired_session_ping_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_session_ping_packet
+
+        - name: "test_session_expired_session_pong_packet"
+          commands:
+            - cd ./dist && ./func_test_relay test_session_expired_session_pong_packet
+
+
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"
