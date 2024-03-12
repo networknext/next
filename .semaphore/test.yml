@@ -481,6 +481,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_advanced_packet_filter
 
+        - name: "test_clean_shutdown"
+          commands:
+            - cd ./dist && ./func_test_relay test_clean_shutdown
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"

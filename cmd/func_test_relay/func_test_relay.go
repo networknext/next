@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	// "syscall"
+	"syscall"
 	"time"
 
 	"github.com/networknext/next/modules/common"
@@ -720,7 +720,6 @@ func test_advanced_packet_filter() {
 
 // =======================================================================================================================
 
-/*
 func test_clean_shutdown() {
 
 	fmt.Printf("test_clean_shutdown\n")
@@ -774,69 +773,9 @@ func test_clean_shutdown() {
 
 // =======================================================================================================================
 
-func test_unknown_packets() {
-
-	fmt.Printf("test_unknown_packets\n")
-
-	backend_cmd, _ := backend("ZERO_MAGIC")
-
-	time.Sleep(time.Second)
-
-	config := RelayConfig{}
-	config.num_threads = 1
-	config.print_counters = true
-
-	relay_cmd, relay_stdout := relay("relay", 2000, config)
-
-	time.Sleep(5 * time.Second)
-
-	lc := net.ListenConfig{}
-
-	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
-	if err != nil {
-		panic("could not bind socket")
-	}
-
-	conn := lp.(*net.UDPConn)
-
-	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
-
-	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
-
-	serverAddress := core.ParseAddress("127.0.0.1:2000")
-
-	for i := 0; i < 20; i++ {
-		for j := 0; j < 1000; j++ {
-			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
-			common.RandomBytes(packet[:])
-			var magic [constants.MagicBytes]byte
-			fromAddress := core.GetAddressData(&clientAddress)
-			toAddress := core.GetAddressData(&serverAddress)
-			packetLength := len(packet)
-			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-			conn.WriteToUDP(packet, &serverAddress)
-		}
-		time.Sleep(time.Second)
-	}
-
-	conn.Close()
-
-	backend_cmd.Process.Signal(os.Interrupt)
-	relay_cmd.Process.Signal(os.Interrupt)
-
-	backend_cmd.Wait()
-	relay_cmd.Wait()
-
-	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
-		panic("could not initialize relay")
-	}
-
-	checkCounter("RELAY_COUNTER_UNKNOWN_PACKETS", relay_stdout.String())
-}
-
 // =======================================================================================================================
 
+/*
 func test_client_ping_packet_wrong_size() {
 
 	fmt.Printf("test_client_ping_packet_wrong_size\n")
@@ -7057,9 +6996,9 @@ func main() {
 		test_cost_matrix,
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
-		/*
 		test_clean_shutdown,
-		test_unknown_packets,
+
+		/*
 		test_client_ping_packet_wrong_size,
 		test_client_ping_packet_expired,
 		test_client_ping_packet_did_not_verify,
