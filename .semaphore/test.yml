@@ -529,9 +529,9 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_route_request_packet_wrong_size
 
-        - name: "test_route_request_packet_could_not_read_token"
+        - name: "test_route_request_packet_could_not_decrypt_route_token"
           commands:
-            - cd ./dist && ./func_test_relay test_route_request_packet_could_not_read_token
+            - cd ./dist && ./func_test_relay test_route_request_packet_could_not_decrypt_route_token
 
         - name: "test_route_request_packet_token_expired"
           commands:
