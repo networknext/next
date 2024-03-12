@@ -525,6 +525,22 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_relay_ping_packet_did_not_verify
 
+        - name: "test_route_request_packet_wrong_size"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_wrong_size
+
+        - name: "test_route_request_packet_could_not_read_token"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_could_not_read_token
+
+        - name: "test_route_request_packet_token_expired"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_token_expired
+
+        - name: "test_route_request_packet_forward_to_next_hop"
+          commands:
+            - cd ./dist && ./func_test_relay test_route_request_packet_forward_to_next_hop
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"
