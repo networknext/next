@@ -81,7 +81,6 @@ type RelayConfig struct {
 	mismatch_relay_backend_public_key bool
 	omit_relay_backend_url            bool
 	bind_to_port_zero                 bool
-	num_threads                       int
 	print_counters                    bool
 	disable_destroy                   bool
 }
@@ -159,10 +158,6 @@ func relay(name string, port int, configArray ...RelayConfig) (*exec.Cmd, *bytes
 		cmd.Env = append(cmd.Env, "RELAY_PUBLIC_ADDRESS=127.0.0.1:0")
 	}
 
-	if config.num_threads != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NUM_THREADS=%d", config.num_threads))
-	}
-
 	if config.print_counters {
 		cmd.Env = append(cmd.Env, "RELAY_PRINT_COUNTERS=1")
 	}
@@ -213,7 +208,6 @@ func test_initialize_success() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -235,7 +229,6 @@ func test_initialize_fail() {
 	fmt.Printf("test_initialize_fail\n")
 
 	config := RelayConfig{}
-	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -483,7 +476,6 @@ func test_relay_pings() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
@@ -567,7 +559,6 @@ func test_cost_matrix() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_1_cmd, relay_1_stdout := relay("relay", 2000, config)
@@ -623,7 +614,6 @@ func test_basic_packet_filter() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -666,7 +656,6 @@ func test_advanced_packet_filter() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -726,7 +715,6 @@ func test_clean_shutdown() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -779,7 +767,6 @@ func test_client_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -842,7 +829,6 @@ func test_client_ping_packet_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -904,7 +890,6 @@ func test_client_ping_packet_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -959,7 +944,6 @@ func test_client_ping_packet_did_not_verify() {
 	checkCounter("RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
 }
 
-/*
 func test_client_ping_packet_responded_with_pong() {
 
 	fmt.Printf("test_client_ping_packet_responded_with_pong\n")
@@ -969,7 +953,6 @@ func test_client_ping_packet_responded_with_pong() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1005,7 +988,7 @@ func test_client_ping_packet_responded_with_pong() {
 			if err != nil {
 				break
 			}
-			if receivePacketBytes == 18+8+8 && receiveBuffer[0] == 21 && from.String() == serverAddress.String() {
+			if receivePacketBytes == 18+8+8 && receiveBuffer[0] == CLIENT_PONG_PACKET && from.String() == serverAddress.String() {
 				receivedPong = true
 				break
 			}
@@ -1018,13 +1001,16 @@ func test_client_ping_packet_responded_with_pong() {
 
 		pingToken := make([]byte, 32)
 
-		core.GeneratePingTokens(expireTimestamp, &clientAddress, []net.UDPAddr{serverAddress}, pingKey, pingToken)
+		clientAddressWithoutPort := clientAddress
+		clientAddressWithoutPort.Port = 0
+
+		core.GeneratePingToken(expireTimestamp, &clientAddressWithoutPort, &serverAddress, pingKey, pingToken)
 
 		for j := 0; j < 1000; j++ {
 			packet := make([]byte, 18+8+8+8+32)
-			packet[0] = 20 // CLIENT_PING_PACKET
+			packet[0] = CLIENT_PING_PACKET
 			binary.LittleEndian.PutUint64(packet[18:], sequence)
-			binary.LittleEndian.PutUint64(packet[18+1:], sessionId)
+			binary.LittleEndian.PutUint64(packet[18+8:], sessionId)
 			binary.LittleEndian.PutUint64(packet[18+8+8:], expireTimestamp)
 			copy(packet[18+8+8+8:18+8+8+8+32], pingToken)
 			var magic [constants.MagicBytes]byte
@@ -1059,11 +1045,291 @@ func test_client_ping_packet_responded_with_pong() {
 		panic("did not receive any pong packets")
 	}
 }
-*/
 
 // =======================================================================================================================
 
-// todo: server ping packet tests
+func test_server_ping_packet_wrong_size() {
+
+	fmt.Printf("test_server_ping_packet_wrong_size\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, common.RandomInt(18, constants.MaxPacketBytes))
+			common.RandomBytes(packet[:])
+			packet[0] = SERVER_PING_PACKET
+			var magic [constants.MagicBytes]byte
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
+			packetLength := len(packet)
+			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE", relay_stdout.String())
+}
+
+func test_server_ping_packet_expired() {
+
+	fmt.Printf("test_server_ping_packet_expired\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	for i := 0; i < 10; i++ {
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18+8+8+32)
+			packet[0] = SERVER_PING_PACKET
+			var magic [constants.MagicBytes]byte
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
+			packetLength := len(packet)
+			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_EXPIRED", relay_stdout.String())
+}
+
+func test_server_ping_packet_did_not_verify() {
+
+	fmt.Printf("test_server_ping_packet_did_not_verify\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	for i := 0; i < 10; i++ {
+		expireTimestamp := time.Now().Unix() + 10
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18+8+8+32)
+			packet[0] = SERVER_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[18+8:], uint64(expireTimestamp))
+			var magic [constants.MagicBytes]byte
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
+			packetLength := len(packet)
+			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+		}
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY", relay_stdout.String())
+}
+
+func test_server_ping_packet_responded_with_pong() {
+
+	fmt.Printf("test_server_ping_packet_responded_with_pong\n")
+
+	backend_cmd, _ := backend("ZERO_MAGIC")
+
+	time.Sleep(time.Second)
+
+	config := RelayConfig{}
+	config.print_counters = true
+
+	relay_cmd, relay_stdout := relay("relay", 2000, config)
+
+	time.Sleep(5 * time.Second)
+
+	lc := net.ListenConfig{}
+
+	lp, err := lc.ListenPacket(context.Background(), "udp", "127.0.0.1:0")
+	if err != nil {
+		panic("could not bind socket")
+	}
+
+	conn := lp.(*net.UDPConn)
+
+	clientPort := conn.LocalAddr().(*net.UDPAddr).Port
+
+	clientAddress := core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", clientPort))
+
+	serverAddress := core.ParseAddress("127.0.0.1:2000")
+
+	sequence := uint64(0)
+	
+	pingKey := make([]byte, 32)
+
+	receivedPong := false
+
+	go func() {
+		for {
+			receiveBuffer := make([]byte, constants.MaxPacketBytes)
+			receivePacketBytes, from, err := conn.ReadFromUDP(receiveBuffer[:])
+			if err != nil {
+				break
+			}
+			if receivePacketBytes == 18+8 && receiveBuffer[0] == SERVER_PONG_PACKET && from.String() == serverAddress.String() {
+				receivedPong = true
+				break
+			}
+		}
+	}()
+
+	for i := 0; i < 10; i++ {
+
+		expireTimestamp := uint64(time.Now().Unix()) + 10
+
+		pingToken := make([]byte, 32)
+
+		core.GeneratePingToken(expireTimestamp, &clientAddress, &serverAddress, pingKey, pingToken)
+
+		for j := 0; j < 1000; j++ {
+			packet := make([]byte, 18+8+8+32)
+			packet[0] = SERVER_PING_PACKET
+			binary.LittleEndian.PutUint64(packet[18:], sequence)
+			binary.LittleEndian.PutUint64(packet[18+8:], expireTimestamp)
+			copy(packet[18+8+8:18+8+8+32], pingToken)
+			var magic [constants.MagicBytes]byte
+			fromAddress := core.GetAddressData(&clientAddress)
+			toAddress := core.GetAddressData(&serverAddress)
+			packetLength := len(packet)
+			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+			conn.WriteToUDP(packet, &serverAddress)
+			sequence++
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	conn.Close()
+
+	backend_cmd.Process.Signal(os.Interrupt)
+	relay_cmd.Process.Signal(os.Interrupt)
+
+	backend_cmd.Wait()
+	relay_cmd.Wait()
+
+	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
+		panic("could not initialize relay")
+	}
+
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED", relay_stdout.String())
+	checkCounter("RELAY_COUNTER_SERVER_PING_PACKET_RESPONDED_WITH_PONG", relay_stdout.String())
+
+	if !receivedPong {
+		panic("did not receive any pong packets")
+	}
+}
 
 // =======================================================================================================================
 
@@ -1077,7 +1343,6 @@ func test_relay_pong_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1140,7 +1405,6 @@ func test_relay_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1203,7 +1467,6 @@ func test_relay_ping_packet_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1265,7 +1528,6 @@ func test_relay_ping_packet_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1331,7 +1593,6 @@ func test_route_request_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1394,7 +1655,6 @@ func test_route_request_packet_could_not_read_token() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1457,7 +1717,6 @@ func test_route_request_packet_token_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1527,7 +1786,6 @@ func test_route_request_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1619,7 +1877,6 @@ func test_route_request_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1715,7 +1972,6 @@ func test_route_response_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1778,7 +2034,6 @@ func test_route_response_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1840,7 +2095,6 @@ func test_route_response_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -1928,7 +2182,6 @@ func test_route_response_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2017,7 +2270,6 @@ func test_route_response_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2149,7 +2401,6 @@ func test_route_response_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2285,7 +2536,6 @@ func test_continue_request_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2348,7 +2598,6 @@ func test_continue_request_packet_could_not_read_token() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2411,7 +2660,6 @@ func test_continue_request_packet_token_expired() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2479,7 +2727,6 @@ func test_continue_request_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2548,7 +2795,6 @@ func test_continue_request_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2660,7 +2906,6 @@ func test_continue_request_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2776,7 +3021,6 @@ func test_continue_response_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2839,7 +3083,6 @@ func test_continue_response_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2901,7 +3144,6 @@ func test_continue_response_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -2989,7 +3231,6 @@ func test_continue_response_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3078,7 +3319,6 @@ func test_continue_response_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3210,7 +3450,6 @@ func test_continue_response_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3346,7 +3585,6 @@ func test_client_to_server_packet_too_small() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3409,7 +3647,6 @@ func test_client_to_server_packet_too_big() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3472,7 +3709,6 @@ func test_client_to_server_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3534,7 +3770,6 @@ func test_client_to_server_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3622,7 +3857,6 @@ func test_client_to_server_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3711,7 +3945,6 @@ func test_client_to_server_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -3862,7 +4095,6 @@ func test_client_to_server_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4017,7 +4249,6 @@ func test_server_to_client_packet_too_small() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4080,7 +4311,6 @@ func test_server_to_client_packet_too_big() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4143,7 +4373,6 @@ func test_server_to_client_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4205,7 +4434,6 @@ func test_server_to_client_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4293,7 +4521,6 @@ func test_server_to_client_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4382,7 +4609,6 @@ func test_server_to_client_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4533,7 +4759,6 @@ func test_server_to_client_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4688,7 +4913,6 @@ func test_session_ping_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4751,7 +4975,6 @@ func test_session_ping_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4813,7 +5036,6 @@ func test_session_ping_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4901,7 +5123,6 @@ func test_session_ping_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -4990,7 +5211,6 @@ func test_session_ping_packet_forward_to_next_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5141,7 +5361,6 @@ func test_session_ping_packet_forward_to_next_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5296,7 +5515,6 @@ func test_session_pong_packet_wrong_size() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5359,7 +5577,6 @@ func test_session_pong_packet_could_not_find_session() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5421,7 +5638,6 @@ func test_session_pong_packet_already_received() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5509,7 +5725,6 @@ func test_session_pong_packet_header_did_not_verify() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5598,7 +5813,6 @@ func test_session_pong_packet_forward_to_previous_hop_public_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5749,7 +5963,6 @@ func test_session_pong_packet_forward_to_previous_hop_internal_address() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5904,7 +6117,6 @@ func test_session_destroy() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
@@ -5981,7 +6193,6 @@ func test_session_expired_route_response_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6120,7 +6331,6 @@ func test_session_expired_continue_response_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6259,7 +6469,6 @@ func test_session_expired_client_to_server_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6398,7 +6607,6 @@ func test_session_expired_server_to_client_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6537,7 +6745,6 @@ func test_session_expired_session_ping_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6676,7 +6883,6 @@ func test_session_expired_session_pong_packet() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 	config.print_counters = true
 	config.disable_destroy = true
 
@@ -6817,7 +7023,6 @@ func test_relay_backend_stats() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -6902,7 +7107,6 @@ func test_relay_backend_counters() {
 	time.Sleep(time.Second)
 
 	config := RelayConfig{}
-	config.num_threads = 1
 
 	relay_cmd, relay_stdout := relay("relay", 2000, config)
 
@@ -6995,14 +7199,17 @@ func main() {
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
 		test_clean_shutdown,
-
 		test_client_ping_packet_wrong_size,
 		test_client_ping_packet_expired,
 		test_client_ping_packet_did_not_verify,
-
-		/*
 		test_client_ping_packet_responded_with_pong,
 
+		test_server_ping_packet_wrong_size,
+		test_server_ping_packet_expired,
+		test_server_ping_packet_did_not_verify,
+		test_server_ping_packet_responded_with_pong,
+
+		/*
 		test_relay_pong_packet_wrong_size,
 		test_relay_ping_packet_wrong_size,
 		test_relay_ping_packet_expired,

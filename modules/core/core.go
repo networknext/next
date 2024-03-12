@@ -2145,14 +2145,6 @@ func GeneratePingToken(expireTimestamp uint64, from *net.UDPAddr, to *net.UDPAdd
 	copy(output, hash[:])
 }
 
-func GeneratePingTokens(expireTimestamp uint64, clientPublicAddress *net.UDPAddr, relayPublicAddresses []net.UDPAddr, key []byte, pingTokens []byte) {
-	from := *clientPublicAddress
-	from.Port = 0
-	for i := range relayPublicAddresses {
-		GeneratePingToken(expireTimestamp, &from, &relayPublicAddresses[i], key, pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes])
-	}
-}
-
 // ------------------------------------------------------
 
 func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {

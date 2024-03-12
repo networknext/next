@@ -1,10 +1,7 @@
 package core_test
 
 import (
-	"bytes"
 	"crypto/ed25519"
-	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
 	"hash/fnv"
 	"math"
@@ -19,7 +16,6 @@ import (
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/crypto"
 )
 
 func RelayHash64(name string) uint64 {
@@ -4842,41 +4838,6 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 		packetLength := i % len(output)
 		assert.Equal(t, false, core.BasicPacketFilter(output[:], packetLength))
 		assert.Equal(t, false, core.AdvancedPacketFilter(output[:], magic[:], fromAddress[:], toAddress[:], packetLength))
-	}
-}
-
-func TestPingTokenSignatures(t *testing.T) {
-	const NumTokens = constants.MaxClientRelays
-	key := crypto.Auth_Key()
-	clientPublicAddress := common.RandomAddress()
-	relayPublicAddresses := make([]net.UDPAddr, NumTokens)
-	for i := range relayPublicAddresses {
-		address := common.RandomAddress()
-		relayPublicAddresses[i] = address
-	}
-	expireTimestamp := rand.Uint64()
-	pingTokens := make([]byte, NumTokens*constants.PingTokenBytes)
-	core.GeneratePingTokens(expireTimestamp, &clientPublicAddress, relayPublicAddresses, key, pingTokens)
-	from := clientPublicAddress
-	from.Port = 0
-	for i := 0; i < constants.MaxClientRelays; i++ {
-		to := relayPublicAddresses[i]
-		data := make([]byte, 32+20)
-		index := 0
-		copy(data[index:], key)
-		index += 32
-		binary.LittleEndian.PutUint64(data[index:], expireTimestamp)
-		index += 8
-		copy(data[index:], from.IP.To4())
-		index += 4
-		copy(data[index:], to.IP.To4())
-		index += 4
-		binary.BigEndian.PutUint16(data[index:], uint16(from.Port))
-		index += 2
-		binary.BigEndian.PutUint16(data[index:], uint16(to.Port))
-		index += 2
-		hash := sha256.Sum256(data[:index])
-		assert.True(t, bytes.Equal(pingTokens[i*constants.PingTokenBytes:(i+1)*constants.PingTokenBytes], hash[:]))
 	}
 }
 
