@@ -5115,6 +5115,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
+            // todo
+            relay_printf( "session->expire_timestamp = %" PRId64 "\n", session->expire_timestamp );
+            relay_printf( "relay->control.current_timestamp = %" PRId64 "\n", relay->control.current_timestamp );
+
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
