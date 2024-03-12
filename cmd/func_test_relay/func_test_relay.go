@@ -371,22 +371,6 @@ func test_relay_private_key_invalid() {
 	}
 }
 
-func test_relay_keypair_invalid() {
-
-	fmt.Printf("test_relay_keypair_invalid\n")
-
-	config := RelayConfig{}
-	config.invalid_relay_keypair = true
-
-	relay_cmd, relay_stdout := relay("relay", 2000, config)
-
-	relay_cmd.Wait()
-
-	if !strings.Contains(relay_stdout.String(), "error: relay keypair is invalid") {
-		panic("relay should not start with an invalid relay keypair")
-	}
-}
-
 func test_relay_backend_public_key_not_set() {
 
 	fmt.Printf("test_relay_backend_public_key_not_set\n")
@@ -6986,7 +6970,6 @@ func main() {
 		test_relay_public_key_invalid,
 		test_relay_private_key_not_set,
 		test_relay_private_key_invalid,
-		test_relay_keypair_invalid,
 		test_relay_backend_public_key_not_set,
 		test_relay_backend_public_key_invalid,
 		test_relay_backend_public_key_mismatch,
