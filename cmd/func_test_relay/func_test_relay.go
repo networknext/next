@@ -2,10 +2,6 @@
    Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
-package ass
-
-// todo: turn off for now
-/*
 package main
 
 // #cgo pkg-config: libsodium
@@ -14,25 +10,25 @@ import "C"
 
 import (
 	"bytes"
-	"context"
+	// "context"
+	// "encoding/binary"
+	// "io"
 	"encoding/base64"
-	"encoding/binary"
 	"fmt"
-	"io"
-	"net"
-	"net/http"
+	// "net"
+	// "net/http"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
 	"strings"
-	"syscall"
+	// "syscall"
 	"time"
 
-	"github.com/networknext/next/modules/common"
+	// "github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
-	"github.com/networknext/next/modules/core"
-	"github.com/networknext/next/modules/crypto"
+	// "github.com/networknext/next/modules/core"
+	// "github.com/networknext/next/modules/crypto"
 )
 
 // todo: packet type numbers need to be updated in here, ideally made constants
@@ -479,40 +475,9 @@ func test_relay_cant_bind_to_port_zero() {
 	}
 }
 
-func test_num_threads() {
-
-	fmt.Printf("test_num_threads\n")
-
-	backend_cmd, _ := backend("DEFAULT")
-
-	time.Sleep(time.Second)
-
-	config := RelayConfig{}
-	config.num_threads = 16
-
-	relay_cmd, relay_stdout := relay("relay", 2000, config)
-
-	time.Sleep(10 * time.Second)
-
-	backend_cmd.Process.Signal(os.Interrupt)
-	relay_cmd.Process.Signal(os.Interrupt)
-
-	backend_cmd.Wait()
-	relay_cmd.Wait()
-
-	if !strings.Contains(relay_stdout.String(), "Relay initialized") {
-		panic("could not initialize relay")
-	}
-
-	for i := 0; i < config.num_threads; i++ {
-		if !strings.Contains(relay_stdout.String(), fmt.Sprintf("Creating relay thread %d", i)) {
-			panic("missing relay thread")
-		}
-	}
-}
-
 // =======================================================================================================================
 
+/*
 func test_relay_pings() {
 
 	fmt.Printf("test_relay_pings\n")
@@ -7061,6 +7026,7 @@ func test_relay_backend_counters() {
 		panic("missing session created counter on backend")
 	}
 }
+*/
 
 // =======================================================================================================================
 
@@ -7087,7 +7053,8 @@ func main() {
 		test_relay_backend_public_key_mismatch,
 		test_relay_backend_url_not_set,
 		test_relay_cant_bind_to_port_zero,
-		test_num_threads,
+
+		/*
 		test_relay_pings,
 		test_cost_matrix,
 		test_basic_packet_filter,
@@ -7160,6 +7127,7 @@ func main() {
 		test_session_expired_session_pong_packet,
 		test_relay_backend_stats,
 		test_relay_backend_counters,
+		*/
 	}
 
 	var tests []test_function
@@ -7327,4 +7295,3 @@ func checkNoCounter(name string, stdout string) {
 		panic(fmt.Sprintf("unexpected counter: %s", name))
 	}
 }
-*/
