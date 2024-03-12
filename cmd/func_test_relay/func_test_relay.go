@@ -10,12 +10,12 @@ import "C"
 
 import (
 	"bytes"
-	// "context"
+	"context"
 	// "encoding/binary"
 	"io"
 	"encoding/base64"
 	"fmt"
-	// "net"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -27,7 +27,7 @@ import (
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
-	// "github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/core"
 	// "github.com/networknext/next/modules/crypto"
 )
 
@@ -615,7 +615,6 @@ func test_cost_matrix() {
 	}
 }
 
-/*
 // =======================================================================================================================
 
 func test_basic_packet_filter() {
@@ -721,6 +720,7 @@ func test_advanced_packet_filter() {
 
 // =======================================================================================================================
 
+/*
 func test_clean_shutdown() {
 
 	fmt.Printf("test_clean_shutdown\n")
@@ -7055,9 +7055,9 @@ func main() {
 		test_relay_cant_bind_to_port_zero,
 		test_relay_pings,
 		test_cost_matrix,
-		/*
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
+		/*
 		test_clean_shutdown,
 		test_unknown_packets,
 		test_client_ping_packet_wrong_size,
