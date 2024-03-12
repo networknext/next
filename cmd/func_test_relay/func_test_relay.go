@@ -5819,10 +5819,9 @@ func test_session_expired_session_pong_packet() {
 
 // =======================================================================================================================
 
-/*
 func test_relay_backend_stats() {
 
-	fmt.Printf("test_relay_backend_counters\n")
+	fmt.Printf("test_relay_backend_stats\n")
 
 	backend_cmd, backend_stdout := backend("ZERO_MAGIC")
 
@@ -5853,18 +5852,21 @@ func test_relay_backend_stats() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
 
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
 	token.EnvelopeKbpsUp = 512
 	token.EnvelopeKbpsDown = 1024
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -5935,16 +5937,19 @@ func test_relay_backend_counters() {
 
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
 
 	packet := make([]byte, 18+111*2)
-	packet[0] = 9 // ROUTE_REQUEST_PACKET
+	packet[0] = ROUTE_REQUEST_PACKET
 	token := core.RouteToken{}
 	token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 	token.NextAddress = clientAddress
 	token.PrevAddress = clientAddress
-	core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+	core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 	var magic [constants.MagicBytes]byte
 	fromAddress := core.GetAddressData(&clientAddress)
 	toAddress := core.GetAddressData(&serverAddress)
@@ -5974,7 +5979,6 @@ func test_relay_backend_counters() {
 		panic("missing session created counter on backend")
 	}
 }
-*/
 
 // =======================================================================================================================
 
@@ -6086,10 +6090,9 @@ func main() {
 		test_session_expired_session_ping_packet,
 		test_session_expired_session_pong_packet,
 
-		/*
 		test_relay_backend_stats,
+
 		test_relay_backend_counters,
-		*/
 	}
 
 	var tests []test_function
