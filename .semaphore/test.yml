@@ -465,6 +465,10 @@ blocks:
           commands:
             - cd ./dist && ./func_test_relay test_relay_cant_bind_to_port_zero
 
+        - name: "test_relay_pings"
+          commands:
+            - cd ./dist && ./func_test_relay test_relay_pings
+
 # ------------------------------------------------------------------------------------------------------------
 
   - name: "Build Functional Tests (backend)"

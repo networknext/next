@@ -477,7 +477,6 @@ func test_relay_cant_bind_to_port_zero() {
 
 // =======================================================================================================================
 
-/*
 func test_relay_pings() {
 
 	fmt.Printf("test_relay_pings\n")
@@ -521,15 +520,16 @@ func test_relay_pings() {
 	relay_stdout := []string{relay_1_stdout.String(), relay_2_stdout.String(), relay_3_stdout.String()}
 
 	for i := range relay_stdout {
-
 		checkCounter("RELAY_COUNTER_RELAY_PING_PACKET_SENT", relay_stdout[i])
 		checkCounter("RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED", relay_stdout[i])
 		checkCounter("RELAY_COUNTER_RELAY_PONG_PACKET_SENT", relay_stdout[i])
 		checkCounter("RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED", relay_stdout[i])
-		checkCounter("RELAY_COUNTER_PONGS_PROCESSED", relay_stdout[i])
+		checkNoCounter("RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE", relay_stdout[i])
+		checkNoCounter("RELAY_COUNTER_RELAY_PONG_PACKET_UNKNOWN_RELAY", relay_stdout[i])
 	}
 }
 
+/*
 func getCostMatrix() *common.CostMatrix {
 
 	httpClient := &http.Client{
@@ -7054,8 +7054,8 @@ func main() {
 		test_relay_backend_url_not_set,
 		test_relay_cant_bind_to_port_zero,
 
-		/*
 		test_relay_pings,
+		/*
 		test_cost_matrix,
 		test_basic_packet_filter,
 		test_advanced_packet_filter,
@@ -7164,7 +7164,7 @@ var counterNames [constants.NumRelayCounters]string
 var counterHash map[string]int
 
 func initCounterNames() {
-	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./relay/reference/relay_reference.cpp
+	// awk '/^#define RELAY_COUNTER_/ {print "    counterNames["$3"] = \""$2"\""}' ./relay/reference/reference_relay.cpp
 	counterNames[0] = "RELAY_COUNTER_PACKETS_SENT"
 	counterNames[1] = "RELAY_COUNTER_PACKETS_RECEIVED"
 	counterNames[2] = "RELAY_COUNTER_BYTES_SENT"
