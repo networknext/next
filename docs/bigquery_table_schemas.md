@@ -185,7 +185,7 @@ These entries are written to bigquery at the start of each session when relays a
 
 ## Server Relay Ping
 
-These entries are written to bigquery at the start of each session contining pings from the server and destination relays in the same datacenter.
+These entries are written to bigquery at the start of each session contining pings between the server and destination relays in the same datacenter.
 
 | Field | Type | Description |
 | ------------- | ------------- | ------------- |
