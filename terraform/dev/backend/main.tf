@@ -417,7 +417,7 @@ locals {
     "route_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
     "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
-    "server_relay_ping"   = [ "server_relay_id", "user_hash" ]
+    "server_relay_ping"   = [ "server_relay_id" ]
   }
 
 }
