@@ -62,7 +62,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "consoles_network_next_terraform"
+    bucket  = "xdp_network_next_terraform"
     prefix  = "staging"
   }
 }

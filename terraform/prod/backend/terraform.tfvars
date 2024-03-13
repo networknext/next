@@ -8,8 +8,8 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"] 	# IMPORTANT: c3 family is only available in these zones, not us-central1-f
-google_artifacts_bucket     = "gs://consoles_network_next_backend_artifacts"
-google_database_bucket      = "gs://consoles_network_next_database_files"
+google_artifacts_bucket     = "gs://xdp_network_next_backend_artifacts"
+google_database_bucket      = "gs://xdp_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
@@ -18,7 +18,7 @@ cloudflare_domain           = "virtualgo.net"
 raspberry_buyer_public_key  = "wXf5tMK7F+x/4AytQh/8xYj+mBGIC5lDInYYS4M6RgrzGWaYqWUTFg=="
 raspberry_buyer_private_key = "wXf5tMK7F+wuYlVfn8LtaIk3qNpfgdWHaCfl2XA2dVSld99R8EDRWn/gDK1CH/zFiP6YEYgLmUMidhhLgzpGCvMZZpipZRMW"
 
-ip2location_bucket_name     = "consoles_network_next_prod"
+ip2location_bucket_name     = "xdp_network_next_prod"
 
 relay_backend_public_key    = "JWQL5GKNSqBJSbc6Ybga9oxFheKgLEmNjZwyTI/nJg0="
 
