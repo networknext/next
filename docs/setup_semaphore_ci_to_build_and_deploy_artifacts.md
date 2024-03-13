@@ -69,5 +69,3 @@ These tasks upload some files to google cloud buckets needed by later deploy ste
 Once these tasks complete and turn green, you can be confident that secrets are setup correctly.
 
 Up next: [Deploy to Development](deploy_to_development.md)
-
-
