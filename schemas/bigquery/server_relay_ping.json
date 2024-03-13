@@ -12,12 +12,6 @@
     "description": "The buyer the server belongs to"
   },
   {
-    "name": "session_id",
-    "type": "INT64",
-    "mode": "REQUIRED",
-    "description": "Unique id for the session"
-  },
-  {
     "name": "datacenter_id",
     "type": "INT64",
     "mode": "REQUIRED",
