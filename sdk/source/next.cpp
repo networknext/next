@@ -590,6 +590,34 @@ bool next_packet_loss;
 
 // ---------------------------------------------------------------
 
+// IMPORTANT: off by default.
+bool next_packet_tagging_enabled = false;
+
+bool next_packet_tagging_can_be_enabled()
+{
+    return next_platform_packet_tagging_can_be_enabled();
+}
+
+void next_enable_packet_tagging()
+{
+    if ( next_platform_packet_tagging_can_be_enabled() )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "enabled packet tagging" );
+        next_packet_tagging_enabled = true;
+    }
+}
+
+void next_disable_packet_tagging()
+{
+    if ( next_platform_packet_tagging_can_be_enabled() )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "disabled packet tagging" );
+        next_packet_tagging_enabled = false;
+    }
+}
+
+// ---------------------------------------------------------------
+
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif

@@ -1149,7 +1149,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -1169,7 +1169,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -1189,7 +1189,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "0.0.0.0" );
         next_address_parse( &local_address, "127.0.0.1" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -1209,7 +1209,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_NON_BLOCKING, 0, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -1229,7 +1229,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, 0.01f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -1249,7 +1249,7 @@ void test_platform_socket()
         next_address_t local_address;
         next_address_parse( &bind_address, "[::]" );
         next_address_parse( &local_address, "[::1]" );
-        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024, true );
+        next_platform_socket_t * socket = next_platform_socket_create( NULL, &bind_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 64*1024, 64*1024 );
         local_address.port = bind_address.port;
         next_check( socket );
         uint8_t packet[256];
@@ -4319,6 +4319,24 @@ void test_passthrough_packets()
     next_server_destroy( server );
 }
 
+void test_packet_tagging()
+{
+    if ( next_packet_tagging_can_be_enabled() )
+    {
+        next_enable_packet_tagging();
+
+        next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", test_passthrough_packets_server_packet_received_callback );
+
+        next_check( server );
+
+        next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_passthrough_packets_client_packet_received_callback );
+
+        next_check( client );
+
+        next_disable_packet_tagging();
+    }
+}
+
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
 
 #define RUN_TEST( test_function )                                           \
@@ -4425,6 +4443,7 @@ void next_run_tests()
 #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_passthrough_packets );
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
+        RUN_TEST( test_packet_tagging );
     }
 }
 

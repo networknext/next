@@ -50,7 +50,7 @@ const char * buyer_private_key = "zkaPRGcAuTiYwqkwWEmWSrsxpcJzErC1mkBz3W0PlWdSyn
 
 struct next_platform_socket_t;
 
-extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size, bool enable_packet_tagging );
+extern next_platform_socket_t * next_platform_socket_create( void * context, next_address_t * address, int socket_type, float timeout_seconds, int send_buffer_size, int receive_buffer_size );
 
 extern void next_platform_socket_destroy( next_platform_socket_t * socket );
 
@@ -222,7 +222,7 @@ int main( int argc, char ** argv )
     next_address_t fuzz_address;
     memset( &fuzz_address, 0, sizeof(fuzz_address) );
     fuzz_address.type = NEXT_ADDRESS_IPV4;
-    next_platform_socket_t * fuzz_socket = next_platform_socket_create( &fuzz_allocator, &fuzz_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 1024*1024, 1024*1024, true );
+    next_platform_socket_t * fuzz_socket = next_platform_socket_create( &fuzz_allocator, &fuzz_address, NEXT_PLATFORM_SOCKET_BLOCKING, -1.0f, 1024*1024, 1024*1024 );
     if ( !fuzz_socket )
     {
         printf( "error: could not create fuzz socket\n" );
