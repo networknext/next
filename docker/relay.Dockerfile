@@ -4,7 +4,7 @@ FROM network_next_base
 
 WORKDIR /app
 
-COPY relay/ /app
+COPY relay/reference /app
 
 RUN g++ -o relay *.cpp -lsodium -lcurl -lpthread -lm
 

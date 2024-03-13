@@ -972,10 +972,10 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("cmd/soak_test_relay/soak_test_relay.go\n")
 	{
-		replace("cmd/func_test_relay/soak_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/func_test_relay/soak_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/func_test_relay/soak_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/func_test_relay/soak_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
 	}
 
 	fmt.Printf("cmd/func_backend/func_backend.go\n")
