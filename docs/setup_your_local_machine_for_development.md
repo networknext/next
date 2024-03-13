@@ -89,7 +89,6 @@ dist/func_client
 dist/raspberry_client
 dist/server_backend
 dist/relay_backend
-dist/relay-release
 dist/func_server
 ./run test
 
@@ -263,7 +262,6 @@ dist/func_client
 dist/raspberry_client
 dist/server_backend
 dist/relay_backend
-dist/relay-release
 dist/func_server
 ./run test
 

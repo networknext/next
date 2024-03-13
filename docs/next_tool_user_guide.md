@@ -376,9 +376,9 @@ For example:
 
 Would load the debug relay version 1.0.0 onto the relay 'london.google.1'
 
-`next load relay-release-1.0.0`
+`next load relay-xdp-1.0.0`
 
-Would load the release relay version 1.0.0 onto _all_ relays.
+Would load the xdp relay version 1.0.0 onto _all_ relays.
 
 If the version is different from the current relay version on a relay, that relay is cleanly stopped (giving time for sessions to move to another relay), before the new relay binary is loaded and restarted.
 
