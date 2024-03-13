@@ -343,6 +343,19 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
+    // set don't fragment bit
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        int val = IP_PMTUDISC_DO;
+        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val) );
+    }
+    else
+    {
+        int val = IP_PMTUDISC_DO;
+        setsockopt( socket->handle, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val) );
+    }
+
     // tag packet as low latency
 
     if ( next_packet_tagging_enabled )
