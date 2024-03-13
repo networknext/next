@@ -208,6 +208,7 @@ type AnalyticsClientRelayPingMessage struct {
 type AnalyticsServerRelayPingMessage struct {
 	Timestamp             int64   `avro:"timestamp"`
 	BuyerId               int64   `avro:"buyer_id"`
+	SessionId             int64   `avro:"session_id"`
 	DatacenterId          int64   `avro:"datacenter_id"`
 	ServerAddress         string  `avro:"server_address"`
 	ServerRelayId         int64   `avro:"server_relay_id"`
