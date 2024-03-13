@@ -328,46 +328,21 @@ func soak_test_relay(run_forever bool) {
 			}
 		}
 
-/*
 		// send valid client to server packets
 
 		for i := 0; i < NumSockets; i++ {
 
 			if rand.Intn(10) == 0 {
 
-				packet := make([]byte, 18+33+rand.Intn(1024))
+				packet := make([]byte, 18+25+rand.Intn(1024))
 
-				packet[0] = 11 // CLIENT_TO_SERVER_PACKET
+				packet[0] = CLIENT_TO_SERVER_PACKET
 				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
 				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
+				packet[18+8+8] = sessionVersion[i]
 
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 11) // CLIENT_TO_SERVER_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
+				tag := GenerateHeaderTag(CLIENT_TO_SERVER_PACKET, sessionSequence[i], sessionId[i], sessionVersion[i], sessionKey[i][:])
+				copy(packet[18+8+8+1:], tag)
 
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
@@ -391,39 +366,15 @@ func soak_test_relay(run_forever bool) {
 
 			if rand.Intn(10) == 0 {
 
-				packet := make([]byte, 18+33+rand.Intn(1024))
+				packet := make([]byte, 18+25+rand.Intn(1024))
 
-				packet[0] = 12 // SERVER_TO_CLIENT_PACKET
+				packet[0] = SERVER_TO_CLIENT_PACKET
 				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
 				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
+				packet[18+8+8] = sessionVersion[i]
 
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 12) // SERVER_TO_CLIENT_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
+				tag := GenerateHeaderTag(SERVER_TO_CLIENT_PACKET, sessionSequence[i], sessionId[i], sessionVersion[i], sessionKey[i][:])
+				copy(packet[18+8+8+1:], tag)
 
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
@@ -440,119 +391,6 @@ func soak_test_relay(run_forever bool) {
 				sessionSequence[i]++
 			}
 		}
-
-		// send session ping packets
-
-		for i := 0; i < NumSockets; i++ {
-
-			if rand.Intn(100) == 0 {
-
-				packet := make([]byte, 18+33+8)
-
-				packet[0] = 13 // SESSION_PING_PACKET
-				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
-				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
-
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 13) // SESSION_PING_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
-
-				var magic [constants.MagicBytes]byte
-				fromAddress := core.GetAddressData(&clientAddress[i])
-				toAddress := core.GetAddressData(&relayAddress)
-
-				packetLength := len(packet)
-
-				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-
-				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-
-				conn[i].WriteToUDP(packet, &relayAddress)
-
-				sessionSequence[i]++
-			}
-		}
-
-		// send session pong packets
-
-		for i := 0; i < NumSockets; i++ {
-
-			if rand.Intn(100) == 0 {
-
-				packet := make([]byte, 18+33+8)
-
-				packet[0] = 14 // SESSION_PONG_PACKET
-				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
-				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
-
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 14) // SESSION_PONG_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
-
-				var magic [constants.MagicBytes]byte
-				fromAddress := core.GetAddressData(&clientAddress[i])
-				toAddress := core.GetAddressData(&relayAddress)
-
-				packetLength := len(packet)
-
-				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-
-				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-
-				conn[i].WriteToUDP(packet, &relayAddress)
-
-				sessionSequence[i]++
-			}
-		}
-		*/
 
 		time.Sleep(10 * time.Millisecond)
 	}
