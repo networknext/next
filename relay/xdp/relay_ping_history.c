@@ -46,7 +46,7 @@ void relay_ping_history_get_stats( const struct relay_ping_history_t * history, 
 
     stats->rtt = 0.0f;
     stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
+    stats->packet_loss = 100.0f;
 
     // calculate packet loss
 

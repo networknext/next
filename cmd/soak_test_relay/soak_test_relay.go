@@ -50,7 +50,6 @@ func Base64String(value string) []byte {
 	return data
 }
 
-// todo: check that these are updated by keygen step
 const TestRelayPublicKey = "9597P1ZapnmR5X9sTeOLRIE6ZCqGfOEiyJVq2Rb+bV0="
 const TestRelayPrivateKey = "ykNSEqmbzjyz678XfDUnnItB63S1FyBQ7CafO7W1Fgo="
 const TestRelayBackendPublicKey = "iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjxGx9Y1xYiA="

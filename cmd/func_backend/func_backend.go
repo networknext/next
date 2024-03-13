@@ -45,7 +45,7 @@ var TestRelayBackendPublicKey = Base64String("iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjx
 var TestRelayBackendPrivateKey = Base64String("lcLUfxZEhVLWrFL5FDUhCpS4a8hYzXtI5MQBqMXda5k=")
 var TestServerBackendPublicKey = Base64String("PHVHyBpounVY8+IJas6HWBTwDeDiZ8xfLFfLOkNUWK4=")
 var TestServerBackendPrivateKey = Base64String("uDGCOoOb4vk9/9e+uMbfyz+VF2GOBC21Xli3L88GGW48dUfIGmi6dVjz4glqzodYFPAN4OJnzF8sV8s6Q1RYrg==")
-var TestPingKey = Base64String("IFPpsoV9YTDtC3F4RXLZTJ6/lRqUikz2ewLonnS/26Y=") // todo: "next keygen" needs to be updated to rewrite this line
+var TestPingKey = Base64String("IFPpsoV9YTDtC3F4RXLZTJ6/lRqUikz2ewLonnS/26Y=")
 
 const NEXT_RELAY_BACKEND_PORT = 30000
 const NEXT_SERVER_BACKEND_PORT = 45000

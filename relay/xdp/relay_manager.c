@@ -112,7 +112,6 @@ bool relay_manager_process_pong( struct relay_manager_t * manager, uint32_t from
 {
     assert( manager );
 
-    // todo: build a hash for lookups. O(n) here is lame
     for ( int i = 0; i < manager->num_relays; ++i )
     {
         if ( from_address == manager->relay_addresses[i] && from_port == manager->relay_ports[i] )

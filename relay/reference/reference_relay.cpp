@@ -3112,7 +3112,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     stats->rtt = 0.0f;
     stats->jitter = 0.0f;
-    stats->packet_loss = 0.0f;
+    stats->packet_loss = 100.0f;
 
     // calculate packet loss
 
@@ -5114,10 +5114,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION]++;
                 continue;
             }
-
-            // todo
-            relay_printf( "session->expire_timestamp = %" PRId64 "\n", session->expire_timestamp );
-            relay_printf( "relay->control.current_timestamp = %" PRId64 "\n", relay->control.current_timestamp );
 
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
