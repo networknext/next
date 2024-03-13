@@ -347,13 +347,13 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        int val = IP_PMTUDISC_DO;
-        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val) );
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_DONTFRAG, &val, sizeof(val) );
     }
     else
     {
-        int val = IP_PMTUDISC_DO;
-        setsockopt( socket->handle, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val) );
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IP, IP_DONTFRAG, &val, sizeof(val) );
     }
 
     // tag packet as low latency
