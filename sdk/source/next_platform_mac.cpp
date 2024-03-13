@@ -377,29 +377,25 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // blocking with no timeout
     }
 
-    // tag packet as low latency. this helps to reduce jitter on wifi
+    // tag packet as low latency
 
     if ( next_packet_tagging_enabled )
     {
         if ( address->type == NEXT_ADDRESS_IPV6 )
         {
-            #if defined(IPV6_TCLASS)
             int tos = 46;
             if ( setsockopt( socket->handle, IPPROTO_IPV6, IPV6_TCLASS, (const char *)&tos, sizeof(tos) ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to enable dscp packet tagging (ipv6)" );
             }
-            #endif
         }
         else
         {
-            #if defined(IP_TOS)
             int tos = 46;
             if ( setsockopt( socket->handle, IPPROTO_IP, IP_TOS, (const char *)&tos, sizeof(tos) ) != 0 )
             {
                 next_printf( NEXT_LOG_LEVEL_DEBUG, "failed to enable dscp packet tagging (ipv4)" );
             }
-            #endif
         }
     }
 
