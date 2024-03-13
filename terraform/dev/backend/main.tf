@@ -342,7 +342,8 @@ locals {
     "relay_update",
     "server_init",
     "server_update",
-    "near_relay_ping",
+    "client_relay_ping",
+    "server_relay_ping",
     "session_update",
     "session_summary",
   ]
