@@ -2,11 +2,6 @@
    Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
 */
 
-package ass
-
-// todo: disable for now
-/*
-
 package main
 
 // #cgo pkg-config: libsodium
@@ -24,11 +19,28 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"crypto/sha256"
 
-	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
+	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/core"
 )
+
+const ROUTE_REQUEST_PACKET = 1
+const ROUTE_RESPONSE_PACKET = 2
+const CLIENT_TO_SERVER_PACKET = 3
+const SERVER_TO_CLIENT_PACKET = 4
+const SESSION_PING_PACKET = 5
+const SESSION_PONG_PACKET = 6
+const CONTINUE_REQUEST_PACKET = 7
+const CONTINUE_RESPONSE_PACKET = 8
+const CLIENT_PING_PACKET = 9
+const CLIENT_PONG_PACKET = 10
+const RELAY_PING_PACKET = 11
+const RELAY_PONG_PACKET = 12
+const SERVER_PING_PACKET = 13
+const SERVER_PONG_PACKET = 14
 
 func Base64String(value string) []byte {
 	data, err := base64.StdEncoding.DecodeString(value)
@@ -38,27 +50,18 @@ func Base64String(value string) []byte {
 	return data
 }
 
-var TestRelayPublicKey = "9SKtwe4Ear59iQyBOggxutzdtVLLc1YQ2qnArgiiz14="
-var TestRelayPrivateKey = "lypnDfozGRHepukundjYAF5fKY1Tw2g7Dxh0rAgMCt8="
-var TestRelayBackendPublicKey = "SS55dEl9nTSnVVDrqwPeqRv/YcYOZZLXCWTpNBIyX0Y="
-var TestRelayBackendPrivateKey = "ls5XiwAZRCfyuZAbQ1b9T1bh2VZY8vQ7hp8SdSTSR7M="
+// todo: check that these are updated by keygen step
+const TestRelayPublicKey = "9597P1ZapnmR5X9sTeOLRIE6ZCqGfOEiyJVq2Rb+bV0="
+const TestRelayPrivateKey = "ykNSEqmbzjyz678XfDUnnItB63S1FyBQ7CafO7W1Fgo="
+const TestRelayBackendPublicKey = "iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjxGx9Y1xYiA="
+const TestRelayBackendPrivateKey = "lcLUfxZEhVLWrFL5FDUhCpS4a8hYzXtI5MQBqMXda5k="
 
 const (
 	relayBin   = "./relay-debug"
 	backendBin = "./func_backend"
 )
 
-type RelayConfig struct {
-	num_threads int
-	log_level   int
-}
-
-func relay(name string, port int, configArray ...RelayConfig) *exec.Cmd {
-
-	var config RelayConfig
-	if len(configArray) == 1 {
-		config = configArray[0]
-	}
+func relay(name string, port int) *exec.Cmd {
 
 	cmd := exec.Command(relayBin)
 	if cmd == nil {
@@ -71,15 +74,8 @@ func relay(name string, port int, configArray ...RelayConfig) *exec.Cmd {
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PUBLIC_KEY=%s", TestRelayPublicKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_PRIVATE_KEY=%s", TestRelayPrivateKey))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
 	cmd.Env = append(cmd.Env, "RELAY_BACKEND_URL=http://127.0.0.1:30000")
-
-	if config.num_threads != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_NUM_THREADS=%d", config.num_threads))
-	}
-
-	if config.log_level > 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("RELAY_LOG_LEVEL=%d", config.log_level))
-	}
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
@@ -109,6 +105,22 @@ func backend(mode string) (*exec.Cmd, *bytes.Buffer) {
 	return cmd, &output
 }
 
+func GenerateHeaderTag(packetType uint8, packetSequence uint64, sessionId uint64, sessionVersion uint8, sessionPrivateKey []byte) []byte {
+	data := make([]byte, 32+1+8+8+1)
+	index := 0
+	copy(data[index:], sessionPrivateKey)
+	index += 32
+	data[index] = packetType
+	index += 1
+	binary.LittleEndian.PutUint64(data[index:], packetSequence)
+	index += 8
+	binary.LittleEndian.PutUint64(data[index:], sessionId)
+	index += 8
+	data[index] = sessionVersion
+	result := sha256.Sum256(data)
+	return result[0:8]
+}
+
 // =======================================================================================================================
 
 func soak_test_relay(run_forever bool) {
@@ -123,11 +135,7 @@ func soak_test_relay(run_forever bool) {
 
 	time.Sleep(time.Second)
 
-	config := RelayConfig{}
-	config.num_threads = 1
-	config.log_level = 1
-
-	relay_cmd := relay("relay", 2000, config)
+	relay_cmd := relay("local", 2000)
 
 	if relay_cmd == nil {
 		panic("failed to run relay")
@@ -144,8 +152,13 @@ func soak_test_relay(run_forever bool) {
 	sessionSequence := make([]uint64, NumSockets)
 	sessionKey := make([][32]byte, NumSockets)
 
-	publicKey := Base64String(TestRelayPublicKey)
-	privateKey := Base64String(TestRelayBackendPrivateKey)
+	testRelayPublicKey := Base64String(TestRelayPublicKey)
+	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
+	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
+
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
+
+	_ = testSecretKey
 
 	for i := 0; i < NumSockets; i++ {
 		lc := net.ListenConfig{}
@@ -160,6 +173,8 @@ func soak_test_relay(run_forever bool) {
 
 	relayAddress := core.ParseAddress("127.0.0.1:2000")
 
+	_ = relayAddress
+
 	// send packets
 
 	startTime := time.Now()
@@ -173,6 +188,7 @@ func soak_test_relay(run_forever bool) {
 			}
 		}
 
+		/*
 		// send a bunch of random packets that don't pass the basic packet filter
 
 		for i := 0; i < NumSockets; i++ {
@@ -181,7 +197,7 @@ func soak_test_relay(run_forever bool) {
 			conn[i].WriteToUDP(packet, &relayAddress)
 		}
 
-		// send a bunch of random packets that pass the packet filters
+		// send a bunch of random packets that do pass the packet filters
 
 		for i := 0; i < NumSockets; i++ {
 			packet := make([]byte, common.RandomInt(18, 6000))
@@ -194,6 +210,7 @@ func soak_test_relay(run_forever bool) {
 			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
 			conn[i].WriteToUDP(packet, &relayAddress)
 		}
+		*/
 
 		// send valid route request packets
 
@@ -201,18 +218,19 @@ func soak_test_relay(run_forever bool) {
 			if rand.Intn(1000) == 0 {
 				packet := make([]byte, 18+111*2)
 				common.RandomBytes(packet[:])
-				packet[0] = 9 // ROUTE_REQUEST_PACKET
+				packet[0] = ROUTE_REQUEST_PACKET
 				token := core.RouteToken{}
 				sessionId[i] = rand.Uint64()
 				sessionVersion[i] = 0
 				sessionSequence[i] = 1
 				token.SessionId = sessionId[i]
+				token.SessionVersion = sessionVersion[i]
 				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
 				token.NextAddress = clientAddress[i]
 				token.PrevAddress = clientAddress[i]
 				core.RandomBytes(sessionKey[i][:])
 				copy(token.SessionPrivateKey[:], sessionKey[i][:])
-				core.WriteEncryptedRouteToken(&token, packet[18:], privateKey, publicKey)
+				core.WriteEncryptedRouteToken(&token, packet[18:], testSecretKey)
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
 				toAddress := core.GetAddressData(&relayAddress)
@@ -229,39 +247,15 @@ func soak_test_relay(run_forever bool) {
 
 			if rand.Intn(100) == 0 {
 
-				packet := make([]byte, 18+33)
+				packet := make([]byte, 18+25)
 
-				packet[0] = 10 // ROUTE_RESPONSE_PACKET
+				packet[0] = ROUTE_RESPONSE_PACKET
 				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
 				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
+				packet[18+8+8] = sessionVersion[i]
 
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 10) // ROUTE_RESPONSE_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
+				tag := GenerateHeaderTag(ROUTE_RESPONSE_PACKET, sessionSequence[i], sessionId[i], sessionVersion[i], sessionKey[i][:])
+				copy(packet[18+8+8+1:], tag)
 
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
@@ -285,13 +279,13 @@ func soak_test_relay(run_forever bool) {
 			if rand.Intn(100) == 0 {
 				packet := make([]byte, 18+57*2)
 				common.RandomBytes(packet[:])
-				packet[0] = 15 // CONTINUE_REQUEST_PACKET
+				packet[0] = CONTINUE_REQUEST_PACKET
 				token := core.ContinueToken{}
 				token.SessionId = sessionId[i]
 				token.SessionVersion = sessionVersion[i]
 				sessionVersion[i]++
 				token.ExpireTimestamp = uint64(time.Now().Unix()) + 15
-				core.WriteEncryptedContinueToken(&token, packet[16:], privateKey, publicKey)
+				core.WriteEncryptedContinueToken(&token, packet[18:], testSecretKey)
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
 				toAddress := core.GetAddressData(&relayAddress)
@@ -308,39 +302,15 @@ func soak_test_relay(run_forever bool) {
 
 			if rand.Intn(100) == 0 {
 
-				packet := make([]byte, 18+33)
+				packet := make([]byte, 18+25)
 
-				packet[0] = 16 // CONTINUE_RESPONSE_PACKET
+				packet[0] = CONTINUE_RESPONSE_PACKET
 				binary.LittleEndian.PutUint64(packet[18:], sessionSequence[i])
 				binary.LittleEndian.PutUint64(packet[18+8:], sessionId[i])
+				packet[18+8+8] = sessionVersion[i]
 
-				nonce := [12]byte{}
-				binary.LittleEndian.PutUint32(nonce[0:], 16) // CONTINUE_RESPONSE_PACKET
-				binary.LittleEndian.PutUint64(nonce[4:], sessionSequence[i])
-
-				additional := packet[18+8 : 18+8+8+1]
-
-				buffer := packet[18+8+8+1 : 18+33-2]
-
-				encryptedLength := uint64(0)
-
-				additionalLength := uint64(9)
-
-				result := C.crypto_aead_chacha20poly1305_ietf_encrypt(
-					(*C.uchar)(&buffer[0]),
-					(*C.ulonglong)(&encryptedLength),
-					(*C.uchar)(&buffer[0]),
-					(C.ulonglong)(0),
-					(*C.uchar)(&additional[0]),
-					(C.ulonglong)(additionalLength),
-					(*C.uchar)(nil),
-					(*C.uchar)(&nonce[0]),
-					(*C.uchar)(&sessionKey[i][0]),
-				)
-
-				if result != 0 {
-					panic("crypto_aead_chacha20poly1305_ietf_encrypt failed")
-				}
+				tag := GenerateHeaderTag(CONTINUE_RESPONSE_PACKET, sessionSequence[i], sessionId[i], sessionVersion[i], sessionKey[i][:])
+				copy(packet[18+8+8+1:], tag)
 
 				var magic [constants.MagicBytes]byte
 				fromAddress := core.GetAddressData(&clientAddress[i])
@@ -358,6 +328,7 @@ func soak_test_relay(run_forever bool) {
 			}
 		}
 
+/*
 		// send valid client to server packets
 
 		for i := 0; i < NumSockets; i++ {
@@ -581,6 +552,7 @@ func soak_test_relay(run_forever bool) {
 				sessionSequence[i]++
 			}
 		}
+		*/
 
 		time.Sleep(10 * time.Millisecond)
 	}
@@ -605,4 +577,3 @@ func main() {
 	}
 	soak_test_relay(run_forever)
 }
-*/
