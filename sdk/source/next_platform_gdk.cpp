@@ -572,10 +572,6 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
-    // IMPORTANT: Packet tagging must be manually enabled by the user on this platform. It applies only to the preferred multiplayer port.
-    // See https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/game-mesh/preferred-local-udp-multiplayer-port-networking
-    (void)enable_packet_tagging;
-
     return s;
 }
 
@@ -736,6 +732,13 @@ int next_platform_id()
     #else
     return NEXT_PLATFORM_WINDOWS;
     #endif
+}
+
+bool next_platform_packet_tagging_can_be_enabled()
+{
+    // IMPORTANT: GDK lets the player enable dscp and wmm tagging via the UI. It is not under application control.
+    // See https://learn.microsoft.com/en-us/gaming/gdk/_content/gc/networking/overviews/qos-packet-tagging
+    return false;
 }
 
 #else // #ifdef _GAMING_XBOX
