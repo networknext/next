@@ -5,6 +5,7 @@
   "fields" : [
     {"name": "timestamp",                "type": {"type": "long", "logicalType": "timestamp-micros"}},
     {"name": "buyer_id",                 "type": "long"},
+    {"name": "session_id",               "type": "long"},
     {"name": "datacenter_id",            "type": "long"},
     {"name": "server_address",           "type": "string"},
     {"name": "server_relay_id",          "type": "long"},
