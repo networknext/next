@@ -27,6 +27,8 @@
 #include "next_platform.h"
 #include "next_address.h"
 
+#define __APPLE_USE_RFC_3542
+
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -375,6 +377,19 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     else
     {
         // blocking with no timeout
+    }
+
+    // set don't fragment bit
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_DONTFRAG, &val, sizeof(val) );
+    }
+    else
+    {
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IP, IP_DONTFRAG, &val, sizeof(val) );
     }
 
     // tag packet as low latency
