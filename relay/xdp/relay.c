@@ -55,7 +55,7 @@ static void cleanup()
 int main( int argc, char *argv[] )
 {
     char relay_version[RELAY_VERSION_LENGTH];
-    snprintf( relay_version, RELAY_VERSION_LENGTH, "xdp-relay-%s", RELAY_VERSION );
+    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-xdp-%s", RELAY_VERSION );
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) 
     {
         printf( "%s\n", relay_version );
