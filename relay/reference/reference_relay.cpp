@@ -5963,7 +5963,11 @@ int main( int argc, const char ** argv )
 {
     uint64_t start_time = time( NULL );
 
-    snprintf( relay_version, RELAY_VERSION_LENGTH, "reference-relay-%s", RELAY_VERSION );
+#if RELAY_DEBUG
+    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-debug-%s", RELAY_VERSION );
+#else // #if RELAY_DEBUG
+    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-release-%s", RELAY_VERSION );
+#endif // #if RELAY_DEBUG
 
     if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
         printf( "%s\n", relay_version );
