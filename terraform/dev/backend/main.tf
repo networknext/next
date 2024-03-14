@@ -629,6 +629,8 @@ module "relay_backend" {
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
     gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     systemctl start app.service
