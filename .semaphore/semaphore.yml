@@ -28,6 +28,7 @@ blocks:
             - mkdir dist
             - make -j ./dist/relay-debug ./dist/relay-release ./dist/libnext.so
             - artifact push workflow ./dist/relay-debug --force
+            - artifact push workflow ./dist/relay-release --force
             - artifact push workflow ./dist/libnext.so --force
             - artifact push workflow deploy/bootstrap.sh --force
             - artifact push workflow config/google.txt --force
