@@ -1058,7 +1058,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		sendPortalSessionUpdateMessage(state)
 		sendPortalClientRelayUpdateMessage(state)
 		sendPortalServerRelayUpdateMessage(state)
-
+	
 		sendAnalyticsSessionUpdateMessage(state)
 		sendAnalyticsSessionSummaryMessage(state)
 		sendAnalyticsClientRelayPingMessages(state)
@@ -1255,6 +1255,7 @@ func sendAnalyticsServerRelayPingMessages(state *SessionUpdateState) {
 
 		message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
 		message.BuyerId = int64(state.Request.BuyerId)
+		message.ServerAddress = state.Request.ServerAddress.String()
 		message.DatacenterId = int64(state.Request.DatacenterId)
 		message.ServerRelayId = int64(state.Request.ServerRelayIds[i])
 		message.ServerRelayRTT = int32(state.Request.ServerRelayRTT[i])
