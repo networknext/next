@@ -126,6 +126,23 @@
 
           </table>
 
+          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Server Relays</p>
+   
+          <table class="table">
+
+            <tbody>
+
+              <tr v-for="item in this.data['server_relays']" :key="item.id">
+                <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> {{ item.rtt }}ms </td>
+                <td class="left_align"> {{ item.jitter }}ms </td>
+                <td class="left_align"> {{ item.packet_loss}}% </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
         </div>
 
       </div>
@@ -250,6 +267,27 @@
             <tbody>
 
               <tr v-for="item in this.data['client_relays']" :key="item.id">
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> {{ item.rtt }}ms </td>
+                <td class="left_align"> {{ item.jitter }}ms </td>
+                <td class="left_align"> {{ item.packet_loss}}% </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <div class="server_relay_info">
+
+          <p class="bold">Server Relays</p>
+   
+          <table class="table">
+
+            <tbody>
+
+              <tr v-for="item in this.data['server_relays']" :key="item.id">
                 <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
