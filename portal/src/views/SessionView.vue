@@ -266,7 +266,7 @@
 
         </div>
 
-        <div class="client_relay_info">
+        <div v-if="this.data['client_relays'] != null && this.data['client_relays'].length > 0" class="client_relay_info">
 
           <p class="bold">Client Relays</p>
    
@@ -287,7 +287,7 @@
 
         </div>
 
-        <div class="server_relay_info">
+        <div v-if="this.data['server_relays'] != null && this.data['server_relays'].length > 0" class="server_relay_info">
 
           <p class="bold">Server Relays</p>
    
