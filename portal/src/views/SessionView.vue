@@ -109,7 +109,7 @@
 
           </table>
 
-          <div v-if="this.data['client_relays'].length > 0">
+          <div v-if="this.data['client_relays'] != null && this.data['client_relays'].length > 0">
 
             <p class="header" style="padding-top: 25px; padding-bottom: 15px">Client Relays</p>
      
@@ -130,7 +130,7 @@
 
           </div>
 
-          <div v-if="this.data['server_relays'].length > 0">
+          <div v-if="this.data['server_relays'] != null && this.data['server_relays'].length > 0">
 
             <p class="header" style="padding-top: 25px; padding-bottom: 15px">Server Relays</p>
      
