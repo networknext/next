@@ -48,7 +48,19 @@ locals {
   google_project     = file("../../projects/dev-relays-project-id.txt")
   google_relays = {
 
-    "google.iowa.1" = {
+    "google.iowa.1.a" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.b" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.c" = {
       datacenter_name = "google.iowa.1"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
