@@ -626,18 +626,18 @@ func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-type ClientRelayData struct {
+type PortalClientRelayData struct {
 	Timestamp             uint64                             `json:"timestamp,string"`
 	NumClientRelays       uint32                             `json:"num_client_relays"`
-	ClientRelayName       [constants.MaxClientRelays]string  `json:"relay_name"`
-	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"relay_id"`
-	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"relay_rtt"`
-	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"relay_jitter"`
-	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"relay_packet_loss"`
+	ClientRelayName       [constants.MaxClientRelays]string  `json:"client_relay_name"`
+	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
+	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
+	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"client_relay_jitter"`
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"client_relay_packet_loss"`
 }
 
-func upgradeClientRelayData(database *db.Database, input []portal.ClientRelayData, output *[]ClientRelayData) {
-	*output = make([]ClientRelayData, len(input))
+func upgradeClientRelayData(database *db.Database, input []portal.ClientRelayData, output *[]PortalClientRelayData) {
+	*output = make([]PortalClientRelayData, len(input))
 	for i := range input {
 		(*output)[i].Timestamp = input[i].Timestamp
 		(*output)[i].NumClientRelays = input[i].NumClientRelays
@@ -656,18 +656,18 @@ func upgradeClientRelayData(database *db.Database, input []portal.ClientRelayDat
 	}
 }
 
-type ServerRelayData struct {
+type PortalServerRelayData struct {
 	Timestamp             uint64                             `json:"timestamp,string"`
 	NumServerRelays       uint32                             `json:"num_server_relays"`
-	ServerRelayName       [constants.MaxServerRelays]string  `json:"relay_name"`
-	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"relay_id"`
-	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"relay_rtt"`
-	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"relay_jitter"`
-	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"relay_packet_loss"`
+	ServerRelayName       [constants.MaxServerRelays]string  `json:"server_relay_name"`
+	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
+	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`
+	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"server_relay_jitter"`
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"server_relay_packet_loss"`
 }
 
-func upgradeServerRelayData(database *db.Database, input []portal.ServerRelayData, output *[]ServerRelayData) {
-	*output = make([]ServerRelayData, len(input))
+func upgradeServerRelayData(database *db.Database, input []portal.ServerRelayData, output *[]PortalServerRelayData) {
+	*output = make([]PortalServerRelayData, len(input))
 	for i := range input {
 		(*output)[i].Timestamp = input[i].Timestamp
 		(*output)[i].NumServerRelays = input[i].NumServerRelays
@@ -687,10 +687,10 @@ func upgradeServerRelayData(database *db.Database, input []portal.ServerRelayDat
 }
 
 type PortalSessionDataResponse struct {
-	SessionData     PortalSessionData  `json:"session_data"`
-	SliceData       []portal.SliceData `json:"slice_data"`
-	ClientRelayData []ClientRelayData  `json:"client_relay_data"`
-	ServerRelayData []ServerRelayData  `json:"server_relay_data"`
+	SessionData     PortalSessionData        `json:"session_data"`
+	SliceData       []portal.SliceData       `json:"slice_data"`
+	ClientRelayData []PortalClientRelayData  `json:"client_relay_data"`
+	ServerRelayData []PortalServerRelayData  `json:"server_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
