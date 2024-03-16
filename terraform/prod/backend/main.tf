@@ -25,6 +25,9 @@ variable "relay_backend_public_key" { type = string }
 
 variable "server_backend_public_key" { type = string }
 
+variable "test_buyer_public_key" { type = string }
+variable "test_buyer_private_key" { type = string }
+
 variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_buyer_private_key" { type = string }
 
