@@ -159,7 +159,7 @@ func RunSession(index int) {
 
 					if packetType == packets.SDK_SESSION_UPDATE_RESPONSE_PACKET {
 
-						packetData = packetData[16 : len(packetData)-2]
+						packetData = packetData[18 : len(packetData)]
 
 						packet := packets.SDK_SessionUpdateResponsePacket{}
 						if err := packets.ReadPacket(packetData, &packet); err != nil {
