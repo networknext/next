@@ -251,17 +251,17 @@ func RunSession(index int) {
 
 						if sliceNumber >= 1 {
 							packet.ClientRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
-							packet.HasClientRelayPings = true
+							packet.HasClientRelayPings = ( sessionId % 10 ) == 0
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
 							for i := range packet.ClientRelayRTT {
-								packet.ClientRelayRTT[i] = 8 + int32((sessionId^clientRelayIds[i])%30)
+								packet.ClientRelayRTT[i] = 1 + int32((sessionId^clientRelayIds[i])%30)
 							}
 						}
 
 						if sliceNumber >= 1 {
 							packet.ServerRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
-							packet.HasServerRelayPings = true
+							packet.HasServerRelayPings = ( sessionId % 10 ) == 0
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
 							for i := range packet.ServerRelayRTT {
@@ -269,11 +269,7 @@ func RunSession(index int) {
 							}
 						}
 
-						if (sessionId % 10) == 0 {
-							packet.DirectRTT = float32(sessionId%400) + 150 // send approx 10% of sessions over network next
-						} else {
-							packet.DirectRTT = 1
-						}
+						packet.DirectRTT = float32(sessionId%250) + 10
 
 						if next {
 							packet.NextRTT = 1
