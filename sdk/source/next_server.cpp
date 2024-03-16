@@ -1319,7 +1319,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 uint8_t from_address_data[4];
                 uint8_t to_address_data[4];
 
-                next_address_data( &entry->address, from_address_data );
+                next_address_data( &server->server_address, from_address_data );
                 next_address_data( &server->backend_address, to_address_data );
                 int packet_bytes = 0;
                 if ( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET, &entry->client_relay_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, to_address_data ) != NEXT_OK )
