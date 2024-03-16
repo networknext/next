@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
@@ -149,7 +150,7 @@ func RunSession(index int) {
 
 				for {
 
-					buffer := make([]byte, 4096)
+					buffer := make([]byte, constants.MaxPacketBytes)
 					packetBytes, from, err := conn.ReadFromUDP(buffer[:])
 					if err != nil {
 						break
@@ -277,9 +278,9 @@ func RunSession(index int) {
 
 						mutex.Unlock()
 
-						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
 						if err != nil {
-							core.Error("failed to write response packet: %v", err)
+							core.Error("failed to write session update request packet: %v", err)
 							return
 						}
 
@@ -309,6 +310,54 @@ func RunSession(index int) {
 						fallbackToDirect = true
 					}
 
+					// send client relay request packets once every 5 minutes
+
+					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+
+						packet := packets.SDK_ClientRelayRequestPacket{
+							Version:            packets.SDKVersion{255, 255, 255},
+							BuyerId:            buyerId,
+							RequestId:			rand.Uint64(),
+							DatacenterId:       datacenterId,
+						}
+
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_CLIENT_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
+						if err != nil {
+							core.Error("failed to write client relay request packet: %v", err)
+							return
+						}
+
+						if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+							core.Error("failed to send packet: %v", err)
+							return
+						}
+					}
+
+					// send server relay request packets once every 5 minutes
+
+					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+
+						packet := packets.SDK_ServerRelayRequestPacket{
+							Version:            packets.SDKVersion{255, 255, 255},
+							BuyerId:            buyerId,
+							RequestId:			rand.Uint64(),
+							DatacenterId:       datacenterId,
+						}
+
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
+						if err != nil {
+							core.Error("failed to write server relay request packet: %v", err)
+							return
+						}
+
+						if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+							core.Error("failed to send packet: %v", err)
+							return
+						}
+					}
+
+					// next slice
+
 					sliceNumber += 1
 					retryNumber = 0
 					receivedResponse = false
@@ -316,10 +365,6 @@ func RunSession(index int) {
 					mutex.Unlock()
 
 					sessionDuration += 10
-
-					// todo: we should send client relay request packets once every 5-10 minutes
-
-					// todo: we should send server relay request packets once every 5-10 minutes
 				}
 			}
 		}

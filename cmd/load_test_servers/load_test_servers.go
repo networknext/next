@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
@@ -153,7 +154,7 @@ func RunServer(index int) {
 
 		for {
 
-			buffer := make([]byte, 4096)
+			buffer := make([]byte, constants.MaxPacketBytes)
 			_, _, err := conn.ReadFromUDP(buffer[:])
 			if err != nil {
 				fmt.Printf("udp receive error: %v\n", err)
@@ -190,7 +191,7 @@ func RunServer(index int) {
 
 				requestId += 1
 
-				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+				packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_UPDATE_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
 				if err != nil {
 					core.Error("failed to write response packet: %v", err)
 					return
