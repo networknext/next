@@ -250,7 +250,7 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.ClientRelayPingsHaveChanged = ( sliceNumber % 30 ) == 0
+							packet.ClientRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
 							packet.HasClientRelayPings = true
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
@@ -260,7 +260,7 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.ServerRelayPingsHaveChanged = ( sliceNumber % 30 ) == 0
+							packet.ServerRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
 							packet.HasServerRelayPings = true
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
