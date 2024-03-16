@@ -255,7 +255,7 @@ func RunSession(index int) {
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
 							for i := range packet.ClientRelayRTT {
-								packet.ClientRelayRTT[i] = 10 + int32((sessionId^clientRelayIds[i])%30)
+								packet.ClientRelayRTT[i] = 5 + int32((sessionId^clientRelayIds[i])%30)
 							}
 						}
 
