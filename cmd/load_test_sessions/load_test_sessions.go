@@ -240,6 +240,7 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
+							packet.ClientRelayPingsHaveChanged = sliceNumber == 1
 							packet.HasClientRelayPings = true
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
@@ -249,6 +250,7 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
+							packet.ServerRelayPingsHaveChanged = sliceNumber == 1
 							packet.HasServerRelayPings = true
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
@@ -308,6 +310,10 @@ func RunSession(index int) {
 					mutex.Unlock()
 
 					sessionDuration += 10
+
+					// todo: we should send client relay request packets once every 5-10 minutes
+
+					// todo: we should send server relay request packets once every 5-10 minutes
 				}
 			}
 		}
