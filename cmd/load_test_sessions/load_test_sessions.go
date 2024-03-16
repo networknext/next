@@ -23,6 +23,7 @@ import (
 var service *common.Service
 var numRelays int
 var numSessions int
+var relayAddress string
 var clientAddress string
 var serverBackendAddress net.UDPAddr
 var buyerId uint64
@@ -39,6 +40,8 @@ func main() {
 
 	clientAddress = envvar.GetString("CLIENT_ADDRESS", "127.0.0.1")
 
+	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
+
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 
 	basePort = envvar.GetInt("BASE_PORT", 10000)
@@ -46,6 +49,7 @@ func main() {
 	core.Log("num relays = %d", numRelays)
 	core.Log("num sessions = %d", numSessions)
 	core.Log("base port = %d", basePort)
+	core.Log("relay address = %s", relayAddress)
 	core.Log("client address = %s", clientAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
@@ -121,11 +125,17 @@ func RunSession(index int) {
 			var sessionData [packets.SDK_MaxSessionDataSize]byte
 			var sessionDataSignature [packets.SDK_SignatureBytes]byte
 
-			var numClientRelays int32
+			numClientRelays := int32(packets.SDK_MaxClientRelays)
 			var clientRelayIds [packets.SDK_MaxClientRelays]uint64
+			for i := range clientRelayIds {
+				clientRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+			}
 
-			var numServerRelays int32
+			numServerRelays := int32(packets.SDK_MaxServerRelays)
 			var serverRelayIds [packets.SDK_MaxServerRelays]uint64
+			for i := range serverRelayIds {
+				serverRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+			}
 
 			lc := net.ListenConfig{}
 			lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
@@ -240,22 +250,22 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.ClientRelayPingsHaveChanged = sliceNumber == 1
+							packet.ClientRelayPingsHaveChanged = ( sliceNumber % 30 ) == 0
 							packet.HasClientRelayPings = true
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
 							for i := range packet.ClientRelayRTT {
-								packet.ClientRelayRTT[i] = 100 + int32((sessionId^clientRelayIds[i])%100)
+								packet.ClientRelayRTT[i] = 1 + int32((sessionId^clientRelayIds[i])%30)
 							}
 						}
 
 						if sliceNumber >= 1 {
-							packet.ServerRelayPingsHaveChanged = sliceNumber == 1
+							packet.ServerRelayPingsHaveChanged = ( sliceNumber % 30 ) == 0
 							packet.HasServerRelayPings = true
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
 							for i := range packet.ServerRelayRTT {
-								packet.ServerRelayRTT[i] = 100 + int32((sessionId^serverRelayIds[i])%100)
+								packet.ServerRelayRTT[i] = 1
 							}
 						}
 
