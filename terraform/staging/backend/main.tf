@@ -845,7 +845,6 @@ module "server_backend" {
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=true
     ENABLE_IP2LOCATION=true
-    DEBUG_LOGS=1
     EOF
     sudo systemctl start app.service
   EOF1
@@ -863,8 +862,8 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = 1 # 3
-  max_size                   = 1 # 64
+  min_size                   = 3
+  max_size                   = 64
   target_cpu                 = 25
 
   depends_on = [
@@ -969,7 +968,7 @@ module "load_test_servers" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_servers.tar.gz
     cat <<EOF > /app/app.env
     NUM_RELAYS=1000
-    NUM_SERVERS=1
+    NUM_SERVERS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_BUYER_PRIVATE_KEY=${var.load_test_buyer_private_key}
     EOF
@@ -986,7 +985,7 @@ module "load_test_servers" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1 # 2
+  target_size        = 2
 
   depends_on = [
     google_redis_cluster.portal,
@@ -1010,7 +1009,7 @@ module "load_test_sessions" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a load_test_sessions.tar.gz
     cat <<EOF > /app/app.env
     NUM_RELAYS=1000
-    NUM_SESSIONS=1
+    NUM_SESSIONS=50000
     SERVER_BACKEND_ADDRESS=${module.server_backend.address}:40000
     NEXT_BUYER_PRIVATE_KEY=${var.load_test_buyer_private_key}
     EOF
@@ -1027,7 +1026,7 @@ module "load_test_sessions" {
   default_subnetwork = google_compute_subnetwork.staging.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1 # 2
+  target_size        = 2
 
   depends_on = [
     google_redis_cluster.portal,
