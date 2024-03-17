@@ -351,7 +351,8 @@ locals {
     "relay_update",
     "server_init",
     "server_update",
-    "near_relay_ping",
+    "client_relay_ping",
+    "server_relay_ping",
     "session_update",
     "session_summary",
   ]
@@ -425,7 +426,7 @@ locals {
     "route_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
     "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
-    "server_relay_ping"   = [ "server_relay_id", "user_hash" ]
+    "server_relay_ping"   = [ "server_relay_id" ]
   }
 
 }
@@ -635,6 +636,8 @@ module "relay_backend" {
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service

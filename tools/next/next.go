@@ -2208,12 +2208,6 @@ echo setup completed
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
 	LoadRelayScript = `
-if test -f /app/relay; then 
-	version="$(/app/relay version)" 
-fi; 
-if [[ $version =~ "%s" ]]; then 
-	echo "already loaded" && exit 
-fi; 
 $( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
@@ -2413,7 +2407,7 @@ func loadRelays(env Environment, regexes []string, version string) {
 			}
 			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
 			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, version, env.RelayArtifactsBucketName, version))
+			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version))
 		}
 	}
 }

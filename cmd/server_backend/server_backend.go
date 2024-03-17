@@ -418,7 +418,7 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups manaey)d list-instances server-backend --region %s", region))
+				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
 
 				lines := strings.Split(output, "\n")
 

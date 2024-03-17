@@ -376,7 +376,7 @@ For example:
 
 Would load the debug relay version 1.0.0 onto the relay 'london.google.1'
 
-`next load relay-xdp-1.0.0`
+`next load relay-release-1.0.0`
 
 Would load the xdp relay version 1.0.0 onto _all_ relays.
 

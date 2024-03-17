@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
@@ -23,6 +24,7 @@ import (
 var service *common.Service
 var numRelays int
 var numSessions int
+var relayAddress string
 var clientAddress string
 var serverBackendAddress net.UDPAddr
 var buyerId uint64
@@ -39,6 +41,8 @@ func main() {
 
 	clientAddress = envvar.GetString("CLIENT_ADDRESS", "127.0.0.1")
 
+	relayAddress = envvar.GetString("RELAY_ADDRESS", "127.0.0.1")
+
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
 
 	basePort = envvar.GetInt("BASE_PORT", 10000)
@@ -46,6 +50,7 @@ func main() {
 	core.Log("num relays = %d", numRelays)
 	core.Log("num sessions = %d", numSessions)
 	core.Log("base port = %d", basePort)
+	core.Log("relay address = %s", relayAddress)
 	core.Log("client address = %s", clientAddress)
 	core.Log("server backend address = %s", serverBackendAddress.String())
 
@@ -121,11 +126,17 @@ func RunSession(index int) {
 			var sessionData [packets.SDK_MaxSessionDataSize]byte
 			var sessionDataSignature [packets.SDK_SignatureBytes]byte
 
-			var numClientRelays int32
+			numClientRelays := int32(packets.SDK_MaxClientRelays)
 			var clientRelayIds [packets.SDK_MaxClientRelays]uint64
+			for i := range clientRelayIds {
+				clientRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+			}
 
-			var numServerRelays int32
+			numServerRelays := int32(packets.SDK_MaxServerRelays)
 			var serverRelayIds [packets.SDK_MaxServerRelays]uint64
+			for i := range serverRelayIds {
+				serverRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+			}
 
 			lc := net.ListenConfig{}
 			lp, err := lc.ListenPacket(context.Background(), "udp", bindAddress)
@@ -139,7 +150,7 @@ func RunSession(index int) {
 
 				for {
 
-					buffer := make([]byte, 4096)
+					buffer := make([]byte, constants.MaxPacketBytes)
 					packetBytes, from, err := conn.ReadFromUDP(buffer[:])
 					if err != nil {
 						break
@@ -159,7 +170,7 @@ func RunSession(index int) {
 
 					if packetType == packets.SDK_SESSION_UPDATE_RESPONSE_PACKET {
 
-						packetData = packetData[16 : len(packetData)-2]
+						packetData = packetData[18 : len(packetData)]
 
 						packet := packets.SDK_SessionUpdateResponsePacket{}
 						if err := packets.ReadPacket(packetData, &packet); err != nil {
@@ -240,28 +251,26 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.HasClientRelayPings = true
+							packet.ClientRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
+							packet.HasClientRelayPings = ( sessionId % 10 ) == 0
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
 							for i := range packet.ClientRelayRTT {
-								packet.ClientRelayRTT[i] = 100 + int32((sessionId^clientRelayIds[i])%100)
+								packet.ClientRelayRTT[i] = 1 + int32((sessionId^clientRelayIds[i])%30)
 							}
 						}
 
 						if sliceNumber >= 1 {
-							packet.HasServerRelayPings = true
+							packet.ServerRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
+							packet.HasServerRelayPings = ( sessionId % 10 ) == 0
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
 							for i := range packet.ServerRelayRTT {
-								packet.ServerRelayRTT[i] = 100 + int32((sessionId^serverRelayIds[i])%100)
+								packet.ServerRelayRTT[i] = 1
 							}
 						}
 
-						if (sessionId % 10) == 0 {
-							packet.DirectRTT = float32(sessionId%400) + 150 // send approx 10% of sessions over network next
-						} else {
-							packet.DirectRTT = 1
-						}
+						packet.DirectRTT = float32(sessionId%250) + 10
 
 						if next {
 							packet.NextRTT = 1
@@ -269,9 +278,9 @@ func RunSession(index int) {
 
 						mutex.Unlock()
 
-						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, 4096, &address, &serverBackendAddress, buyerPrivateKey)
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SESSION_UPDATE_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
 						if err != nil {
-							core.Error("failed to write response packet: %v", err)
+							core.Error("failed to write session update request packet: %v", err)
 							return
 						}
 
@@ -300,6 +309,54 @@ func RunSession(index int) {
 						core.Error("[%016x] fallback to direct (%d)", sessionId, index)
 						fallbackToDirect = true
 					}
+
+					// send client relay request packets once every 5 minutes
+
+					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+
+						packet := packets.SDK_ClientRelayRequestPacket{
+							Version:            packets.SDKVersion{255, 255, 255},
+							BuyerId:            buyerId,
+							RequestId:			rand.Uint64(),
+							DatacenterId:       datacenterId,
+						}
+
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_CLIENT_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
+						if err != nil {
+							core.Error("failed to write client relay request packet: %v", err)
+							return
+						}
+
+						if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+							core.Error("failed to send packet: %v", err)
+							return
+						}
+					}
+
+					// send server relay request packets once every 5 minutes
+
+					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+
+						packet := packets.SDK_ServerRelayRequestPacket{
+							Version:            packets.SDKVersion{255, 255, 255},
+							BuyerId:            buyerId,
+							RequestId:			rand.Uint64(),
+							DatacenterId:       datacenterId,
+						}
+
+						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
+						if err != nil {
+							core.Error("failed to write server relay request packet: %v", err)
+							return
+						}
+
+						if _, err := conn.WriteToUDP(packetData, &serverBackendAddress); err != nil {
+							core.Error("failed to send packet: %v", err)
+							return
+						}
+					}
+
+					// next slice
 
 					sliceNumber += 1
 					retryNumber = 0

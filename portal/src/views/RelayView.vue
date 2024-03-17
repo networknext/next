@@ -573,7 +573,11 @@ export default {
   text-align: right;
 }
 
-.near_relay_info {
+.client_relay_info {
+  width: 100%;
+}
+
+.server_relay_info {
   width: 100%;
 }
 

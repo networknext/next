@@ -342,7 +342,8 @@ locals {
     "relay_update",
     "server_init",
     "server_update",
-    "near_relay_ping",
+    "client_relay_ping",
+    "server_relay_ping",
     "session_update",
     "session_summary",
   ]
@@ -416,7 +417,7 @@ locals {
     "route_matrix_update" = []
     "relay_to_relay_ping" = [ "source_relay_id" ]
     "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
-    "client_relay_ping"   = [ "client_relay_id", "user_hash" ]
+    "server_relay_ping"   = [ "server_relay_id" ]
   }
 
 }
@@ -628,6 +629,8 @@ module "relay_backend" {
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis_portal.host}:6379"
+    RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
+    RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
     gsutil cp ${var.google_database_bucket}/dev.bin /app/database.bin
     systemctl start app.service
