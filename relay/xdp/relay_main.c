@@ -7,10 +7,15 @@
 #include "relay_encoding.h"
 #include "relay_platform.h"
 #include "relay_config.h"
+#include "relay_shared.h"
+#include "relay_bpf.h"
 
 #include <curl/curl.h>
 #include <sodium.h>
 #include <time.h>
+#include <errno.h>
+#include <bpf/bpf.h>
+#include <bpf/libbpf.h>
 
 int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf, const char * relay_version )
 {
@@ -60,9 +65,6 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
 
     main->start_time = time( NULL );
     main->relay_backend_url = config->relay_backend_url;
-    main->relay_port = config->relay_port;
-    main->relay_public_address = config->relay_public_address;
-    main->relay_internal_address = config->relay_internal_address;
     memcpy( main->relay_public_key, config->relay_public_key, sizeof(config->relay_public_key) );
     memcpy( main->relay_private_key, config->relay_private_key, sizeof(config->relay_private_key) );
     memcpy( main->relay_backend_public_key, config->relay_backend_public_key, sizeof(config->relay_backend_public_key) );
@@ -72,6 +74,31 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->session_map_fd = bpf->session_map_fd;
 #endif // #idef COMPILE_WITH_BPF
     memcpy( main->relay_version, relay_version, RELAY_VERSION_LENGTH );
+
+
+#ifdef COMPILE_WITH_BPF
+    
+    // set relay config
+
+    struct relay_config relay_config;
+
+    memset( &relay_config, 0, sizeof(struct relay_config) );
+
+    relay_config.relay_port = htons( config->relay_port );
+    relay_config.relay_public_address = htonl( config->relay_public_address );
+    relay_config.relay_internal_address = htonl( config->relay_internal_address );
+    memcpy( relay_config.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+    memcpy( relay_config.relay_backend_public_key, config->relay_backend_public_key, RELAY_BACKEND_PUBLIC_KEY_BYTES );
+
+    __u32 key = 0;
+    int err = bpf_map_update_elem( bpf->config_fd, &key, &relay_config, BPF_ANY );
+    if ( err != 0 )
+    {
+        printf( "\nerror: failed to set relay config: %s\n\n", strerror(errno) );
+        return RELAY_ERROR;
+    }
+
+#endif // #ifdef COMPILE_WITH_BPF
 
     return RELAY_OK;
 }
@@ -543,12 +570,17 @@ int main_update( struct main_t * main )
         return RELAY_ERROR;
     }
 
+    // todo: need to decrypt route token here as validity check
+    uint8_t dummy[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES];
+    relay_read_bytes( &q, dummy, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+    /*
     relay_route_token_t token;
     if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, main->relay_secret_key ) != RELAY_OK )
     {
         printf( "error: relay is misconfigured. could not decrypt test token\n" );
         return RELAY_ERROR;
     }
+    */
 
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     relay_read_bytes( &q, ping_key, RELAY_PING_KEY_BYTES );
