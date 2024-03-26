@@ -13,7 +13,9 @@
 #include <net/if.h>
 #include <errno.h>
 
-int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address )
+#include "xdp.h" // the xdp program: bin -> header
+
+int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_internal_address )
 {
     // we can only run xdp programs as root
 
@@ -23,7 +25,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address )
         return RELAY_ERROR;
     }
 
-    // find the network interface that matches the relay public address
+    // find the network interface that matches the relay public address *or* relay private address
     {
         bool found = false;
 
@@ -39,7 +41,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address )
             if ( iap->ifa_addr && ( iap->ifa_flags & IFF_UP ) && iap->ifa_addr->sa_family == AF_INET )
             {
                 struct sockaddr_in * sa = (struct sockaddr_in*) iap->ifa_addr;
-                if ( ntohl( sa->sin_addr.s_addr ) == relay_public_address )
+                if ( ntohl( sa->sin_addr.s_addr ) == relay_public_address || ntohl( sa->sin_addr.s_addr ) == relay_internal_address )
                 {
                     printf( "found network interface: '%s'\n", iap->ifa_name );
                     bpf->interface_index = if_nametoindex( iap->ifa_name );

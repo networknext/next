@@ -1,7 +1,7 @@
 /*
     Network Next Relay Linux kernel module
 
-    The idea is to call out to this module from the XDP eBPF program to perform crypto via kfuncs:    https://docs.kernel.org/bpf/kfuncs.html
+    This module supports Linux Kernel 6.5.0 *ONLY*
 
     USAGE:
 
@@ -33,6 +33,11 @@ MODULE_VERSION( "1.0.0" );
 MODULE_LICENSE( "GPL" ); 
 MODULE_AUTHOR( "Glenn Fiedler" ); 
 MODULE_DESCRIPTION( "Network Next relay kernel module" );
+
+__bpf_kfunc int bpf_relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz );
+__bpf_kfunc int bpf_relay_verify_header( struct header_data * data, void * header, int header__sz );
+__bpf_kfunc int bpf_relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz );
+__bpf_kfunc int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * continue_token, int continue_token__sz );
 
 #define CHACHA_KEY_WORDS ( CHACHA_KEY_SIZE / sizeof(u32) )
 
@@ -112,10 +117,10 @@ static void xchacha_init( u32 * chacha_state, const u8 * key, const u8 * nonce )
     memzero_explicit(iv, sizeof(iv));
 }
 
-bool xchacha20poly1305_decrypt( u8 * dst, const u8 * src, const size_t src_len,
-                                   const u8 * ad, const size_t ad_len,
-                                const u8 nonce[XCHACHA20POLY1305_NONCE_SIZE],
-                                const u8 key[CHACHA20POLY1305_KEY_SIZE] )
+static bool xchacha20poly1305_decrypt( u8 * dst, const u8 * src, const size_t src_len,
+                                       const u8 * ad, const size_t ad_len,
+                                       const u8 nonce[XCHACHA20POLY1305_NONCE_SIZE],
+                                       const u8 key[CHACHA20POLY1305_KEY_SIZE] )
 {
     u32 chacha_state[CHACHA_STATE_WORDS];
     xchacha_init( chacha_state, key, nonce );

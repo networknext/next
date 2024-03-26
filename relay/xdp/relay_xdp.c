@@ -3,10 +3,7 @@
 
     USAGE:
 
-        sudo apt install clang llvm libelf-dev libpcap-dev gcc-multilib build-essential linux-tools-common linux-tools-generic libbpf-dev m4 libsodium-dev libcurl4-openssl-dev -y
-        git clone git@github.com:xdp-project/xdp-tools.git
-        make && sudo make install
-        clang -Ilibbpf/src -g -O2 -target bpf -c relay_xdp.c -o relay.o
+        clang -Ilibbpf/src -g -O2 -target bpf -c relay_xdp.c -o relay_xdp.o
         sudo ip link set dev enp4s0 xdp obj relay_xdp.o sec relay_xdp
         sudo cat /sys/kernel/debug/tracing/trace_pipe
         sudo ip link set dev enp4s0 xdp off
@@ -100,6 +97,9 @@ int bpf_relay_verify_header( struct header_data * data, void * header, int heade
 int bpf_relay_decrypt_route_token( struct decrypt_route_token_data * data, void * packet_data, int packet_data__sz ) __ksym;
 
 int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * packet_data, int packet_data__sz ) __ksym;
+
+// todo
+#define RELAY_DEBUG 1
 
 #ifndef RELAY_DEBUG
 #define RELAY_DEBUG 0
@@ -543,6 +543,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
             if ( (void*)ip + sizeof(struct iphdr) > data_end )
             {
+                relay_printf( "dropped ipv4 packet because it's smaller than ipv4 header" );
                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                 return XDP_DROP;
@@ -561,12 +562,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                     INCREMENT_COUNTER( RELAY_COUNTER_DROP_LARGE_IP_HEADER );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                    return XDP_DROP;
+                    return config->dedicated ? XDP_DROP : XDP_PASS;
                 }
 
-                // Drop UDP packets that are fragmented
+                // Drop fragmented UDP packets in dedicated mode only
 
-                if ( ( ip->frag_off & ~0x2000 ) != 0 )
+                if ( config->dedicated && ( ip->frag_off & ~0x2000 ) != 0 )
                 {
                     relay_printf( "dropped udp fragment" );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
@@ -579,7 +580,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                 if ( (void*)udp + sizeof(struct udphdr) <= data_end )
                 {
-                    if ( udp->dest == config->relay_port && ( ip->daddr == config->relay_public_address || ip->daddr != config->relay_internal_address ) )
+                    // todo
+                    // relay_printf( "processing udp packet sent to %x:%d (public is %x, internal is %x)", ip->daddr, udp->dest, config->relay_public_address, config->relay_internal_address );
+
+                    if ( udp->dest == config->relay_port && ( ip->daddr == config->relay_public_address || ip->daddr == config->relay_internal_address ) )
                     {
                         struct relay_state * state;
                         __u8 * packet_data = (unsigned char*) (void*)udp + sizeof(struct udphdr);
@@ -637,19 +641,19 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             // Advanced packet filter
 
                             __u32 from = ip->saddr;
-                            __u32 to   = ip->daddr;
+                            __u32 to   = config->relay_public_address;
 
                             unsigned short sum = 0;
 
-                            sum += ( from >> 24 );
-                            sum += ( from >> 16 ) & 0xFF;
-                            sum += ( from >> 8  ) & 0xFF;
                             sum += ( from       ) & 0xFF;
+                            sum += ( from >> 8  ) & 0xFF;
+                            sum += ( from >> 16 ) & 0xFF;
+                            sum += ( from >> 24 );
 
-                            sum += ( to >> 24 );
-                            sum += ( to >> 16 ) & 0xFF;
-                            sum += ( to >> 8  ) & 0xFF;
                             sum += ( to       ) & 0xFF;
+                            sum += ( to >> 8  ) & 0xFF;
+                            sum += ( to >> 16 ) & 0xFF;
+                            sum += ( to >> 24 );
 
                             sum += ( packet_bytes >> 8 );
                             sum += ( packet_bytes      ) & 0xFF;
@@ -665,11 +669,40 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
                             {
-                                relay_printf( "advanced packet filter dropped packet (a)" );
-                                INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
+                                to = config->relay_internal_address;
+
+                                unsigned short sum = 0;
+
+                                sum += ( from       ) & 0xFF;
+                                sum += ( from >> 8  ) & 0xFF;
+                                sum += ( from >> 16 ) & 0xFF;
+                                sum += ( from >> 24 );
+
+                                sum += ( to       ) & 0xFF;
+                                sum += ( to >> 8  ) & 0xFF;
+                                sum += ( to >> 16 ) & 0xFF;
+                                sum += ( to >> 24 );
+
+                                sum += ( packet_bytes >> 8 );
+                                sum += ( packet_bytes      ) & 0xFF;
+
+                                char * sum_data = (char*) &sum;
+
+                                __u8 sum_0 = ( sum      ) & 0xFF;
+                                __u8 sum_1 = ( sum >> 8 );
+
+                                __u8 pittle[2];
+                                pittle[0] = 1 | ( sum_0 ^ sum_1 ^ 193 );
+                                pittle[1] = 1 | ( ( 255 - pittle[0] ) ^ 113 );
+
+                                if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
+                                {
+                                    relay_printf( "advanced packet filter dropped packet (a)" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
                             }
 
                             state = (struct relay_state*) bpf_map_lookup_elem( &state_map, &key );
@@ -1121,7 +1154,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
                                 // IMPORTANT: for verifier
-                                if ( (void*) packet_data + 18 + 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
@@ -1130,7 +1163,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*) packet_data + 18 + 1 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
+                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
@@ -1142,18 +1175,18 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * payload = packet_data + 18;
 
                                 __u64 expire_timestamp;
-                                expire_timestamp  = payload[1 + 8];
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 1] ) ) << 8  );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 2] ) ) << 16 );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 3] ) ) << 24 );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 4] ) ) << 32 );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 5] ) ) << 40 );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 6] ) ) << 48 );
-                                expire_timestamp |= ( ( (__u64)( payload[1 + 8 + 7] ) ) << 56 );
+                                expire_timestamp  = payload[8];
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 1] ) ) << 8  );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 2] ) ) << 16 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 3] ) ) << 24 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 4] ) ) << 32 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 5] ) ) << 40 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 6] ) ) << 48 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 7] ) ) << 56 );
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "expired" );
+                                    relay_printf( "expired: %lld < %lld", expire_timestamp, state->current_timestamp );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1179,7 +1212,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                if ( bpf_relay_verify_ping_token( &verify_data, payload + 1 + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
+                                if ( bpf_relay_verify_ping_token( &verify_data, payload + 8 + 8 + 1, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
                                     relay_printf( "did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );

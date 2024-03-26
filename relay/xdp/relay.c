@@ -1,5 +1,21 @@
 /*
-    Network Next XDP Relay (userspace)
+    Network Next XDP Relay.
+
+    Runs on Ubuntu 22.04 LTS 64bit with Linux Kernel 6.5 *ONLY*
+
+    Setup:
+
+        sudo apt install -y build-essential libsodium-dev libcurl4-openssl-dev clang linux-headers-generic linux-headers-`uname -r` unzip libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools
+
+        sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
+
+        wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
+        tar -zxf xdp-tools-1.4.2.tar.gz
+        cd xdp-tools-1.4.2
+        ./configure
+        make -j && sudo make install
+        cd lib/libbpf/src
+        make -j && sudo make install
 */
 
 #include "relay.h"
@@ -77,7 +93,7 @@ int main( int argc, char *argv[] )
         return 1;
     }
 
-    if ( bpf_init( &bpf, config.relay_public_address ) != RELAY_OK )
+    if ( bpf_init( &bpf, config.relay_public_address, config.relay_internal_address ) != RELAY_OK )
     {
         cleanup();
         return 1;

@@ -13,6 +13,7 @@ struct main_t
 {
     void * curl;
     uint64_t start_time;
+    uint64_t current_timestamp;
     const char * relay_backend_url;
     uint8_t * update_response_memory;
     uint32_t relay_public_address;
@@ -22,11 +23,13 @@ struct main_t
     bool shutting_down;
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
+    uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint64_t pings_sent;
     uint64_t bytes_sent;
     int stats_fd;
     int state_fd;
+    int config_fd;
     int session_map_fd;
     struct relay_set relay_ping_set;
     struct relay_hash relay_ping_hash;
@@ -41,6 +44,7 @@ struct main_t
     uint64_t last_stats_bytes_sent;
     uint64_t last_stats_bytes_received;
     uint64_t last_stats_client_pings_received;
+    uint64_t last_stats_server_pings_received;
     uint64_t last_stats_relay_pings_received;
     double last_stats_time;
 };
