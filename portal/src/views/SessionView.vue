@@ -109,22 +109,47 @@
 
           </table>
 
-          <p class="header" style="padding-top: 25px; padding-bottom: 15px">Client Relays</p>
-   
-          <table class="table">
+          <div v-if="this.data['client_relays'] != null && this.data['client_relays'].length > 0">
 
-            <tbody>
+            <p class="header" style="padding-top: 25px; padding-bottom: 15px">Client Relays</p>
+     
+            <table class="table">
 
-              <tr v-for="item in this.data['client_relays']" :key="item.id">
-                <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="left_align"> {{ item.rtt }}ms </td>
-                <td class="left_align"> {{ item.jitter }}ms </td>
-                <td class="left_align"> {{ item.packet_loss}}% </td>
-              </tr>
+              <tbody>
 
-            </tbody>
+                <tr v-for="item in this.data['client_relays']" :key="item.id">
+                  <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                  <td class="left_align"> {{ item.rtt }}ms </td>
+                  <td class="left_align"> {{ item.jitter }}ms </td>
+                  <td class="left_align"> {{ item.packet_loss}}% </td>
+                </tr>
 
-          </table>
+              </tbody>
+
+            </table>
+
+          </div>
+
+          <div v-if="this.data['server_relays'] != null && this.data['server_relays'].length > 0">
+
+            <p class="header" style="padding-top: 25px; padding-bottom: 15px">Server Relays</p>
+     
+            <table class="table">
+
+              <tbody>
+
+                <tr v-for="item in this.data['server_relays']" :key="item.id">
+                  <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                  <td class="left_align"> {{ item.rtt }}ms </td>
+                  <td class="left_align"> {{ item.jitter }}ms </td>
+                  <td class="left_align"> {{ item.packet_loss}}% </td>
+                </tr>
+
+              </tbody>
+
+            </table>
+
+          </div>
 
         </div>
 
@@ -241,7 +266,7 @@
 
         </div>
 
-        <div class="client_relay_info">
+        <div v-if="this.data['client_relays'] != null && this.data['client_relays'].length > 0" class="client_relay_info">
 
           <p class="bold">Client Relays</p>
    
@@ -250,6 +275,27 @@
             <tbody>
 
               <tr v-for="item in this.data['client_relays']" :key="item.id">
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> {{ item.rtt }}ms </td>
+                <td class="left_align"> {{ item.jitter }}ms </td>
+                <td class="left_align"> {{ item.packet_loss}}% </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <div v-if="this.data['server_relays'] != null && this.data['server_relays'].length > 0" class="server_relay_info">
+
+          <p class="bold">Server Relays</p>
+   
+          <table class="table">
+
+            <tbody>
+
+              <tr v-for="item in this.data['server_relays']" :key="item.id">
                 <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
                 <td class="left_align"> {{ item.rtt }}ms </td>
                 <td class="left_align"> {{ item.jitter }}ms </td>
@@ -491,7 +537,36 @@ async function getData(page, session_id) {
         data['client_relays'] = client_relays
       }
 
-      // todo: server relays
+      // server relays
+  
+      let server_relay_data = res.data.server_relay_data
+      if (server_relay_data.length > 0) {
+        server_relay_data = server_relay_data[server_relay_data.length-1]
+        let i = 0
+        let server_relays = []
+        while (i < server_relay_data.num_server_relays) {
+          if (server_relay_data.server_relay_rtt[i] != 0) {
+            server_relays.push({
+              id:          server_relay_data.server_relay_id[i],
+              name:        server_relay_data.server_relay_name[i],
+              rtt:         server_relay_data.server_relay_rtt[i],
+              jitter:      server_relay_data.server_relay_jitter[i],
+              packet_loss: server_relay_data.server_relay_packet_loss[i],
+            })
+          }
+          i++
+        }
+        server_relays.sort( function(a,b) {
+          if (a.name < b.name) {
+            return -1
+          }
+          if (a.name > b.name) {
+            return +1
+          }
+          return 0
+        })
+        data['server_relays'] = server_relays
+      }
 
       // timestamps (same for all graphs...)
   
@@ -894,6 +969,13 @@ export default {
 }
 
 .client_relay_info {
+  width: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: 25px;
+}
+
+.server_relay_info {
   width: 100%;
   flex-direction: column;
   justify-content: space-between;

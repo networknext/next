@@ -67,19 +67,19 @@ type PortalRelayData struct {
 type PortalClientRelayData struct {
 	Timestamp             string                             `json:"timestamp"`
 	NumClientRelays       uint32                             `json:"num_client_relays"`
-	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"client_relay_id"`
-	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"client_relay_rtt"`
-	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"client_relay_jitter"`
-	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"client_relay_packet_loss"`
+	ClientRelayId         [constants.MaxClientRelays]uint64  `json:"relay_id"`
+	ClientRelayRTT        [constants.MaxClientRelays]uint8   `json:"relay_rtt"`
+	ClientRelayJitter     [constants.MaxClientRelays]uint8   `json:"relay_jitter"`
+	ClientRelayPacketLoss [constants.MaxClientRelays]float32 `json:"relay_packet_loss"`
 }
 
 type PortalServerRelayData struct {
 	Timestamp             string                             `json:"timestamp"`
 	NumServerRelays       uint32                             `json:"num_server_relays"`
-	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"server_relay_id"`
-	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"server_relay_rtt"`
-	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"server_relay_jitter"`
-	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"server_relay_packet_loss"`
+	ServerRelayId         [constants.MaxServerRelays]uint64  `json:"relay_id"`
+	ServerRelayRTT        [constants.MaxServerRelays]uint8   `json:"relay_rtt"`
+	ServerRelayJitter     [constants.MaxServerRelays]uint8   `json:"relay_jitter"`
+	ServerRelayPacketLoss [constants.MaxServerRelays]float32 `json:"relay_packet_loss"`
 }
 
 type PortalSessionData struct {
