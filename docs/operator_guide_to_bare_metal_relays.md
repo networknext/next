@@ -277,7 +277,7 @@ Here is the script you need to run on the relay:
 
 ```
 #!/bin/sh
-if [[ -f /etc/setup_relay_completed ]]; then exit 0; fi
+if [[ -f /etc/init_relay_completed ]]; then exit 0; fi
 echo sshd: ALL > hosts.deny
 echo sshd: $VPN_ADDRESS > hosts.allow
 sudo mv hosts.deny /etc/hosts.deny
@@ -297,7 +297,8 @@ cd libsodium-1.0.18
 make -j
 sudo make install
 sudo ldconfig
-sudo touch /etc/setup_relay_completed
+
+sudo touch /etc/init_relay_completed
 ```
 
 This script does a few things:

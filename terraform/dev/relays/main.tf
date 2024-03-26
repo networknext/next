@@ -48,12 +48,13 @@ locals {
   google_project     = file("../../projects/dev-relays-project-id.txt")
   google_relays = {
 
-    "google.iowa.1.a" = {
+    "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+/*
     "google.iowa.1.b" = {
       datacenter_name = "google.iowa.1"
       type            = "n1-standard-2"
@@ -191,6 +192,7 @@ locals {
       type            = "n1-standard-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+*/
 
 /*
     # IOWA
@@ -323,6 +325,7 @@ locals {
 
   akamai_relays = {
 
+  /*
     "akamai.newyork" = {
       datacenter_name = "akamai.newyork"
       type            = "g6-dedicated-2"
@@ -340,6 +343,7 @@ locals {
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     }
+  */
 
     /*
     "akamai.atlanta" = {
