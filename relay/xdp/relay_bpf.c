@@ -65,6 +65,19 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
+    // write out the relay_xdp.o program from array generated via binary 2 header
+
+    FILE * file = fopen( "relay_xdp.o", "wb" );
+    if ( !file )
+    {
+        printf( "\nerror: could not open relay_xdp.o for writing" );
+        return RELAY_ERROR;
+    }
+
+    fwrite( relay_xdp_o, sizeof(relay_xdp_o), 1, file );
+
+    fclose( file );
+
     // load the relay_xdp program and attach it to the network interface
 
     printf( "loading relay_xdp...\n" );
