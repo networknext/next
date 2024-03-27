@@ -65,7 +65,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
-    // write out source for relay_xdp.o
+    // write out source tar.gz for relay_xdp.o
     {
         FILE * file = fopen( "relay_xdp_source.tar.gz", "wb" );
         if ( !file )
@@ -79,9 +79,9 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         fclose( file );
     }
 
-    // build relay_xdp.o from source with make
+    // unzip source build relay_xdp.o from source with make
     {
-        const char * command = "make relay_xdp.o";
+        const char * command = "tar -zxf relay_xdp_source.tar.gz && make relay_xdp.o";
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )

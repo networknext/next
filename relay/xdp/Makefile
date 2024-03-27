@@ -32,16 +32,19 @@ clean:
 
 .PHONY: local
 local: build relay_xdp.c relay_shared.h relay_constants.h
+	sudo rm -f /sys/fs/bpf/stats_map
+	sudo rm -f /sys/fs/bpf/state_map
+	sudo rm -f /sys/fs/bpf/relay_map
 	sudo rm -f /sys/fs/bpf/config_map
 	sudo rm -f /sys/fs/bpf/session_map
 	sudo rm -f /sys/fs/bpf/whitelist_map
-	sudo rm -f /sys/fs/bpf/stats_map
 	sudo RELAY_NAME=local.9 RELAY_PUBLIC_ADDRESS=127.0.0.1:2009 RELAY_PUBLIC_KEY=9597P1ZapnmR5X9sTeOLRIE6ZCqGfOEiyJVq2Rb+bV0= RELAY_PRIVATE_KEY=ykNSEqmbzjyz678XfDUnnItB63S1FyBQ7CafO7W1Fgo= RELAY_BACKEND_PUBLIC_KEY=iY1zTFmQASm6ynSSQ1yKihuCrFSqmetrjxGx9Y1xYiA= RELAY_BACKEND_URL=http://127.0.0.1:30000 ./relay
 
 .PHONY: debug
 debug: build-debug
 	sudo rm -f /sys/fs/bpf/stats_map
 	sudo rm -f /sys/fs/bpf/state_map
+	sudo rm -f /sys/fs/bpf/relay_map
 	sudo rm -f /sys/fs/bpf/config_map
 	sudo rm -f /sys/fs/bpf/session_map
 	sudo rm -f /sys/fs/bpf/whitelist_map
