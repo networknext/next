@@ -19,17 +19,8 @@ sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 sudo NEEDRESTART_SUSPEND=1 apt update -y
 sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
 sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential vim wget -y
+sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential vim wget libsodium-dev flex bison -y
 sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
-
-# download and compile libsodium
-wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
-tar -zxf libsodium-1.0.18.tar.gz
-cd libsodium-1.0.18
-./configure
-make -j
-sudo make install
-cd /
 
 # setup for xdp/bpf
 sudo NEEDRESTART_SUSPEND=1 apt install clang linux-headers-generic linux-headers-`uname -r` unzip libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools -y
@@ -45,14 +36,18 @@ sudo ldconfig
 cd /
 
 # install relay module
-wget https://storage.googleapis.com/xdp_network_next_relay_artifacts/relay_module.ko
+sudo mkdir /relay_module
+cd /relay_module
+sudo wget https://storage.googleapis.com/xdp_network_next_relay_artifacts/relay_module.tar.gz
+sudo tar -zxf relay_module.tar.gz
+sudo make
 sudo mkdir /lib/modules/`uname -r`/kernel/net/relay_module
 sudo mv relay_module.ko /lib/modules/`uname -r`/kernel/net/relay_module
 echo "chacha20" > modules.txt
 echo "poly1305" >> modules.txt
 echo "relay_module" >> modules.txt
-
 sudo mv modules.txt /etc/modules
+sudo depmod
 
 sudo touch /etc/init_relay_completed
 
