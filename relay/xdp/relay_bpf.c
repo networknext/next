@@ -13,7 +13,7 @@
 #include <net/if.h>
 #include <errno.h>
 
-#include "xdp.h" // the xdp program: bin -> header
+#include "xdp.h"
 
 int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_internal_address )
 {
@@ -95,7 +95,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
         else
         {
-            printf( "\nerror: failed to attech relay_xdp program to interface\n\n" );
+            printf( "\nerror: failed to attach relay_xdp program to interface\n\n" );
             return RELAY_ERROR;
         }
     }

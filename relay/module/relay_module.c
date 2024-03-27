@@ -32,64 +32,23 @@ MODULE_LICENSE( "GPL" );
 MODULE_AUTHOR( "Glenn Fiedler" ); 
 MODULE_DESCRIPTION( "Network Next relay kernel module" );
 
-// IMPORTANT: We need to rework the relay_module so it doesn't rely on shared relay types. It should be crypto functions only.
+#define XCHACHA20POLY1305_NONCE_SIZE 24
 
-#define RELAY_PING_TOKEN_BYTES                                                                  32
-#define RELAY_PING_KEY_BYTES                                                                    32
-#define RELAY_SESSION_PRIVATE_KEY_BYTES                                                         32
-#define RELAY_ROUTE_TOKEN_BYTES                                                                 71
-#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                                                      111
-#define RELAY_CONTINUE_TOKEN_BYTES                                                              17
-#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                                                    57
-#define RELAY_PUBLIC_KEY_BYTES                                                                  32
-#define RELAY_PRIVATE_KEY_BYTES                                                                 32
-#define RELAY_SECRET_KEY_BYTES                                                                  32
-#define RELAY_BACKEND_PUBLIC_KEY_BYTES                                                          32
+#define CHACHA20POLY1305_KEY_SIZE 32
 
-#pragma pack(push, 1)
-struct ping_token_data
+struct chacha20poly1305_crypto
 {
-    __u8 ping_key[RELAY_PING_KEY_BYTES];
-    __u64 expire_timestamp;                         
-    __u32 source_address;                                                   // big endian
-    __u32 dest_address;                                                     // big endian
-    __u16 source_port;                                                      // big endian
-    __u16 dest_port;                                                        // big endian
-};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-struct header_data
-{
-    __u8 session_private_key[RELAY_SESSION_PRIVATE_KEY_BYTES];
-    __u8 packet_type;
-    __u64 packet_sequence;
-    __u64 session_id;
-    __u8 session_version;
-};
-#pragma pack(pop)
-
-struct decrypt_route_token_data
-{
-    __u8 relay_secret_key[RELAY_SECRET_KEY_BYTES];
-    __u8 relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
+    __u8 nonce[XCHACHA20POLY1305_NONCE_SIZE];
+    __u8 key[CHACHA20POLY1305_KEY_SIZE];
 };
 
-struct decrypt_continue_token_data
-{
-    __u8 relay_secret_key[RELAY_SECRET_KEY_BYTES];
-    __u8 relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
-};
+__bpf_kfunc int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz );
 
-__bpf_kfunc int bpf_relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz );
-__bpf_kfunc int bpf_relay_verify_header( struct header_data * data, void * header, int header__sz );
-__bpf_kfunc int bpf_relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz );
-__bpf_kfunc int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * continue_token, int continue_token__sz );
+__bpf_kfunc int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chacha20poly1305_crypto * crypto );
+
+// ----------------------------------------------------------------------------------------------------------------------
 
 #define CHACHA_KEY_WORDS ( CHACHA_KEY_SIZE / sizeof(u32) )
-
-#define XCHACHA20POLY1305_NONCE_SIZE 24
-#define CHACHA20POLY1305_KEY_SIZE 32
 
 static bool __chacha20poly1305_decrypt( u8 * dst, const u8 * src, const size_t src_len, const u8 * ad, const size_t ad_len, u32 * chacha_state )
 {
@@ -174,6 +133,8 @@ static bool xchacha20poly1305_decrypt( u8 * dst, const u8 * src, const size_t sr
     return __chacha20poly1305_decrypt( dst, src, src_len, ad, ad_len, chacha_state );
 }
 
+// ----------------------------------------------------------------------------------------------------------------------
+
 struct crypto_shash * sha256;
 
 static int sha256_hash( const __u8 * data, __u32 data_len, __u8 * out_digest )
@@ -184,53 +145,30 @@ static int sha256_hash( const __u8 * data, __u32 data_len, __u8 * out_digest )
     return 0;
 }
 
-__bpf_kfunc int bpf_relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz )
+// ----------------------------------------------------------------------------------------------------------------------
+
+__bpf_kfunc int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz )
 {
-    __u8 hash[32];
-    sha256_hash( (const __u8*) data, sizeof(struct ping_token_data), hash );
-    return !memcmp( hash, ping_token, 32 );
+    sha256_hash( data, data__sz, output );
+    return 0;
 }
 
-__bpf_kfunc int bpf_relay_verify_header( struct header_data * data, void * header, int header__sz )
+__bpf_kfunc int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chacha20poly1305_crypto * crypto )
 {
-    __u8 hash[32];
-    sha256_hash( (const __u8*) data, sizeof(struct header_data), hash );
-    return !memcmp( hash, header + 8 + 8 + 1, 8 );
-}
-
-__bpf_kfunc int bpf_relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz )
-{
-    __u8 * nonce = route_token;
-    __u8 * encrypted = route_token + 24;
-    __u8 output[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES - 24];
-    if ( !xchacha20poly1305_decrypt( output, encrypted, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES - 24, NULL, 0, nonce, data->relay_secret_key ) )
-        return 0;
-    memcpy( route_token + 24, output, RELAY_ROUTE_TOKEN_BYTES );
-    return 1;
-}
-
-__bpf_kfunc int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * continue_token, int continue_token__sz )
-{
-    __u8 * nonce = continue_token;
-    __u8 * encrypted = continue_token + 24;
-    __u8 output[RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24];
-    if ( !xchacha20poly1305_decrypt( output, encrypted, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24, NULL, 0, nonce, data->relay_secret_key ) )
-        return 0;
-    memcpy( continue_token + 24, output, RELAY_CONTINUE_TOKEN_BYTES );
-    return 1;
+    return xchacha20poly1305_decrypt( data, data, data__sz, NULL, 0, crypto->nonce, crypto->key ) == true;
 }
 
 BTF_SET8_START( bpf_task_set )
-BTF_ID_FLAGS( func, bpf_relay_verify_ping_token )
-BTF_ID_FLAGS( func, bpf_relay_verify_header )
-BTF_ID_FLAGS( func, bpf_relay_decrypt_route_token )
-BTF_ID_FLAGS( func, bpf_relay_decrypt_continue_token )
+BTF_ID_FLAGS( func, bpf_relay_sha256 )
+BTF_ID_FLAGS( func, bpf_relay_xchacha20poly1305_decrypt )
 BTF_SET8_END( bpf_task_set )
 
 static const struct btf_kfunc_id_set bpf_task_kfunc_set = {
     .owner = THIS_MODULE,
     .set   = &bpf_task_set,
 };
+
+// ----------------------------------------------------------------------------------------------------------------------
 
 static int __init relay_init( void ) 
 {

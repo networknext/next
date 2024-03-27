@@ -1557,11 +1557,11 @@ func main() {
 
 	_ = secretKey
 
-	TestRelayPingPacket(clientAddress, serverAddress)
+	// TestRelayPingPacket(clientAddress, serverAddress)
 	// TestClientPingPacket(clientAddress, serverAddress)
 	// TestServerPingPacket(clientAddress, serverAddress)
 	// TestRouteRequestPacket(clientAddress, serverAddress, secretKey)
-	// TestContinueRequestPacket(clientAddress, serverAddress, secretKey)
+	TestContinueRequestPacket(clientAddress, serverAddress, secretKey)
 	
 	// TestClientToServerPacket(clientAddress, serverAddress, secretKey)
 	// TestServerToClientPacket(clientAddress, serverAddress, secretKey)

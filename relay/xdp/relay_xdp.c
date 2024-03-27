@@ -90,13 +90,19 @@ struct {
 
 #define SUB_COUNTER(counter_index, value) __sync_fetch_and_sub( &stats->counters[counter_index], ( value) )
 
-int bpf_relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz ) __ksym;
+#define XCHACHA20POLY1305_NONCE_SIZE 24
 
-int bpf_relay_verify_header( struct header_data * data, void * header, int header__sz ) __ksym;
+#define CHACHA20POLY1305_KEY_SIZE 32
 
-int bpf_relay_decrypt_route_token( struct decrypt_route_token_data * data, void * packet_data, int packet_data__sz ) __ksym;
+struct chacha20poly1305_crypto
+{
+    __u8 nonce[XCHACHA20POLY1305_NONCE_SIZE];
+    __u8 key[CHACHA20POLY1305_KEY_SIZE];
+};
 
-int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * packet_data, int packet_data__sz ) __ksym;
+int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz ) __ksym;
+
+int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chacha20poly1305_crypto * crypto ) __ksym;
 
 // todo
 #define RELAY_DEBUG 1
@@ -110,6 +116,59 @@ int bpf_relay_decrypt_continue_token( struct decrypt_continue_token_data * data,
 #else // #if RELAY_DEBUG
 #define relay_printf(...) do { } while (0)
 #endif // #if RELAY_DEBUG
+
+static int relay_memcmp( void * a, void * b, int len )
+{
+    unsigned char * p = a;
+    unsigned char * q = b;
+    while ( len > 0 )
+    {
+        if ( *p != *q )
+            return ( *p - *q );
+        len--;
+        p++;
+        q++;
+    }
+    return 0;
+}
+
+static int relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz )
+{
+    __u8 hash[32];
+    bpf_relay_sha256( data, sizeof(struct ping_token_data), hash, 32 );
+    return !relay_memcmp( hash, ping_token, 32 );
+}
+
+static int relay_verify_header( struct header_data * data, void * header, int header__sz )
+{
+    __u8 hash[32];
+    bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+    return !relay_memcmp( hash, header + 8 + 8 + 1, 8 );
+}
+
+static int relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz )
+{
+    __u8 * nonce = route_token;
+    __u8 * encrypted = route_token + 24;
+    struct chacha20poly1305_crypto crypto_data;
+    memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
+    memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
+    if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES - 24, &crypto_data ) )
+        return 0;
+    return 1;
+}
+
+static int relay_decrypt_continue_token( struct decrypt_continue_token_data * data, void * continue_token, int continue_token__sz )
+{
+    __u8 * nonce = continue_token;
+    __u8 * encrypted = continue_token + 24;
+    struct chacha20poly1305_crypto crypto_data;
+    memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
+    memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
+    if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24, &crypto_data ) )
+        return 0;
+    return 1;
+}
 
 static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
 {
@@ -1212,7 +1271,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                if ( bpf_relay_verify_ping_token( &verify_data, payload + 8 + 8 + 1, RELAY_PING_TOKEN_BYTES ) == 0 )
+                                if ( relay_verify_ping_token( &verify_data, payload + 8 + 8 + 1, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
                                     relay_printf( "did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
@@ -1302,7 +1361,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                if ( bpf_relay_verify_ping_token( &verify_data, payload + 8 + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
+                                if ( relay_verify_ping_token( &verify_data, payload + 8 + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
                                     relay_printf( "did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY );
@@ -1392,7 +1451,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                if ( bpf_relay_verify_ping_token( &verify_data, payload + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
+                                if ( relay_verify_ping_token( &verify_data, payload + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
                                     relay_printf( "did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY );
@@ -1506,7 +1565,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     relay_printf( "decrypting route token" );
                                     struct decrypt_route_token_data decrypt_data;
                                     memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
-                                    if ( bpf_relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
+                                    if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
                                     {
                                         relay_printf( "could not decrypt route token" );
                                         INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN );
@@ -1704,7 +1763,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
@@ -1764,7 +1823,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     relay_printf( "decrypting continue token" );
                                     struct decrypt_continue_token_data decrypt_data;
                                     memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
-                                    if ( bpf_relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
+                                    if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
                                     {
                                         relay_printf( "could not decrypt continue token" );
                                         INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
@@ -1954,7 +2013,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
@@ -2099,7 +2158,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY );
@@ -2242,7 +2301,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY );
@@ -2382,7 +2441,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY );
@@ -2524,7 +2583,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
-                                if ( bpf_relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
+                                if ( relay_verify_header( &verify_data, header, RELAY_HEADER_BYTES ) == 0 )
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY );
