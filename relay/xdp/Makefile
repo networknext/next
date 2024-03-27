@@ -64,3 +64,5 @@ relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h vmlinux.h
 
 xdp.h: relay_xdp.o
 	xxd -i relay_xdp.o > xdp.h
+	rm relay_xdp.o
+	
