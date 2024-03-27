@@ -32,7 +32,6 @@ clean:
 
 .PHONY: local
 local: build relay_xdp.c relay_shared.h relay_constants.h
-	gcc -DCOMPILE_WITH_BPF=1 -O2 -g relay.c relay_platform.c relay_base64.c relay_ping_history.c relay_manager.c relay_main.c relay_ping.c relay_bpf.c relay_config.c -o relay -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 	sudo rm -f /sys/fs/bpf/config_map
 	sudo rm -f /sys/fs/bpf/session_map
 	sudo rm -f /sys/fs/bpf/whitelist_map

@@ -19,7 +19,7 @@ sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 sudo NEEDRESTART_SUSPEND=1 apt update -y
 sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
 sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls build-essential vim wget libsodium-dev flex bison -y
+sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls-dev build-essential vim wget libsodium-dev flex bison -y
 sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 
 # setup for xdp/bpf
