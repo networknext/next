@@ -468,7 +468,7 @@ int main_update( struct main_t * main )
     curl_easy_getinfo( main->curl, CURLINFO_RESPONSE_CODE, &code );
     if ( code != 200 )
     {
-        printf( "error: relay update response is %d. the relay backend is down or the relay is misconfigured. check RELAY_BACKEND_PUBLIC_KEY\n", (int)code );
+        printf( "error: relay update response is %d\n", (int)code );
         return RELAY_ERROR;
     }
 
@@ -547,20 +547,20 @@ int main_update( struct main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: disable for now
-    /*
     uint8_t expected_has_internal_address = relay_read_uint8( &q );
     if ( expected_has_internal_address )
     {
         uint32_t expected_internal_address;
         relay_read_address( &q, &expected_internal_address, &expected_port );
+        // todo: disabled for now
+        /*
         if ( main->relay_internal_address != expected_internal_address )
         {
             printf( "error: relay internal address mismatch\n" );
             return RELAY_ERROR;
         }
+        */
     }
-    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
