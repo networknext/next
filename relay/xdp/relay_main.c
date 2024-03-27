@@ -65,6 +65,8 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
 
     main->start_time = time( NULL );
     main->relay_backend_url = config->relay_backend_url;
+    main->relay_port = config->relay_port;
+    main->relay_public_address = config->relay_public_address;
     memcpy( main->relay_public_key, config->relay_public_key, sizeof(config->relay_public_key) );
     memcpy( main->relay_private_key, config->relay_private_key, sizeof(config->relay_private_key) );
     memcpy( main->relay_backend_public_key, config->relay_backend_public_key, sizeof(config->relay_backend_public_key) );
@@ -74,7 +76,6 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->session_map_fd = bpf->session_map_fd;
 #endif // #idef COMPILE_WITH_BPF
     memcpy( main->relay_version, relay_version, RELAY_VERSION_LENGTH );
-
 
 #ifdef COMPILE_WITH_BPF
     
@@ -410,7 +411,6 @@ int main_update( struct main_t * main )
     const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
 
     uint8_t nonce[crypto_box_NONCEBYTES];
-    memset( nonce, 0, sizeof(nonce) );
     relay_platform_random_bytes( nonce, crypto_box_NONCEBYTES );
 
     if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )

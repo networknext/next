@@ -24,7 +24,7 @@ struct main_t
     uint8_t relay_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
-    uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
+    uint8_t relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
     uint64_t pings_sent;
     uint64_t bytes_sent;
     int stats_fd;
