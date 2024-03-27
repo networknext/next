@@ -50,5 +50,3 @@ sudo mv modules.txt /etc/modules
 sudo depmod
 
 sudo touch /etc/init_relay_completed
-
-sudo reboot
