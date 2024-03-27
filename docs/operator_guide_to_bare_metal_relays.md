@@ -275,6 +275,8 @@ Order a bare metal server from datapacket.com at the datacenter you want. It sho
 
 Here is the script you need to run on the relay:
 
+// todo: needs update
+
 ```
 #!/bin/sh
 if [[ -f /etc/init_relay_completed ]]; then exit 0; fi
