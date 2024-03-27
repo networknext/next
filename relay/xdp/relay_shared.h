@@ -6,9 +6,7 @@
 
 #include "relay_constants.h"
 
-#if !RELAY_COMPILING_AS_BPF
 #include <linux/types.h>
-#endif // #if !RELAY_COMPILING_AS_BPF
 
 struct relay_config
 {

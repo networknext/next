@@ -13,7 +13,7 @@
 #include <net/if.h>
 #include <errno.h>
 
-#include "xdp.h"
+#include "relay_xdp_source.h"
 
 int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_internal_address )
 {
@@ -65,18 +65,34 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
-    // write out the relay_xdp.o program from array generated via binary 2 header
-
-    FILE * file = fopen( "relay_xdp.o", "wb" );
-    if ( !file )
+    // write out source for relay_xdp.o
     {
-        printf( "\nerror: could not open relay_xdp.o for writing" );
-        return RELAY_ERROR;
+        FILE * file = fopen( "relay_xdp_source.tar.gz", "wb" );
+        if ( !file )
+        {
+            printf( "\nerror: could not open relay_xdp.o for writing" );
+            return RELAY_ERROR;
+        }
+
+        fwrite( relay_xdp_source_tar_gz, sizeof(relay_xdp_source_tar_gz), 1, file );
+
+        fclose( file );
     }
 
-    fwrite( relay_xdp_o, sizeof(relay_xdp_o), 1, file );
-
-    fclose( file );
+    // build relay_xdp.o from source with make
+    {
+        const char * command = "make relay_xdp.o";
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( strlen( buffer ) > 0 )
+            {
+                printf( "%s", buffer );
+            }
+        }
+        pclose( file );
+    }
 
     // load the relay_xdp program and attach it to the network interface
 

@@ -17,28 +17,20 @@ RELAY_INTERNAL_ADDRESS = 192.168.1.40:40000
 KERNEL = $(shell uname -r)
 
 .PHONY: build
-build: *.c *.h xdp.h
+build: *.c *.h
 	gcc -DCOMPILE_WITH_BPF=1 -O2 -g relay.c relay_platform.c relay_base64.c relay_ping_history.c relay_manager.c relay_main.c relay_ping.c relay_bpf.c relay_config.c -o relay -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 
 .PHONY: build-debug
-build-debug: *.c *.h xdp.h
+build-debug: *.c *.h
 	gcc -DRELAY_DEBUG=1 -DCOMPILE_WITH_BPF=1 -O2 -g relay.c -o relay relay_platform.c relay_base64.c relay_bpf.c relay_config.c relay_debug.c -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 
 .PHONY: clean
 clean:
 	rm -f relay
-	rm -f relay_xdp.o
-
-.PHONY: load
-load:
-	sudo ip link set dev $(INTERFACE) xdp obj relay_xdp.o sec relay_xdp
-
-.PHONY: unload
-unload:
-	sudo ip link set dev $(INTERFACE) xdp off
+	rm -f *.o
 
 .PHONY: local
-local: build
+local: build relay_xdp.c relay_shared.h relay_constants.h
 	gcc -DCOMPILE_WITH_BPF=1 -O2 -g relay.c relay_platform.c relay_base64.c relay_ping_history.c relay_manager.c relay_main.c relay_ping.c relay_bpf.c relay_config.c -o relay -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 	sudo rm -f /sys/fs/bpf/config_map
 	sudo rm -f /sys/fs/bpf/session_map
@@ -54,14 +46,16 @@ debug: build-debug
 	sudo rm -f /sys/fs/bpf/session_map
 	sudo rm -f /sys/fs/bpf/whitelist_map
 	sudo RELAY_NAME=debug RELAY_PUBLIC_ADDRESS=$(RELAY_PUBLIC_ADDRESS) RELAY_INTERNAL_ADDRESS=$(RELAY_INTERNAL_ADDRESS) RELAY_PUBLIC_KEY=XBIAwHE0CppjvPMmtX3TT3QnvmhMbU0KxDpsaFBo+nE= RELAY_PRIVATE_KEY=qlUNbQoc3amdkfNrLflO0Z9/2XJai6zV880AS9cInDc= RELAY_PING_KEY=ANXbw47AaWuu7sidkuw0Cq5cIXU4e8xoqJbSsFC+MT0= RELAY_BACKEND_PUBLIC_KEY=osFv1SPtMkhezNPuLbNbjp/F8ks5I1Y1QVqD0yLd+0o= ./relay
-	sudo ip link set dev $(INTERFACE) xdp off
 
-vmlinux.h:
-	bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
-
-relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h vmlinux.h
+relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h relay_xdp_source.h
 	clang -DRELAY_DEBUG=1 -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
 
-xdp.h: relay_xdp.o
-	xxd -i relay_xdp.o > xdp.h
-	rm -f relay_xdp.o
+relay_xdp_source.h: Makefile relay_xdp.c relay_shared.h relay_constants.h
+	mkdir -p relay_xdp_source
+	cp Makefile relay_xdp_source
+	cp relay_xdp.c relay_xdp_source
+	cp relay_shared.h relay_xdp_source
+	cp relay_constants.h relay_xdp_source
+	cd relay_xdp_source && tar -zcvf ../relay_xdp_source.tar.gz * && cd ..
+	rm -rf relay_xdp_source
+	xxd -i relay_xdp_source.tar.gz > relay_xdp_source.h

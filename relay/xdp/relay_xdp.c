@@ -9,8 +9,6 @@
         sudo ip link set dev enp4s0 xdp off
 */
 
-#include "vmlinux.h"
-/*
 #include <linux/in.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -20,10 +18,7 @@
 #include <linux/udp.h>
 #include <linux/bpf.h>
 #include <linux/string.h>
-*/
 #include <bpf/bpf_helpers.h>
-
-#define RELAY_COMPILING_AS_BPF 1
 
 #include "relay_shared.h"
 
@@ -38,16 +33,6 @@
 #else
 # error "Endianness detection needs to be set up for your compiler?!"
 #endif
-
-#define ETH_ALEN 6
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    #define ETH_P_IP   0x0008
-    #define ETH_P_IPV6 0xDD86
-#else // #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    #define ETH_P_IP   0x0800
-    #define ETH_P_IPV6 0x86DD
-#endif // #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 struct {
     __uint( type, BPF_MAP_TYPE_ARRAY );
@@ -166,8 +151,8 @@ static int relay_decrypt_route_token( struct decrypt_route_token_data * data, vo
     __u8 * nonce = route_token;
     __u8 * encrypted = route_token + 24;
     struct chacha20poly1305_crypto crypto_data;
-    __builtin_memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
-    __builtin_memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
+    memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
+    memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
     if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES - 24, &crypto_data ) )
         return 0;
     return 1;
@@ -178,8 +163,8 @@ static int relay_decrypt_continue_token( struct decrypt_continue_token_data * da
     __u8 * nonce = continue_token;
     __u8 * encrypted = continue_token + 24;
     struct chacha20poly1305_crypto crypto_data;
-    __builtin_memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
-    __builtin_memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
+    memcpy( crypto_data.nonce, nonce, XCHACHA20POLY1305_NONCE_SIZE );
+    memcpy( crypto_data.key, data->relay_secret_key, CHACHA20POLY1305_KEY_SIZE );
     if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24, &crypto_data ) )
         return 0;
     return 1;
@@ -204,9 +189,9 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->check = 0;
 
     char c[ETH_ALEN];
-    __builtin_memcpy( c, eth->h_source, ETH_ALEN );
-    __builtin_memcpy( eth->h_source, eth->h_dest, ETH_ALEN );
-    __builtin_memcpy( eth->h_dest, c, ETH_ALEN );
+    memcpy( c, eth->h_source, ETH_ALEN );
+    memcpy( eth->h_source, eth->h_dest, ETH_ALEN );
+    memcpy( eth->h_dest, c, ETH_ALEN );
 
     __u16 * p = (__u16*) ip;
     __u32 checksum = p[0];
@@ -411,8 +396,8 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
         return XDP_DROP;
     }
 
-    __builtin_memcpy( eth->h_source, whitelist_value->dest_address, 6 );
-    __builtin_memcpy( eth->h_dest, whitelist_value->source_address, 6 );
+    memcpy( eth->h_source, whitelist_value->dest_address, 6 );
+    memcpy( eth->h_dest, whitelist_value->source_address, 6 );
 
     __u16 * p = (__u16*) ip;
     __u32 checksum = p[0];
@@ -611,7 +596,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
     if ( (void*)eth + sizeof(struct ethhdr) <= data_end )
     {
-        if ( eth->h_proto == ETH_P_IP) // IPV4
+        if ( eth->h_proto == __constant_htons(ETH_P_IP) ) // IPV4
         {
             struct iphdr * ip = data + sizeof(struct ethhdr);
 
@@ -1284,7 +1269,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.dest_address = ip->daddr;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
-                                __builtin_memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
+                                memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
                                 if ( relay_verify_ping_token( &verify_data, payload + 8 + 8 + 1, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
@@ -1301,8 +1286,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 
                                 struct whitelist_value value;
                                 value.expire_timestamp = state->current_timestamp + 30;
-                                __builtin_memcpy( value.source_address, eth->h_source, 6 );
-                                __builtin_memcpy( value.dest_address, eth->h_dest, 6 );
+                                memcpy( value.source_address, eth->h_source, 6 );
+                                memcpy( value.dest_address, eth->h_dest, 6 );
 
                                 bpf_map_update_elem( &whitelist_map, &key, &value, BPF_ANY );
 
@@ -1374,7 +1359,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.dest_address = ip->daddr;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
-                                __builtin_memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
+                                memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
                                 if ( relay_verify_ping_token( &verify_data, payload + 8 + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
@@ -1391,8 +1376,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 
                                 struct whitelist_value value;
                                 value.expire_timestamp = state->current_timestamp + 30;
-                                __builtin_memcpy( value.source_address, eth->h_source, 6 );
-                                __builtin_memcpy( value.dest_address, eth->h_dest, 6 );
+                                memcpy( value.source_address, eth->h_source, 6 );
+                                memcpy( value.dest_address, eth->h_dest, 6 );
 
                                 bpf_map_update_elem( &whitelist_map, &key, &value, BPF_ANY );
 
@@ -1464,7 +1449,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.dest_address = ip->daddr;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
-                                __builtin_memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
+                                memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
                                 if ( relay_verify_ping_token( &verify_data, payload + 8 + 8, RELAY_PING_TOKEN_BYTES ) == 0 )
                                 {
@@ -1481,8 +1466,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 
                                 struct whitelist_value value;
                                 value.expire_timestamp = state->current_timestamp + 30;
-                                __builtin_memcpy( value.source_address, eth->h_source, 6 );
-                                __builtin_memcpy( value.dest_address, eth->h_dest, 6 );
+                                memcpy( value.source_address, eth->h_source, 6 );
+                                memcpy( value.dest_address, eth->h_dest, 6 );
 
                                 bpf_map_update_elem( &whitelist_map, &key, &value, BPF_ANY );
 
@@ -1579,7 +1564,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "decrypting route token" );
                                     struct decrypt_route_token_data decrypt_data;
-                                    __builtin_memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
                                     if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
                                     {
                                         relay_printf( "could not decrypt route token" );
@@ -1603,7 +1588,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 struct session_data session;
 
-                                __builtin_memcpy( session.session_private_key, token->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memcpy( session.session_private_key, token->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 session.expire_timestamp = token->expire_timestamp;
                                 session.session_id = token->session_id;
                                 session.envelope_kbps_up = token->envelope_kbps_up;
@@ -1640,7 +1625,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session.envelope_kbps_down );
                                 }
 
-                                __builtin_memcpy( data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+                                memcpy( data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
 
                                 data += RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
 
@@ -1765,8 +1750,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -1837,7 +1822,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "decrypting continue token" );
                                     struct decrypt_continue_token_data decrypt_data;
-                                    __builtin_memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
                                     if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
                                     {
                                         relay_printf( "could not decrypt continue token" );
@@ -1890,7 +1875,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
 
-                                __builtin_memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+                                memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
 
                                 data += RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
 
@@ -2015,8 +2000,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -2160,8 +2145,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -2303,8 +2288,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -2443,8 +2428,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -2585,8 +2570,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
-                                __builtin_memset( &verify_data, 0, sizeof(struct header_data) );
-                                __builtin_memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
                                 verify_data.session_id  = header[8];
@@ -2670,7 +2655,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                 }
             }
         }
-        else if ( eth->h_proto == ETH_P_IPV6 )
+        else if ( eth->h_proto == __constant_htons(ETH_P_IPV6) )
         {
             // drop IPv6 packets in dedicated mode
 
