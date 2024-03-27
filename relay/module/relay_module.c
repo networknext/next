@@ -27,12 +27,59 @@
 #include <crypto/utils.h>
 #include <linux/scatterlist.h>
 
-#include "relay_shared.h"
-
 MODULE_VERSION( "1.0.0" );
 MODULE_LICENSE( "GPL" ); 
 MODULE_AUTHOR( "Glenn Fiedler" ); 
 MODULE_DESCRIPTION( "Network Next relay kernel module" );
+
+// IMPORTANT: We need to rework the relay_module so it doesn't rely on shared relay types. It should be crypto functions only.
+
+#define RELAY_PING_TOKEN_BYTES                                                                  32
+#define RELAY_PING_KEY_BYTES                                                                    32
+#define RELAY_SESSION_PRIVATE_KEY_BYTES                                                         32
+#define RELAY_ROUTE_TOKEN_BYTES                                                                 71
+#define RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES                                                      111
+#define RELAY_CONTINUE_TOKEN_BYTES                                                              17
+#define RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES                                                    57
+#define RELAY_PUBLIC_KEY_BYTES                                                                  32
+#define RELAY_PRIVATE_KEY_BYTES                                                                 32
+#define RELAY_SECRET_KEY_BYTES                                                                  32
+#define RELAY_BACKEND_PUBLIC_KEY_BYTES                                                          32
+
+#pragma pack(push, 1)
+struct ping_token_data
+{
+    __u8 ping_key[RELAY_PING_KEY_BYTES];
+    __u64 expire_timestamp;                         
+    __u32 source_address;                                                   // big endian
+    __u32 dest_address;                                                     // big endian
+    __u16 source_port;                                                      // big endian
+    __u16 dest_port;                                                        // big endian
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct header_data
+{
+    __u8 session_private_key[RELAY_SESSION_PRIVATE_KEY_BYTES];
+    __u8 packet_type;
+    __u64 packet_sequence;
+    __u64 session_id;
+    __u8 session_version;
+};
+#pragma pack(pop)
+
+struct decrypt_route_token_data
+{
+    __u8 relay_secret_key[RELAY_SECRET_KEY_BYTES];
+    __u8 relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
+};
+
+struct decrypt_continue_token_data
+{
+    __u8 relay_secret_key[RELAY_SECRET_KEY_BYTES];
+    __u8 relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
+};
 
 __bpf_kfunc int bpf_relay_verify_ping_token( struct ping_token_data * data, void * ping_token, int ping_token__sz );
 __bpf_kfunc int bpf_relay_verify_header( struct header_data * data, void * header, int header__sz );

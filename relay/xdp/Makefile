@@ -17,11 +17,11 @@ RELAY_INTERNAL_ADDRESS = 192.168.1.40:40000
 KERNEL = $(shell uname -r)
 
 .PHONY: build
-build: module *.c *.h xdp.h
+build: *.c *.h xdp.h
 	gcc -DCOMPILE_WITH_BPF=1 -O2 -g relay.c relay_platform.c relay_base64.c relay_ping_history.c relay_manager.c relay_main.c relay_ping.c relay_bpf.c relay_config.c -o relay -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 
 .PHONY: build-debug
-build-debug: module *.c *.h xdp.h
+build-debug: *.c *.h xdp.h
 	gcc -DRELAY_DEBUG=1 -DCOMPILE_WITH_BPF=1 -O2 -g relay.c -o relay relay_platform.c relay_base64.c relay_bpf.c relay_config.c relay_debug.c -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 
 .PHONY: clean
@@ -58,17 +58,6 @@ debug: build-debug
 
 relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h
 	clang -DRELAY_DEBUG=1 -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
-
-obj-m += relay_module.o
-
-.PHONY: module
-module: relay_module.c relay_shared.h relay_constants.h
-	@echo building relay module
-	sudo rmmod relay_module.ko; echo
-	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
-	sudo modprobe chacha20
-	sudo modprobe poly1305
-	sudo insmod relay_module.ko; echo
 
 xdp.h: relay_xdp.o
 	xxd -i relay_xdp.o > xdp.h
