@@ -46,7 +46,7 @@ blocks:
             - checkout
             - uname -r
             - sudo apt update -y
-            - sudo apt install -y build-essential libsodium-dev libcurl4-openssl-dev clang linux-headers-generic linux-headers-`uname -r` libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools
+            - sudo apt install -y build-essential libsodium-dev libcurl4-openssl-dev clang linux-headers-generic linux-headers-`uname -r` linux-tools-`uname -r` libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools
             - sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
             - wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
             - tar -zxf xdp-tools-1.4.2.tar.gz
