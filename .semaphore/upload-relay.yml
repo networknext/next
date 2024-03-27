@@ -58,8 +58,11 @@ blocks:
             - make -j && sudo make install
             - sudo ldconfig
             - popd
+            - pushd .
             - cd relay/xdp && make -j build
             - export VERSION=`./relay version`
             - mv relay $VERSION
             - gsutil cp $VERSION $RELAY_BUCKET
-            - gsutil cp relay_module.ko $RELAY_BUCKET
+            - popd
+            - cd relay/module && tar -zcvf relay_module.tar.gz *
+            - gsutil cp relay_module.tar.gz $RELAY_BUCKET
