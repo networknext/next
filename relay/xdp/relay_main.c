@@ -547,6 +547,8 @@ int main_update( struct main_t * main )
         return RELAY_ERROR;
     }
 
+    // todo: disable for now
+    /*
     uint8_t expected_has_internal_address = relay_read_uint8( &q );
     if ( expected_has_internal_address )
     {
@@ -558,6 +560,7 @@ int main_update( struct main_t * main )
             return RELAY_ERROR;
         }
     }
+    */
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
     uint8_t expected_relay_backend_public_key[crypto_box_PUBLICKEYBYTES];
