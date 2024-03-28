@@ -1,7 +1,7 @@
 /*
     Network Next Relay Linux kernel module
 
-    This module supports Linux Kernel 6.5.0 *ONLY*
+    This module supports Ubuntu 22.04 LTS with Linux Kernel 6.5+ *ONLY*
 
     USAGE:
 

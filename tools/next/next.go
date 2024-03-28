@@ -51,6 +51,14 @@ func main() {
 	}
 	env.Read()
 
+	scriptData, err := os.ReadFile("scripts/setup_relay.sh")
+	if err != nil {
+		fmt.Printf("\nerror: could not load setup_realy.sh script\n\n")
+		os.Exit(1)
+	}
+
+	SetupRelayScript = string(scriptData)
+
 	relaysfs := flag.NewFlagSet("relays state", flag.ExitOnError)
 	var relaysCount int64
 	relaysfs.Int64Var(&relaysCount, "n", 0, "Number of relays to display (default: all)")
@@ -2008,6 +2016,7 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
+
 	ExamplePremakeFile = `
 solution "next"
 	platforms { "portable", "x86", "x64", "avx", "avx2" }
@@ -2104,111 +2113,11 @@ project "server"
 		linkoptions { "-framework SystemConfiguration -framework CoreFoundation" }
 `
 
-	SetupRelayScript = `
-
-# run once only
-
-if [[ -f /etc/relay_setup_completed ]]; then echo "already setup" && exit 0; fi
-
-# make the relay prompt cool
-
-echo making the relay prompt cool
-
-sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
-sudo echo "source ~/.bashrc" >> ~/.profile.sh
-
-# download the relay binary and rename it to 'relay'
-
-echo downloading relay binary
-
-rm -f $RELAY_VERSION
-
-wget https://storage.googleapis.com/$RELAY_ARTIFACTS_BUCKET_NAME/$RELAY_VERSION --no-cache
-
-if [ ! $? -eq 0 ]; then
-    echo "download relay binary failed"
-    exit 1
-fi
-
-sudo mv $RELAY_VERSION relay
-
-sudo chmod +x relay
-
-# setup the relay environment file
-
-echo setting up relay environment
-
-sudo cat > relay.env <<- EOM
-RELAY_NAME=$RELAY_NAME
-RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
-RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
-RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
-RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
-RELAY_BACKEND_URL=$RELAY_BACKEND_URL
-RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
-EOM
-
-# setup the relay service file
-
-echo setting up relay service file
-
-sudo cat > relay.service <<- EOM
-[Unit]
-Description=Network Next Relay
-ConditionPathExists=/app/relay
-After=network.target
-
-[Service]
-Type=simple
-LimitNOFILE=1024
-WorkingDirectory=/app
-ExecStart=/app/relay
-EnvironmentFile=/app/relay.env
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-EOM
-
-# move everything into the /app dir
-
-echo moving everything into /app
-
-sudo rm -rf /app
-sudo mkdir /app
-sudo mv relay /app/relay
-sudo mv relay.env /app/relay.env
-sudo mv relay.service /app/relay.service
-
-# limit maximum journalctl logs to 200MB so we don't run out of disk space
-
-echo limiting max journalctl logs to 200MB
-
-sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
-sudo systemctl restart systemd-journald
-
-# install the relay service, then start it and watch the logs
-
-echo installing relay service
-
-sudo systemctl enable /app/relay.service
-
-echo starting relay service
-
-sudo systemctl start relay
-
-sudo touch /etc/relay_setup_completed
-
-echo setup completed
-`
-
 	StartRelayScript = `sudo systemctl enable /app/relay.service && sudo systemctl start relay`
 
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
-	LoadRelayScript = `
-$( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `$( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && ./relay version && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo apt update -y && sudo apt upgrade -y && sudo apt dist-upgrade -y && sudo apt autoremove -y && sudo reboot`
 
@@ -2216,6 +2125,8 @@ $( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && r
 
 	ConfigRelayScript = `sudo vi /app/relay.env && exit`
 )
+
+var SetupRelayScript string
 
 func getRelayInfo(env Environment, regex string) []admin.RelayData {
 
