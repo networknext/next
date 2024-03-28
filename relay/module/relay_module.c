@@ -24,7 +24,7 @@
 #include <crypto/kpp.h>
 #include <crypto/poly1305.h>
 #include <crypto/chacha.h>
-#include <crypto/utils.h>
+#include <crypto/algapi.h>
 #include <linux/scatterlist.h>
 
 MODULE_VERSION( "1.0.0" );
