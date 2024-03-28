@@ -3735,8 +3735,6 @@ struct relay_stats_message_t
 {
     int thread_index;
     uint32_t session_count;
-    uint32_t envelope_bandwidth_kbps_up;
-    uint32_t envelope_bandwidth_kbps_down;
     float packets_sent_per_second;
     float packets_received_per_second;
     float bandwidth_sent_kbps;
@@ -3810,6 +3808,8 @@ struct main_t
     uint8_t relay_backend_public_key[RELAY_PUBLIC_KEY_BYTES];
     uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
     uint64_t current_timestamp;
+    relay_platform_mutex_t * session_map_mutex;
+    std::map<session_key_t, relay_session_t*> * session_map;
     relay_queue_t ** relay_control_queue;
     relay_platform_mutex_t ** relay_control_mutex;
     relay_queue_t * ping_control_queue;
@@ -3821,6 +3821,11 @@ struct main_t
     relay_stats_message_t relay_stats;
     ping_stats_message_t ping_stats;
     upgrade_t upgrade;
+#if RELAY_TEST
+    bool disable_destroy;
+#endif // #if RELAY_TEST
+    std::atomic<uint64_t> envelope_bandwidth_kbps_up;
+    std::atomic<uint64_t> envelope_bandwidth_kbps_down;
 };
 
 struct ping_t
@@ -3863,15 +3868,13 @@ struct relay_t
     uint64_t last_stats_client_pings_received;
     uint64_t last_stats_server_pings_received;
     uint64_t last_stats_relay_pings_received;
-    uint64_t envelope_bandwidth_kbps_up;
-    uint64_t envelope_bandwidth_kbps_down;
     uint64_t counters[RELAY_NUM_COUNTERS];
 #if RELAY_TEST
     float fake_packet_loss_percent;
     float fake_packet_loss_start_time;
-    bool disable_destroy;
 #endif // #if RELAY_TEST
     relay_control_message_t control;
+    struct main_t * main;
 };
 
 struct curl_buffer_t
@@ -4063,8 +4066,6 @@ int main_update( main_t * main )
     for ( int i = 0; i < main->num_threads; i++ )
     {
         main->relay_stats.session_count += relay_thread_stats[i].session_count;
-        main->relay_stats.envelope_bandwidth_kbps_up += relay_thread_stats[i].envelope_bandwidth_kbps_up;
-        main->relay_stats.envelope_bandwidth_kbps_down += relay_thread_stats[i].envelope_bandwidth_kbps_down;
         main->relay_stats.packets_sent_per_second += relay_thread_stats[i].packets_sent_per_second;
         main->relay_stats.packets_received_per_second += relay_thread_stats[i].packets_received_per_second;
         main->relay_stats.bandwidth_sent_kbps += relay_thread_stats[i].bandwidth_sent_kbps;
@@ -4134,8 +4135,8 @@ int main_update( main_t * main )
     }
 
     uint32_t session_count = 0;
-    uint32_t envelope_bandwidth_up_kbps = 0;
-    uint32_t envelope_bandwidth_down_kbps = 0;
+    uint32_t envelope_bandwidth_up_kbps = main->envelope_bandwidth_kbps_up;
+    uint32_t envelope_bandwidth_down_kbps = main->envelope_bandwidth_kbps_down;
     float packets_sent_per_second = 0.0f;
     float packets_received_per_second = 0.0f;
     float bandwidth_sent_kbps = 0.0f;
@@ -4145,8 +4146,8 @@ int main_update( main_t * main )
     float relay_pings_per_second = 0.0f;
 
     session_count = main->relay_stats.session_count;
-    envelope_bandwidth_up_kbps = main->relay_stats.envelope_bandwidth_kbps_up;
-    envelope_bandwidth_down_kbps = main->relay_stats.envelope_bandwidth_kbps_down;
+    envelope_bandwidth_up_kbps = main->envelope_bandwidth_kbps_up;
+    envelope_bandwidth_down_kbps = main->envelope_bandwidth_kbps_down;
     packets_sent_per_second = main->relay_stats.packets_sent_per_second;
     packets_received_per_second = main->relay_stats.packets_received_per_second;
     bandwidth_sent_kbps = main->relay_stats.bandwidth_sent_kbps;
@@ -4413,6 +4414,31 @@ int main_update( main_t * main )
     relay_queue_push( main->ping_control_queue, message );
     relay_platform_mutex_release( main->ping_control_mutex );
 
+    // check for timeouts once per-second
+
+#if RELAY_TEST
+    if ( !main->disable_destroy )
+#endif // #if RELAY_TEST
+    {
+    	relay_platform_mutex_acquire( main->session_map_mutex );
+        std::map<session_key_t, relay_session_t*>::iterator iter = main->session_map->begin();
+        while ( iter != main->session_map->end() )
+        {
+            relay_session_t * session = iter->second;
+            if ( session && session->expire_timestamp < main->current_timestamp )
+            {
+                printf( "Session %" PRIx64 ".%d destroyed\n", iter->second->session_id, iter->second->session_version );
+                iter = main->session_map->erase( iter );
+                free( session );
+            }
+            else
+            {
+                iter++;
+            }
+        }
+    	relay_platform_mutex_release( main->session_map_mutex );
+    }
+
     // automatic version updates
 
     if ( main->upgrade.relay_upgrade_url && target_version[0] != '\0' && strcmp( relay_version, target_version ) != 0 ) 
@@ -4478,6 +4504,8 @@ bool relay_ping_token_verify( relay_address_t * from, relay_address_t * to, uint
 static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_function( void * context )
 {
     relay_t * relay = (relay_t*) context;
+
+    main_t * main = relay->main;
 
     uint8_t packet_data[RELAY_MAX_PACKET_BYTES];
 
@@ -4546,8 +4574,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay_platform_mutex_acquire( relay->session_map_mutex );
                 message->session_count = relay->session_map->size();
                 relay_platform_mutex_release( relay->session_map_mutex );
-                message->envelope_bandwidth_kbps_up = relay->envelope_bandwidth_kbps_up;
-                message->envelope_bandwidth_kbps_down = relay->envelope_bandwidth_kbps_down;
                 message->packets_sent_per_second = (float) packets_sent_per_second;
                 message->packets_received_per_second = (float) packets_received_per_second;
                 message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;
@@ -4901,8 +4927,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay_replay_protection_reset( &session->replay_protection_client_to_server );			// todo: where is the special vs. payload?
                 relay_replay_protection_reset( &session->replay_protection_server_to_client );
                 relay->session_map->insert( std::make_pair(key, session) );
-                relay->envelope_bandwidth_kbps_up += session->kbps_up;
-                relay->envelope_bandwidth_kbps_down += session->kbps_down;
+                main->envelope_bandwidth_kbps_up += session->kbps_up;
+                main->envelope_bandwidth_kbps_down += session->kbps_down;
                 printf( "Session %" PRIx64 ".%d created on relay thread %d\n", token.session_id, token.session_version, relay->thread_index );
                 relay->counters[RELAY_COUNTER_SESSION_CREATED]++;
             }
@@ -4992,8 +5018,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED]++;
                 relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5099,8 +5125,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5195,8 +5221,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5302,8 +5328,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5414,8 +5440,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5519,8 +5545,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 printf( "Session %" PRIx64 ".%d expired on relay thread %d\n", session_id, session_version, relay->thread_index );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -5624,8 +5650,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             if ( session->expire_timestamp < relay->control.current_timestamp )
             {
                 relay_printf( "session expired" );
-                relay->envelope_bandwidth_kbps_up -= session->kbps_up;
-                relay->envelope_bandwidth_kbps_down -= session->kbps_down;
+                main->envelope_bandwidth_kbps_up -= session->kbps_up;
+                main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
 	            relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
@@ -6349,7 +6375,6 @@ int main( int argc, const char ** argv )
 #if RELAY_TEST
         relay[i].fake_packet_loss_percent = relay_fake_packet_loss_percent;
         relay[i].fake_packet_loss_start_time = relay_fake_packet_loss_start_time;
-        relay[i].disable_destroy = disable_destroy;
 #endif // #if RELAY_TEST
 
         relay_thread[i] = relay_platform_thread_create( relay_thread_function, &relay[i] );
@@ -6497,6 +6522,8 @@ int main( int argc, const char ** argv )
     memcpy( main.relay_private_key, relay_private_key, sizeof(relay_private_key) );
     memcpy( main.relay_backend_public_key, relay_backend_public_key, sizeof(relay_backend_public_key) );
     memcpy( main.relay_secret_key, relay_secret_key, sizeof(relay_secret_key) );
+    main.session_map_mutex = session_map_mutex;
+    main.session_map = session_map;
     main.relay_control_queue = relay_control_queue;
     main.relay_control_mutex = relay_control_mutex;
     main.ping_control_queue = ping_control_queue;
@@ -6507,6 +6534,9 @@ int main( int argc, const char ** argv )
     main.relay_stats_mutex = relay_stats_mutex;
     main.upgrade.mutex = relay_platform_mutex_create();
     main.upgrade.relay_upgrade_url = relay_upgrade_url;
+#if RELAY_TEST
+    main.disable_destroy = disable_destroy;
+#endif // #if RELAY_TEST
     
     while ( !quit )
     {
@@ -6674,36 +6704,3 @@ int main( int argc, const char ** argv )
 
     return result;
 }
-
-// todo: move this out to main, or better still have an LRU replacement policy
-/*
-            // check for timeouts once per-second
-
-#if RELAY_TEST
-            if ( !relay->disable_destroy && last_check_for_timeouts_time + 1.0 <= current_time )
-#else // #if RELAY_TEST
-            if ( last_check_for_timeouts_time + 1.0 <= current_time )
-#endif // #if RELAY_TEST
-            {
-                std::map<session_key_t, relay_session_t*>::iterator iter = relay->sessions->begin();
-                while ( iter != relay->sessions->end() )
-                {
-                    relay_session_t * session = iter->second;
-                    if ( session && session->expire_timestamp < relay->control.current_timestamp )
-                    {
-                        printf( "Session %" PRIx64 ".%d destroyed on relay thread %d\n", iter->second->session_id, iter->second->session_version, relay->thread_index );
-                        relay->envelope_bandwidth_kbps_up -= iter->second->kbps_up;
-                        relay->envelope_bandwidth_kbps_down -= iter->second->kbps_down;
-                        relay->counters[RELAY_COUNTER_SESSION_DESTROYED]++;
-                        iter = relay->sessions->erase( iter );
-                        free( session );
-                    }
-                    else
-                    {
-                        iter++;
-                    }
-                }
-
-                last_check_for_timeouts_time = current_time;
-            }
-*/
