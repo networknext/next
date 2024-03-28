@@ -1,0 +1,156 @@
+#!/bin/sh
+
+# run once only
+
+if test -f /etc/setup_relay_completed; then
+  echo "already setup"
+  exit 0
+fi
+
+# if we have not finished initializing the relay, wait for it!
+
+while [[ ! -f /etc/relay_init_completed ]]
+do
+  echo "waiting for relay init to finish..."
+  sleep 1
+done
+
+# if we are not running a 6.5 kernel, upgrade the kernel. we need ubuntu 22.04 LTS + linux kernel 6.5 for xdp relay to work
+
+if [[ ! `uname -r` == "6.5."* ]]; then
+  echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
+  sudo NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
+  sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
+  sudo reboot  
+fi
+
+# make the relay prompt cool
+
+echo making the relay prompt cool
+
+sudo echo "export PS1=\"\[\033[36m\]$RELAY_NAME [$ENVIRONMENT] \[\033[00m\]\w # \"" >> ~/.bashrc
+sudo echo "source ~/.bashrc" >> ~/.profile.sh
+
+# download the relay binary and rename it to 'relay'
+
+echo downloading relay binary
+
+rm -f $RELAY_VERSION
+
+wget https://storage.googleapis.com/$RELAY_ARTIFACTS_BUCKET_NAME/$RELAY_VERSION --no-cache
+
+if [ ! $? -eq 0 ]; then
+    echo "download relay binary failed"
+    exit 1
+fi
+
+sudo mv $RELAY_VERSION relay
+
+sudo chmod +x relay
+
+# setup the relay environment file
+
+echo setting up relay environment
+
+sudo cat > relay.env <<- EOM
+RELAY_NAME=$RELAY_NAME
+RELAY_PUBLIC_ADDRESS=$RELAY_PUBLIC_ADDRESS
+RELAY_INTERNAL_ADDRESS=$RELAY_INTERNAL_ADDRESS
+RELAY_PUBLIC_KEY=$RELAY_PUBLIC_KEY
+RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
+RELAY_BACKEND_URL=$RELAY_BACKEND_URL
+RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
+EOM
+
+# setup linux tools and headers needed for bpf. this requires 6.5+ linux kernel to work
+
+sudo NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
+
+sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
+
+# install libxdp and libbpf from source. this is neccessary for the xdp relay to work
+
+cd ~
+wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
+tar -zxf xdp-tools-1.4.2.tar.gz
+cd xdp-tools-1.4.2
+./configure
+make -j && sudo make install
+
+cd lib/libbpf/src
+make -j && sudo make install
+sudo ldconfig
+cd /
+
+# install relay module
+
+mkdir -p ~/relay_module
+cd ~/relay_module
+wget https://storage.googleapis.com/xdp_network_next_relay_artifacts/relay_module.tar.gz
+tar -zxf relay_module.tar.gz
+make
+sudo mkdir -p /lib/modules/`uname -r`/kernel/net/relay_module
+sudo mv relay_module.ko /lib/modules/`uname -r`/kernel/net/relay_module
+
+# setup relay module to load on reboot
+
+cd ~
+echo "chacha20" > modules.txt
+echo "poly1305" >> modules.txt
+echo "relay_module" >> modules.txt
+sudo mv modules.txt /etc/modules
+sudo depmod
+
+# setup the relay service file
+
+echo setting up relay service file
+
+sudo cat > relay.service <<- EOM
+[Unit]
+Description=Network Next Relay
+ConditionPathExists=/app/relay
+After=network.target
+
+[Service]
+Type=simple
+LimitNOFILE=1024
+WorkingDirectory=/app
+ExecStart=/app/relay
+EnvironmentFile=/app/relay.env
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOM
+
+# move everything into the /app dir
+
+echo moving everything into /app
+
+sudo rm -rf /app
+sudo mkdir /app
+sudo mv relay /app/relay
+sudo mv relay.env /app/relay.env
+sudo mv relay.service /app/relay.service
+
+# limit maximum journalctl logs to 200MB so we don't run out of disk space
+
+echo limiting max journalctl logs to 200MB
+
+sudo sed -i "s/\(.*SystemMaxUse= *\).*/\SystemMaxUse=200M/" /etc/systemd/journald.conf
+sudo systemctl restart systemd-journald
+
+# install the relay service, then start it and watch the logs
+
+echo installing relay service
+
+sudo systemctl enable /app/relay.service
+
+echo starting relay service
+
+sudo systemctl start relay
+
+sudo touch /etc/relay_setup_completed
+
+echo setup completed
