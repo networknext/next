@@ -2,14 +2,14 @@
 
 # run once only
 
-if test -f /etc/setup_relay_completed; then
+if [[ -f /etc/setup_relay_completed ]]; then
   echo "already setup"
   exit 0
 fi
 
 # if we have not finished initializing the relay, wait for it!
 
-while [[ ! -f /etc/relay_init_completed ]]
+while [[ ! -f /etc/init_relay_completed ]]
 do
   echo "waiting for relay init to finish..."
   sleep 1
@@ -20,7 +20,6 @@ done
 if [[ ! `uname -r` == "6.5."* ]]; then
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
   sudo NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
-  sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
   sudo reboot  
 fi
 
@@ -65,6 +64,8 @@ EOM
 # setup linux tools and headers needed for bpf. this requires 6.5+ linux kernel to work
 
 sudo NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
+
+sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 
 sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
@@ -151,6 +152,9 @@ echo starting relay service
 
 sudo systemctl start relay
 
-sudo touch /etc/relay_setup_completed
+sudo touch /etc/setup_relay_completed
 
 echo setup completed
+
+sudo reboot
+
