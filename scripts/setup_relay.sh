@@ -157,4 +157,3 @@ sudo touch /etc/setup_relay_completed
 echo setup completed
 
 sudo reboot
-
