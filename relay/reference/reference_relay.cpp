@@ -17,6 +17,7 @@
 #include <signal.h>
 #include "curl/curl.h"
 #include <time.h>
+#include <atomic>
 
 #define RELAY_MTU                                                                             1200
 
