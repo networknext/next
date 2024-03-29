@@ -3145,7 +3145,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     // calculate min RTT
 
-    double min_rtt = 10000.0;
+    double min_rtt = FLT_MAX;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
     {

@@ -73,7 +73,7 @@ void relay_ping_history_get_stats( const struct relay_ping_history_t * history, 
 
     // calculate min RTT
 
-    double min_rtt = 0.0;
+    double min_rtt = FLT_MAX;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_SIZE; i++ )
     {
