@@ -169,6 +169,7 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->saddr = ip->daddr;
     ip->daddr = b;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
+    ip->frag_off |= htons( IP_DF );
     ip->check = 0;
 
     char c[ETH_ALEN];
@@ -366,6 +367,7 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
     ip->saddr = ip->daddr;
     ip->daddr = dest_address;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
+    ip->frag_off |= htons( IP_DF );
     ip->check = 0;
 
     struct whitelist_key key;
