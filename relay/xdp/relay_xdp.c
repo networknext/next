@@ -104,9 +104,6 @@ int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz )
 
 int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chacha20poly1305_crypto * crypto ) __ksym;
 
-// todo
-#define RELAY_DEBUG 1
-
 #ifndef RELAY_DEBUG
 #define RELAY_DEBUG 0
 #endif // #ifndef RELAY_DEBUG
@@ -625,9 +622,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                 if ( (void*)udp + sizeof(struct udphdr) <= data_end )
                 {
-                    // todo
-                    // relay_printf( "processing udp packet sent to %x:%d (public is %x, internal is %x)", ip->daddr, udp->dest, config->relay_public_address, config->relay_internal_address );
-
                     if ( udp->dest == config->relay_port && ( ip->daddr == config->relay_public_address || ip->daddr == config->relay_internal_address ) )
                     {
                         struct relay_state * state;
