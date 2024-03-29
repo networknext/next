@@ -69,20 +69,6 @@ sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 
 sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
-# install libxdp and libbpf from source. this is neccessary for the xdp relay to work
-
-cd ~
-wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
-tar -zxf xdp-tools-1.4.2.tar.gz
-cd xdp-tools-1.4.2
-./configure
-make -j && sudo make install
-
-cd lib/libbpf/src
-make -j && sudo make install
-sudo ldconfig
-cd /
-
 # install relay module
 
 mkdir -p ~/relay_module
