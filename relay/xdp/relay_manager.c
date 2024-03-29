@@ -4,6 +4,7 @@
 
 #include "relay_manager.h"
 #include "relay_platform.h"
+#include "relay_ping_history.h"
 #include "relay_hash.h"
 
 #include <stdlib.h>

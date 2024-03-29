@@ -67,7 +67,6 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->relay_backend_url = config->relay_backend_url;
     main->relay_port = config->relay_port;
     main->relay_public_address = config->relay_public_address;
-    main->relay_internal_address = config->relay_internal_address;
     memcpy( main->relay_public_key, config->relay_public_key, sizeof(config->relay_public_key) );
     memcpy( main->relay_private_key, config->relay_private_key, sizeof(config->relay_private_key) );
     memcpy( main->relay_backend_public_key, config->relay_backend_public_key, sizeof(config->relay_backend_public_key) );
@@ -553,11 +552,14 @@ int main_update( struct main_t * main )
     {
         uint32_t expected_internal_address;
         relay_read_address( &q, &expected_internal_address, &expected_port );
+        // todo: disabled for now
+        /*
         if ( main->relay_internal_address != expected_internal_address )
         {
-            printf( "error: relay internal address mismatch: have %016x, expected %016x\n", main->relay_internal_address, expected_internal_address );
+            printf( "error: relay internal address mismatch\n" );
             return RELAY_ERROR;
         }
+        */
     }
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
@@ -571,6 +573,7 @@ int main_update( struct main_t * main )
         return RELAY_ERROR;
     }
 
+    // todo: need to decrypt route token here as validity check
     uint8_t dummy[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES];
     relay_read_bytes( &q, dummy, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
     /*

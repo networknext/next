@@ -7,49 +7,6 @@
 
 #include "relay.h"
 
-// --------------------------------------------------------------------------------------------------------------
-
-struct relay_ping_stats_t
-{
-    int num_relays;
-    uint64_t relay_ids[MAX_RELAYS];
-    float relay_rtt[MAX_RELAYS];
-    float relay_jitter[MAX_RELAYS];
-    float relay_packet_loss[MAX_RELAYS];
-};
-
-// --------------------------------------------------------------------------------------------------------------
-
-struct relay_ping_history_stats_t
-{
-    float rtt;
-    float jitter;
-    float packet_loss;
-};
-
-struct relay_ping_history_entry_t
-{
-    uint64_t sequence;
-    double time_ping_sent;
-    double time_pong_received;
-};
-
-struct relay_ping_history_t
-{
-    uint64_t sequence;
-    struct relay_ping_history_entry_t entries[RELAY_PING_HISTORY_SIZE];
-};
-
-void relay_ping_history_clear( struct relay_ping_history_t * history );
-
-uint64_t relay_ping_history_ping_sent( struct relay_ping_history_t * history, double time );
-
-void relay_ping_history_pong_received( struct relay_ping_history_t * history, uint64_t sequence, double time );
-
-void relay_ping_history_get_stats( const struct relay_ping_history_t * history, double start, double end, struct relay_ping_history_stats_t * stats, double ping_safety );
-
-// --------------------------------------------------------------------------------------------------------------
-
 struct ping_t
 {
     int relay_port;
@@ -84,7 +41,5 @@ int ping_start_thread( struct ping_t * ping );
 void ping_join_thread( struct ping_t * ping );
 
 void * ping_thread_function( void * context );
-
-// --------------------------------------------------------------------------------------------------------------
 
 #endif // #ifndef RELAY_PING_H

@@ -7,7 +7,7 @@
 
 #include "relay.h"
 #include "relay_set.h"
-#include "relay_ping.h"
+#include "relay_ping_stats.h"
 
 struct relay_control_message
 {
