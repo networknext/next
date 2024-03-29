@@ -3610,9 +3610,6 @@ void relay_manager_get_stats( relay_manager_t * manager, ping_stats_t * stats )
 
     stats->num_relays = manager->num_relays;
 
-    // todo
-    printf( "==========================================================\n" );
-
     for ( int i = 0; i < stats->num_relays; ++i )
     {
         relay_route_stats_t route_stats;
@@ -3621,13 +3618,7 @@ void relay_manager_get_stats( relay_manager_t * manager, ping_stats_t * stats )
         stats->relay_rtt[i] = route_stats.rtt;
         stats->relay_jitter[i] = route_stats.jitter;
         stats->relay_packet_loss[i] = route_stats.packet_loss;
-
-        // todo
-    	printf( "%llx: rtt = %f, jitter = %f, pl = %f\n", stats->relay_ids[i], stats->relay_rtt[i], stats->relay_jitter[i], stats->relay_packet_loss[i] );
     }
-
-    // todo
-    printf( "==========================================================\n" );    
 }
 
 void relay_manager_destroy( relay_manager_t * manager )
@@ -6243,11 +6234,7 @@ int main( int argc, const char ** argv )
     printf( "Creating message queues\n" );
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-    int num_threads = get_nprocs() / 2;
-    if ( num_threads < 1 )
-    {
-    	num_threads = 1;
-    }
+    int num_threads = get_nprocs();
 #else // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
     int num_threads = 2;
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
