@@ -18,6 +18,9 @@
 #include "curl/curl.h"
 #include <time.h>
 #include <atomic>
+#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+#include <sys/sysinfo.h>
+#endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
 #define RELAY_MTU                                                                             1200
 
@@ -4779,7 +4782,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( packet_id == RELAY_PING_PACKET )
         {
-            relay_printf( "received relay ping packet" );
+        	// todo
+            // relay_printf( "received relay ping packet" );
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
@@ -4845,7 +4849,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
-            relay_printf( "received relay pong packet" );
+        	// todo
+            // relay_printf( "received relay pong packet" );
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
@@ -4855,8 +4860,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE]++;
                 continue;
             }
-
-            relay_printf( "replying with relay pong packet" );
 
             const uint8_t * q = p;
 
@@ -4925,7 +4928,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 session->prev_internal = token.prev_internal;
                 session->next_internal = token.next_internal;
                 memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
-                relay_replay_protection_reset( &session->replay_protection_client_to_server );			// todo: where is the special vs. payload?
+                relay_replay_protection_reset( &session->replay_protection_client_to_server );
                 relay_replay_protection_reset( &session->replay_protection_server_to_client );
                 relay->session_map->insert( std::make_pair(key, session) );
                 main->envelope_bandwidth_kbps_up += session->kbps_up;
@@ -6230,7 +6233,13 @@ int main( int argc, const char ** argv )
 
     printf( "Creating message queues\n" );
 
-    const int num_threads = 1;    // IMPORTANT: This reference relay only works with one thread
+#if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+    const int num_threads = get_nprocs();
+#else // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+    const int num_threads = 2;
+#endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+
+    printf( "Creating %d relay threads\n", num_threads );
 
     relay_queue_t * relay_stats_queue = relay_queue_create( num_threads * 64 );
     relay_platform_mutex_t * relay_stats_mutex = relay_platform_mutex_create();
@@ -6340,6 +6349,12 @@ int main( int argc, const char ** argv )
         }
     }
 
+    // stub out main data
+
+    main_t main;
+
+    memset( &main, 0, sizeof(main_t) );
+
     // create sessions map and mutex
 
     std::map<session_key_t, relay_session_t*> * session_map = new std::map<session_key_t, relay_session_t*>();
@@ -6358,6 +6373,7 @@ int main( int argc, const char ** argv )
     {
         printf( "Creating relay thread %d\n", i );
 
+        relay[i].main = &main;
         relay[i].thread_index = i;
         relay[i].socket = relay_socket[i];
         relay[i].relay_public_address = relay_public_address;
@@ -6506,10 +6522,6 @@ int main( int argc, const char ** argv )
     bool aborted = false;
 
     int update_attempts = 0;
-
-    main_t main;
-
-    memset( &main, 0, sizeof(main_t) );
 
     main.curl = curl;
     main.start_time = start_time;
@@ -6669,12 +6681,15 @@ int main( int argc, const char ** argv )
 
     printf( "Destroying session map\n" );
 
-    for ( std::map<session_key_t, relay_session_t*>::iterator itor = session_map->begin(); itor != session_map->end(); ++itor )
+    if ( session_map != NULL )
     {
-        delete itor->second;
-    }
+	    for ( std::map<session_key_t, relay_session_t*>::iterator itor = session_map->begin(); itor != session_map->end(); ++itor )
+	    {
+	        delete itor->second;
+	    }
 
-    delete session_map;
+	    delete session_map;
+    }
 
     printf( "Destroying message queues\n" );
 
