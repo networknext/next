@@ -5190,7 +5190,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            relay_printf( "forward to next hop" );
+            relay_printf( "forward to previous hop" );
 
             session->special_sequence_server_to_client = sequence;
 
@@ -5299,7 +5299,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay_printf( "forward to next hop" );
 
-            sequence = session->payload_sequence_client_to_server;
+            session->payload_sequence_client_to_server = sequence;
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
