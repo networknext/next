@@ -4429,6 +4429,8 @@ int main_update( main_t * main )
 
     // check for timeouts once per-second
 
+    // todo: this is running too frequently
+/*
 #if RELAY_TEST
     if ( !main->disable_destroy )
 #endif // #if RELAY_TEST
@@ -4451,6 +4453,7 @@ int main_update( main_t * main )
         }
     	relay_platform_mutex_release( main->session_map_mutex );
     }
+*/
 
     // automatic version updates
 
