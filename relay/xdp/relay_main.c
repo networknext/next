@@ -553,14 +553,11 @@ int main_update( struct main_t * main )
     {
         uint32_t expected_internal_address;
         relay_read_address( &q, &expected_internal_address, &expected_port );
-        // todo: disabled for now
-        /*
         if ( main->relay_internal_address != expected_internal_address )
         {
             printf( "error: relay internal address mismatch\n" );
             return RELAY_ERROR;
         }
-        */
     }
 
     uint8_t expected_relay_public_key[crypto_box_PUBLICKEYBYTES];
