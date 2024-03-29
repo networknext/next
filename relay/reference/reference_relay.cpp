@@ -890,60 +890,6 @@ int relay_address_equal( const relay_address_t * a, const relay_address_t * b )
 
 // -----------------------------------------------------------------------------
 
-struct relay_replay_protection_t
-{
-    uint64_t most_recent_sequence;
-    uint64_t received_packet[RELAY_REPLAY_PROTECTION_BUFFER_SIZE];
-};
-
-void relay_replay_protection_reset( relay_replay_protection_t * replay_protection )
-{
-    assert( replay_protection );
-    replay_protection->most_recent_sequence = 0;
-    memset( replay_protection->received_packet, 0xFF, sizeof( replay_protection->received_packet ) );
-}
-
-int relay_replay_protection_already_received( relay_replay_protection_t * replay_protection, uint64_t sequence )
-{
-    assert( replay_protection );
-
-    if ( sequence + RELAY_REPLAY_PROTECTION_BUFFER_SIZE <= replay_protection->most_recent_sequence )
-    {
-        return 1;
-    }
-
-    int index = (int) ( sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE );
-
-    if ( replay_protection->received_packet[index] == 0xFFFFFFFFFFFFFFFFLL )
-    {
-        replay_protection->received_packet[index] = sequence;
-        return 0;
-    }
-
-    if ( replay_protection->received_packet[index] >= sequence )
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-void relay_replay_protection_advance_sequence( relay_replay_protection_t * replay_protection, uint64_t sequence )
-{
-    assert( replay_protection );
-
-    if ( sequence > replay_protection->most_recent_sequence )
-    {
-        replay_protection->most_recent_sequence = sequence;
-    }
-
-    int index = (int) ( sequence % RELAY_REPLAY_PROTECTION_BUFFER_SIZE );
-
-    replay_protection->received_packet[index] = sequence;
-}
-
-// -----------------------------------------------------------------------------
-
 namespace relay
 {
     /**
@@ -3757,8 +3703,6 @@ struct relay_session_t
     uint64_t expire_timestamp;
     uint64_t session_id;
     uint8_t session_version;
-    uint64_t client_to_server_sequence;
-    uint64_t server_to_client_sequence;
     int kbps_up;
     int kbps_down;
     relay_address_t prev_address;
@@ -3766,8 +3710,10 @@ struct relay_session_t
     uint8_t prev_internal;
     uint8_t next_internal;
     uint8_t private_key[crypto_box_SECRETKEYBYTES];
-    relay_replay_protection_t replay_protection_server_to_client;
-    relay_replay_protection_t replay_protection_client_to_server;
+    uint64_t payload_sequence_client_to_server;
+    uint64_t payload_sequence_server_to_client;
+    uint64_t special_sequence_client_to_server;
+    uint64_t special_sequence_server_to_client;
 };
 
 struct session_key_t 
@@ -4910,8 +4856,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 session->expire_timestamp = token.expire_timestamp;
                 session->session_id = token.session_id;
                 session->session_version = token.session_version;
-                session->client_to_server_sequence = 0;
-                session->server_to_client_sequence = 0;
                 session->kbps_up = token.kbps_up;
                 session->kbps_down = token.kbps_down;
                 session->next_address = token.next_address;
@@ -4923,8 +4867,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 session->prev_internal = token.prev_internal;
                 session->next_internal = token.next_internal;
                 memcpy( session->private_key, token.private_key, crypto_box_SECRETKEYBYTES );
-                relay_replay_protection_reset( &session->replay_protection_client_to_server );
-                relay_replay_protection_reset( &session->replay_protection_server_to_client );
+                session->payload_sequence_client_to_server = 0;
+                session->payload_sequence_server_to_client = 0;
+                session->special_sequence_client_to_server = 0;
+                session->special_sequence_server_to_client = 0;
                 relay->session_map->insert( std::make_pair(key, session) );
                 main->envelope_bandwidth_kbps_up += session->kbps_up;
                 main->envelope_bandwidth_kbps_down += session->kbps_down;
@@ -5027,7 +4973,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( sequence <= session->server_to_client_sequence )
+            if ( sequence <= session->special_sequence_server_to_client )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
@@ -5043,7 +4989,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay_printf( "forward to previous hop" );
 
-            session->server_to_client_sequence = sequence;
+            session->special_sequence_server_to_client = sequence;
 
             uint8_t prev_address_data[4];
             relay_address_data( session->prev_address.data.ip, prev_address_data );
@@ -5230,7 +5176,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( sequence <= session->server_to_client_sequence )
+            if ( sequence <= session->special_sequence_server_to_client )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED]++;
@@ -5246,7 +5192,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay_printf( "forward to next hop" );
 
-            session->server_to_client_sequence = sequence;
+            session->special_sequence_server_to_client = sequence;
 
             uint8_t prev_address_data[4];
             relay_address_data( session->prev_address.data.ip, prev_address_data );
@@ -5337,7 +5283,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( relay_replay_protection_already_received( &session->replay_protection_client_to_server, sequence ) )
+            if ( sequence <= session->payload_sequence_client_to_server )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED]++;
@@ -5351,9 +5297,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-               relay_printf( "forward to next hop" );
+            relay_printf( "forward to next hop" );
 
-            relay_replay_protection_advance_sequence( &session->replay_protection_client_to_server, sequence );
+            sequence = session->payload_sequence_client_to_server;
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
@@ -5449,7 +5395,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( relay_replay_protection_already_received( &session->replay_protection_server_to_client, sequence ) )
+            if ( sequence <= session->payload_sequence_server_to_client )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED]++;
@@ -5463,7 +5409,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            relay_replay_protection_advance_sequence( &session->replay_protection_server_to_client, sequence );
+            session->payload_sequence_server_to_client = sequence;
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
@@ -5554,7 +5500,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( sequence <= session->client_to_server_sequence )
+            if ( sequence <= session->special_sequence_client_to_server )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED]++;
@@ -5570,7 +5516,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             relay_printf( "forward to next hop" );
 
-            session->client_to_server_sequence = sequence;
+            session->special_sequence_client_to_server = sequence;
 
             const_p += RELAY_HEADER_BYTES;
             uint64_t ping_sequence = relay_read_uint64( &const_p );
@@ -5659,7 +5605,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            if ( sequence <= session->server_to_client_sequence )
+            if ( sequence <= session->special_sequence_server_to_client )
             {
                 relay_printf( "already received" );
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED]++;
@@ -5673,9 +5619,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-               relay_printf( "forward to previous hop" );
+            relay_printf( "forward to previous hop" );
 
-            session->server_to_client_sequence = sequence;
+            session->special_sequence_server_to_client = sequence;
 
             const_p += RELAY_HEADER_BYTES;
             uint64_t ping_sequence = relay_read_uint64( &const_p );
