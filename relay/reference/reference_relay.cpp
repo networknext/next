@@ -3414,7 +3414,7 @@ int relay_write_relay_pong_packet( uint8_t * packet_data, uint64_t ping_sequence
 
 #define MAX_RELAYS 1024
 
-struct relay_stats_t
+struct ping_stats_t
 {
     int num_relays;
     uint64_t relay_ids[MAX_RELAYS];
@@ -3602,7 +3602,7 @@ bool relay_manager_process_pong( relay_manager_t * manager, const relay_address_
     return false;
 }
 
-void relay_manager_get_stats( relay_manager_t * manager, relay_stats_t * stats )
+void relay_manager_get_stats( relay_manager_t * manager, ping_stats_t * stats )
 {
     assert( manager );
     assert( stats );
@@ -3751,11 +3751,6 @@ struct relay_stats_message_t
     uint64_t counters[RELAY_NUM_COUNTERS];
 };
 
-struct ping_stats_message_t : public relay_stats_t 
-{
-    uint64_t pongs_processed;
-};
-
 // -----------------------------------------------------------------------------
 
 struct relay_session_t
@@ -3825,7 +3820,7 @@ struct main_t
     relay_queue_t * ping_stats_queue;
     relay_platform_mutex_t * ping_stats_mutex;
     relay_stats_message_t relay_stats;
-    ping_stats_message_t ping_stats;
+    ping_stats_t ping_stats;
     upgrade_t upgrade;
 #if RELAY_TEST
     bool disable_destroy;
@@ -3846,7 +3841,6 @@ struct ping_t
     relay_queue_t * ping_stats_queue;
     relay_platform_mutex_t * ping_stats_mutex;
     bool has_ping_key;
-    uint64_t pongs_processed;
 };
 
 struct relay_t
@@ -4090,7 +4084,7 @@ int main_update( main_t * main )
     while ( true )
     {
         relay_platform_mutex_acquire( main->ping_stats_mutex );
-        ping_stats_message_t * message = (ping_stats_message_t*) relay_queue_pop( main->ping_stats_queue );
+        ping_stats_t * message = (ping_stats_t*) relay_queue_pop( main->ping_stats_queue );
         relay_platform_mutex_release( main->ping_stats_mutex );
         if ( message == NULL )
         {
@@ -5930,11 +5924,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
         if ( last_ping_stats_time + 0.1 <= current_time )
         {
-            ping_stats_message_t * message = (ping_stats_message_t*) malloc( sizeof(ping_stats_message_t) );
+            ping_stats_t * message = (ping_stats_t*) malloc( sizeof(ping_stats_t) );
 
             relay_manager_get_stats( ping->relay_manager, message );
-
-            message->pongs_processed = ping->pongs_processed;
 
             relay_platform_mutex_acquire( ping->ping_stats_mutex );
             relay_queue_push( ping->ping_stats_queue, message );
@@ -6002,8 +5994,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
             uint64_t sequence = relay_read_uint64( &p );
 
             relay_manager_process_pong( ping->relay_manager, &from_address, sequence );
-
-            ping->pongs_processed++;
         }
     }
 
