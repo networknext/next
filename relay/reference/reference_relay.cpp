@@ -196,6 +196,8 @@
 
 #define RELAY_NUM_COUNTERS                                                                     150
 
+#define RELAY_SPAM 																			     0
+
 // -------------------------------------------------------------------------------------
 
 static char relay_version[RELAY_VERSION_LENGTH];
@@ -3105,8 +3107,6 @@ void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t 
     if ( entry->sequence == sequence )
     {
         entry->time_pong_received = time;
-        // todo
-    	// printf( "pong received (sent %f, received %f, %.2fms)\n", entry->time_ping_sent, entry->time_pong_received, 1000.0f * ( entry->time_pong_received - entry->time_ping_sent ) );
     }
 }
 
@@ -4414,10 +4414,6 @@ int main_update( main_t * main )
     relay_queue_push( main->ping_control_queue, message );
     relay_platform_mutex_release( main->ping_control_mutex );
 
-    // check for timeouts once per-second
-
-    // todo: this is running too frequently
-/*
 #if RELAY_TEST
     if ( !main->disable_destroy )
 #endif // #if RELAY_TEST
@@ -4440,7 +4436,6 @@ int main_update( main_t * main )
         }
     	relay_platform_mutex_release( main->session_map_mutex );
     }
-*/
 
     // automatic version updates
 
@@ -4778,11 +4773,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( packet_id == RELAY_PING_PACKET )
         {
-        	/*
-        	// todo
+#if RELAY_SPAM
         	char buffer[256];
             relay_printf( "received relay ping packet from %s", relay_address_to_string( &from, buffer ) );
-            */
+#endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
@@ -4848,11 +4842,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
-        	/*
-        	// todo
+#if RELAY_SPAM
         	char buffer[256];
             relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
-            */
+#endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
@@ -5725,8 +5718,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_PING_PACKET )
         {
-        	// todo
-            // relay_printf( "received client ping packet" );
+#if RELAY_SPAM
+            relay_printf( "received client ping packet" );
+#endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED]++;
 
@@ -5764,8 +5758,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            // todo
-            // relay_printf( "replying with client pong packet" );
+#if RELAY_SPAM
+            relay_printf( "replying with client pong packet" );
+#endif // #if RELAY_SPAM
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
             packet_bytes = relay_write_client_pong_packet( pong_packet, ping_sequence, session_id, current_magic, relay_public_address_data, from_address_data );
