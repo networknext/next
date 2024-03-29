@@ -571,17 +571,8 @@ int main_update( struct main_t * main )
         return RELAY_ERROR;
     }
 
-    // todo: need to decrypt route token here as validity check
     uint8_t dummy[RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES];
     relay_read_bytes( &q, dummy, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
-    /*
-    relay_route_token_t token;
-    if ( relay_read_encrypted_route_token( (uint8_t**)&q, &token, main->relay_secret_key ) != RELAY_OK )
-    {
-        printf( "error: relay is misconfigured. could not decrypt test token\n" );
-        return RELAY_ERROR;
-    }
-    */
 
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     relay_read_bytes( &q, ping_key, RELAY_PING_KEY_BYTES );
