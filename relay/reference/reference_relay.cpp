@@ -3738,7 +3738,6 @@ struct relay_control_message_t
 struct relay_stats_message_t
 {
     int thread_index;
-    uint32_t session_count;
     float packets_sent_per_second;
     float packets_received_per_second;
     float bandwidth_sent_kbps;
@@ -4069,7 +4068,6 @@ int main_update( main_t * main )
 
     for ( int i = 0; i < main->num_threads; i++ )
     {
-        main->relay_stats.session_count += relay_thread_stats[i].session_count;
         main->relay_stats.packets_sent_per_second += relay_thread_stats[i].packets_sent_per_second;
         main->relay_stats.packets_received_per_second += relay_thread_stats[i].packets_received_per_second;
         main->relay_stats.bandwidth_sent_kbps += relay_thread_stats[i].bandwidth_sent_kbps;
@@ -4138,9 +4136,9 @@ int main_update( main_t * main )
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
     }
 
-    uint32_t session_count = 0;
-    uint32_t envelope_bandwidth_up_kbps = main->envelope_bandwidth_kbps_up;
-    uint32_t envelope_bandwidth_down_kbps = main->envelope_bandwidth_kbps_down;
+	uint32_t session_count = 0;
+    uint32_t envelope_bandwidth_up_kbps = 0.0f;
+    uint32_t envelope_bandwidth_down_kbps = 0.0f;
     float packets_sent_per_second = 0.0f;
     float packets_received_per_second = 0.0f;
     float bandwidth_sent_kbps = 0.0f;
@@ -4149,7 +4147,9 @@ int main_update( main_t * main )
     float server_pings_per_second = 0.0f;
     float relay_pings_per_second = 0.0f;
 
-    session_count = main->relay_stats.session_count;
+    relay_platform_mutex_acquire( main->session_map_mutex );
+	session_count = main->session_map->size();
+    relay_platform_mutex_release( main->session_map_mutex );
     envelope_bandwidth_up_kbps = main->envelope_bandwidth_kbps_up;
     envelope_bandwidth_down_kbps = main->envelope_bandwidth_kbps_down;
     packets_sent_per_second = main->relay_stats.packets_sent_per_second;
@@ -4575,9 +4575,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 relay_stats_message_t * message = (relay_stats_message_t*) malloc( sizeof(relay_stats_message_t) );
                 memset( message, 0, sizeof(relay_stats_message_t) );
                 message->thread_index = relay->thread_index;
-                relay_platform_mutex_acquire( relay->session_map_mutex );
-                message->session_count = relay->session_map->size();
-                relay_platform_mutex_release( relay->session_map_mutex );
                 message->packets_sent_per_second = (float) packets_sent_per_second;
                 message->packets_received_per_second = (float) packets_received_per_second;
                 message->bandwidth_sent_kbps = (float) bandwidth_sent_kbps;

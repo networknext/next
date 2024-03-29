@@ -61,11 +61,9 @@ RELAY_BACKEND_URL=$RELAY_BACKEND_URL
 RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
 
-# setup linux tools and headers needed for bpf. this requires 6.5+ linux kernel to work
+# setup linux tools, headers and vmlinux BTF file needed for bpf. this requires 6.5+ linux kernel to work
 
 sudo NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
-
-sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
 
 sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
