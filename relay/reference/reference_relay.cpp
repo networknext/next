@@ -6248,7 +6248,11 @@ int main( int argc, const char ** argv )
     printf( "Creating message queues\n" );
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-    int num_threads = get_nprocs();
+    int num_threads = get_nprocs() / 2;
+    if ( num_threads < 1 )
+    {
+    	num_threads = 1;
+    }
 #else // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
     int num_threads = 2;
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
