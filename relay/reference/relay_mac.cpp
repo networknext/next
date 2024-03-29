@@ -7,6 +7,8 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_MAC
 
+#define __APPLE_USE_RFC_3542
+
 #include <string.h>
 #include <netdb.h>
 #include <sys/types.h>
@@ -156,6 +158,19 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
             printf( "failed to set socket reuse port" );
             return NULL;
         }
+    }
+
+    // set don't fragment bit
+
+    if ( address->type == RELAY_ADDRESS_IPV6 )
+    {
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_DONTFRAG, &val, sizeof(val) );
+    }
+    else
+    {
+        int val = 1;
+        setsockopt( socket->handle, IPPROTO_IP, IP_DONTFRAG, &val, sizeof(val) );
     }
 
     // set non-blocking io and receive timeout
