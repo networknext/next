@@ -3145,7 +3145,7 @@ void relay_route_stats_from_ping_history( const relay_ping_history_t * history, 
 
     // calculate min RTT
 
-    double min_rtt = 0.0;
+    double min_rtt = 10000.0;
 
     for ( int i = 0; i < RELAY_PING_HISTORY_ENTRY_COUNT; i++ )
     {
@@ -4119,9 +4119,6 @@ int main_update( main_t * main )
     relay_write_uint64( &p, current_time );             // IMPORTANT: current_time must not move
     relay_write_uint64( &p, main->start_time );
 
-    // todo
-    printf( "==========================================================\n" );
-
     relay_write_uint32( &p, main->ping_stats.num_relays );
     for ( int i = 0; i < main->ping_stats.num_relays; i++ )
     {
@@ -4142,13 +4139,7 @@ int main_update( main_t * main )
         relay_write_uint8( &p, uint8_t( integer_rtt ) );
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
-
-        // todo
-    	printf( "%llx: rtt = %d, jitter = %d, pl = %.2f\n", main->ping_stats.relay_ids[i], integer_rtt, integer_jitter, packet_loss );
     }
-
-    // todo
-    printf( "==========================================================\n" );
 
 	uint32_t session_count = 0;
     uint32_t envelope_bandwidth_up_kbps = 0.0f;
