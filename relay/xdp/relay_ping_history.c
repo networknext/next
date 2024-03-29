@@ -3,6 +3,7 @@
 */
 
 #include "relay_ping_history.h"
+#include <float.h>
 
 void relay_ping_history_clear( struct relay_ping_history_t * history )
 {
