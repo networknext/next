@@ -3105,7 +3105,8 @@ void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t 
     if ( entry->sequence == sequence )
     {
         entry->time_pong_received = time;
-    	printf( "pong received (sent %f, received %f, %.2fms)\n", entry->time_ping_sent, entry->time_pong_received, 1000.0f * ( entry->time_pong_received - entry->time_ping_sent ) );
+        // todo
+    	// printf( "pong received (sent %f, received %f, %.2fms)\n", entry->time_ping_sent, entry->time_pong_received, 1000.0f * ( entry->time_pong_received - entry->time_ping_sent ) );
     }
 }
 
@@ -3609,6 +3610,9 @@ void relay_manager_get_stats( relay_manager_t * manager, ping_stats_t * stats )
 
     stats->num_relays = manager->num_relays;
 
+    // todo
+    printf( "==========================================================\n" );
+
     for ( int i = 0; i < stats->num_relays; ++i )
     {
         relay_route_stats_t route_stats;
@@ -3617,7 +3621,13 @@ void relay_manager_get_stats( relay_manager_t * manager, ping_stats_t * stats )
         stats->relay_rtt[i] = route_stats.rtt;
         stats->relay_jitter[i] = route_stats.jitter;
         stats->relay_packet_loss[i] = route_stats.packet_loss;
+
+        // todo
+    	printf( "%llx: rtt = %f, jitter = %f, pl = %f\n", stats->relay_ids[i], stats->relay_rtt[i], stats->relay_jitter[i], stats->relay_packet_loss[i] );
     }
+
+    // todo
+    printf( "==========================================================\n" );    
 }
 
 void relay_manager_destroy( relay_manager_t * manager )
