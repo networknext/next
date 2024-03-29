@@ -67,6 +67,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->relay_backend_url = config->relay_backend_url;
     main->relay_port = config->relay_port;
     main->relay_public_address = config->relay_public_address;
+    main->relay_internal_address = config->relay_internal_address;
     memcpy( main->relay_public_key, config->relay_public_key, sizeof(config->relay_public_key) );
     memcpy( main->relay_private_key, config->relay_private_key, sizeof(config->relay_private_key) );
     memcpy( main->relay_backend_public_key, config->relay_backend_public_key, sizeof(config->relay_backend_public_key) );
