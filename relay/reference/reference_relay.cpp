@@ -4780,7 +4780,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         if ( packet_id == RELAY_PING_PACKET )
         {
         	// todo
-            // relay_printf( "received relay ping packet" );
+        	char buffer[256];
+            relay_printf( "received relay ping packet from %s", relay_address_to_string( &from, buffer ) );
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
@@ -4847,7 +4848,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         else if ( packet_id == RELAY_PONG_PACKET )
         {
         	// todo
-            // relay_printf( "received relay pong packet" );
+        	char buffer[256];
+            relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
@@ -5720,7 +5722,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_CLIENT_PING_PACKET )
         {
-            relay_printf( "received client ping packet" );
+        	// todo
+            // relay_printf( "received client ping packet" );
 
             relay->counters[RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED]++;
 
@@ -5758,7 +5761,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 continue;
             }
 
-            relay_printf( "replying with client pong packet" );
+            // todo
+            // relay_printf( "replying with client pong packet" );
 
             uint8_t pong_packet[RELAY_MAX_PACKET_BYTES];
             packet_bytes = relay_write_client_pong_packet( pong_packet, ping_sequence, session_id, current_magic, relay_public_address_data, from_address_data );
@@ -6231,10 +6235,16 @@ int main( int argc, const char ** argv )
     printf( "Creating message queues\n" );
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-    const int num_threads = get_nprocs();
+    int num_threads = get_nprocs();
 #else // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
-    const int num_threads = 2;
+    int num_threads = 2;
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+
+    const char * num_threads_env = relay_platform_getenv( "RELAY_NUM_THREADS" );
+    if ( num_threads_env )
+    {
+    	num_threads = atoi( num_threads_env );
+    }
 
     printf( "Creating %d relay threads\n", num_threads );
 
