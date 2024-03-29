@@ -4114,8 +4114,11 @@ int main_update( main_t * main )
     relay_write_uint64( &p, current_time );             // IMPORTANT: current_time must not move
     relay_write_uint64( &p, main->start_time );
 
+    // todo
+    printf( "==========================================================\n" );
+
     relay_write_uint32( &p, main->ping_stats.num_relays );
-    for ( int i = 0; i < main->ping_stats.num_relays; ++i )
+    for ( int i = 0; i < main->ping_stats.num_relays; i++ )
     {
         relay_write_uint64( &p, main->ping_stats.relay_ids[i] );
 
@@ -4134,7 +4137,13 @@ int main_update( main_t * main )
         relay_write_uint8( &p, uint8_t( integer_rtt ) );
         relay_write_uint8( &p, uint8_t( integer_jitter ) );
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
+
+        // todo
+    	printf( "%llx: rtt = %d, jitter = %d, pl = %.2f\n", main->ping_stats.relay_ids[i], integer_rtt, integer_jitter, packet_loss );
     }
+
+    // todo
+    printf( "==========================================================\n" );
 
 	uint32_t session_count = 0;
     uint32_t envelope_bandwidth_up_kbps = 0.0f;
@@ -4779,9 +4788,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( packet_id == RELAY_PING_PACKET )
         {
+        	/*
         	// todo
         	char buffer[256];
             relay_printf( "received relay ping packet from %s", relay_address_to_string( &from, buffer ) );
+            */
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
@@ -4847,9 +4858,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
+        	/*
         	// todo
         	char buffer[256];
             relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
+            */
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
