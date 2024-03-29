@@ -3105,7 +3105,10 @@ void relay_ping_history_pong_received( relay_ping_history_t * history, uint64_t 
     if ( entry->sequence == sequence )
     {
     	// todo
-    	printf( "pong received (%.2fms)\n", entry->time_pong_received - entry->time_ping_sent );
+    	if ( entry->time_ping_sent > 0.0 )
+    	{
+	    	printf( "pong received (%.2fms)\n", entry->time_pong_received - entry->time_ping_sent );
+	    }
 
         entry->time_pong_received = time;
     }
