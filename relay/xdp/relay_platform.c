@@ -130,6 +130,19 @@ struct relay_platform_socket_t * relay_platform_socket_create( uint32_t address,
         return NULL;
     }
 
+    // set don't fragment bit
+
+    if ( address->type == NEXT_ADDRESS_IPV6 )
+    {
+        int val = IPV6_PMTUDISC_DO;
+        setsockopt( socket->handle, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val) );
+    }
+    else
+    {
+        int val = IP_PMTUDISC_DO;
+        setsockopt( socket->handle, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val) );
+    }
+
     // set non-blocking io and receive timeout
 
     if ( socket_type == RELAY_PLATFORM_SOCKET_NON_BLOCKING )

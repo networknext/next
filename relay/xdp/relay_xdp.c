@@ -607,17 +607,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                     return config->dedicated ? XDP_DROP : XDP_PASS;
                 }
 
-                // Drop fragmented UDP packets in dedicated mode only
-
-                if ( config->dedicated && ( ip->frag_off & ~0x2000 ) != 0 )
-                {
-                    relay_printf( "dropped udp fragment" );
-                    INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
-                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                    return XDP_DROP;
-                }
-
                 struct udphdr * udp = (void*) ip + sizeof(struct iphdr);
 
                 if ( (void*)udp + sizeof(struct udphdr) <= data_end )
@@ -646,6 +635,17 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             {
                                 relay_printf( "packet is too large" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_LARGE );
+                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                return XDP_DROP;
+                            }
+
+                            // Drop UDP packet if it is a fragment
+
+                            if ( ( ip->frag_off & ~0x2000 ) != 0 )
+                            {
+                                relay_printf( "dropped udp fragment" );
+                                INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                 return XDP_DROP;
