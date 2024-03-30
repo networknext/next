@@ -37,8 +37,10 @@ struct session_data
     __u8 session_private_key[RELAY_SESSION_PRIVATE_KEY_BYTES];
     __u64 expire_timestamp;
     __u64 session_id;
-    __u64 client_to_server_sequence;
-    __u64 server_to_client_sequence;
+    __u64 payload_client_to_server_sequence;
+    __u64 payload_server_to_client_sequence;
+    __u64 special_client_to_server_sequence;
+    __u64 special_server_to_client_sequence;
     __u32 envelope_kbps_up;
     __u32 envelope_kbps_down;
     __u32 next_address;                                                     // big endian
