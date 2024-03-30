@@ -84,12 +84,6 @@ Below the summary data, you will see the current route from the client to the se
 
 You can even click on each relay in the route, and you will be taken to a detail page for that relay.
 
-Below you can see the client relays for the player. These are close by relays determined by ip2location for the player, and it is how that player first hops on to your network next relay fleet.
-
-![image](https://github.com/networknext/next/assets/696656/6d57f991-487a-499e-8a4e-d91d90828fd9)
-
-The client relay ping results are used by the route planning process. They are calculated at the start of each session, for a period of 10 seconds, and held fixed throughout the rest of the session.
-
 ## 4. Servers page
 
 Servers are your game servers that are currently running with the Network Next SDK.
