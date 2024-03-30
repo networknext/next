@@ -2025,8 +2025,6 @@ func TestReframeRoute_RelayNoLongerExists(t *testing.T) {
 	assert.Equal(t, int32(0), numRouteRelays)
 }
 
-// todo: update test
-/*
 func TestReframeDestRelays(t *testing.T) {
 
 	t.Parallel()
@@ -2041,17 +2039,20 @@ func TestReframeDestRelays(t *testing.T) {
 
 	inputDestRelayIds := [...]uint64{4, 5, 6, 7}
 
-	outputNumDestRelays := 0
-	outputDestRelays := make([]int32, len(inputDestRelayIds))
+	outputDestRelays := make([]int32, 0, len(inputDestRelayIds))
 
-	core.ReframeDestRelays(relayIdToIndex, inputDestRelayIds[:], &outputNumDestRelays, outputDestRelays[:])
+	var excludeDestRelay [4]bool
+	excludeDestRelay[2] = true
 
-	assert.Equal(t, outputNumDestRelays, 3)
+	core.ReframeDestRelays(relayIdToIndex, inputDestRelayIds[:], excludeDestRelay[:], &outputDestRelays)
+
+	assert.Equal(t, len(outputDestRelays), 2)
+	if len(outputDestRelays) != 2 {
+		return
+	}
 	assert.Equal(t, outputDestRelays[0], int32(3))
 	assert.Equal(t, outputDestRelays[1], int32(4))
-	assert.Equal(t, outputDestRelays[2], int32(5))
 }
-*/
 
 func TestReframeSourceRelays(t *testing.T) {
 

@@ -265,20 +265,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	state.Datacenter = state.Database.GetDatacenter(state.Request.DatacenterId)
 
 	/*
-		Get the set of relay ids that are in the destination datacenter (if applicable).
-
-		If anything goes wrong, this is an empty set.
-	*/
-
-	destRelayIds := state.Database.GetDatacenterRelays(state.Request.DatacenterId)
-	if len(destRelayIds) == 0 {
-		core.Debug("no relays in datacenter %x", state.Request.DatacenterId)
-		state.Error |= constants.SessionError_NoRelaysInDatacenter
-	}
-
-	state.DestRelayIds = destRelayIds
-
-	/*
 		The debug string is appended to during the rest of the handler and sent down to the SDK
 		when Buyer.Debug is true. We use this to debug route decisions when something is not working.
 	*/

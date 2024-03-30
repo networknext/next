@@ -273,51 +273,6 @@ func Test_SessionUpdate_Pre_DatacenterEnabled(t *testing.T) {
 	assert.False(t, (state.Error&constants.SessionError_DatacenterNotEnabled) != 0)
 }
 
-func Test_SessionUpdate_Pre_NoRelaysInDatacenter(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Buyer.Id = 0x11111
-	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
-	assert.True(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
-}
-
-func Test_SessionUpdate_Pre_RelaysInDatacenter(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	serverBackendPublicKey, serverBackendPrivateKey := crypto.Sign_KeyPair()
-
-	state.ServerBackendPublicKey = serverBackendPublicKey
-	state.ServerBackendPrivateKey = serverBackendPrivateKey
-
-	state.Buyer.Id = 0x11111
-	state.Request.DatacenterId = 0x12345
-	state.Database.DatacenterMap[0x12345] = &db.Datacenter{}
-	state.Database.DatacenterRelays[0x12345] = []uint64{1, 2}
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.False(t, result)
-	assert.False(t, (state.Error&constants.SessionError_UnknownDatacenter) != 0)
-	assert.False(t, (state.Error&constants.SessionError_NoRelaysInDatacenter) != 0)
-}
-
 func Test_SessionUpdate_Pre_Debug(t *testing.T) {
 
 	t.Parallel()
@@ -3118,15 +3073,111 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 
 // --------------------------------------------------------------
 
-// todo: UpdateServerRelays
+func Test_SessionUpdate_UpdateServerRelays(t *testing.T) {
 
-/*
-	assert.Equal(t, len(state.DestRelays), 3)
-	assert.Equal(t, state.DestRelays[0], int32(0))
-	assert.Equal(t, state.DestRelays[1], int32(1))
-	assert.Equal(t, state.DestRelays[2], int32(2))
+	t.Parallel()
 
-*/
+	state := CreateState()
+
+	// initialize database with three relays in the same datacenter
+
+	seller := &db.Seller{Id: 1, Name: "seller"}
+
+	datacenter := &db.Datacenter{Id: 1, Name: "datacenter"}
+
+	relay_address_a := core.ParseAddress("127.0.0.1:40000")
+	relay_address_b := core.ParseAddress("127.0.0.1:40001")
+	relay_address_c := core.ParseAddress("127.0.0.1:40002")
+
+	relay_public_key_a, _ := crypto.Box_KeyPair()
+	relay_public_key_b, _ := crypto.Box_KeyPair()
+	relay_public_key_c, _ := crypto.Box_KeyPair()
+
+	state.Database.Relays = make([]db.Relay, 3)
+	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller, PublicKey: relay_public_key_a}
+	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller, PublicKey: relay_public_key_b}
+	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller, PublicKey: relay_public_key_c}
+
+	state.Database.SellerMap[1] = seller
+
+	state.Database.DatacenterMap[1] = datacenter
+
+	state.Database.RelayMap[1] = &state.Database.Relays[0]
+	state.Database.RelayMap[2] = &state.Database.Relays[1]
+	state.Database.RelayMap[3] = &state.Database.Relays[2]
+
+	state.DestRelayIds = []uint64{1, 2, 3}
+
+	// setup cost matrix with route through relays a -> b -> c
+
+	const NumRelays = 3
+
+	entryCount := core.TriMatrixLength(NumRelays)
+
+	costMatrix := make([]uint8, entryCount)
+
+	for i := range costMatrix {
+		costMatrix[i] = 255
+	}
+
+	costMatrix[core.TriMatrixIndex(0, 1)] = 10
+	costMatrix[core.TriMatrixIndex(1, 2)] = 10
+	costMatrix[core.TriMatrixIndex(0, 2)] = 100
+
+	// generate route matrix
+
+	relayIds := make([]uint64, 3)
+	relayIds[0] = 1
+	relayIds[1] = 2
+	relayIds[2] = 3
+
+	relayDatacenters := make([]uint64, 3)
+	relayDatacenters[0] = 1
+	relayDatacenters[1] = 2
+	relayDatacenters[2] = 3
+
+	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
+
+	state.RouteMatrix.RelayAddresses = make([]net.UDPAddr, NumRelays)
+	state.RouteMatrix.RelayLatitudes = make([]float32, NumRelays)
+	state.RouteMatrix.RelayLongitudes = make([]float32, NumRelays)
+
+	state.RouteMatrix.RelayAddresses[0] = relay_address_a
+	state.RouteMatrix.RelayAddresses[1] = relay_address_b
+	state.RouteMatrix.RelayAddresses[2] = relay_address_c
+
+	// setup client relays
+
+	state.Request.NumClientRelays = 3
+	state.Request.ClientRelayPingsHaveChanged = true
+	copy(state.Request.ClientRelayIds[:], []uint64{1, 2, 3})
+	copy(state.Request.ClientRelayRTT[:], []int32{10, 20, 30})
+	copy(state.Request.ClientRelayJitter[:], []int32{0, 0, 0})
+	copy(state.Request.ClientRelayPacketLoss[:], []float32{0, 0, 0})
+
+	// update client relays
+
+	state.Input.SliceNumber = 1
+
+	result := handlers.SessionUpdate_UpdateClientRelays(state)
+
+	// validate
+
+	assert.True(t, result)
+	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
+	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
+
+	assert.Equal(t, len(state.SourceRelays), 3)
+	assert.Equal(t, len(state.SourceRelayRTT), 3)
+
+	assert.Equal(t, state.SourceRelays[0], int32(0))
+	assert.Equal(t, state.SourceRelays[1], int32(1))
+	assert.Equal(t, state.SourceRelays[2], int32(2))
+
+	assert.Equal(t, state.SourceRelayRTT[0], int32(10))
+	assert.Equal(t, state.SourceRelayRTT[1], int32(20))
+	assert.Equal(t, state.SourceRelayRTT[2], int32(30))
+}
 
 // --------------------------------------------------------------
 

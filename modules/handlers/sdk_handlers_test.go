@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"sort"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1370,8 +1371,6 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 	return routeMatrix
 }
 
-// todo: heisenbug
-/*
 func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 	t.Parallel()
@@ -1579,6 +1578,11 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 			// check all response packet fields match expected values
 
+			sort.Slice(responsePacket.ClientRelayIds[:responsePacket.NumClientRelays], func(i, j int) bool { return responsePacket.ClientRelayIds[i] < responsePacket.ClientRelayIds[j] })
+			sort.Slice(responsePacket.ClientRelayAddresses[:responsePacket.NumClientRelays], func(i, j int) bool { return responsePacket.ClientRelayAddresses[i].String() < responsePacket.ClientRelayAddresses[j].String() })
+
+			fmt.Printf("%v\n", responsePacket.ClientRelayIds[:])
+
 			assert.Equal(t, responsePacket.RequestId, packet.RequestId)
 			assert.Equal(t, responsePacket.NumClientRelays, int32(3))
 			assert.Equal(t, responsePacket.Latitude, float32(41))
@@ -1622,7 +1626,6 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 	assert.True(t, receivedResponse != 0)
 }
-*/
 
 // ---------------------------------------------------------------------------------------
 
