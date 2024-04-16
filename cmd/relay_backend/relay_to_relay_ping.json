@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "relay_to_relay_ping",
+  "namespace": "com.networknext.avro",
+  "fields" : [
+    {"name": "timestamp",              "type": {"type": "long", "logicalType": "timestamp-micros"}},
+    {"name": "source_relay_id",        "type": "long"},
+    {"name": "destination_relay_id",   "type": "long"},
+    {"name": "rtt",                    "type": "int"},
+    {"name": "jitter",                 "type": "int"},
+    {"name": "packet_loss",            "type": "float"}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "server_init",
+  "namespace": "com.networknext.avro",
+  "fields" : [
+    {"name": "timestamp",         "type": {"type": "long", "logicalType": "timestamp-micros"}},
+    {"name": "sdk_version_major", "type": "int"},
+    {"name": "sdk_version_minor", "type": "int"},
+    {"name": "sdk_version_patch", "type": "int"},
+    {"name": "buyer_id",          "type": "long"},
+    {"name": "datacenter_id",     "type": "long"},
+    {"name": "datacenter_name",   "type": "string"},
+    {"name": "server_address",    "type": "string"}
+  ]
+}
