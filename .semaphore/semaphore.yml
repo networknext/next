@@ -23,7 +23,7 @@ blocks:
       jobs:
         - name: "Build Components"
           commands:
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
             - make -j ./dist/relay-debug ./dist/relay-release ./dist/libnext.so

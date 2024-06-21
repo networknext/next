@@ -29,7 +29,7 @@ blocks:
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
             - cache restore golang
             - checkout
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - cd ~/next
             - make rebuild
             - ./next select local
