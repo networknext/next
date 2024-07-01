@@ -1147,7 +1147,7 @@ func config(env Environment, regexes []string) {
 	}
 
 	if !fileExists(fmt.Sprintf("%s/terraform-akamai.txt", secretsDir)) {
-		fmt.Printf("\nerror: missing cloudflare akamai api key at ~/secrets/terraform-akamai.txt :(\n\n")
+		fmt.Printf("\nerror: missing akamai api key at ~/secrets/terraform-akamai.txt :(\n\n")
 		os.Exit(1)
 	}
 

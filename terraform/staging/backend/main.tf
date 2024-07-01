@@ -82,7 +82,7 @@ provider "google-beta" {
 }
 
 provider "cloudflare" {
-  api_token = file(var.cloudflare_api_token)
+  api_token = trimspace(file(var.cloudflare_api_token))
 }
 
 # ----------------------------------------------------------------------------------------

@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "linode" {
-  token = file("~/secrets/terraform-akamai.txt")
+  token = trimspace(file("~/secrets/terraform-akamai.txt"))
 }
 
 # ----------------------------------------------------------------------------------------
