@@ -16,7 +16,7 @@ blocks:
         - name: "rebuild everything and update golang cache"
           commands:
             - checkout
-            - sudo apt-get install -y libsodium-dev redis-server
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev redis-server
             - cd ~/next
             - make rebuild
             - ./next select local

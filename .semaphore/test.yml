@@ -812,7 +812,7 @@ blocks:
 
             - cache restore golang
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - checkout
             - cp envs/local.env .env
@@ -838,7 +838,7 @@ blocks:
       prologue:
         commands:
 
-            - sudo apt-get install -y libsodium-dev redis-server
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev redis-server
 
             - mkdir -p dist
             - cd dist
@@ -909,7 +909,7 @@ blocks:
 
             - cache restore golang
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - checkout
             - cp envs/local.env .env
@@ -938,7 +938,7 @@ blocks:
             - psql -U postgres -h localhost -c "CREATE USER developer;"
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - artifact pull workflow functional_test_database.tar.gz
 
@@ -984,7 +984,7 @@ blocks:
 
             - cache restore golang
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - checkout
             - cp envs/local.env .env
@@ -1014,7 +1014,7 @@ blocks:
             - psql -U postgres -h localhost -c "CREATE USER developer;"
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - artifact pull workflow functional_test_api.tar.gz
 
@@ -1073,7 +1073,7 @@ blocks:
         - name: "test_portal"
           commands:
 
-            - sudo apt-get install -y libsodium-dev redis
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev redis
 
             - cache restore golang
 
@@ -1105,7 +1105,7 @@ blocks:
 
             - cache restore golang
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - checkout
             - cp envs/local.env .env
@@ -1135,7 +1135,7 @@ blocks:
             - psql -U postgres -h localhost -c "CREATE USER developer;"
             - psql -U postgres -h localhost -c "ALTER USER developer WITH SUPERUSER;"
 
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - artifact pull workflow functional_test_terraform.tar.gz
 
@@ -1170,7 +1170,7 @@ blocks:
         commands:
             - sem-service start redis 7
             - cache restore golang
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
 

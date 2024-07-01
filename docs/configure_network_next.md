@@ -39,7 +39,7 @@ By default it should contain something like this:
   "cloudflare_domain": "virtualgo.net",
   "google_billing_account": "012279-A33489-722F96",
   "google_org_id": "434699063105",
-  "ssh_key": "~secrets/next_rsa"
+  "ssh_key": "~/secrets/next_rsa"
 }
 ```
 

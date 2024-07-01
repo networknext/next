@@ -60,7 +60,7 @@ blocks:
             - cache restore golang
             - checkout
             - cp envs/local.env .env
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - go test ./modules/...
 
   - name: "SDK"
@@ -69,7 +69,7 @@ blocks:
       jobs:
         - name: "Unit Tests"
           commands:
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - cp envs/local.env .env
             - export LD_LIBRARY_PATH=.
@@ -102,7 +102,7 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - cache restore golang
             - make update-schemas
@@ -177,7 +177,7 @@ blocks:
 
       prologue:
         commands:
-            - sudo apt-get install -y libsodium-dev
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
 
