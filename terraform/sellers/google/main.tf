@@ -26,15 +26,15 @@ variable "vpn_address" { type = string }
 
 # ----------------------------------------------------------------------------------------
 
-data "google_compute_network" "default" {
-  name = "default"
+data "google_compute_network" "relays" {
+  name = "relays"
 }
 
 resource "google_compute_firewall" "google_allow_ssh" {
   name          = "allow-ssh"
   project       = var.project
   direction     = "INGRESS"
-  network       = "default"
+  network       = "relays"
   source_ranges = [var.vpn_address]
   allow {
     protocol = "tcp"
@@ -46,7 +46,7 @@ resource "google_compute_firewall" "google_allow_udp" {
   name          = "allow-udp"
   project       = var.project
   direction     = "INGRESS"
-  network       = "default"
+  network       = "relays"
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "udp"
@@ -83,8 +83,8 @@ resource "google_compute_instance" "relay" {
   machine_type = each.value.type
   network_interface {
     network_ip = google_compute_address.internal[each.key].address
-    network    = "default"
-    subnetwork = "default"
+    network    = "relays"
+    subnetwork = "relays"
     access_config {
       nat_ip = google_compute_address.public[each.key].address
     }

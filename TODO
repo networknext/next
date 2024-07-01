@@ -10,10 +10,10 @@ DONE
 
 	Add newline check to terraform-cloudflare.txt
 
+	Don't rely on default google networks in terraform. Some orgs don't allow creation of default networks: https://www.googlecloudcommunity.com/gc/Infrastructure-Compute-Storage/Is-there-a-default-netwok-in-a-new-provisioned-project/m-p/428917
+
 TODO
 
-	Don't rely on default networks in terraform. Some orgs don't allow creation of default networks: https://www.googlecloudcommunity.com/gc/Infrastructure-Compute-Storage/Is-there-a-default-netwok-in-a-new-provisioned-project/m-p/428917
-
-	Fork the repo and run through the setup process via mas-bandwidth.com from scratch
+	Fork the repo and run through the setup process via mas-bandwidth.com github account from scratch
 
 	Create a new 1.0.1 release with fixes

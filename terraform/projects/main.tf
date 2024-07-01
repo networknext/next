@@ -412,6 +412,14 @@ resource "google_project_service" "dev_relays" {
   disable_dependent_services = true
 }
 
+# create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
+
+resource "google_compute_network" "relays" {
+  name                    = "relays"
+  project                 = google_project.dev_relays.project_id
+  auto_create_subnetworks = true
+}
+
 # setup service account for dev relays
 
 resource "google_service_account" "terraform_dev_relays" {
@@ -711,6 +719,14 @@ resource "google_project_service" "prod_relays" {
     update = "40m"
   }
   disable_dependent_services = true
+}
+
+# create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
+
+resource "google_compute_network" "relays" {
+  name                    = "relays"
+  project                 = google_project.prod_relays.project_id
+  auto_create_subnetworks = true
 }
 
 # setup service account for prod relays

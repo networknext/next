@@ -12,7 +12,7 @@ At the end of each session a summary data entry is written, which makes it much 
 
 There is also data written each time a client pings relays at the start of each session, so you can look at direct ping results from clients to relays, and data from each server and relay in your fleet is sent so you can track their performance and uptime.
 
-Data in bigquery is retained for 90 days by default to comply with GDPR. Within this dataset the "user hash" is considered pseudonymized data within the GDPR, and is personal data if you have the ability to identify the player from the user hash plus other data youh ave for this player. The client IP address and port are also considered personal data.
+Data in bigquery is retained for 90 days by default to comply with GDPR. Within this dataset the "user hash" is considered pseudonymized data within the GDPR, and is personal data only if you have the ability to identify the player from the user hash plus other data that you have for this player. The client IP address and port are also considered personal data.
 
 Schemas for all this data are described below.
 
