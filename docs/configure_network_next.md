@@ -49,11 +49,11 @@ By default it should contain something like this:
    
 3. Set *cloudflare_zone_id* to the zone id for your domain managed by cloudflare. You can find the zone id in the cloudflare portal.
 
-6. Set *cloudflare_domain* to the domain name you are using with network next. This domain must correspond to the zone id in cloudflare.
+4. Set *cloudflare_domain* to the domain name you are using with network next. This domain must correspond to the zone id in cloudflare.
 
-7. Set *google_billing_account* to one of your linked billing accounts in google cloud. Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
+5. Set *google_billing_account* to one of your linked billing accounts in google cloud. Run `gcloud billing accounts list` to list the set of billing accounts linked to your google cloud account. There is usually only one.
 
-8. Set *google_org_id* to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
+6. Set *google_org_id* to your google organization id. Run `gcloud organizations list` to get a list of organization ids linked to your account. There is usually only one.
 
 ## 3. Run the configure script
 
