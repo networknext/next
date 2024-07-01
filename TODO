@@ -6,15 +6,14 @@ DONE
 
 TODO
 
-	Add newline check to terraform-akamai.json?
+	Add newline check to terraform-akamai.json
 
-	Add newline check to terraform-cloudflare.json?
+	Add newline check to terraform-cloudflare.json
 
-	Update maxmind.com ip2location download to the new method
+	Update maxmind.com ip2location download to the new method: https://dev.maxmind.com/geoip/updating-databases#directly-downloading-databases
 
 	Don't rely on default networks in terraform. Some orgs don't allow creation of default networks: https://www.googlecloudcommunity.com/gc/Infrastructure-Compute-Storage/Is-there-a-default-netwok-in-a-new-provisioned-project/m-p/428917
 
-	Fork the repo and run through the setup process via mas-bandwidth.com
+	Fork the repo and run through the setup process via mas-bandwidth.com from scratch
 
 	Create a new 1.0.1 release with fixes
-	
