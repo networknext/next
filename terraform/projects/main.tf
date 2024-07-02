@@ -414,7 +414,7 @@ resource "google_project_service" "dev_relays" {
 
 # create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
 
-resource "google_compute_network" "relays" {
+resource "google_compute_network" "dev_relays" {
   name                    = "relays"
   project                 = google_project.dev_relays.project_id
   auto_create_subnetworks = true
@@ -723,7 +723,7 @@ resource "google_project_service" "prod_relays" {
 
 # create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
 
-resource "google_compute_network" "relays" {
+resource "google_compute_network" "prod_relays" {
   name                    = "relays"
   project                 = google_project.prod_relays.project_id
   auto_create_subnetworks = true
