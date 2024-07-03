@@ -1217,6 +1217,7 @@ func config(env Environment, regexes []string) {
 				fmt.Printf("%s\n", filenames[j])
 				replace(filenames[j], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
 				replace(filenames[j], "^\\s*google_database_bucket\\s*=.*$", fmt.Sprintf("google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
+				replace(filenames[j], "^\\s*cloudflare_zone_id\\s*=.*$", fmt.Sprintf("cloudflare_zone_id           = \"%s\"", config.CloudflareZoneId))
 				replace(filenames[j], "^\\s*cloudflare_domain\\s*=.*$", fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
 				replace(filenames[j], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
 				replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$", fmt.Sprintf("ssh_public_key_file         = \"%s.pub\"", config.SSHKey))
@@ -1257,6 +1258,15 @@ func config(env Environment, regexes []string) {
 	// generate example dir
 
 	generateExampleDir()
+
+	// update scripts
+
+	fmt.Printf("\n------------------------------------------\n         updating scripts\n------------------------------------------\n\n")
+
+	fmt.Printf("scripts/setup_relay.sh\n")
+	{
+		replace("scripts/setup_relay.sh", "[A-Za-z_]+_network_next_relay_artifacts", fmt.Sprintf("wget https://storage.googleapis.com/%s_network_next_relay_artifacts/relay_module.tar.gz", config.CompanyName))
+	}
 
 	// update source files
 
