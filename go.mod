@@ -19,7 +19,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.12.0
 	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/redis/go-redis/v9 v9.5.1
-	github.com/rs/cors v1.10.1
+	github.com/rs/cors v1.11.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.21.0
 	golang.org/x/exp v0.0.0-20240314144324-c7f7c6466f7f
