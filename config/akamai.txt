@@ -8,3 +8,4 @@ us-east,akamai.newyork
 eu-west,akamai.london
 ap-south,akamai.singapore
 eu-central,akamai.frankfurt
+ap-northeast,akamai.tokyo

@@ -26,7 +26,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "xdp_network_next_terraform"
+    bucket  = "theodore_network_next_terraform"
     prefix  = "prod_relays"
   }
 }

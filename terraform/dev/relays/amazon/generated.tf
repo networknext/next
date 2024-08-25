@@ -12,40 +12,8 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
-  alias                    = "ap-south-2"
-  region                   = "ap-south-2"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
   alias                    = "ap-south-1"
   region                   = "ap-south-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "eu-south-1"
-  region                   = "eu-south-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "eu-south-2"
-  region                   = "eu-south-2"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "me-central-1"
-  region                   = "me-central-1"
 }
 
 provider "aws" { 
@@ -68,14 +36,6 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
-  alias                    = "eu-central-2"
-  region                   = "eu-central-2"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
   alias                    = "us-west-1"
   region                   = "us-west-1"
 }
@@ -86,14 +46,6 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "us-west-2"
   region                   = "us-west-2"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "af-south-1"
-  region                   = "af-south-1"
 }
 
 provider "aws" { 
@@ -148,14 +100,6 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
-  alias                    = "me-south-1"
-  region                   = "me-south-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
   alias                    = "ap-northeast-1"
   region                   = "ap-northeast-1"
 }
@@ -166,14 +110,6 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "sa-east-1"
   region                   = "sa-east-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "ap-east-1"
-  region                   = "ap-east-1"
 }
 
 provider "aws" { 
@@ -196,22 +132,6 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
-  alias                    = "ap-southeast-3"
-  region                   = "ap-southeast-3"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "ap-southeast-4"
-  region                   = "ap-southeast-4"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
   alias                    = "us-east-1"
   region                   = "us-east-1"
 }
@@ -224,48 +144,12 @@ provider "aws" {
   region                   = "us-east-2"
 }
 
-module "region_ap_south_2" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.ap-south-2
-  }
-}
-
 module "region_ap_south_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.ap-south-1
-  }
-}
-
-module "region_eu_south_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.eu-south-1
-  }
-}
-
-module "region_eu_south_2" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.eu-south-2
-  }
-}
-
-module "region_me_central_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.me-central-1
   }
 }
 
@@ -287,15 +171,6 @@ module "region_eu_central_1" {
   }
 }
 
-module "region_eu_central_2" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.eu-central-2
-  }
-}
-
 module "region_us_west_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
@@ -311,15 +186,6 @@ module "region_us_west_2" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.us-west-2
-  }
-}
-
-module "region_af_south_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.af-south-1
   }
 }
 
@@ -377,15 +243,6 @@ module "region_ap_northeast_2" {
   }
 }
 
-module "region_me_south_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.me-south-1
-  }
-}
-
 module "region_ap_northeast_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
@@ -404,15 +261,6 @@ module "region_sa_east_1" {
   }
 }
 
-module "region_ap_east_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.ap-east-1
-  }
-}
-
 module "region_ap_southeast_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
@@ -428,24 +276,6 @@ module "region_ap_southeast_2" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.ap-southeast-2
-  }
-}
-
-module "region_ap_southeast_3" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.ap-southeast-3
-  }
-}
-
-module "region_ap_southeast_4" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.ap-southeast-4
   }
 }
 
@@ -470,83 +300,6 @@ module "region_us_east_2" {
 locals {
 
   datacenter_map = {
-
-    "amazon.johannesburg.1" = {
-      azid        = "afs1-az1"
-      zone        = "af-south-1a"
-      region      = "af-south-1"
-      native_name = "afs1-az1 (af-south-1a)"
-      latitude    = -33.92
-      longitude   = 18.42
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.johannesburg.2" = {
-      azid        = "afs1-az2"
-      zone        = "af-south-1b"
-      region      = "af-south-1"
-      native_name = "afs1-az2 (af-south-1b)"
-      latitude    = -33.92
-      longitude   = 18.42
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.johannesburg.3" = {
-      azid        = "afs1-az3"
-      zone        = "af-south-1c"
-      region      = "af-south-1"
-      native_name = "afs1-az3 (af-south-1c)"
-      latitude    = -33.92
-      longitude   = 18.42
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.nigeria.1" = {
-      azid        = "afs1-los1-az1"
-      zone        = "af-south-1-los-1a"
-      region      = "af-south-1"
-      native_name = "afs1-los1-az1 (af-south-1-los-1a)"
-      latitude    = 6.52
-      longitude   = 3.38
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.hongkong.1" = {
-      azid        = "ape1-az1"
-      zone        = "ap-east-1a"
-      region      = "ap-east-1"
-      native_name = "ape1-az1 (ap-east-1a)"
-      latitude    = 22.32
-      longitude   = 114.17
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.hongkong.2" = {
-      azid        = "ape1-az2"
-      zone        = "ap-east-1b"
-      region      = "ap-east-1"
-      native_name = "ape1-az2 (ap-east-1b)"
-      latitude    = 22.32
-      longitude   = 114.17
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.hongkong.3" = {
-      azid        = "ape1-az3"
-      zone        = "ap-east-1c"
-      region      = "ap-east-1"
-      native_name = "ape1-az3 (ap-east-1c)"
-      latitude    = 22.32
-      longitude   = 114.17
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
 
     "amazon.tokyo.1" = {
       azid        = "apne1-az1"
@@ -724,39 +477,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.hyderabad.1" = {
-      azid        = "aps2-az1"
-      zone        = "ap-south-2a"
-      region      = "ap-south-2"
-      native_name = "aps2-az1 (ap-south-2a)"
-      latitude    = 17.39
-      longitude   = 78.49
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.hyderabad.2" = {
-      azid        = "aps2-az2"
-      zone        = "ap-south-2b"
-      region      = "ap-south-2"
-      native_name = "aps2-az2 (ap-south-2b)"
-      latitude    = 17.39
-      longitude   = 78.49
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.hyderabad.3" = {
-      azid        = "aps2-az3"
-      zone        = "ap-south-2c"
-      region      = "ap-south-2"
-      native_name = "aps2-az3 (ap-south-2c)"
-      latitude    = 17.39
-      longitude   = 78.49
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.singapore.1" = {
       azid        = "apse1-az1"
       zone        = "ap-southeast-1a"
@@ -803,9 +523,9 @@ locals {
 
     "amazon.sydney.1" = {
       azid        = "apse2-az1"
-      zone        = "ap-southeast-2b"
+      zone        = "ap-southeast-2a"
       region      = "ap-southeast-2"
-      native_name = "apse2-az1 (ap-southeast-2b)"
+      native_name = "apse2-az1 (ap-southeast-2a)"
       latitude    = -33.87
       longitude   = 151.21
       seller_name = "Amazon"
@@ -825,9 +545,9 @@ locals {
 
     "amazon.sydney.3" = {
       azid        = "apse2-az3"
-      zone        = "ap-southeast-2a"
+      zone        = "ap-southeast-2b"
       region      = "ap-southeast-2"
-      native_name = "apse2-az3 (ap-southeast-2a)"
+      native_name = "apse2-az3 (ap-southeast-2b)"
       latitude    = -33.87
       longitude   = 151.21
       seller_name = "Amazon"
@@ -841,72 +561,6 @@ locals {
       native_name = "apse2-per1-az1 (ap-southeast-2-per-1a)"
       latitude    = -31.95
       longitude   = 115.86
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.jakarta.1" = {
-      azid        = "apse3-az1"
-      zone        = "ap-southeast-3a"
-      region      = "ap-southeast-3"
-      native_name = "apse3-az1 (ap-southeast-3a)"
-      latitude    = -6.21
-      longitude   = 106.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.jakarta.2" = {
-      azid        = "apse3-az2"
-      zone        = "ap-southeast-3b"
-      region      = "ap-southeast-3"
-      native_name = "apse3-az2 (ap-southeast-3b)"
-      latitude    = -6.21
-      longitude   = 106.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.jakarta.3" = {
-      azid        = "apse3-az3"
-      zone        = "ap-southeast-3c"
-      region      = "ap-southeast-3"
-      native_name = "apse3-az3 (ap-southeast-3c)"
-      latitude    = -6.21
-      longitude   = 106.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.melbourne.1" = {
-      azid        = "apse4-az1"
-      zone        = "ap-southeast-4a"
-      region      = "ap-southeast-4"
-      native_name = "apse4-az1 (ap-southeast-4a)"
-      latitude    = -37.81
-      longitude   = 144.96
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.melbourne.2" = {
-      azid        = "apse4-az2"
-      zone        = "ap-southeast-4b"
-      region      = "ap-southeast-4"
-      native_name = "apse4-az2 (ap-southeast-4b)"
-      latitude    = -37.81
-      longitude   = 144.96
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.melbourne.3" = {
-      azid        = "apse4-az3"
-      zone        = "ap-southeast-4c"
-      region      = "ap-southeast-4"
-      native_name = "apse4-az3 (ap-southeast-4c)"
-      latitude    = -37.81
-      longitude   = 144.96
       seller_name = "Amazon"
       seller_code = "amazon"
     }
@@ -999,39 +653,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.zurich.1" = {
-      azid        = "euc2-az1"
-      zone        = "eu-central-2a"
-      region      = "eu-central-2"
-      native_name = "euc2-az1 (eu-central-2a)"
-      latitude    = 47.38
-      longitude   = 8.54
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.zurich.2" = {
-      azid        = "euc2-az2"
-      zone        = "eu-central-2b"
-      region      = "eu-central-2"
-      native_name = "euc2-az2 (eu-central-2b)"
-      latitude    = 47.38
-      longitude   = 8.54
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.zurich.3" = {
-      azid        = "euc2-az3"
-      zone        = "eu-central-2c"
-      region      = "eu-central-2"
-      native_name = "euc2-az3 (eu-central-2c)"
-      latitude    = 47.38
-      longitude   = 8.54
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.stockholm.1" = {
       azid        = "eun1-az1"
       zone        = "eu-north-1a"
@@ -1087,77 +708,11 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.milan.1" = {
-      azid        = "eus1-az1"
-      zone        = "eu-south-1a"
-      region      = "eu-south-1"
-      native_name = "eus1-az1 (eu-south-1a)"
-      latitude    = 45.46
-      longitude   = 9.19
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.milan.2" = {
-      azid        = "eus1-az2"
-      zone        = "eu-south-1b"
-      region      = "eu-south-1"
-      native_name = "eus1-az2 (eu-south-1b)"
-      latitude    = 45.46
-      longitude   = 9.19
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.milan.3" = {
-      azid        = "eus1-az3"
-      zone        = "eu-south-1c"
-      region      = "eu-south-1"
-      native_name = "eus1-az3 (eu-south-1c)"
-      latitude    = 45.46
-      longitude   = 9.19
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.spain.1" = {
-      azid        = "eus2-az1"
-      zone        = "eu-south-2a"
-      region      = "eu-south-2"
-      native_name = "eus2-az1 (eu-south-2a)"
-      latitude    = 41.60
-      longitude   = -0.91
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.spain.2" = {
-      azid        = "eus2-az2"
-      zone        = "eu-south-2b"
-      region      = "eu-south-2"
-      native_name = "eus2-az2 (eu-south-2b)"
-      latitude    = 41.60
-      longitude   = -0.91
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.spain.3" = {
-      azid        = "eus2-az3"
-      zone        = "eu-south-2c"
-      region      = "eu-south-2"
-      native_name = "eus2-az3 (eu-south-2c)"
-      latitude    = 41.60
-      longitude   = -0.91
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.ireland.1" = {
       azid        = "euw1-az1"
-      zone        = "eu-west-1a"
+      zone        = "eu-west-1c"
       region      = "eu-west-1"
-      native_name = "euw1-az1 (eu-west-1a)"
+      native_name = "euw1-az1 (eu-west-1c)"
       latitude    = 53.78
       longitude   = -7.31
       seller_name = "Amazon"
@@ -1166,9 +721,9 @@ locals {
 
     "amazon.ireland.2" = {
       azid        = "euw1-az2"
-      zone        = "eu-west-1b"
+      zone        = "eu-west-1a"
       region      = "eu-west-1"
-      native_name = "euw1-az2 (eu-west-1b)"
+      native_name = "euw1-az2 (eu-west-1a)"
       latitude    = 53.78
       longitude   = -7.31
       seller_name = "Amazon"
@@ -1177,9 +732,9 @@ locals {
 
     "amazon.ireland.3" = {
       azid        = "euw1-az3"
-      zone        = "eu-west-1c"
+      zone        = "eu-west-1b"
       region      = "eu-west-1"
-      native_name = "euw1-az3 (eu-west-1c)"
+      native_name = "euw1-az3 (eu-west-1b)"
       latitude    = 53.78
       longitude   = -7.31
       seller_name = "Amazon"
@@ -1252,83 +807,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.uae.1" = {
-      azid        = "mec1-az1"
-      zone        = "me-central-1a"
-      region      = "me-central-1"
-      native_name = "mec1-az1 (me-central-1a)"
-      latitude    = 23.42
-      longitude   = 53.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.uae.2" = {
-      azid        = "mec1-az2"
-      zone        = "me-central-1b"
-      region      = "me-central-1"
-      native_name = "mec1-az2 (me-central-1b)"
-      latitude    = 23.42
-      longitude   = 53.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.uae.3" = {
-      azid        = "mec1-az3"
-      zone        = "me-central-1c"
-      region      = "me-central-1"
-      native_name = "mec1-az3 (me-central-1c)"
-      latitude    = 23.42
-      longitude   = 53.85
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.bahrain.1" = {
-      azid        = "mes1-az1"
-      zone        = "me-south-1a"
-      region      = "me-south-1"
-      native_name = "mes1-az1 (me-south-1a)"
-      latitude    = 26.07
-      longitude   = 50.56
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.bahrain.2" = {
-      azid        = "mes1-az2"
-      zone        = "me-south-1b"
-      region      = "me-south-1"
-      native_name = "mes1-az2 (me-south-1b)"
-      latitude    = 26.07
-      longitude   = 50.56
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.bahrain.3" = {
-      azid        = "mes1-az3"
-      zone        = "me-south-1c"
-      region      = "me-south-1"
-      native_name = "mes1-az3 (me-south-1c)"
-      latitude    = 26.07
-      longitude   = 50.56
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.oman.1" = {
-      azid        = "mes1-mct1-az1"
-      zone        = "me-south-1-mct-1a"
-      region      = "me-south-1"
-      native_name = "mes1-mct1-az1 (me-south-1-mct-1a)"
-      latitude    = 23.59
-      longitude   = 58.38
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.saopaulo.1" = {
       azid        = "sae1-az1"
       zone        = "sa-east-1a"
@@ -1358,17 +836,6 @@ locals {
       native_name = "sae1-az3 (sa-east-1c)"
       latitude    = -23.56
       longitude   = -46.64
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.atlanta.1" = {
-      azid        = "use1-atl1-az1"
-      zone        = "us-east-1-atl-1a"
-      region      = "us-east-1"
-      native_name = "use1-atl1-az1 (us-east-1-atl-1a)"
-      latitude    = 33.75
-      longitude   = -84.39
       seller_name = "Amazon"
       seller_code = "amazon"
     }
@@ -1461,39 +928,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.chicago.1" = {
-      azid        = "use1-chi1-az1"
-      zone        = "us-east-1-chi-1a"
-      region      = "us-east-1"
-      native_name = "use1-chi1-az1 (us-east-1-chi-1a)"
-      latitude    = 41.88
-      longitude   = -87.63
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.dallas.1" = {
-      azid        = "use1-dfw1-az1"
-      zone        = "us-east-1-dfw-1a"
-      region      = "us-east-1"
-      native_name = "use1-dfw1-az1 (us-east-1-dfw-1a)"
-      latitude    = 32.78
-      longitude   = -96.80
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.houston.1" = {
-      azid        = "use1-iah1-az1"
-      zone        = "us-east-1-iah-1a"
-      region      = "us-east-1"
-      native_name = "use1-iah1-az1 (us-east-1-iah-1a)"
-      latitude    = 29.76
-      longitude   = -95.37
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.lima.1" = {
       azid        = "use1-lim1-az1"
       zone        = "us-east-1-lim-1a"
@@ -1512,17 +946,6 @@ locals {
       native_name = "use1-mci1-az1 (us-east-1-mci-1a)"
       latitude    = 39.10
       longitude   = -94.58
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.miami.1" = {
-      azid        = "use1-mia1-az1"
-      zone        = "us-east-1-mia-1a"
-      region      = "us-east-1"
-      native_name = "use1-mia1-az1 (us-east-1-mia-1a)"
-      latitude    = 25.76
-      longitude   = -80.19
       seller_name = "Amazon"
       seller_code = "amazon"
     }
@@ -1617,9 +1040,9 @@ locals {
 
     "amazon.sanjose.1" = {
       azid        = "usw1-az1"
-      zone        = "us-west-1b"
+      zone        = "us-west-1a"
       region      = "us-west-1"
-      native_name = "usw1-az1 (us-west-1b)"
+      native_name = "usw1-az1 (us-west-1a)"
       latitude    = 37.34
       longitude   = -121.89
       seller_name = "Amazon"
@@ -1628,9 +1051,9 @@ locals {
 
     "amazon.sanjose.3" = {
       azid        = "usw1-az3"
-      zone        = "us-west-1a"
+      zone        = "us-west-1c"
       region      = "us-west-1"
-      native_name = "usw1-az3 (us-west-1a)"
+      native_name = "usw1-az3 (us-west-1c)"
       latitude    = 37.34
       longitude   = -121.89
       seller_name = "Amazon"
@@ -1703,17 +1126,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.lasvegas.2" = {
-      azid        = "usw2-las1-az2"
-      zone        = "us-west-2-las-1b"
-      region      = "us-west-2"
-      native_name = "usw2-las1-az2 (us-west-2-las-1b)"
-      latitude    = 36.17
-      longitude   = -115.14
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.losangeles.1" = {
       azid        = "usw2-lax1-az1"
       zone        = "us-west-2-lax-1a"
@@ -1747,17 +1159,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.phoenix.1" = {
-      azid        = "usw2-phx1-az1"
-      zone        = "us-west-2-phx-1a"
-      region      = "us-west-2"
-      native_name = "usw2-phx1-az1 (us-west-2-phx-1a)"
-      latitude    = 33.45
-      longitude   = -112.07
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.seattle.1" = {
       azid        = "usw2-sea1-az1"
       zone        = "us-west-2-sea-1a"
@@ -1772,31 +1173,21 @@ locals {
   }
 
   regions = [
-    "ap-south-2",
     "ap-south-1",
-    "eu-south-1",
-    "eu-south-2",
-    "me-central-1",
     "ca-central-1",
     "eu-central-1",
-    "eu-central-2",
     "us-west-1",
     "us-west-2",
-    "af-south-1",
     "eu-north-1",
     "eu-west-3",
     "eu-west-2",
     "eu-west-1",
     "ap-northeast-3",
     "ap-northeast-2",
-    "me-south-1",
     "ap-northeast-1",
     "sa-east-1",
-    "ap-east-1",
     "ap-southeast-1",
     "ap-southeast-2",
-    "ap-southeast-3",
-    "ap-southeast-4",
     "us-east-1",
     "us-east-2",
   ]
@@ -1806,28 +1197,15 @@ locals {
 
   relays = {
 
+    "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
     "amazon.ohio.2" = { datacenter_name = "amazon.ohio.2" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
-    "amazon.ohio.1" = { datacenter_name = "amazon.ohio.1" },
   }
 
 }
 
-module "relay_amazon_ohio_2" {
-	  source            = "./relay"
-	  name              = "amazon.ohio.2"
-	  zone              = local.datacenter_map["amazon.ohio.2"].zone
-	  region            = local.datacenter_map["amazon.ohio.2"].region
-	  type              = "m5a.large"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_2.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-2
-	  }
-	}
-	module "relay_amazon_virginia_1" {
+module "relay_amazon_virginia_1" {
 	  source            = "./relay"
 	  name              = "amazon.virginia.1"
 	  zone              = local.datacenter_map["amazon.virginia.1"].zone
@@ -1858,6 +1236,19 @@ module "relay_amazon_ohio_2" {
 	  name              = "amazon.ohio.1"
 	  zone              = local.datacenter_map["amazon.ohio.1"].zone
 	  region            = local.datacenter_map["amazon.ohio.1"].region
+	  type              = "m5a.large"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-2
+	  }
+	}
+	module "relay_amazon_ohio_2" {
+	  source            = "./relay"
+	  name              = "amazon.ohio.2"
+	  zone              = local.datacenter_map["amazon.ohio.2"].zone
+	  region            = local.datacenter_map["amazon.ohio.2"].region
 	  type              = "m5a.large"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	  security_group_id = module.region_us_east_2.security_group_id
