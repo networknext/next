@@ -25,17 +25,21 @@ variable "credentials" { type = string }
 variable "ssh_public_key_file" { type = string }
 variable "vpn_address" { type = string }
 
+locals {
+  network_name = "${var.env}_relays"
+}
+
 # ----------------------------------------------------------------------------------------
 
 data "google_compute_network" "relays" {
-  name = "${var.env}_relays"
+  name = local.network_name
 }
 
 resource "google_compute_firewall" "google_allow_ssh" {
   name          = "allow-ssh"
   project       = var.project
   direction     = "INGRESS"
-  network       = "relays"
+  network       = local.network_name
   source_ranges = [var.vpn_address]
   allow {
     protocol = "tcp"
@@ -47,7 +51,7 @@ resource "google_compute_firewall" "google_allow_udp" {
   name          = "allow-udp"
   project       = var.project
   direction     = "INGRESS"
-  network       = "relays"
+  network       = local.network_name
   source_ranges = ["0.0.0.0/0"]
   allow {
     protocol = "udp"
@@ -84,8 +88,8 @@ resource "google_compute_instance" "relay" {
   machine_type = each.value.type
   network_interface {
     network_ip = google_compute_address.internal[each.key].address
-    network    = "relays"
-    subnetwork = "relays"
+    network    = local.network_name
+    subnetwork = local.network_name
     access_config {
       nat_ip = google_compute_address.public[each.key].address
     }
