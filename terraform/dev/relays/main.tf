@@ -282,6 +282,7 @@ locals {
 }
 
 module "google_relays" {
+  env                 = "dev"
   relays              = local.google_relays
   project             = local.google_project
   credentials         = local.google_credentials

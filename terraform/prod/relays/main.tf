@@ -134,6 +134,7 @@ locals {
 }
 
 module "google_relays" {
+  env                 = "prod"
   relays              = local.google_relays
   project             = local.google_project
   credentials         = local.google_credentials

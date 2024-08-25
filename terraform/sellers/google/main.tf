@@ -18,6 +18,7 @@ provider "google" {
 
 # ----------------------------------------------------------------------------------------
 
+variable "env" { type = string }
 variable "relays" { type = map(map(string)) }
 variable "project" { type = string }
 variable "credentials" { type = string }
@@ -27,7 +28,7 @@ variable "vpn_address" { type = string }
 # ----------------------------------------------------------------------------------------
 
 data "google_compute_network" "relays" {
-  name = "relays"
+  name = "${var.env}_relays"
 }
 
 resource "google_compute_firewall" "google_allow_ssh" {

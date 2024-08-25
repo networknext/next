@@ -141,7 +141,7 @@ namespace next
         value = ( value & 0x00FF00FF00FF00FF ) << 8  | ( value & 0xFF00FF00FF00FF00 ) >> 8;
         return value;
 #endif // #ifdef __GNUC__
-}
+    }
 
     /**
         Reverse the order of bytes in a 32 bit integer.
