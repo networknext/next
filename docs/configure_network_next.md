@@ -20,8 +20,7 @@ You can review the changes to the source code with:
   
 Once you are satisfied with the changes, commit them to the repository:
 
-`git commit -am "keygen"`
-`git push origin`
+`git commit -am "keygen" && git push origin`
 
 Back up the secrets directory somewhere. If you lose it, you will not be able to administer your network next instance.
 
@@ -69,7 +68,6 @@ Please review the changes with:
 
 And commit these changes to the repository:
 
-`git commit -am "config"`
-`git push origin`
+`git commit -am "config" && git push origin`
 
 You are now ready to [Create Google Cloud Projects with Terraform](create_google_cloud_projects_with_terraform.md)
