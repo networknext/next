@@ -17,10 +17,24 @@ done
 
 # if we are not running a 6.5 kernel, upgrade the kernel. we need ubuntu 22.04 LTS + linux kernel 6.5 for xdp relay to work
 
-if [[ ! `uname -r` == "6.5."* ]]; then
+version_below_6_5(){
+  major=$(uname -r | awk -F '.' '{print $1}')
+  minor=$(uname -r | awk -F '.' '{print $2}')
+  echo linux kernel version is $major.$minor
+  if [ $major -le 6 ] ; then
+    return 1
+  elif [ $major -eq 6 && $minor -lt 5 ] ; then
+    return 1
+  else
+    return 0
+  fi
+}
+
+if version_below_6_5
+then
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
   sudo NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
-  sudo reboot  
+  sudo reboot
 fi
 
 # make the relay prompt cool
@@ -71,7 +85,7 @@ sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
 mkdir -p ~/relay_module
 cd ~/relay_module
-wget https://storage.googleapis.com/theodore_network_next_relay_artifacts/relay_module.tar.gz
+wget https://storage.googleapis.com/mas_bandwidth_network_next_relay_artifacts/relay_module.tar.gz
 tar -zxf relay_module.tar.gz
 make
 sudo mkdir -p /lib/modules/`uname -r`/kernel/net/relay_module
