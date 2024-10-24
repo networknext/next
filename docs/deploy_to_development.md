@@ -68,7 +68,9 @@ If `next select dev` fails, wait for DNS propagation to complete and try again.
 
 Terraform is configured to store state in a google cloud bucket. To give it permission to do this, setup the application default login like so:
 
-`gcloud auth application-default login`
+```console
+gcloud auth application-default login
+```
 
 ## 7. Setup relays and database
 
