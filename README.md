@@ -2,7 +2,7 @@
 
 <br>
 
-Network Next is a network accelerator for multiplayer games. It reduces latency, jitter and packet loss for players.
+Network Next is a network accelerator for multiplayer games. It works by monitoring player connections and sending game traffic across a network of relays when they have lower latency, packet loss or jitter than the default internet route.
 
 To use Network Next, your game must have a client/server architecture and use UDP for its network transport layer.
 
