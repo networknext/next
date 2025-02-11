@@ -6,7 +6,7 @@ Network Next is a **network accelerator** for multiplayer games.
 
 It works by monitoring player connections and sending game traffic across an optimized route on a relay network when the default internet route has high latency, jitter or packet loss.
 
-You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game, and you decide how much latency reduction is required before accelerating a player.
+You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game, and how much latency reduction is required before accelerating a player.
 
 This way you can tune Network Next to accelerate only a small portion of your player base at any time (typically 10-20%), targeting network acceleration to players who need it the most while avoiding spending money accelerating players who already have good network performance!
 
