@@ -4,7 +4,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0.0"
+      version = "~> 6.0.0"
     }
   }
 }
@@ -13,6 +13,23 @@ locals {
   org_id = "434699063105"
   billing_account = "012279-A33489-722F96"
   company_name = "theodore"
+}
+
+# ----------------------------------------------------------------------------------------
+
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 6.0.0"
+    }
+  }
+}
+
+locals {
+  org_id = "434699063105"
+  billing_account = "018C15-D3C7AC-4722E8"
+  company_name = "lespaul"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -28,6 +45,7 @@ resource "google_project" "storage" {
   project_id      = "storage-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 resource "google_project" "dev" {
@@ -35,6 +53,7 @@ resource "google_project" "dev" {
   project_id      = "dev-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 resource "google_project" "dev_relays" {
@@ -42,6 +61,7 @@ resource "google_project" "dev_relays" {
   project_id      = "dev-relays-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 resource "google_project" "staging" {
@@ -49,6 +69,7 @@ resource "google_project" "staging" {
   project_id      = "staging-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 resource "google_project" "prod" {
@@ -56,6 +77,7 @@ resource "google_project" "prod" {
   project_id      = "prod-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 resource "google_project" "prod_relays" {
@@ -63,6 +85,7 @@ resource "google_project" "prod_relays" {
   project_id      = "prod-relays-${random_id.postfix.hex}"
   org_id          = local.org_id
   billing_account = local.billing_account
+  deletion_policy = "DELETE"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -80,8 +103,8 @@ resource "google_project_service" "storage" {
   project  = google_project.storage.project_id
   service  = local.storage_services[count.index]
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
 }
@@ -292,8 +315,8 @@ resource "google_project_service" "dev" {
   project  = google_project.dev.project_id
   service  = local.dev_services[count.index]
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
 }
@@ -395,21 +418,26 @@ resource "google_project_iam_member" "dev_pubsub_publish" {
 #                                        DEV RELAYS
 # ----------------------------------------------------------------------------------------
 
-locals {
-  dev_relays_services = [
-    "compute.googleapis.com",         # compute engine
-  ]
-}
-
 resource "google_project_service" "dev_relays" {
-  count    = length(local.dev_relays_services)
   project  = google_project.dev_relays.project_id
-  service  = local.dev_relays_services[count.index]
+  service  = "compute.googleapis.com"
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
+  provisioner "local-exec" {
+    command = <<EOF
+for i in {1..5}; do
+  sleep $i
+  if gcloud services list --project="${google_project.dev_relays.project_id}" | grep "compute.googleapis.com"; then
+    exit 0
+  fi
+done
+echo "Service was not enabled after 15s"
+exit 1
+EOF
+  }
 }
 
 # create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
@@ -418,44 +446,51 @@ resource "google_compute_network" "dev_relays" {
   name                    = "relays"
   project                 = google_project.dev_relays.project_id
   auto_create_subnetworks = true
+  depends_on              = [google_project_service.dev_relays]
 }
 
 # setup service account for dev relays
 
 resource "google_service_account" "terraform_dev_relays" {
-  project  = google_project.dev_relays.project_id
+  project      = google_project.dev_relays.project_id
   account_id   = "terraform-dev-relays"
   display_name = "Terraform Service Account (Development Relays)"
+  depends_on   = [google_project_service.dev_relays]
 }
 
 resource "google_project_iam_member" "dev_relays_terraform_admin" {
-  project = google_project.dev_relays.project_id
-  role    = "roles/admin"
-  member  = google_service_account.terraform_dev_relays.member
+  project    = google_project.dev_relays.project_id
+  role       = "roles/admin"
+  member     = google_service_account.terraform_dev_relays.member
+  depends_on = [google_project_service.dev_relays]
 }
 
 resource "google_service_account_key" "terraform_dev_relays" {
   service_account_id = google_service_account.terraform_dev_relays.name
   public_key_type    = "TYPE_X509_PEM_FILE"
+  depends_on         = [google_project_service.dev_relays]
 }
 
 resource "local_file" "terraform_dev_relays_json" {
-    filename = "terraform-dev-relays.json"
-    content  =  base64decode(google_service_account_key.terraform_dev_relays.private_key)
+  filename   = "terraform-dev-relays.json"
+  content    =  base64decode(google_service_account_key.terraform_dev_relays.private_key)
+  depends_on = [google_project_service.dev_relays]
 }
 
 # write the dev relays project id to "dev-relays-project-id.txt"
 
 resource "local_file" "dev_relays_project_id" {
-  filename = "dev-relays-project-id.txt"
-  content  = replace(google_project.dev_relays.id, "projects/", "")
+  filename   = "dev-relays-project-id.txt"
+  content    = replace(google_project.dev_relays.id, "projects/", "")
+  depends_on = [google_project_service.dev_relays]
 }
 
 # write the dev relays project number to "dev-relays-project-number.txt"
 
 resource "local_file" "dev_relays_project_number" {
-  filename = "dev-relays-project-number.txt"
-  content  = google_project.dev_relays.number
+  filename   = "dev-relays-project-number.txt"
+  content    = google_project.dev_relays.number
+  depends_on = [google_project_service.dev_relays]
 }
 
 # ----------------------------------------------------------------------------------------
@@ -480,8 +515,8 @@ resource "google_project_service" "staging" {
   project  = google_project.staging.project_id
   service  = local.staging_services[count.index]
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
 }
@@ -601,8 +636,8 @@ resource "google_project_service" "prod" {
   project  = google_project.prod.project_id
   service  = local.prod_services[count.index]
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
 }
@@ -704,21 +739,26 @@ resource "google_project_iam_member" "prod_pubsub_publish" {
 #                                       PROD RELAYS
 # ----------------------------------------------------------------------------------------
 
-locals {
-  prod_relays_services = [
-    "compute.googleapis.com",         # compute engine
-  ]
-}
-
 resource "google_project_service" "prod_relays" {
-  count    = length(local.prod_relays_services)
   project  = google_project.prod_relays.project_id
-  service  = local.prod_relays_services[count.index]
+  service  = "compute.googleapis.com"
   timeouts {
-    create = "30m"
-    update = "40m"
+    create = "5m"
+    update = "5m"
   }
   disable_dependent_services = true
+  provisioner "local-exec" {
+    command = <<EOF
+for i in {1..5}; do
+  sleep $i
+  if gcloud services list --project="${google_project.prod_relays.project_id}" | grep "compute.googleapis.com"; then
+    exit 0
+  fi
+done
+echo "Service was not enabled after 15s"
+exit 1
+EOF
+  }
 }
 
 # create "relays" network in the project. we don't use "default" network because some google cloud orgs disable default network creation for security reasons
@@ -727,44 +767,51 @@ resource "google_compute_network" "prod_relays" {
   name                    = "relays"
   project                 = google_project.prod_relays.project_id
   auto_create_subnetworks = true
+  depends_on              = [google_project_service.prod_relays]
 }
 
 # setup service account for prod relays
 
 resource "google_service_account" "terraform_prod_relays" {
-  project  = google_project.prod_relays.project_id
+  project      = google_project.prod_relays.project_id
   account_id   = "terraform-prod-relays"
   display_name = "Terraform Service Account (Production Relays)"
+  depends_on   = [google_project_service.prod_relays]
 }
 
 resource "google_project_iam_member" "prod_relays_terraform_admin" {
-  project = google_project.prod_relays.project_id
-  role    = "roles/admin"
-  member  = google_service_account.terraform_prod_relays.member
+  project    = google_project.prod_relays.project_id
+  role       = "roles/admin"
+  member     = google_service_account.terraform_prod_relays.member
+  depends_on = [google_project_service.prod_relays]
 }
 
 resource "google_service_account_key" "terraform_prod_relays" {
   service_account_id = google_service_account.terraform_prod_relays.name
   public_key_type    = "TYPE_X509_PEM_FILE"
+  depends_on         = [google_project_service.prod_relays]
 }
 
 resource "local_file" "terraform_prod_relays_json" {
-    filename = "terraform-prod-relays.json"
-    content  =  base64decode(google_service_account_key.terraform_prod_relays.private_key)
+  filename   = "terraform-prod-relays.json"
+  content    =  base64decode(google_service_account_key.terraform_prod_relays.private_key)
+  depends_on = [google_project_service.prod_relays]
 }
 
 # write the prod relays project id to "prod-relays-project-id.txt"
 
 resource "local_file" "prod_relays_project_id" {
-  filename = "prod-relays-project-id.txt"
-  content  = replace(google_project.prod_relays.id, "projects/", "")
+  filename   = "prod-relays-project-id.txt"
+  content    = replace(google_project.prod_relays.id, "projects/", "")
+  depends_on = [google_project_service.prod_relays]
 }
 
 # write the prod relays project number to "prod-relays-project-number.txt"
 
 resource "local_file" "prod_relays_project_number" {
-  filename = "prod-relays-project-number.txt"
-  content  = google_project.prod_relays.number
+  filename   = "prod-relays-project-number.txt"
+  content    = google_project.prod_relays.number
+  depends_on = [google_project_service.prod_relays]
 }
 
 # ----------------------------------------------------------------------------------------

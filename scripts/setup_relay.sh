@@ -12,7 +12,7 @@ fi
 while [[ ! -f /etc/init_relay_completed ]]
 do
   echo "waiting for relay init to finish..."
-  sleep 1
+  sleep 10
 done
 
 # if we are not running a 6.5 kernel, upgrade the kernel. we need ubuntu 22.04 LTS + linux kernel 6.5 for xdp relay to work
