@@ -1060,7 +1060,7 @@ module "portal" {
   config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "f1-micro"
+  machine_type             = "n1-standard-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
