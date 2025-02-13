@@ -911,7 +911,7 @@ resource "networknext_route_shader" test {
   force_next = true
   acceptable_latency = 50
   latency_reduction_threshold = 10
-  route_select_threshold = 0
+  route_select_threshold = 2
   route_switch_threshold = 5
   acceptable_packet_loss_instant = 0.25
   acceptable_packet_loss_sustained = 0.1
@@ -931,7 +931,7 @@ resource "networknext_buyer" test {
 resource "networknext_buyer_datacenter_settings" test {
   count = length(var.test_datacenters)
   buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  datacenter_id = networknext_datacenter.datacenters[var.test_datacenters[count.index]].id
   enable_acceleration = true
 }
 
