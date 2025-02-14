@@ -1281,7 +1281,9 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		if len(data) != 40 {
-			return nil, fmt.Errorf("buyer public key data must be 40 bytes\n")
+			// IMPORTANT: Downgrade this to a warning because otherwise the API service can get stuck in a broken state
+			fmt.Printf("warning: buyer '%s' public key data is invalid. Expected 40 bytes, got %d\n", buyer.Name, len(data))
+			data = make([]byte, 40)
 		}
 
 		buyer.Id = binary.LittleEndian.Uint64(data[:8])
@@ -1292,7 +1294,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		route_shader_row, route_shader_exists := routeShaderIndex[row.route_shader_id]
 		if !route_shader_exists {
-			return nil, fmt.Errorf("buyer %s does not have a route shader?!\n", buyer.Name)
+			return nil, fmt.Errorf("buyer %s does not have a route shader\n", buyer.Name)
 		}
 
 		buyer.RouteShader.DisableNetworkNext = route_shader_row.disable_network_next
@@ -1332,7 +1334,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		seller_row, seller_exists := sellerIndex[row.seller_id]
 		if !seller_exists {
-			return nil, fmt.Errorf("datacenter %s doesn't have a seller?!\n", datacenter.Name)
+			return nil, fmt.Errorf("datacenter %s doesn't have a seller\n", datacenter.Name)
 		}
 
 		if !strings.Contains(datacenter.Name, seller_row.seller_code) {
@@ -1401,7 +1403,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {
-			return nil, fmt.Errorf("relay %s doesn't have a datacenter?!\n", relay.Name)
+			return nil, fmt.Errorf("relay %s doesn't have a datacenter\n", relay.Name)
 		}
 
 		relay.DatacenterId = HashString(datacenter_row.datacenter_name)
@@ -1412,12 +1414,12 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
 		if relay.Datacenter.Id != relay.DatacenterId {
-			return nil, fmt.Errorf("relay '%s' has a bad datacenter?!\n", relay.Name)
+			return nil, fmt.Errorf("relay '%s' has a bad datacenter\n", relay.Name)
 		}
 
 		seller_row, seller_exists := sellerIndex[datacenter_row.seller_id]
 		if !seller_exists {
-			return nil, fmt.Errorf("relay %s doesn't have a seller?!\n", relay.Name)
+			return nil, fmt.Errorf("relay %s doesn't have a seller\n", relay.Name)
 		}
 
 		relay.Seller = database.SellerMap[seller_row.seller_id]
@@ -1432,12 +1434,12 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		buyer_row, buyer_exists := buyerIndex[row.buyer_id]
 		if !buyer_exists {
-			return nil, fmt.Errorf("buyer datacenter settings don't have a buyer?!\n")
+			return nil, fmt.Errorf("buyer datacenter settings don't have a buyer\n")
 		}
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {
-			return nil, fmt.Errorf("buyer datacenter settings don't have a datacenter?!\n")
+			return nil, fmt.Errorf("buyer datacenter settings don't have a datacenter\n")
 		}
 
 		buyerName := buyer_row.buyer_name
@@ -1452,7 +1454,8 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		if buyerId == 0 {
-			return nil, fmt.Errorf("could not find runtime buyer id for buyer %s?!\n", buyerName)
+			// IMPORTANT: Downgrade to a warning otherwise the API service can get stuck in a broken state
+			fmt.Printf( "warning: could not find runtime buyer id for buyer '%s'\n", buyerName)
 		}
 
 		fmt.Printf("buyer datacenter settings %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)
