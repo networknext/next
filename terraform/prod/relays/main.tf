@@ -157,8 +157,7 @@ locals {
 
 module "amazon_relays" {
 
-  # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
-  # So for AWS, see sellers/amazon.go for the set of prod relays -> amazon/generated.tf
+  # IMPORTANT: See sellers/amazon.go for the set of prod relays then run "next config" to update amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
@@ -701,9 +700,9 @@ resource "networknext_buyer" raspberry {
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
-  count = length(var.raspberry_datacenters)
+  for_each = toset(var.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
-  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
 
@@ -713,12 +712,15 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  acceptable_latency = 0
-  latency_reduction_threshold = 1
-  acceptable_packet_loss_instant = 0.1
-  acceptable_packet_loss_sustained = 0.01
-  bandwidth_envelope_up_kbps = 1024
-  bandwidth_envelope_down_kbps = 1024
+  force_next = true
+  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  route_select_threshold = 2
+  route_switch_threshold = 5
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 256
+  bandwidth_envelope_down_kbps = 256
 }
 
 resource "networknext_buyer" test {
@@ -731,9 +733,9 @@ resource "networknext_buyer" test {
 }
 
 resource "networknext_buyer_datacenter_settings" test {
-  count = length(var.test_datacenters)
+  for_each = toset(var.test_datacenters)
   buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
 

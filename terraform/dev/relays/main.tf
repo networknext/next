@@ -120,164 +120,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-/*
-    "google.frankfurt.1" = {
-      datacenter_name = "google.frankfurt.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.frankfurt.2" = {
-      datacenter_name = "google.frankfurt.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.frankfurt.3" = {
-      datacenter_name = "google.frankfurt.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.finland.1" = {
-      datacenter_name = "google.finland.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.finland.2" = {
-      datacenter_name = "google.finland.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.finland.3" = {
-      datacenter_name = "google.finland.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.netherlands.1" = {
-      datacenter_name = "google.netherlands.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.netherlands.2" = {
-      datacenter_name = "google.netherlands.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.netherlands.3" = {
-      datacenter_name = "google.netherlands.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.london.1" = {
-      datacenter_name = "google.london.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.london.2" = {
-      datacenter_name = "google.london.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.london.3" = {
-      datacenter_name = "google.london.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-*/
-
-/*
-    # IOWA
-
-    "google.iowa.1" = {
-      datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.2" = {
-      datacenter_name = "google.iowa.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.3" = {
-      datacenter_name = "google.iowa.3"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.6" = {
-      datacenter_name = "google.iowa.6"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # OREGON
-
-    "google.oregon.1" = {
-      datacenter_name = "google.oregon.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # LOS ANGELES
-
-    "google.losangeles.1" = {
-      datacenter_name = "google.losangeles.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SALT LAKE CITY
-
-    "google.saltlakecity.1" = {
-      datacenter_name = "google.saltlakecity.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SOUTH CAROLINA
-
-    "google.southcarolina.2" = {
-      datacenter_name = "google.southcarolina.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # VIRGINIA
-
-    "google.virginia.1" = {
-      datacenter_name = "google.virginia.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # DALLAS
-
-    "google.dallas.1" = {
-      datacenter_name = "google.dallas.1"
-      type            = "n2-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # OHIO
-
-    "google.ohio.1" = {
-      datacenter_name = "google.ohio.1"
-      type            = "n2-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-*/
-
   }
 }
 
@@ -305,8 +147,7 @@ locals {
 
 module "amazon_relays" {
 
-  # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
-  # Please edit sellers/amazon.go for the set of dev relays, then run "next config" to generate amazon/generated.tf
+  # Please edit sellers/amazon.go for the set of dev relays, then run "next config" to update amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
@@ -350,19 +191,6 @@ locals {
       image           = "linode/ubuntu22.04"
     }
 
-/*
-    "akamai.frankfurt" = {
-      datacenter_name = "akamai.frankfurt"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
-    
-    "akamai.london" = {
-      datacenter_name = "akamai.london"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
-*/
   }
 }
 
@@ -868,9 +696,9 @@ resource "networknext_buyer" raspberry {
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
-  count = length(var.raspberry_datacenters)
+  for_each = toset(var.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
-  datacenter_id = networknext_datacenter.datacenters[var.raspberry_datacenters[count.index]].id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
 
@@ -901,9 +729,9 @@ resource "networknext_buyer" test {
 }
 
 resource "networknext_buyer_datacenter_settings" test {
-  count = length(var.test_datacenters)
+  for_each = toset(var.test_datacenters)
   buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[var.test_datacenters[count.index]].id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
 
