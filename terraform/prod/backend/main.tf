@@ -35,6 +35,12 @@ variable "ip2location_bucket_name" { type = string }
 
 variable "test_server_tag" { type = string }
 
+variable "disable_backend" { type = bool }
+
+variable "disable_raspberry" { type = bool }
+
+variable "disable_ip2location" { type = bool }
+
 locals {
   google_project_id          = file("../../projects/prod-project-id.txt")
   google_project_number      = file("../../projects/prod-project-number.txt")
@@ -691,7 +697,7 @@ module "relay_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 420
-  target_size                = 3
+  target_size                = var.disable_backend ? 0 : 3
   tier_1                     = true
 
   depends_on = [
@@ -749,8 +755,8 @@ module "api" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = 3
-  max_size                 = 16
+  min_size                 = var.disable_backend ? 0 : 3
+  max_size                 = var.disable_backend ? 0 : 16
   target_cpu               = 60
   domain                   = "api.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
@@ -798,7 +804,7 @@ module "session_cruncher" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
-  target_size                = 1
+  target_size                = var.disable_backend ? 0 : 1
 }
 
 // ---------------------------------------------------------------------------------------
@@ -832,7 +838,7 @@ module "server_cruncher" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http"]
-  target_size                = 1
+  target_size                = var.disable_backend ? 0 : 1
 }
 
 # ----------------------------------------------------------------------------------------
@@ -874,7 +880,7 @@ module "server_backend" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=false
-    ENABLE_IP2LOCATION=true
+    ENABLE_IP2LOCATION=${!var.disable_ip2location}
     EOF
     sudo systemctl start app.service
   EOF1
@@ -892,8 +898,8 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = 3
-  max_size                   = 64
+  min_size                   = var.disable_backend ? 0 : 3
+  max_size                   = var.disable_backend ? 0 : 64
   target_cpu                 = 30
 
   depends_on = [
@@ -939,7 +945,7 @@ module "ip2location" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 1
+  target_size        = ( var.disable_ip2location || var.disable_backend ) ? 0 : 1
 }
 
 # ----------------------------------------------------------------------------------------
@@ -964,7 +970,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
-  target_size              = 3
+  target_size              = var.disable_backend ? 0 : 3
 }
 
 output "portal_address" {
@@ -1021,7 +1027,7 @@ module "raspberry_backend" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry.id
-  target_size              = 3
+  target_size              = ( var.disable_raspberry || var.disable_backend ) ? 0 : 3
 }
 
 output "raspberry_backend_address" {
@@ -1067,7 +1073,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = 32
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 32
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1107,7 +1113,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = 40
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 40
 }
 
 # ----------------------------------------------------------------------------------------

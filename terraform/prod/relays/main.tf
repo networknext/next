@@ -157,7 +157,8 @@ locals {
 
 module "amazon_relays" {
 
-  # IMPORTANT: See sellers/amazon.go for the set of prod relays then run "next config" to update amazon/generated.tf
+  # IMPORTANT: It is LITERALLY IMPOSSIBLE to work with multiple AWS regions programmatically in Terraform
+  # So for AWS, see sellers/amazon.go for the set of prod relays -> amazon/generated.tf
 
   config              = local.amazon_config
   credentials         = local.amazon_credentials
@@ -383,6 +384,31 @@ module "phoenixnap_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===========
+# INAP RELAYS
+# ===========
+
+locals {
+
+  inap_relays = {
+
+    /*
+    "inap.chicago" = {
+      datacenter_name = "inap.chicago"
+      public_address  = "185.152.67.2"
+    },
+    */
+
+  }
+}
+
+module "inap_relays" {
+  relays = local.inap_relays
+  source = "../../sellers/inap"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # ==================
 # SERVERS.COM RELAYS
 # ==================
@@ -528,6 +554,7 @@ locals {
       keys(module.hivelocity_relays.relays),
       keys(module.colocrossing_relays.relays),
       keys(module.phoenixnap_relays.relays),
+      keys(module.inap_relays.relays),
       keys(module.serversdotcom_relays.relays),
       keys(module.velia_relays.relays),
       keys(module.zenlayer_relays.relays),
@@ -547,6 +574,7 @@ locals {
     module.hivelocity_relays.relays,
     module.colocrossing_relays.relays,
     module.phoenixnap_relays.relays,
+    module.inap_relays.relays,
     module.serversdotcom_relays.relays,
     module.velia_relays.relays,
     module.zenlayer_relays.relays,
@@ -565,6 +593,7 @@ locals {
     module.hivelocity_relays.datacenters,
     module.colocrossing_relays.datacenters,
     module.phoenixnap_relays.datacenters,
+    module.inap_relays.datacenters,
     module.serversdotcom_relays.datacenters,
     module.velia_relays.datacenters,
     module.zenlayer_relays.datacenters,

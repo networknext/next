@@ -28,3 +28,9 @@ relay_backend_public_key    = "JWQL5GKNSqBJSbc6Ybga9oxFheKgLEmNjZwyTI/nJg0="
 server_backend_public_key   = "K9BMSBeNK0hmxz+KkT1HouhMbleG4G+zj+Z/3eLI+zg="
 
 test_server_tag             = "001" # increment this when you need to redeploy the test server
+
+disable_backend             = false
+
+disable_raspberry           = false
+
+disable_ip2location         = false
