@@ -15,7 +15,8 @@ import (
 
 var datacenterMap = map[string]*Datacenter{
 
-	"ap-west":      {"mumbai", 19.0760, 72.8777},
+	"ap-west":      {"mumbai.1", 19.0760, 72.8777},
+	"in-bom-2":     {"mumbai.2", 19.0760, 72.8777},
 	"ca-central":   {"toronto", 43.6532, -79.3832},
 	"ap-southeast": {"sydney", -33.8688, 151.2093},
 	"us-central":   {"dallas", 32.7767, -96.7970},
@@ -23,9 +24,26 @@ var datacenterMap = map[string]*Datacenter{
 	"us-southeast": {"atlanta", 33.7488, -84.3877},
 	"us-east":      {"newyork", 40.7128, -74.0060},
 	"eu-west":      {"london", 51.5072, -0.1276},
-	"ap-south":     {"singapore", 1.3521, 103.8198},
+	"ap-south":     {"singapore.1", 1.3521, 103.8198},
+	"sg-sin-2":     {"singapore.2", 1.3521, 103.8198},
 	"eu-central":   {"frankfurt", 50.1109, 8.6821},
 	"ap-northeast": {"tokyo", 35.6762, 139.6503},
+	"jp-osa":       {"osaka", 34.6937, 135.5023},
+	"us-iad":       {"washington", 47.751076, -120.740135},
+	"us-ord":       {"chicago", 41.8781, -87.6298},
+	"us-sea":       {"seattle", 47.6061, -122.3328},
+	"us-mia":       {"miami", 25.7617, -80.1918},
+	"us-lax":       {"losangeles", 34.0549, -118.2426},
+	"nl-ams":       {"amsterdam", 52.3676, 4.9041},
+	"fr-par":       {"paris", 48.8575, 2.3514},
+	"br-gru":       {"saopaulo", -23.5558, -46.6396},
+	"se-sto":       {"stockholm", 59.3327, 18.0656}
+	"es-mad":       {"madrid", 40.416775, -3.703790},
+	"it-mil":       {"milan", 45.4685, 9.1824},
+	"gb-lon":       {"london", 51.5072, -0.1276},
+	"au-mel":       {"melbourne", -37.8136, 144.9631},
+	"id-cgk":       {"jakarta", -6.1944, 106.8229},
+	"in-maa":       {"chennai", 13.0843, 80.2705},
 }
 
 type Datacenter struct {
