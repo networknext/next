@@ -8,20 +8,11 @@ It works by monitoring player connections and sending game traffic down an optim
 
 You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game and only accelerate players above your threshold values. Also, set set how much latency reduction is required in milliseconds before accelerating a player. 
 
-For example:
-
-* Only accelerate a player if their packet loss is above above 1%
-* _or_ their jitter is above 10ms
-* _or_ their latency is above 50 milliseconds round trip time _and_ you can reduce their latency by at least 20ms.
+For example, accelerate players only if their packet loss is above above 1%, _or_ their jitter is above 10ms, _or_ their latency is above 50 milliseconds round trip time _and_ you can reduce their latency by at least 20ms.
 
 This way you can target network acceleration to players who need it the most, while not wasting money accelerating players who already have good network performance!
 
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/master.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
-
-# Introduction
-
-1. [What does Network Next do?](docs/what_does_network_next_do.md)
-2. [How does Network Next work?](docs/how_does_network_next_work.md)
 
 # Installation
 
