@@ -2511,7 +2511,7 @@ func test_server_ready_autodetect_multiplay_success() {
 	if err != nil {
 		panic(err)
 	}
-	f.WriteString("Internap\n")
+	f.WriteString("Datapacket\n")
 	f.Close()
 
 	serverConfig := &ServerConfig{}
@@ -2533,12 +2533,12 @@ func test_server_ready_autodetect_multiplay_success() {
 	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverInputDatacenter := strings.Contains(server_stdout.String(), "info: server input datacenter is 'multiplay.newyork'")
-	serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'inap.newyork'")
+	serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'datapacket.newyork'")
 	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
 	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverFoundInap := strings.Contains(server_stdout.String(), "debug: found seller inap")
-	serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'inap.newyork' [323c61af696bff50]")
+	serverFoundSeller := strings.Contains(server_stdout.String(), "debug: found seller datapacket")
+	serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'datapacket.newyork'")
 
 	os.Remove("whois.txt")
 
@@ -2549,7 +2549,7 @@ func test_server_ready_autodetect_multiplay_success() {
 	server_check(server_stdout, backend_stdout, serverAutodetecting)
 	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
 	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, serverFoundInap)
+	server_check(server_stdout, backend_stdout, serverFoundSeller)
 	server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
 }
 

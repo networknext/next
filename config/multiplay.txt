@@ -2,14 +2,6 @@ uk2group,100tb
 UK2,100tb
 Midphase,100tb
 WestHost,100tb
-Internap,inap
-inap.com,inap
-datagram.net,inap
-singlehop.com,inap
-SINGLEHOP,inap
-SingleHop,inap
-InterNAP,inap
-INAP,inap
 VELIA,velia
 Maxihost,maxihost
 MaxiHost,maxihost

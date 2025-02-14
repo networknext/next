@@ -39,7 +39,6 @@ sellers = {
 	"Hivelocity" = "hivelocity"
 	"ColoCrossing" = "colocrossing"
 	"phoenixNAP" = "phoenixnap"
-	"INAP" = "inap"
 	"servers.com" = "serversdotcom"
 	"Velia" = "velia"
 	"Zenlayer" = "zenlayer"

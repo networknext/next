@@ -288,7 +288,6 @@ gaffer@batman next % next datacenters siliconvalley
 │ equinix.siliconvalley │ SV                    │ 37.3387  │ -121.8853 │
 │ gcore.santaclara      │                       │ 37.3541  │ -121.9552 │
 │ i3d.santaclara        │                       │ 37.3541  │ -121.9552 │
-│ inap.santaclara       │                       │ 37.3541  │ -121.9552 │
 │ serversdotcom.sanfran │                       │ 37.7749  │ -122.4194 │
 └───────────────────────┴───────────────────────┴──────────┴───────────┘
 ```
