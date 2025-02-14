@@ -6,7 +6,7 @@
 
 A full production system has thousands of datacenters and hundreds of relays.
 
-Let's keep them all organized with a clear naming convention for datacenters and relays :)
+Let's keep them all organized with a clear naming convention :)
 
 ## 1. Datacenter naming convention
 
@@ -23,7 +23,6 @@ For example:
 In cases where there is only one datacenter in a city for that seller, the number may be omitted.
 
 * i3d.istanbul
-* stackpath.newyork
 
 When chosing a city name, prefer a cityname as already used for existing relays. This makes it easier to find other relays in the same city, which is a common operation when you are building your relay fleet.
 
@@ -46,7 +45,5 @@ For example:
 In cases where there is only one relay in a datacenter, it is OK to omit the a,b,c if you wish, and then the relay is named the same as the datacenter:
 
 * google.losangeles.1
-* i3d.istanbul
-* stackpath.newyork
 
 [Back to main documentation](../README.md)

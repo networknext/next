@@ -43,7 +43,6 @@ sellers = {
 	"servers.com" = "serversdotcom"
 	"Velia" = "velia"
 	"Zenlayer" = "zenlayer"
-	"Stackpath" = "stackpath"
 	"Latitude" = "latitude"
 	"Equinix" = "equinix"
 }

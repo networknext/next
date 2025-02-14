@@ -484,31 +484,6 @@ module "zenlayer_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ================
-# STACKPATH RELAYS
-# ================
-
-locals {
-
-  stackpath_relays = {
-
-    /*
-    "stackpath.singapore" = {
-      datacenter_name = "stackpath.singapore"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "stackpath_relays" {
-  relays = local.stackpath_relays
-  source = "../../sellers/stackpath"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # ===============
 # LATITUDE RELAYS
 # ===============
@@ -583,7 +558,6 @@ locals {
       keys(module.serversdotcom_relays.relays),
       keys(module.velia_relays.relays),
       keys(module.zenlayer_relays.relays),
-      keys(module.stackpath_relays.relays),
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
     )
@@ -604,7 +578,6 @@ locals {
     module.serversdotcom_relays.relays,
     module.velia_relays.relays,
     module.zenlayer_relays.relays,
-    module.stackpath_relays.relays,
     module.latitude_relays.relays,
     module.equinix_relays.relays,
   )
@@ -624,7 +597,6 @@ locals {
     module.serversdotcom_relays.datacenters,
     module.velia_relays.datacenters,
     module.zenlayer_relays.datacenters,
-    module.stackpath_relays.datacenters,
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
   )

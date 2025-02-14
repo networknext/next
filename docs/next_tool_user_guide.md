@@ -290,7 +290,6 @@ gaffer@batman next % next datacenters siliconvalley
 │ i3d.santaclara        │                       │ 37.3541  │ -121.9552 │
 │ inap.santaclara       │                       │ 37.3541  │ -121.9552 │
 │ serversdotcom.sanfran │                       │ 37.7749  │ -122.4194 │
-│ stackpath.sanjose     │                       │ 37.3387  │ -121.8853 │
 └───────────────────────┴───────────────────────┴──────────┴───────────┘
 ```
 

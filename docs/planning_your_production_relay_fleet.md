@@ -52,7 +52,6 @@ Some high quality providers we have used in the past:
 
 * https://datapacket.com - excellent bare metal with 10G nics by default
 * https://i3d.net - excellent bare metal backed by their own private backbone
-* https://stackpath.com - stackpath is a CDN that now has their own edge compute where you can run relays
 * https://hivelocity.net - they have good connectivity and locations around the world
 * https://gcore.com - good bare metal with a focus on eastern europe and russia
 * https://oneqode.com - excellent in Asia-Pacific and Australia
@@ -83,7 +82,6 @@ gaffer@batman next % next datacenters siliconvalley
 │ i3d.santaclara        │                       │ 37.3541  │ -121.9552 │
 │ inap.santaclara       │                       │ 37.3541  │ -121.9552 │
 │ serversdotcom.sanfran │                       │ 37.7749  │ -122.4194 │
-│ stackpath.sanjose     │                       │ 37.3387  │ -121.8853 │
 └───────────────────────┴───────────────────────┴──────────┴───────────┘
 ```
 
