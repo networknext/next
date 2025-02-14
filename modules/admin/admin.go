@@ -351,6 +351,13 @@ type BuyerData struct {
 }
 
 func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) {
+	// IMPORTANT: Don't allow update of a buyer without a valid buyer public key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(buyerData.PublicKeyBase64)
+		if err != nil || len(data) != 40 {
+			return 0, fmt.Errorf( "could not create buyer: invalid public key\n");
+		}
+	}
 	sql := "INSERT INTO buyers (buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug) VALUES ($1, $2, $3, $4, $5, $6) RETURNING buyer_id;"
 	result := controller.pgsql.QueryRow(sql, buyerData.BuyerName, buyerData.BuyerCode, buyerData.PublicKeyBase64, buyerData.RouteShaderId, buyerData.Live, buyerData.Debug)
 	buyerId := uint64(0)
@@ -395,6 +402,13 @@ func (controller *Controller) ReadBuyer(buyerId uint64) (BuyerData, error) {
 }
 
 func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
+	// IMPORTANT: Don't allow update of a buyer without a valid buyer public key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(buyerData.PublicKeyBase64)
+		if err != nil || len(data) != 40 {
+			return fmt.Errorf( "could not update buyer: invalid public key\n");
+		}
+	}
 	// IMPORTANT: Cannot change buyer id once created
 	sql := "UPDATE buyers SET buyer_name = $1, buyer_code = $2, public_key_base64 = $3, route_shader_id = $4, live = $5, debug = $6 WHERE buyer_id = $7;"
 	_, err := controller.pgsql.Exec(sql, buyerData.BuyerName, buyerData.BuyerCode, buyerData.PublicKeyBase64, buyerData.RouteShaderId, buyerData.Live, buyerData.Debug, buyerData.BuyerId)
@@ -573,6 +587,20 @@ type RelayData struct {
 }
 
 func (controller *Controller) CreateRelay(relayData *RelayData) (uint64, error) {
+	// IMPORTANT: Don't allow update of a relay without a valid public key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(relayData.PublicKeyBase64)
+		if err != nil || len(data) != 32 {
+			return 0, fmt.Errorf( "could not create relay: invalid public key\n");
+		}
+	}
+	// IMPORTANT: Don't allow update of a relay without a valid private key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(relayData.PrivateKeyBase64)
+		if err != nil || len(data) != 32 {
+			return 0, fmt.Errorf( "could not create relay: invalid private key\n");
+		}
+	}
 	query := `
 INSERT INTO relays 
 (
@@ -762,6 +790,20 @@ WHERE
 }
 
 func (controller *Controller) UpdateRelay(relayData *RelayData) error {
+	// IMPORTANT: Don't allow update of a relay without a valid public key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(relayData.PublicKeyBase64)
+		if err != nil || len(data) != 32 {
+			return fmt.Errorf( "could not update relay: invalid public key\n");
+		}
+	}
+	// IMPORTANT: Don't allow update of a relay without a valid private key!!!
+	{
+		data, err := base64.StdEncoding.DecodeString(relayData.PrivateKeyBase64)
+		if err != nil || len(data) != 32 {
+			return fmt.Errorf( "could not update relay: invalid private key\n");
+		}
+	}
 	// IMPORTANT: Cannot change relay id once created
 	sql := `
 UPDATE relays 
