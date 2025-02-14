@@ -106,6 +106,7 @@ resource "google_compute_instance" "relay" {
     create_before_destroy = true
   }
   metadata_startup_script = replace(file("../../../scripts/init_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
+  allow_stopping_for_update = true
 }
 
 # ----------------------------------------------------------------------------------------
