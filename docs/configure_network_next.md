@@ -10,17 +10,9 @@ Change to the "~/next" directory and run:
 
   `next keygen`
 
-This will generate a completely fresh set of keypairs for your network next instance, so that it uniquely secured vs. other network next instances.
+This generates a fresh set of keypairs for your network next instance, so that it uniquely secured vs. any other network next instances.
 
-Secrets will be generated and stored under ~/secrets. Safe values such as public keys will be written to source code files across the repository.
-
-You can review the changes to the source code with:
-
-  `git diff`
-  
-Once you are satisfied with the changes, commit them to the repository:
-
-`git commit -am "keygen" && git push origin`
+Secrets are generated and stored under ~/secrets.
 
 Back up the secrets directory somewhere. If you lose it, you will not be able to administer your network next instance.
 
