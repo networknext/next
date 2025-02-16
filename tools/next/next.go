@@ -1281,9 +1281,11 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
-	// IMPORTANT: Make sure we select local.env before we continue
+	// IMPORTANT: Make sure we select local.env if we don't have any .env file yet, otherwise it will fail
 
-	select_function(env, []string{"local"})
+	if !fileExists(".env") {
+		select_function(env, []string{"local"})
+	}
 
 	// load config.json
 
