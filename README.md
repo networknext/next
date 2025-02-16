@@ -8,7 +8,7 @@ It works by monitoring player connections and sending game traffic down an optim
 
 You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game and only accelerate players who are above these values. Also, set how much latency reduction is required in milliseconds before accelerating a player. 
 
-For example, accelerate players only if their packet loss is above above 1%, their jitter is above 10ms, _or_ their latency is above 50 milliseconds _and_ you can reduce it by at least 20ms.
+For example, accelerate players only if their packet loss is above above 1%, _or_ their jitter is above 10ms, _or_ their latency is above 50 milliseconds _and_ you can reduce it by at least 20ms.
 
 This way you can target network acceleration to players who need it the most, while not wasting money accelerating players who already have good network performance!
 
