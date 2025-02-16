@@ -1547,10 +1547,6 @@ func config(env Environment, regexes []string) {
 		}
 	}
 
-	// IMPORTANT: select local env before continuing
-
-
-
 	// configure amazon
 
 	fmt.Printf("\n--------------------------------------------\n                   amazon\n--------------------------------------------\n")

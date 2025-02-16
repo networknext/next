@@ -156,6 +156,42 @@ locals {
       seller_code = "akamai"
     }
 
+    "akamai.london" = {
+      zone        = "gb-lon"
+      native_name = "gb-lon"
+      latitude    = 51.51
+      longitude   = -0.13
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.melbourne" = {
+      zone        = "au-mel"
+      native_name = "au-mel"
+      latitude    = -37.81
+      longitude   = 144.96
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.mumbai.2" = {
+      zone        = "in-bom-2"
+      native_name = "in-bom-2"
+      latitude    = 19.08
+      longitude   = 72.88
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.singapore.2" = {
+      zone        = "sg-sin-2"
+      native_name = "sg-sin-2"
+      latitude    = 1.35
+      longitude   = 103.82
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
     "akamai.dallas" = {
       zone        = "us-central"
       native_name = "us-central"

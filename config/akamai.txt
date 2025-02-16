@@ -15,6 +15,10 @@ it-mil,akamai.milan
 us-mia,akamai.miami
 id-cgk,akamai.jakarta
 us-lax,akamai.losangeles
+gb-lon,akamai.london
+au-mel,akamai.melbourne
+in-bom-2,akamai.mumbai.2
+sg-sin-2,akamai.singapore.2
 us-central,akamai.dallas
 us-west,akamai.fremont
 us-southeast,akamai.atlanta

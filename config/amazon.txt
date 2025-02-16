@@ -58,7 +58,6 @@ use1-bue1-az1,amazon.buenosaires.1
 use1-lim1-az1,amazon.lima.1
 use1-mci1-az1,amazon.kansas.1
 use1-msp1-az1,amazon.minneapolis.1
-use1-nyc1-az1,amazon.newyork.1
 use1-phl1-az1,amazon.philadelphia.1
 use1-qro1-az1,amazon.mexico.1
 use1-scl1-az1,amazon.santiago.1
