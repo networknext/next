@@ -40,6 +40,7 @@ func Base64String(value string) []byte {
 }
 
 var TestRelayPublicKey = Base64String("+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4=")
+")
 var TestRelayPrivateKey = Base64String("S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc=")
 var TestRelayBackendPublicKey = Base64String("kghNmDh8ZYL4lJFwVIi4mh+qovEpRNvws6bMDvo3jRc=")
 var TestRelayBackendPrivateKey = Base64String("Rhn4+WeefXBx63OXCXtCjYUQB5of6+AadBfFE+YhFbw=")

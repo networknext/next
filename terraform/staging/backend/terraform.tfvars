@@ -25,4 +25,5 @@ load_test_buyer_private_key = "yaL9uP7tOncF85rlqE3P/Kee/C945C3e57zslfjB3h7/agqRK
 ip2location_bucket_name     = "theodore_network_next_staging"
 
 relay_public_key  = "+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4="
+"
 relay_private_key = "S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc="

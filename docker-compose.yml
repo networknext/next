@@ -181,6 +181,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.20.1.0:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4=
+
       - RELAY_PRIVATE_KEY=S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc=
       - RELAY_BACKEND_PUBLIC_KEY=kghNmDh8ZYL4lJFwVIi4mh+qovEpRNvws6bMDvo3jRc=
     networks:
@@ -200,6 +201,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.20.1.1:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4=
+
       - RELAY_PRIVATE_KEY=S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc=
       - RELAY_BACKEND_PUBLIC_KEY=kghNmDh8ZYL4lJFwVIi4mh+qovEpRNvws6bMDvo3jRc=
     networks:
@@ -219,6 +221,7 @@ services:
       - RELAY_PUBLIC_ADDRESS=10.20.1.2:40000
       - RELAY_BACKEND_URL=http://relay_gateway
       - RELAY_PUBLIC_KEY=+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4=
+
       - RELAY_PRIVATE_KEY=S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc=
       - RELAY_BACKEND_PUBLIC_KEY=kghNmDh8ZYL4lJFwVIi4mh+qovEpRNvws6bMDvo3jRc=
     networks:

@@ -609,7 +609,7 @@ func readGlobalSecret(name string) string {
 		fmt.Printf("\nerror: failed to read global secret: %v\n\n", err)
 		os.Exit(1)
 	}
-	return string(data)
+	return strings.TrimSpace(string(data))
 }
 
 func writeEnvSecret(env string, keypairs map[string]string, name string) {
@@ -642,7 +642,7 @@ func readEnvSecret(env string, keypairs map[string]string, name string) {
 		fmt.Printf("\nerror: failed to write env secret: %v\n\n", err)
 		os.Exit(1)
 	}
-	keypairs[name] = string(data)
+	keypairs[name] = strings.TrimSpace(string(data))
 }
 
 func secretsAlreadyExist() bool {
@@ -891,11 +891,99 @@ func config(env Environment, regexes []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("configuring network next:\n\n")
+	fmt.Printf("========================\nconfiguring network next\n========================\n\n")
 
-	// IMPORTANT: if we don't have the global keys secrets yet (1.0 version of network next), we need to back generate them from the source code
+	// IMPORTANT: if we don't have the global secrets yet (1.0 version of network next), we need to back generate them from the source code...
 
-	// ...
+	if (true) { // (!fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir))) {
+
+		fmt.Printf("extracting global secrets from source:\n\n" );
+
+		local_env_data, err := os.ReadFile("envs/local.env")
+		if err != nil {
+			fmt.Printf("\nerror: could not read envs/local.env file\n\n")
+			os.Exit(1)
+		}
+
+		dev_terraform_data, err := os.ReadFile("terraform/dev/backend/terraform.tfvars")
+		if err != nil {
+			fmt.Printf("\nerror: could not read terraform/dev/backend/terraform.tfvars file\n\n")
+			os.Exit(1)
+		}
+
+		localEnv := string(local_env_data)
+
+		devTerraformVars := string(dev_terraform_data)
+
+		// global_test_relay_public_key
+		{
+			r := regexp.MustCompile(`RELAY_PUBLIC_KEY\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(localEnv)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find RELAY_PUBLIC_KEY in envs/local.env\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_test_relay_public_key", matches[1])
+		}
+
+		// global_test_relay_private_key
+		{
+			r := regexp.MustCompile(`RELAY_PRIVATE_KEY\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(localEnv)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find RELAY_PRIVATE_KEY in envs/local.env\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_test_relay_private_key", matches[1])
+		}
+
+		// global_test_buyer_public_key
+		{
+			r := regexp.MustCompile(`test_buyer_public_key\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(devTerraformVars)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find test_buyer_public_key in terraform/dev/backend/terraform.tfvars\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_test_buyer_public_key", matches[1])
+		}
+
+		// global_test_buyer_private_key
+		{
+			r := regexp.MustCompile(`test_buyer_private_key\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(devTerraformVars)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find test_buyer_private_key in terraform/dev/backend/terraform.tfvars\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_test_buyer_private_key", matches[1])
+		}
+
+		// global_raspberry_buyer_public_key
+		{
+			r := regexp.MustCompile(`raspberry_buyer_public_key\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(devTerraformVars)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find raspberry_buyer_public_key in terraform/dev/backend/terraform.tfvars\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_raspberry_buyer_public_key", matches[1])
+		}
+
+		// global_raspberry_buyer_private_key
+		{
+			r := regexp.MustCompile(`raspberry_buyer_private_key\s*=\s*"(.*)"`)
+			matches := r.FindStringSubmatch(devTerraformVars)
+			if len(matches) != 2 {
+				fmt.Printf("\nerror: could not find raspberry_buyer_private_key in terraform/dev/backend/terraform.tfvars\n\n")
+				os.Exit(1)
+			}
+			writeGlobalSecret("global_raspberry_buyer_private_key", matches[1])
+		}
+
+		fmt.Printf("\n")
+
+	}
 
 	// load secrets
 
@@ -1478,7 +1566,7 @@ func config(env Environment, regexes []string) {
 	fmt.Printf("           Generating staging.sql           \n")
 	fmt.Printf("--------------------------------------------\n\n")
 
-	ok := bash("run generate-staging-sql > /dev/null")
+	ok := bash("run generate-staging-sql")
 	if !ok {
 		fmt.Printf("\nerror: could not generate staging.sql\n\n")
 		os.Exit(1)
