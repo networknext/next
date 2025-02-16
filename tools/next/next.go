@@ -579,20 +579,70 @@ func generateBuyerKeypair() (buyerPublicKey []byte, buyerPrivateKey []byte) {
 	return
 }
 
-func writeSecret(k string, v map[string]string, name string) {
+func writeGlobalSecret(name string, value string) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
 		os.Exit(1)
 	}
 	adjustedName := strings.Replace(name, "_", "-", -1)
-	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, k, adjustedName)
-	fmt.Printf("   ~/secrets/%s-%s.txt\n", k, adjustedName)
-	err = os.WriteFile(filename, []byte(v[name]), 0666)
+	filename := fmt.Sprintf("%s/secrets/%s.txt", homeDir, adjustedName)
+	fmt.Printf("   ~/secrets/%s.txt\n", adjustedName)
+	err = os.WriteFile(filename, []byte(value), 0666)
 	if err != nil {
-		fmt.Printf("\nerror: failed to write secret: %v\n\n", err)
+		fmt.Printf("\nerror: failed to write global secret: %v\n\n", err)
 		os.Exit(1)
 	}
+}
+
+func readGlobalSecret(name string) string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	adjustedName := strings.Replace(name, "_", "-", -1)
+	filename := fmt.Sprintf("%s/secrets/%s.txt", homeDir, adjustedName)
+	fmt.Printf("   ~/secrets/%s.txt\n", adjustedName)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("\nerror: failed to read global secret: %v\n\n", err)
+		os.Exit(1)
+	}
+	return string(data)
+}
+
+func writeEnvSecret(env string, keypairs map[string]string, name string) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	adjustedName := strings.Replace(name, "_", "-", -1)
+	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, env, adjustedName)
+	fmt.Printf("   ~/secrets/%s-%s.txt\n", env, adjustedName)
+	err = os.WriteFile(filename, []byte(keypairs[name]), 0666)
+	if err != nil {
+		fmt.Printf("\nerror: failed to write env secret: %v\n\n", err)
+		os.Exit(1)
+	}
+}
+
+func readEnvSecret(env string, keypairs map[string]string, name string) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get user home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+	adjustedName := strings.Replace(name, "_", "-", -1)
+	filename := fmt.Sprintf("%s/secrets/%s-%s.txt", homeDir, env, adjustedName)
+	fmt.Printf("   ~/secrets/%s-%s.txt\n", env, adjustedName)
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("\nerror: failed to write env secret: %v\n\n", err)
+		os.Exit(1)
+	}
+	keypairs[name] = string(data)
 }
 
 func secretsAlreadyExist() bool {
@@ -636,6 +686,8 @@ func keygen(env Environment, regexes []string) {
 
 	generateNextSSHKey()
 
+	fmt.Printf("\n")
+
 	envs := []string{"local", "dev", "staging", "prod"}
 
 	keypairs := make(map[string]map[string]string)
@@ -654,10 +706,8 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("	Test relay public key          = %s\n", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
 	fmt.Printf("	Test relay private key         = %s\n", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
-
 	fmt.Printf("	Test buyer public key          = %s\n", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
 	fmt.Printf("	Test buyer private key         = %s\n", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
-
 	fmt.Printf("	Raspberry buyer public key     = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:]))
 	fmt.Printf("	Raspberry buyer private key    = %s\n", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:]))
 
@@ -751,270 +801,32 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
 
+	fmt.Printf( "global:\n\n")
+
+	writeGlobalSecret("global_test_relay_public_key", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
+	writeGlobalSecret("global_test_relay_private_key", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
+	writeGlobalSecret("global_test_buyer_public_key", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:]))
+	writeGlobalSecret("global_test_buyer_private_key", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:]))
+	writeGlobalSecret("global_raspberry_buyer_public_key", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:]))
+	writeGlobalSecret("global_raspberry_buyer_private_key", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:]))
+
+	fmt.Printf("\n")
+
 	for k, v := range keypairs {
 
 		fmt.Printf("%s:\n\n", k)
 
-		writeSecret(k, v, "relay_backend_public_key")
-		writeSecret(k, v, "relay_backend_private_key")
-		writeSecret(k, v, "server_backend_public_key")
-		writeSecret(k, v, "server_backend_private_key")
-		writeSecret(k, v, "api_private_key")
-		writeSecret(k, v, "admin_api_key")
-		writeSecret(k, v, "portal_api_key")
-		writeSecret(k, v, "ping_key")
+		writeEnvSecret(k, v, "relay_backend_public_key")
+		writeEnvSecret(k, v, "relay_backend_private_key")
+		writeEnvSecret(k, v, "server_backend_public_key")
+		writeEnvSecret(k, v, "server_backend_private_key")
+		writeEnvSecret(k, v, "api_private_key")
+		writeEnvSecret(k, v, "admin_api_key")
+		writeEnvSecret(k, v, "portal_api_key")
+		writeEnvSecret(k, v, "ping_key")
 
 		fmt.Printf("\n")
 	}
-
-	// update non-secret keys in env files
-
-	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
-
-	for k, v := range keypairs {
-		envFile := fmt.Sprintf("envs/%s.env", k)
-		fmt.Printf("%s\n", envFile)
-		{
-			replace(envFile, "^\\s*PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("PORTAL_API_KEY=\"%s\"", v["portal_api_key"]))
-			replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
-			replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
-			replace(envFile, "^\\s*NEXT_RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
-			replace(envFile, "^\\s*NEXT_SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
-			replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-			replace(envFile, "^\\s*NEXT_BUYER_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-			replace(envFile, "^\\s*RELAY_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_PUBLIC_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-			replace(envFile, "^\\s*RELAY_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_PRIVATE_KEY=\"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-
-			if v["secure"] != "true" {
-				replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
-				replace(envFile, "^\\s*RELAY_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
-				replace(envFile, "^\\s*SERVER_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["server_backend_private_key"]))
-				replace(envFile, "^\\s*PING_KEY\\s*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
-			}
-		}
-	}
-
-	for k, v := range keypairs {
-		dotEnvFile := fmt.Sprintf("portal/.env.%s", k)
-		fmt.Printf("%s\n", dotEnvFile)
-		{
-			replace(dotEnvFile, "^\\s*VUE_APP_PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("VUE_APP_PORTAL_API_KEY=%s", v["portal_api_key"]))
-		}
-	}
-
-	// update non-secret keys in terraform files
-
-	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
-
-	for k, v := range keypairs {
-
-		filenames := []string{
-			fmt.Sprintf("terraform/%s/backend/terraform.tfvars", k),
-			fmt.Sprintf("terraform/%s/relays/terraform.tfvars", k),
-		}
-		for i := range filenames {
-			if fileExists(filenames[i]) {
-				fmt.Printf("%s\n", filenames[i])
-				replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
-				replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
-				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$", fmt.Sprintf("test_buyer_public_key       = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*raspberry_buyer_public_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(raspberryBuyerPrivateKey[:])))
-				replace(filenames[i], "^\\s*load_test_buyer_public_key\\s*=.*$", fmt.Sprintf("load_test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$", fmt.Sprintf("test_buyer_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-				replace(filenames[i], "^\\s*test_buyer_private_key\\s*=.*$", fmt.Sprintf("test_buyer_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-				replace(filenames[i], "^\\s*relay_public_key\\s*=.*$", fmt.Sprintf("relay_public_key  = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-				replace(filenames[i], "^\\s*relay_private_key\\s*=.*$", fmt.Sprintf("relay_private_key = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-			}
-		}
-
-		filenames = []string{
-			fmt.Sprintf("terraform/%s/relays/main.tf", k),
-		}
-
-		for i := range filenames {
-			if fileExists(filenames[i]) {
-				fmt.Printf("%s\n", filenames[i])
-				replace(filenames[i], "^\\s*api_key\\s*=.*$", fmt.Sprintf("  api_key  = \"%s\"", v["admin_api_key"]))
-			}
-		}
-	}
-
-	// update non-secret keys in source files
-
-	fmt.Printf("\n------------------------------------------\n          updating source files\n------------------------------------------\n\n")
-
-	fmt.Printf("sdk/include/next_config.h\n")
-	{
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["server_backend_public_key"]))
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["relay_backend_public_key"]))
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["server_backend_public_key"]))
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["relay_backend_public_key"]))
-	}
-
-	fmt.Printf("sdk/soak.cpp\n")
-	{
-		replace("sdk/soak.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-		replace("sdk/soak.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-	}
-
-	fmt.Printf("cmd/raspberry_client/raspberry_client.cpp\n")
-	{
-		replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy_s\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy_s(config.buyer_public_key, \"%s\", 256);", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
-		replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy(config.buyer_public_key, \"%s\", 256);", base64.StdEncoding.EncodeToString(raspberryBuyerPublicKey[:])))
-	}
-
-	fmt.Printf("sdk/examples/upgraded_client.cpp\n")
-	{
-		replace("sdk/examples/upgraded_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-	}
-
-	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
-	{
-		replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-	}
-
-	fmt.Printf("sdk/examples/complex_client.cpp\n")
-	{
-		replace("sdk/examples/complex_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-	}
-
-	fmt.Printf("sdk/examples/complex_server.cpp\n")
-	{
-		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-	}
-
-	platforms := []string{
-		"win32",
-		"win64",
-		"switch",
-		"ps4",
-		"ps5",
-		"gdk",
-	}
-
-	for i := range platforms {
-		filename := fmt.Sprintf("sdk/build/%s/client.cpp", platforms[i])
-		if fileExists(filename) {
-			fmt.Printf("%s\n", filename)
-			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		}
-	}
-
-	fmt.Printf("docker-compose.yml\n")
-	{
-		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
-		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["relay_backend_private_key"]))
-		replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
-		replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PRIVATE_KEY=.*$", fmt.Sprintf("      - SERVER_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["server_backend_private_key"]))
-		replace("docker-compose.yml", "^\\s* - PING_KEY=.*$", fmt.Sprintf("      - PING_KEY=%s", keypairs["local"]["ping_key"]))
-		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-		replace("docker-compose.yml", "^\\s* - NEXT_RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
-		replace("docker-compose.yml", "^\\s* - NEXT_SERVER_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
-		replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("docker-compose.yml", "^\\s* - API_PRIVATE_KEY=.*$", fmt.Sprintf("      - API_PRIVATE_KEY=%s", keypairs["local"]["api_private_key"]))
-	}
-
-	fmt.Printf("schemas/sql/local.sql\n")
-	{
-		replace("schemas/sql/local.sql", "^SET local.buyer_public_key_base64 = '.*$", fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		replace("schemas/sql/local.sql", "^SET local.relay_public_key_base64 = '.*$", fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("schemas/sql/local.sql", "^SET local.relay_private_key_base64 = '.*$", fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-	}
-
-	fmt.Printf("schemas/sql/docker.sql\n")
-	{
-		replace("schemas/sql/docker.sql", "^SET local.buyer_public_key_base64 = '.*$", fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		replace("schemas/sql/docker.sql", "^SET local.relay_public_key_base64 = '.*$", fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("schemas/sql/docker.sql", "^SET local.relay_private_key_base64 = '.*$", fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-	}
-
-	fmt.Printf("tools/generate_staging_sql/generate_staging_sql.go\n")
-	{
-		replace("tools/generate_staging_sql/generate_staging_sql.go", "const BuyerPublicKeyBase64 = \".*$", fmt.Sprintf("const BuyerPublicKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPublicKeyBase64 = \".*$", fmt.Sprintf("const RelayPublicKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPrivateKeyBase64 = \".*$", fmt.Sprintf("const RelayPrivateKeyBase64 = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-	}
-
-	fmt.Printf("cmd/func_test_api/func_test_api.go\n")
-	{
-		replace("cmd/func_test_api/func_test_api.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
-		replace("cmd/func_test_api/func_test_api.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
-		replace("cmd/func_test_api/func_test_api.go", "const TestBuyerPublicKey = \".*$", fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-	}
-
-	fmt.Printf("cmd/func_test_database/func_test_database.go\n")
-	{
-		replace("cmd/func_test_database/func_test_database.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
-		replace("cmd/func_test_database/func_test_database.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
-	}
-
-	fmt.Printf("cmd/func_test_portal/func_test_portal.go\n")
-	{
-		replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
-		replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
-	}
-
-	fmt.Printf("cmd/func_test_sdk/func_test_sdk.go\n")
-	{
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPublicKey = \".*$", fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPublicKey[:])))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPrivateKey = \".*$", fmt.Sprintf("const TestBuyerPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testBuyerPrivateKey[:])))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPublicKey = \".*$", fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
-		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$", fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
-	}
-
-	fmt.Printf("cmd/func_test_relay/func_test_relay.go\n")
-	{
-		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
-	}
-
-	fmt.Printf("cmd/soak_test_relay/soak_test_relay.go\n")
-	{
-		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
-	}
-
-	fmt.Printf("cmd/func_backend/func_backend.go\n")
-	{
-		replace("cmd/func_backend/func_backend.go", "var TestRelayPublicKey =", fmt.Sprintf("var TestRelayPublicKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/func_backend/func_backend.go", "var TestRelayPrivateKey =", fmt.Sprintf("var TestRelayPrivateKey = Base64String(\"%s\")", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPublicKey =", fmt.Sprintf("var TestRelayBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPrivateKey =", fmt.Sprintf("var TestRelayBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_private_key"]))
-		replace("cmd/func_backend/func_backend.go", "var TestServerBackendPublicKey =", fmt.Sprintf("var TestServerBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["server_backend_public_key"]))
-		replace("cmd/func_backend/func_backend.go", "var TestServerBackendPrivateKey =", fmt.Sprintf("var TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
-		replace("cmd/func_backend/func_backend.go", "var TestPingKey =", fmt.Sprintf("var TestPingKey = Base64String(\"%s\")", keypairs["local"]["ping_key"]))
-	}
-
-	fmt.Printf("cmd/func_test_backend/func_test_backend.go\n")
-	{
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPublicKey[:])))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:])))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPublicKey = \".*$", fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPrivateKey = \".*$", fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
-		replace("cmd/func_test_backend/func_test_backend.go", "const TestPingKey = \".*$", fmt.Sprintf("const TestPingKey = \"%s\"", keypairs["local"]["ping_key"]))
-	}
-
-	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")
-	{
-		replace("cmd/func_test_terraform/func_test_terraform.go", "^const APIPrivateKey = \".*$", fmt.Sprintf("const APIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
-		replace("cmd/func_test_terraform/func_test_terraform.go", "^\\s*api_key\\s*=\\s*\".*$", fmt.Sprintf("  api_key  = \"%s\"", keypairs["local"]["admin_api_key"]))
-	}
-
-	fmt.Printf("\n------------------------------------------\n\n")
 
 	fmt.Printf("*** KEYGEN COMPLETE ***\n\n")
 }
@@ -1057,6 +869,305 @@ func fileExists(filename string) bool {
 func config(env Environment, regexes []string) {
 
 	fmt.Printf("configuring network next:\n\n")
+
+	// IMPORTANT: verify that we have the secrets directory. if it doesn't exist, tell the user to call "next keygen" first
+
+	// ...
+
+	// IMPORTANT: if we don't have the global keys secrets yet (1.0 version of network next), we need to back generate them from the source code
+
+	// ...
+
+	// load secrets
+
+	fmt.Printf("global:\n\n")
+
+	testRelayPublicKey := readGlobalSecret("global_test_relay_public_key")
+	testRelayPrivateKey := readGlobalSecret("global_test_relay_private_key")
+	testBuyerPublicKey := readGlobalSecret("global_test_buyer_public_key")
+	testBuyerPrivateKey := readGlobalSecret("global_test_buyer_private_key")
+	raspberryBuyerPublicKey := readGlobalSecret("global_raspberry_buyer_public_key")
+	raspberryBuyerPrivateKey := readGlobalSecret("global_raspberry_buyer_private_key")
+
+	fmt.Printf("\n")
+
+	envs := []string{"local", "dev", "staging", "prod"}
+
+	keypairs := make(map[string]map[string]string)
+
+	for i := range envs {
+
+		env := envs[i]
+
+		fmt.Printf("%s:\n\n", env)
+
+		keys := make(map[string]string)
+
+		readEnvSecret(env, keys, "relay_backend_public_key")
+		readEnvSecret(env, keys, "relay_backend_private_key")
+		readEnvSecret(env, keys, "server_backend_public_key")
+		readEnvSecret(env, keys, "server_backend_private_key")
+		readEnvSecret(env, keys, "api_private_key")
+		readEnvSecret(env, keys, "admin_api_key")
+		readEnvSecret(env, keys, "portal_api_key")
+		readEnvSecret(env, keys, "ping_key")
+
+		keypairs[env] = keys
+
+		fmt.Printf("\n")
+	}
+
+	// update non-secret keys in env files
+
+	fmt.Printf("------------------------------------------\n           updating env files\n------------------------------------------\n\n")
+
+	for k, v := range keypairs {
+		envFile := fmt.Sprintf("envs/%s.env", k)
+		fmt.Printf("%s\n", envFile)
+		{
+			replace(envFile, "^\\s*PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("PORTAL_API_KEY=\"%s\"", v["portal_api_key"]))
+			replace(envFile, "^\\s*RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
+			replace(envFile, "^\\s*SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+			replace(envFile, "^\\s*NEXT_RELAY_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_RELAY_BACKEND_PUBLIC_KEY=\"%s\"", v["relay_backend_public_key"]))
+			replace(envFile, "^\\s*NEXT_SERVER_BACKEND_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_PUBLIC_KEY=\"%s\"", v["server_backend_public_key"]))
+			replace(envFile, "^\\s*NEXT_BUYER_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PUBLIC_KEY=\"%s\"", testBuyerPublicKey))
+			replace(envFile, "^\\s*NEXT_BUYER_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("NEXT_BUYER_PRIVATE_KEY=\"%s\"", testBuyerPrivateKey))
+			replace(envFile, "^\\s*RELAY_PUBLIC_KEY\\s*=.*$", fmt.Sprintf("RELAY_PUBLIC_KEY=\"%s\"", testRelayPublicKey))
+			replace(envFile, "^\\s*RELAY_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_PRIVATE_KEY=\"%s\"", testRelayPrivateKey))
+
+			if v["secure"] != "true" {
+				replace(envFile, "^\\s*API_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("API_PRIVATE_KEY=\"%s\"", v["api_private_key"]))
+				replace(envFile, "^\\s*RELAY_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=\"%s\"", v["relay_backend_private_key"]))
+				replace(envFile, "^\\s*SERVER_BACKEND_PRIVATE_KEY\\s*=.*$", fmt.Sprintf("SERVER_BACKEND_PRIVATE_KEY=\"%s\"", v["server_backend_private_key"]))
+				replace(envFile, "^\\s*PING_KEY\\s*=.*$", fmt.Sprintf("PING_KEY=\"%s\"", v["ping_key"]))
+			}
+		}
+	}
+
+	for k, v := range keypairs {
+		dotEnvFile := fmt.Sprintf("portal/.env.%s", k)
+		fmt.Printf("%s\n", dotEnvFile)
+		{
+			replace(dotEnvFile, "^\\s*VUE_APP_PORTAL_API_KEY\\s*=.*$", fmt.Sprintf("VUE_APP_PORTAL_API_KEY=%s", v["portal_api_key"]))
+		}
+	}
+
+	// update non-secret keys in terraform files
+
+	fmt.Printf("\n------------------------------------------\n        updating terraform files\n------------------------------------------\n\n")
+
+	for k, v := range keypairs {
+
+		filenames := []string{
+			fmt.Sprintf("terraform/%s/backend/terraform.tfvars", k),
+			fmt.Sprintf("terraform/%s/relays/terraform.tfvars", k),
+		}
+		for i := range filenames {
+			if fileExists(filenames[i]) {
+				fmt.Printf("%s\n", filenames[i])
+				replace(filenames[i], "^\\s*relay_backend_public_key\\s*=.*$", fmt.Sprintf("relay_backend_public_key    = \"%s\"", v["relay_backend_public_key"]))
+				replace(filenames[i], "^\\s*server_backend_public_key\\s*=.*$", fmt.Sprintf("server_backend_public_key   = \"%s\"", v["server_backend_public_key"]))
+				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$", fmt.Sprintf("test_buyer_public_key       = \"%s\"", testBuyerPublicKey))
+				replace(filenames[i], "^\\s*raspberry_buyer_public_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_public_key  = \"%s\"", raspberryBuyerPublicKey))
+				replace(filenames[i], "^\\s*raspberry_buyer_private_key\\s*=.*$", fmt.Sprintf("raspberry_buyer_private_key = \"%s\"", raspberryBuyerPrivateKey))
+				replace(filenames[i], "^\\s*load_test_buyer_public_key\\s*=.*$", fmt.Sprintf("load_test_buyer_public_key  = \"%s\"", testBuyerPublicKey))
+				replace(filenames[i], "^\\s*load_test_buyer_private_key\\s*=.*$", fmt.Sprintf("load_test_buyer_private_key = \"%s\"", testBuyerPrivateKey))
+				replace(filenames[i], "^\\s*test_buyer_public_key\\s*=.*$", fmt.Sprintf("test_buyer_public_key  = \"%s\"", testBuyerPublicKey))
+				replace(filenames[i], "^\\s*test_buyer_private_key\\s*=.*$", fmt.Sprintf("test_buyer_private_key = \"%s\"", testBuyerPrivateKey))
+				replace(filenames[i], "^\\s*relay_public_key\\s*=.*$", fmt.Sprintf("relay_public_key  = \"%s\"", testRelayPublicKey))
+				replace(filenames[i], "^\\s*relay_private_key\\s*=.*$", fmt.Sprintf("relay_private_key = \"%s\"", testRelayPrivateKey))
+			}
+		}
+
+		filenames = []string{
+			fmt.Sprintf("terraform/%s/relays/main.tf", k),
+		}
+
+		for i := range filenames {
+			if fileExists(filenames[i]) {
+				fmt.Printf("%s\n", filenames[i])
+				replace(filenames[i], "^\\s*api_key\\s*=.*$", fmt.Sprintf("  api_key  = \"%s\"", v["admin_api_key"]))
+			}
+		}
+	}
+
+	// update non-secret keys in source files
+
+	fmt.Printf("\n------------------------------------------\n          updating source files\n------------------------------------------\n\n")
+
+	fmt.Printf("sdk/include/next_config.h\n")
+	{
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["server_backend_public_key"]))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["relay_backend_public_key"]))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["server_backend_public_key"]))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["relay_backend_public_key"]))
+	}
+
+	fmt.Printf("sdk/soak.cpp\n")
+	{
+		replace("sdk/soak.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", testBuyerPrivateKey))
+		replace("sdk/soak.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", testBuyerPrivateKey))
+	}
+
+	fmt.Printf("cmd/raspberry_client/raspberry_client.cpp\n")
+	{
+		replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy_s\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy_s(config.buyer_public_key, \"%s\", 256);", raspberryBuyerPublicKey))
+		replace("cmd/raspberry_client/raspberry_client.cpp", "^\\s*strncpy\\(config\\.buyer_public_key,.*$", fmt.Sprintf("    strncpy(config.buyer_public_key, \"%s\", 256);", raspberryBuyerPublicKey))
+	}
+
+	fmt.Printf("sdk/examples/upgraded_client.cpp\n")
+	{
+		replace("sdk/examples/upgraded_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", testBuyerPublicKey))
+	}
+
+	fmt.Printf("sdk/examples/upgraded_server.cpp\n")
+	{
+		replace("sdk/examples/upgraded_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", testBuyerPrivateKey))
+	}
+
+	fmt.Printf("sdk/examples/complex_client.cpp\n")
+	{
+		replace("sdk/examples/complex_client.cpp", "^\\s*const char \\* buyer_public_key =.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", testBuyerPublicKey))
+	}
+
+	fmt.Printf("sdk/examples/complex_server.cpp\n")
+	{
+		replace("sdk/examples/complex_server.cpp", "^\\s*const char \\* buyer_private_key =.*$", fmt.Sprintf("const char * buyer_private_key = \"%s\";", testBuyerPrivateKey))
+	}
+
+	platforms := []string{
+		"win32",
+		"win64",
+		"switch",
+		"ps4",
+		"ps5",
+		"gdk",
+	}
+
+	for i := range platforms {
+		filename := fmt.Sprintf("sdk/build/%s/client.cpp", platforms[i])
+		if fileExists(filename) {
+			fmt.Printf("%s\n", filename)
+			replace(filename, "^.*buyer_public_key\\s*=.*$", fmt.Sprintf("const char * buyer_public_key = \"%s\";", testBuyerPublicKey))
+		}
+	}
+
+	fmt.Printf("docker-compose.yml\n")
+	{
+		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
+		replace("docker-compose.yml", "^\\s* - RELAY_BACKEND_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["relay_backend_private_key"]))
+		replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
+		replace("docker-compose.yml", "^\\s* - SERVER_BACKEND_PRIVATE_KEY=.*$", fmt.Sprintf("      - SERVER_BACKEND_PRIVATE_KEY=%s", keypairs["local"]["server_backend_private_key"]))
+		replace("docker-compose.yml", "^\\s* - PING_KEY=.*$", fmt.Sprintf("      - PING_KEY=%s", keypairs["local"]["ping_key"]))
+		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PUBLIC_KEY=%s", testBuyerPublicKey))
+		replace("docker-compose.yml", "^\\s* - NEXT_BUYER_PRIVATE_KEY=.*$", fmt.Sprintf("      - NEXT_BUYER_PRIVATE_KEY=%s", testBuyerPrivateKey))
+		replace("docker-compose.yml", "^\\s* - NEXT_RELAY_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_RELAY_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["relay_backend_public_key"]))
+		replace("docker-compose.yml", "^\\s* - NEXT_SERVER_BACKEND_PUBLIC_KEY=.*$", fmt.Sprintf("      - NEXT_SERVER_BACKEND_PUBLIC_KEY=%s", keypairs["local"]["server_backend_public_key"]))
+		replace("docker-compose.yml", "^\\s* - RELAY_PUBLIC_KEY=.*$", fmt.Sprintf("      - RELAY_PUBLIC_KEY=%s", testRelayPublicKey))
+		replace("docker-compose.yml", "^\\s* - RELAY_PRIVATE_KEY=.*$", fmt.Sprintf("      - RELAY_PRIVATE_KEY=%s", testRelayPrivateKey))
+		replace("docker-compose.yml", "^\\s* - API_PRIVATE_KEY=.*$", fmt.Sprintf("      - API_PRIVATE_KEY=%s", keypairs["local"]["api_private_key"]))
+	}
+
+	fmt.Printf("schemas/sql/local.sql\n")
+	{
+		replace("schemas/sql/local.sql", "^SET local.buyer_public_key_base64 = '.*$", fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", testBuyerPublicKey))
+		replace("schemas/sql/local.sql", "^SET local.relay_public_key_base64 = '.*$", fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", testRelayPublicKey))
+		replace("schemas/sql/local.sql", "^SET local.relay_private_key_base64 = '.*$", fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", testRelayPrivateKey))
+	}
+
+	fmt.Printf("schemas/sql/docker.sql\n")
+	{
+		replace("schemas/sql/docker.sql", "^SET local.buyer_public_key_base64 = '.*$", fmt.Sprintf("SET local.buyer_public_key_base64 = '%s';", testBuyerPublicKey))
+		replace("schemas/sql/docker.sql", "^SET local.relay_public_key_base64 = '.*$", fmt.Sprintf("SET local.relay_public_key_base64 = '%s';", testRelayPublicKey))
+		replace("schemas/sql/docker.sql", "^SET local.relay_private_key_base64 = '.*$", fmt.Sprintf("SET local.relay_private_key_base64 = '%s';", testRelayPrivateKey))
+	}
+
+	fmt.Printf("tools/generate_staging_sql/generate_staging_sql.go\n")
+	{
+		replace("tools/generate_staging_sql/generate_staging_sql.go", "const BuyerPublicKeyBase64 = \".*$", fmt.Sprintf("const BuyerPublicKeyBase64 = \"%s\"", testBuyerPublicKey))
+		replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPublicKeyBase64 = \".*$", fmt.Sprintf("const RelayPublicKeyBase64 = \"%s\"", testRelayPublicKey))
+		replace("tools/generate_staging_sql/generate_staging_sql.go", "const RelayPrivateKeyBase64 = \".*$", fmt.Sprintf("const RelayPrivateKeyBase64 = \"%s\"", testRelayPrivateKey))
+	}
+
+	fmt.Printf("cmd/func_test_api/func_test_api.go\n")
+	{
+		replace("cmd/func_test_api/func_test_api.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
+		replace("cmd/func_test_api/func_test_api.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+		replace("cmd/func_test_api/func_test_api.go", "const TestBuyerPublicKey = \".*$", fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", testBuyerPublicKey))
+	}
+
+	fmt.Printf("cmd/func_test_database/func_test_database.go\n")
+	{
+		replace("cmd/func_test_database/func_test_database.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
+		replace("cmd/func_test_database/func_test_database.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_portal/func_test_portal.go\n")
+	{
+		replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIKey = \".*$", fmt.Sprintf("const TestAPIKey = \"%s\"", keypairs["local"]["admin_api_key"]))
+		replace("cmd/func_test_portal/func_test_portal.go", "const TestAPIPrivateKey = \".*$", fmt.Sprintf("const TestAPIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_sdk/func_test_sdk.go\n")
+	{
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", testRelayPublicKey))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", testRelayPrivateKey))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPublicKey = \".*$", fmt.Sprintf("const TestBuyerPublicKey = \"%s\"", testBuyerPublicKey))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestBuyerPrivateKey = \".*$", fmt.Sprintf("const TestBuyerPrivateKey = \"%s\"", testBuyerPrivateKey))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPublicKey = \".*$", fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
+		replace("cmd/func_test_sdk/func_test_sdk.go", "const TestServerBackendPrivateKey = \".*$", fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_relay/func_test_relay.go\n")
+	{
+		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", testRelayPublicKey))
+		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", testRelayPrivateKey))
+		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/func_test_relay/func_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+	}
+
+	fmt.Printf("cmd/soak_test_relay/soak_test_relay.go\n")
+	{
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", testRelayPublicKey))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", testRelayPrivateKey))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/soak_test_relay/soak_test_relay.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+	}
+
+	fmt.Printf("cmd/func_backend/func_backend.go\n")
+	{
+		replace("cmd/func_backend/func_backend.go", "var TestRelayPublicKey =", fmt.Sprintf("var TestRelayPublicKey = Base64String(\"%s\")", testRelayPublicKey))
+		replace("cmd/func_backend/func_backend.go", "var TestRelayPrivateKey =", fmt.Sprintf("var TestRelayPrivateKey = Base64String(\"%s\")", testRelayPrivateKey))
+		replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPublicKey =", fmt.Sprintf("var TestRelayBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/func_backend/func_backend.go", "var TestRelayBackendPrivateKey =", fmt.Sprintf("var TestRelayBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["relay_backend_private_key"]))
+		replace("cmd/func_backend/func_backend.go", "var TestServerBackendPublicKey =", fmt.Sprintf("var TestServerBackendPublicKey = Base64String(\"%s\")", keypairs["local"]["server_backend_public_key"]))
+		replace("cmd/func_backend/func_backend.go", "var TestServerBackendPrivateKey =", fmt.Sprintf("var TestServerBackendPrivateKey = Base64String(\"%s\")", keypairs["local"]["server_backend_private_key"]))
+		replace("cmd/func_backend/func_backend.go", "var TestPingKey =", fmt.Sprintf("var TestPingKey = Base64String(\"%s\")", keypairs["local"]["ping_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_backend/func_test_backend.go\n")
+	{
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPublicKey = \".*$", fmt.Sprintf("const TestRelayPublicKey = \"%s\"", testRelayPublicKey))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayPrivateKey = \".*$", fmt.Sprintf("const TestRelayPrivateKey = \"%s\"", testRelayPrivateKey))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPublicKey = \".*$", fmt.Sprintf("const TestRelayBackendPublicKey = \"%s\"", keypairs["local"]["relay_backend_public_key"]))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestRelayBackendPrivateKey = \".*$", fmt.Sprintf("const TestRelayBackendPrivateKey = \"%s\"", keypairs["local"]["relay_backend_private_key"]))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPublicKey = \".*$", fmt.Sprintf("const TestServerBackendPublicKey = \"%s\"", keypairs["local"]["server_backend_public_key"]))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestServerBackendPrivateKey = \".*$", fmt.Sprintf("const TestServerBackendPrivateKey = \"%s\"", keypairs["local"]["server_backend_private_key"]))
+		replace("cmd/func_test_backend/func_test_backend.go", "const TestPingKey = \".*$", fmt.Sprintf("const TestPingKey = \"%s\"", keypairs["local"]["ping_key"]))
+	}
+
+	fmt.Printf("cmd/func_test_terraform/func_test_terraform.go\n")
+	{
+		replace("cmd/func_test_terraform/func_test_terraform.go", "^const APIPrivateKey = \".*$", fmt.Sprintf("const APIPrivateKey = \"%s\"", keypairs["local"]["api_private_key"]))
+		replace("cmd/func_test_terraform/func_test_terraform.go", "^\\s*api_key\\s*=\\s*\".*$", fmt.Sprintf("  api_key  = \"%s\"", keypairs["local"]["admin_api_key"]))
+	}
+
+	fmt.Printf("\n------------------------------------------\n\n")
+
+	// todo
+	return
 
 	// load config.json
 
@@ -1157,8 +1268,6 @@ func config(env Environment, regexes []string) {
 	}
 
 	// update config in env files
-
-	envs := []string{"local", "dev", "staging", "prod"}
 
 	fmt.Printf("\n")
 	fmt.Printf("------------------------------------------\n")

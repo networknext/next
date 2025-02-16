@@ -31,7 +31,7 @@
 
 const char * bind_address = "0.0.0.0:0";
 const char * server_address = "127.0.0.1:50000";
-const char * buyer_public_key = "5Vr+VZdUXckgQwHdPRftc/8IUWDL7ZftvBOzE/+Zpp+PIjSU0Kxmwg==";
+const char * buyer_public_key = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw==";
 
 static volatile int quit = 0;
 

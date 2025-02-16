@@ -1,7 +1,7 @@
 
-SET local.buyer_public_key_base64 = '5Vr+VZdUXckgQwHdPRftc/8IUWDL7ZftvBOzE/+Zpp+PIjSU0Kxmwg==';
-SET local.relay_public_key_base64 = 'DkmtxHmjox9lLbEHExYjvJHdA0Q6VUV0MaHOtwudPWk=';
-SET local.relay_private_key_base64 = 'QMgmGF+Cii7RxGB99wTLmrMvYGNgcKphHJvyqyTCHzE=';
+SET local.buyer_public_key_base64 = 'yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw==';
+SET local.relay_public_key_base64 = '+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4=';
+SET local.relay_private_key_base64 = 'S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc=';
 
 INSERT INTO route_shaders(route_shader_name, route_select_threshold, route_switch_threshold) VALUES('docker', 300, 300);
 
