@@ -17,23 +17,6 @@ locals {
 
 # ----------------------------------------------------------------------------------------
 
-terraform {
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 6.0.0"
-    }
-  }
-}
-
-locals {
-  org_id = "434699063105"
-  billing_account = "012279-A33489-722F96"
-  company_name = "theodore"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # create projects
 
 resource "random_id" "postfix" {
