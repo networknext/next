@@ -37,7 +37,7 @@ var datacenterMap = map[string]*Datacenter{
 	"nl-ams":       {"amsterdam", 52.3676, 4.9041},
 	"fr-par":       {"paris", 48.8575, 2.3514},
 	"br-gru":       {"saopaulo", -23.5558, -46.6396},
-	"se-sto":       {"stockholm", 59.3327, 18.0656}
+	"se-sto":       {"stockholm", 59.3327, 18.0656},
 	"es-mad":       {"madrid", 40.416775, -3.703790},
 	"it-mil":       {"milan", 45.4685, 9.1824},
 	"gb-lon":       {"london", 51.5072, -0.1276},

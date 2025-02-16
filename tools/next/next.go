@@ -866,13 +866,32 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func config(env Environment, regexes []string) {
+func dirExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
 
-	fmt.Printf("configuring network next:\n\n")
+func config(env Environment, regexes []string) {
 
 	// IMPORTANT: verify that we have the secrets directory. if it doesn't exist, tell the user to call "next keygen" first
 
-	// ...
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("\nerror: could not get users home dir: %v\n\n", err)
+		os.Exit(1)
+	}
+
+	secretsDir := fmt.Sprintf("%s/secrets", homeDir)
+
+	if !dirExists(secretsDir) {
+		fmt.Printf("\nerror: ~/secrets directory does not exist. Please run 'next keygen' first!\n\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("configuring network next:\n\n")
 
 	// IMPORTANT: if we don't have the global keys secrets yet (1.0 version of network next), we need to back generate them from the source code
 
@@ -1166,9 +1185,6 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
-	// todo
-	return
-
 	// load config.json
 
 	file, err := os.Open("config.json")
@@ -1243,14 +1259,6 @@ func config(env Environment, regexes []string) {
 	}
 
 	// check that we have necessary files under ~/secrets
-
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("\nerror: could not get users home dir: %v\n\n", err)
-		os.Exit(1)
-	}
-
-	secretsDir := fmt.Sprintf("%s/secrets", homeDir)
 
 	if !fileExists(fmt.Sprintf("%s/terraform-cloudflare.txt", secretsDir)) {
 		fmt.Printf("\nerror: missing cloudflare terraform api key at ~/secrets/terraform-cloudflare.txt :(\n\n")

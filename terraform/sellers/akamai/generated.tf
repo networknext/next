@@ -3,7 +3,7 @@ locals {
 
   datacenter_map = {
 
-    "akamai.mumbai" = {
+    "akamai.mumbai.1" = {
       zone        = "ap-west"
       native_name = "ap-west"
       latitude    = 19.08
@@ -26,6 +26,132 @@ locals {
       native_name = "ap-southeast"
       latitude    = -33.87
       longitude   = 151.21
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.washington" = {
+      zone        = "us-iad"
+      native_name = "us-iad"
+      latitude    = 47.75
+      longitude   = -120.74
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.chicago" = {
+      zone        = "us-ord"
+      native_name = "us-ord"
+      latitude    = 41.88
+      longitude   = -87.63
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.paris" = {
+      zone        = "fr-par"
+      native_name = "fr-par"
+      latitude    = 48.86
+      longitude   = 2.35
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.seattle" = {
+      zone        = "us-sea"
+      native_name = "us-sea"
+      latitude    = 47.61
+      longitude   = -122.33
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.saopaulo" = {
+      zone        = "br-gru"
+      native_name = "br-gru"
+      latitude    = -23.56
+      longitude   = -46.64
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.amsterdam" = {
+      zone        = "nl-ams"
+      native_name = "nl-ams"
+      latitude    = 52.37
+      longitude   = 4.90
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.stockholm" = {
+      zone        = "se-sto"
+      native_name = "se-sto"
+      latitude    = 59.33
+      longitude   = 18.07
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.madrid" = {
+      zone        = "es-mad"
+      native_name = "es-mad"
+      latitude    = 40.42
+      longitude   = -3.70
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.chennai" = {
+      zone        = "in-maa"
+      native_name = "in-maa"
+      latitude    = 13.08
+      longitude   = 80.27
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.osaka" = {
+      zone        = "jp-osa"
+      native_name = "jp-osa"
+      latitude    = 34.69
+      longitude   = 135.50
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.milan" = {
+      zone        = "it-mil"
+      native_name = "it-mil"
+      latitude    = 45.47
+      longitude   = 9.18
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.miami" = {
+      zone        = "us-mia"
+      native_name = "us-mia"
+      latitude    = 25.76
+      longitude   = -80.19
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.jakarta" = {
+      zone        = "id-cgk"
+      native_name = "id-cgk"
+      latitude    = -6.19
+      longitude   = 106.82
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.losangeles" = {
+      zone        = "us-lax"
+      native_name = "us-lax"
+      latitude    = 34.05
+      longitude   = -118.24
       seller_name = "Akamai"
       seller_code = "akamai"
     }
@@ -75,7 +201,7 @@ locals {
       seller_code = "akamai"
     }
 
-    "akamai.singapore" = {
+    "akamai.singapore.1" = {
       zone        = "ap-south"
       native_name = "ap-south"
       latitude    = 1.35
