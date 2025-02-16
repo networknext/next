@@ -67,65 +67,13 @@ func main() {
 	relaysfs.BoolVar(&relaysAlphaSort, "alpha", false, "Sort relays by name, not by sessions carried")
 
 	var selectCommand = &ffcli.Command{
+
 		Name:       "select",
 		ShortUsage: "next select <local|dev|prod>",
 		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
-		Exec: func(_ context.Context, args []string) error {
-			if len(args) == 0 {
-				handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|staging|prod)"), 0)
-			}
 
-			if args[0] == "local" {
-				bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
-				bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
-			}
-
-			envFilePath := fmt.Sprintf("envs/%s.env", args[0])
-
-			if _, err := os.Stat(envFilePath); err != nil {
-				return err
-			}
-
-			rawFile, err := os.Open(envFilePath)
-			if err != nil {
-				return err
-			}
-
-			defer rawFile.Close()
-
-			rootEnvFile, err := os.Create(".env")
-			if err != nil {
-				return err
-			}
-
-			defer rootEnvFile.Close()
-
-			if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
-				return err
-			}
-
-			env.Name = args[0]
-			env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
-			env.API_URL = getKeyValue(envFilePath, "API_URL")
-			env.PortalAPIKey = getKeyValue(envFilePath, "PORTAL_API_KEY")
-			env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
-			env.RelayBackendURL = getKeyValue(envFilePath, "RELAY_BACKEND_URL")
-			env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
-			env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
-			env.RaspberryBackendURL = getKeyValue(envFilePath, "RASPBERRY_BACKEND_URL")
-
-			env.Write()
-
-			cachedDatabase = nil
-			if env.Name != "local" {
-				bash("rm -f database.bin")
-				getDatabase()
-			}
-
-			fmt.Printf("Selected %s environment\n\n", env.Name)
-
+		Exec: func(ctx context.Context, args []string) error {
+			select_function(env, args)
 			return nil
 		},
 	}
@@ -664,6 +612,66 @@ func generateNextSSHKey() {
 	if !bash(fmt.Sprintf("ssh-keygen -t ed25519 -N \"\" -C \"network next ssh key for relays\" -f %s/secrets/next_ssh", homeDir)) {
 		fmt.Printf("\nerror: could not generate next ssh keypair. is ssh-keygen installed?\n\n")
 	}
+}
+
+func select_function(env Environment, args []string) error {
+
+	if len(args) == 0 {
+		handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|staging|prod)"), 0)
+	}
+
+	if args[0] == "local" {
+		bashQuiet("rm -f database.bin && cp envs/local.bin database.bin")
+		bashQuiet("psql -U developer postgres -f ../schemas/sql/destroy.sql")
+		bashQuiet("psql -U developer postgres -f ../schemas/sql/create.sql")
+		bashQuiet("psql -U developer postgres -f ../schemas/sql/local.sql")
+	}
+
+	envFilePath := fmt.Sprintf("envs/%s.env", args[0])
+
+	if _, err := os.Stat(envFilePath); err != nil {
+		return err
+	}
+
+	rawFile, err := os.Open(envFilePath)
+	if err != nil {
+		return err
+	}
+
+	defer rawFile.Close()
+
+	rootEnvFile, err := os.Create(".env")
+	if err != nil {
+		return err
+	}
+
+	defer rootEnvFile.Close()
+
+	if _, err = io.Copy(rootEnvFile, rawFile); err != nil {
+		return err
+	}
+
+	env.Name = args[0]
+	env.SSHKeyFile = getKeyValue(envFilePath, "SSH_KEY_FILE")
+	env.API_URL = getKeyValue(envFilePath, "API_URL")
+	env.PortalAPIKey = getKeyValue(envFilePath, "PORTAL_API_KEY")
+	env.VPNAddress = getKeyValue(envFilePath, "VPN_ADDRESS")
+	env.RelayBackendURL = getKeyValue(envFilePath, "RELAY_BACKEND_URL")
+	env.RelayBackendPublicKey = getKeyValue(envFilePath, "RELAY_BACKEND_PUBLIC_KEY")
+	env.RelayArtifactsBucketName = getKeyValue(envFilePath, "RELAY_ARTIFACTS_BUCKET_NAME")
+	env.RaspberryBackendURL = getKeyValue(envFilePath, "RASPBERRY_BACKEND_URL")
+
+	env.Write()
+
+	cachedDatabase = nil
+	if env.Name != "local" {
+		bash("rm -f database.bin")
+		getDatabase()
+	}
+
+	fmt.Printf("Selected %s environment\n\n", env.Name)
+
+	return nil
 }
 
 func keygen(env Environment, regexes []string) {
@@ -1273,6 +1281,10 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("\n------------------------------------------\n\n")
 
+	// IMPORTANT: Make sure we select local.env before we continue
+
+	select_function(env, []string{"local"})
+
 	// load config.json
 
 	file, err := os.Open("config.json")
@@ -1532,6 +1544,10 @@ func config(env Environment, regexes []string) {
 			}
 		}
 	}
+
+	// IMPORTANT: select local env before continuing
+
+
 
 	// configure amazon
 
