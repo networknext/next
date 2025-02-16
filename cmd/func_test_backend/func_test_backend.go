@@ -57,7 +57,6 @@ func Base64String(value string) []byte {
 }
 
 const TestRelayPublicKey = "+ONHHci1bizkWzi4MTt1E5b0p0M5Xe0PhUay5H5KIl4="
-"
 const TestRelayPrivateKey = "S0S/gyTx2v1vmgAyuyEx6wsOtG0p6Q6GfP3PEnswYTc="
 const TestRelayBackendPublicKey = "kghNmDh8ZYL4lJFwVIi4mh+qovEpRNvws6bMDvo3jRc="
 const TestRelayBackendPrivateKey = "Rhn4+WeefXBx63OXCXtCjYUQB5of6+AadBfFE+YhFbw="
