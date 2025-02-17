@@ -18,7 +18,7 @@ git push origin prod-001
 
 ## 2. Wait for the deploy to complete in semaphore ci
 
-Go to https://semaphoreci.com and wait for the deploy to complete. It will take around 10 minutes.
+Go to https://semaphoreci.com and wait for the deploy to complete. It should take around 10-20 minutes.
 
 ## 3. Initialize the postgres database
 
