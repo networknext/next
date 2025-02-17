@@ -10,6 +10,7 @@ Create a new prod branch and tag it as "prod-001":
 
 ```console
 git checkout -b prod
+git push --set-upstream origin prod
 git push origin
 git tag prod-001
 git push origin prod-001
