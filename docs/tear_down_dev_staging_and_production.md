@@ -41,8 +41,6 @@ terraform init
 terraform destroy
 ```
 
-You will be asked to enter a tag. Tag is not used when destroying the environment. Input _any_ string and press ENTER. 
-
 ## 3. Tear down Production
 
 Production is an expensive environment to run, so you should shut it down when it's not being used.
