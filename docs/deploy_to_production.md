@@ -16,7 +16,11 @@ git tag prod-001
 git push origin prod-001
 ```
 
-## 2. Initialize the postgres database
+## 2. Wait for the deploy to complete in semaphore ci
+
+Go to https://semaphoreci.com and wait for the deploy to complete. It will take around 10 minutes.
+
+## 3. Initialize the postgres database
 
 Go to https://console.cloud.google.com and go to "SQL" under the "Production" project.
 
@@ -24,7 +28,7 @@ Click on the "postgres" database and click on "Import".
 
 In the import dialog, import the file "[company_name]_network_next_sql_files/create.sql" to the database "database".
 
-## 3. Wait for SSL certificates to provision
+## 4. Wait for SSL certificates to provision
 
 Setup a new "prod" gcloud configuration on the command line, that points to your new "Production" project:
 
@@ -36,7 +40,7 @@ Now you can check the status of your SSL certificates:
 
 Wait until all certificates are in the "ACTIVE" state before going to the next step.
 
-## 4. Setup the relays and database
+## 5. Setup the relays and database
 
 Run the terraform script:
 
