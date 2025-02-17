@@ -50,7 +50,7 @@ terraform init
 terraform apply
 ```
 
-## 5. Commit the database changes to the backend
+## 6. Commit the database changes to the backend
 
 ```console
 cd ~/next
@@ -59,7 +59,7 @@ next database
 next commit
 ```
 
-## 6. Setup the relays
+## 7. Setup the relays
 
 Connect to OpenVPN, then run:
 
@@ -93,7 +93,7 @@ gaffer@batman next % next relays
 └────────────────────────┴──────────────────────┴──────────────────┴──────────────────┴────────┘
 ```
 
-## 5. View the portal
+## 8. View the portal
 
 Go to https://portal.[yourdomain.com]
 
