@@ -27,7 +27,7 @@ terraform destroy
 
 Do not be concerned if the terraform complains about not being able to destroy the postgres database. This database has delete protection enabled so terraform can't destroy it. This means the next time you bring dev up using terraform, you don't have to set the database up again, which saves time.
 
-IMPORTANT: Do _NOT_ destroy the backend before destroying the relays, because destroying relays depends on the backend. If you this in the wrong order you'll have to manually deleting relay resources from Google cloud, AWS and Akamai cloud and it's very painful.
+IMPORTANT: Do _NOT_ destroy the backend before destroying the relays, because destroying relays depends on the backend. If you this in the wrong order you'll have to manually deleting relay resources from Google Cloud, AWS and Akamai and it's very painful.
 
 ## 2. Tear down Staging
 
