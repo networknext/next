@@ -10,6 +10,7 @@ Create a new staging branch and tag it as "staging-001":
 
 ```console
 git checkout -b staging
+git push --set-upstream origin staging
 git push origin
 git tag staging-001
 git push origin staging-001
