@@ -59,7 +59,7 @@ You should see a "pong" response from the backend, matching the tag you deployed
 ```console
 gaffer@batman next % next ping
 
-pong [dev-633]
+pong [dev-001]
 ```
 
 If `next select dev` fails, wait for DNS propagation to complete and try again.
