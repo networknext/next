@@ -384,31 +384,6 @@ module "phoenixnap_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ===========
-# INAP RELAYS
-# ===========
-
-locals {
-
-  inap_relays = {
-
-    /*
-    "inap.chicago" = {
-      datacenter_name = "inap.chicago"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "inap_relays" {
-  relays = local.inap_relays
-  source = "../../sellers/inap"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # ==================
 # SERVERS.COM RELAYS
 # ==================
@@ -554,7 +529,6 @@ locals {
       keys(module.hivelocity_relays.relays),
       keys(module.colocrossing_relays.relays),
       keys(module.phoenixnap_relays.relays),
-      keys(module.inap_relays.relays),
       keys(module.serversdotcom_relays.relays),
       keys(module.velia_relays.relays),
       keys(module.zenlayer_relays.relays),
@@ -574,7 +548,6 @@ locals {
     module.hivelocity_relays.relays,
     module.colocrossing_relays.relays,
     module.phoenixnap_relays.relays,
-    module.inap_relays.relays,
     module.serversdotcom_relays.relays,
     module.velia_relays.relays,
     module.zenlayer_relays.relays,
@@ -593,7 +566,6 @@ locals {
     module.hivelocity_relays.datacenters,
     module.colocrossing_relays.datacenters,
     module.phoenixnap_relays.datacenters,
-    module.inap_relays.datacenters,
     module.serversdotcom_relays.datacenters,
     module.velia_relays.datacenters,
     module.zenlayer_relays.datacenters,
