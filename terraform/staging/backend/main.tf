@@ -470,7 +470,7 @@ resource "google_service_networking_connection" "postgres" {
 
 resource "google_sql_database_instance" "postgres" {
   name = "postgres"
-  database_version = "POSTGRES_17"
+  database_version = "POSTGRES_14"
   region = "${var.google_region}"
   depends_on = [google_service_networking_connection.postgres]
   settings {
