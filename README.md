@@ -6,7 +6,7 @@ Network Next is a **network accelerator** for multiplayer games.
 
 It works by monitoring player connections and sending game traffic down an optimized route when the default internet route has high latency, jitter or packet loss.
 
-You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game and only accelerate players who are above these values. Also, set how much latency reduction is required in milliseconds before accelerating a player. 
+You control the settings to decide when to accelerate your players. Set acceptable latency, jitter and packet loss values for your game and only accelerate players who are above these values. Also, set how many milliseconds of latency reduction is required before accelerating a player. 
 
 For example, accelerate players only if their packet loss is above above 1%, _or_ their jitter is above 10ms, _or_ their latency is above 50 milliseconds _and_ you can reduce it by at least 20ms.
 
@@ -14,7 +14,7 @@ This way you can target network acceleration to players who need it the most, wh
 
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/master.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
-# Installation
+# Install Network Next
 
 1. [Fork the network next repository on github](docs/fork_next_repository.md)
 2. [Run a local instance with docker compose](docs/run_local_instance_with_docker_compose.md)
@@ -28,21 +28,32 @@ This way you can target network acceleration to players who need it the most, wh
 10. [Deploy to Production](docs/deploy_to_production.md)
 11. [Tear down dev, staging and production](docs/tear_down_dev_staging_and_production.md)
 
-# Integrating Network Next
+# Customize your Installation
 
-1. [Run a test client](docs/run_a_test_client.md)
-2. [Create your own buyer](docs/create_your_own_buyer.md)
+1. [Spin dev back up](docs/spin_dev_back_up.md)
+2. [Disable the raspberry clients](docs/disable_the_raspberry_clients.md)
+3. [Connect a client to the test server](docs/connect_a_client_to_the_test_server.md)
+4. [Modify route shader for test buyer](docs/modify_route_shader_for_test_buyer.md)
+5. [Move test server to Sao Paulo](docs/move_test_server_to_sao_paulo.md)
+6. [Modify set of google relays](docs/modify_set_of_google_cloud_relays.md)
+7. [Modify set of amazon relays](docs/modify_set_of_amazon_relays.md)
+8. [Modify set of akamai relays](docs/modify_set_of_akamai_relays.md)
+9. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
+10. [Spin up relays near you](docs/spin_up_relays_near_you.md)
+11. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
+
+# Integrate Network Next with your Game
+
+1. [Create your own buyer](docs/create_your_own_buyer.md)
+2. [Customize your route shader](docs/customize_your_route_shader.md)
 3. [Run your own client and server](docs/run_your_own_client_and_server.md)
 4. [Integrate with your game](docs/integrate_with_your_game.md)
 5. [Unreal engine plugin](docs/unreal_engine_plugin.md)
 
-# User Guides
+# Reference Documentation
 
 * [Portal user guide](docs/portal_user_guide.md)
 * [Next tool user guide](docs/next_tool_user_guide.md)
-  
-# Operating Network Next
-
 * [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
 * [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
 * [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
@@ -51,8 +62,5 @@ This way you can target network acceleration to players who need it the most, wh
 * [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 * [Network Next Terraform provider](docs/network_next_terraform_provider.md)
 * [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
-
-# Miscellaneous
-
 * [BigQuery table schemas](docs/bigquery_table_schemas.md)
 * [Glossary of Common Terms](docs/glossary_of_common_terms.md)
