@@ -37,14 +37,15 @@ This way you can target network acceleration to players who need it the most, wh
 5. [Move test server to Sao Paulo](docs/move_test_server_to_sao_paulo.md)
 6. [Modify set of google relays](docs/modify_set_of_google_cloud_relays.md)
 7. [Modify set of amazon relays](docs/modify_set_of_amazon_relays.md)
-8. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
-9. [Spin up relays near you](docs/spin_up_relays_near_you.md)
-10. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
+8. [Modify set of akamai relays](docs/modify_set_of_akamai_relays.md)
+9. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
+10. [Spin up relays near you](docs/spin_up_relays_near_you.md)
+11. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
 
 # Integrate Network Next with your Game
 
-1. [Run a test client](docs/run_a_test_client.md)
-2. [Create your own buyer](docs/create_your_own_buyer.md)
+1. [Create your own buyer](docs/create_your_own_buyer.md)
+2. [Customize your route shader](docs/customize_your_route_shader.md)
 3. [Run your own client and server](docs/run_your_own_client_and_server.md)
 4. [Integrate with your game](docs/integrate_with_your_game.md)
 5. [Unreal engine plugin](docs/unreal_engine_plugin.md)
