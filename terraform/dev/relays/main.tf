@@ -689,6 +689,7 @@ resource "networknext_route_shader" test {
   bandwidth_envelope_down_kbps = 256
   route_select_threshold = 1
   route_select_threshold = 10
+  rtt_veto = 20
 }
 
 resource "networknext_buyer" test {
