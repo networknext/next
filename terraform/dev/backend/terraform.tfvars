@@ -12,11 +12,11 @@ google_artifacts_bucket     = "gs://theodore_network_next_backend_artifacts"
 google_database_bucket      = "gs://theodore_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
-cloudflare_zone_id           = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
+cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-test_buyer_public_key  = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw=="
-test_buyer_private_key = "yaL9uP7tOncF85rlqE3P/Kee/C945C3e57zslfjB3h7/agqRKuyGHDiYbQMwLNGQ6zmVKGo3TPOsifqz2OBqjWIi/X//eD9j"
+test_buyer_public_key       = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw=="
+test_buyer_private_key      = "yaL9uP7tOncF85rlqE3P/Kee/C945C3e57zslfjB3h7/agqRKuyGHDiYbQMwLNGQ6zmVKGo3TPOsifqz2OBqjWIi/X//eD9j"
 
 raspberry_buyer_public_key  = "fUJEyRqdR0X/63g6jCCnXgetsWuzG74zqg5xB4KeJMFK7EyBaXnb1A=="
 raspberry_buyer_private_key = "fUJEyRqdR0UE0yFmg9tHAE6flSw2TnVD7+jA3q6etkbMudO84dyujf/reDqMIKdeB62xa7MbvjOqDnEHgp4kwUrsTIFpedvU"

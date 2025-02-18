@@ -12,7 +12,7 @@ google_artifacts_bucket     = "gs://theodore_network_next_backend_artifacts"
 google_database_bucket      = "gs://theodore_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
-cloudflare_zone_id           = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
+cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
 relay_backend_public_key    = "MXpPOBtw5H6SmK+obrpnpjFlYNxFdnUQScQfmEjcHQA="

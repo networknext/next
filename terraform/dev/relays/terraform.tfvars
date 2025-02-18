@@ -19,7 +19,7 @@ raspberry_datacenters = [
 	"google.iowa.6"
 ]
 
-test_buyer_public_key  = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw=="
+test_buyer_public_key       = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw=="
 
 test_datacenters = [
 	"google.iowa.1",
