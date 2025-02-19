@@ -20,13 +20,11 @@ sudo journalctl --vacuum-size 10M
 
 # install necessary packages
 
-sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
-sudo NEEDRESTART_SUSPEND=1 apt update -y
-sudo NEEDRESTART_SUSPEND=1 apt upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt dist-upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt full-upgrade -y
-sudo NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls-dev build-essential vim wget libsodium-dev flex bison clang unzip libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools -y
-sudo NEEDRESTART_SUSPEND=1 apt autoremove -y
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt autoremove -y
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt full-upgrade -y
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install libcurl3-gnutls-dev build-essential vim wget libsodium-dev flex bison clang unzip libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools -y
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt autoremove -y
 
 # install libxdp and libbpf from source. this is neccessary for the xdp relay to work
 
@@ -61,8 +59,8 @@ version_below_6_5(){
 
 if version_below_6_5
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
-  sudo NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
+  sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
   sudo reboot  
 then
-  sudo NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y # saves time in setup_relay.sh
+  sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y # saves time in setup_relay.sh
 fi
