@@ -27,10 +27,10 @@ relay_backend_public_key    = "2UrvlOyXfQk+F3QZhXrP36kecqlLaSo28+eIubVDS2Y="
 
 server_backend_public_key   = "FOl98B81AtRxlmisjkL5ROaVaV3bC6v3/hv+wubm6hs="
 
+test_server_region          = "us-central1"
+test_server_zone            = "us-central1-a"
 test_server_tag             = "007" # increment this each time you want to deploy the test server
 
 disable_backend             = false
-
 disable_raspberry           = false
-
 disable_ip2location         = false

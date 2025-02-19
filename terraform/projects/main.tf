@@ -323,11 +323,6 @@ resource "google_service_account_key" "terraform_dev" {
   public_key_type    = "TYPE_X509_PEM_FILE"
 }
 
-resource "local_file" "terraform_dev_json" {
-    filename = "terraform-dev.json"
-    content  =  base64decode(google_service_account_key.terraform_dev.private_key)
-}
-
 resource "google_service_account" "dev_runtime" {
   project  = google_project.dev.project_id
   account_id   = "dev-runtime"
@@ -366,6 +361,13 @@ resource "google_storage_bucket_iam_member" "terraform_dev_object_admin" {
   role   = "roles/storage.objectAdmin"
   member = google_service_account.terraform_dev.member
   depends_on = [google_storage_bucket.terraform]
+}
+
+# write the terraform dev key to "terraform-dev.json"
+
+resource "local_file" "terraform_dev_json" {
+    filename = "terraform-dev.json"
+    content  =  base64decode(google_service_account_key.terraform_dev.private_key)
 }
 
 # write the dev project id to "dev-project-id.txt"
@@ -454,6 +456,8 @@ resource "google_service_account_key" "terraform_dev_relays" {
   depends_on         = [google_project_service.dev_relays]
 }
 
+# write the terraform dev relays private key to "terraform-dev-relays.json"
+
 resource "local_file" "terraform_dev_relays_json" {
   filename   = "terraform-dev-relays.json"
   content    =  base64decode(google_service_account_key.terraform_dev_relays.private_key)
@@ -523,11 +527,6 @@ resource "google_service_account_key" "terraform_staging" {
   public_key_type    = "TYPE_X509_PEM_FILE"
 }
 
-resource "local_file" "terraform_staging_json" {
-    filename = "terraform-staging.json"
-    content  =  base64decode(google_service_account_key.terraform_staging.private_key)
-}
-
 resource "google_service_account" "staging_runtime" {
   project  = google_project.staging.project_id
   account_id   = "staging-runtime"
@@ -566,6 +565,13 @@ resource "google_storage_bucket_iam_member" "terraform_staging_object_admin" {
   role   = "roles/storage.objectAdmin"
   member = google_service_account.terraform_staging.member
   depends_on = [google_storage_bucket.terraform]
+}
+
+# write the terraform staging private key to "terraform-staging.json"
+
+resource "local_file" "terraform_staging_json" {
+    filename = "terraform-staging.json"
+    content  =  base64decode(google_service_account_key.terraform_staging.private_key)
 }
 
 # write the staging project id to "staging-project-id.txt"
@@ -644,11 +650,6 @@ resource "google_service_account_key" "terraform_prod" {
   public_key_type    = "TYPE_X509_PEM_FILE"
 }
 
-resource "local_file" "terraform_prod_json" {
-    filename = "terraform-prod.json"
-    content  =  base64decode(google_service_account_key.terraform_prod.private_key)
-}
-
 resource "google_service_account" "prod_runtime" {
   project  = google_project.prod.project_id
   account_id   = "prod-runtime"
@@ -687,6 +688,13 @@ resource "google_storage_bucket_iam_member" "terraform_prod_object_admin" {
   role   = "roles/storage.objectAdmin"
   member = google_service_account.terraform_prod.member
   depends_on = [google_storage_bucket.terraform]
+}
+
+# write the terraform prod private key to "terraform-prod.json"
+
+resource "local_file" "terraform_prod_json" {
+    filename = "terraform-prod.json"
+    content  =  base64decode(google_service_account_key.terraform_prod.private_key)
 }
 
 # write the prod project id to "prod-project-id.txt"
@@ -774,6 +782,8 @@ resource "google_service_account_key" "terraform_prod_relays" {
   public_key_type    = "TYPE_X509_PEM_FILE"
   depends_on         = [google_project_service.prod_relays]
 }
+
+# write the prod relays private key to "terraform-prod-relays.json"
 
 resource "local_file" "terraform_prod_relays_json" {
   filename   = "terraform-prod-relays.json"

@@ -50,16 +50,15 @@ This way you can target network acceleration to players who need it the most, wh
 4. [Integrate with your game](docs/integrate_with_your_game.md)
 5. [Unreal engine plugin](docs/unreal_engine_plugin.md)
 
+# Set up your Production Environment
+
+* [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
+* [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
+
 # Reference Documentation
 
 * [Portal user guide](docs/portal_user_guide.md)
 * [Next tool user guide](docs/next_tool_user_guide.md)
-* [Getting production ready for your game](docs/getting_production_ready_for_your_game.md)
-* [Planning your production relay fleet](docs/planning_your_production_relay_fleet.md)
-* [Operator guide to Google Cloud relays](docs/operator_guide_to_google_cloud_relays.md)
-* [Operator guide to AWS relays](docs/operator_guide_to_aws_relays.md)
-* [Operator guide to Akamai relays](docs/operator_guide_to_akamai_relays.md)
-* [Operator guide to bare metal relays](docs/operator_guide_to_bare_metal_relays.md)
 * [Network Next Terraform provider](docs/network_next_terraform_provider.md)
 * [Datacenter and relay naming conventions](docs/datacenter_and_relay_naming_conventions.md)
 * [BigQuery table schemas](docs/bigquery_table_schemas.md)

@@ -33,18 +33,18 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_region" { type = string }
+variable "test_server_zone" { type = string }
 variable "test_server_tag" { type = string }
 
 variable "disable_backend" { type = bool }
-
 variable "disable_raspberry" { type = bool }
-
 variable "disable_ip2location" { type = bool }
 
 locals {
-  google_project_id          = file("../../projects/dev-project-id.txt")
-  google_project_number      = file("../../projects/dev-project-number.txt")
-  google_service_account     = file("../../projects/dev-runtime-service-account.txt")
+  google_project_id          = file("~/secrets/dev-project-id.txt")
+  google_project_number      = file("~/secrets/dev-project-number.txt")
+  google_service_account     = file("~/secrets/dev-runtime-service-account.txt")
   maxmind_license_key        = file("~/secrets/maxmind.txt")
   relay_backend_private_key  = file("~/secrets/dev-relay-backend-private-key.txt")
   server_backend_private_key = file("~/secrets/dev-server-backend-private-key.txt")
@@ -125,6 +125,15 @@ resource "google_compute_subnetwork" "development" {
   project                  = local.google_project_id
   ip_cidr_range            = "10.0.0.0/16"
   region                   = var.google_region
+  network                  = google_compute_network.development.id
+  private_ip_google_access = true
+}
+
+resource "google_compute_subnetwork" "test" {
+  name                     = "test"
+  project                  = local.google_project_id
+  ip_cidr_range            = "10.2.0.0/16"
+  region                   = var.test_server_region
   network                  = google_compute_network.development.id
   private_ip_google_access = true
 }
@@ -1105,6 +1114,7 @@ resource "google_compute_router_nat" "nat" {
 
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
+  region = var.test_server_region
 }
 
 resource "google_compute_instance" "test_server" {
@@ -1113,7 +1123,7 @@ resource "google_compute_instance" "test_server" {
 
   name         = "test-server-${var.test_server_tag}"
   machine_type = "n1-standard-2"
-  zone         = var.google_zone
+  zone         = var.test_server_zone
   tags         = ["allow-ssh", "allow-udp-all"]
 
   allow_stopping_for_update = true
@@ -1126,7 +1136,7 @@ resource "google_compute_instance" "test_server" {
 
   network_interface {
     network    = google_compute_network.development.id
-    subnetwork = google_compute_subnetwork.development.id
+    subnetwork = google_compute_subnetwork.test.id
     access_config {
       nat_ip = google_compute_address.test_server_address.address
     }
