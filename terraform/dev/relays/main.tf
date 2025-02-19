@@ -45,7 +45,7 @@ provider "networknext" {
 locals {
 
   google_credentials = "~/secrets/terraform-dev-relays.json"
-  google_project     = file("../../projects/dev-relays-project-id.txt")
+  google_project     = file("~/secrets/dev-relays-project-id.txt")
   google_relays = {
 
     "google.iowa.1.a" = {

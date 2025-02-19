@@ -1652,9 +1652,10 @@ func secrets() {
 
 	// zip up all secrets so we can upload them to semaphore ci in a single artifact
 
-	fmt.Printf("copying secrets from terraform/projects to ~/secrets...\n")
+	fmt.Printf("moving secrets from terraform/projects to ~/secrets...\n")
 
-	bash("cp -f terraform/projects/*.json ~/secrets")
+	bash("mv -f terraform/projects/*.txt ~/secrets")
+	bash("mv -f terraform/projects/*.json ~/secrets")
 
 	fmt.Printf("\nzipping up secrets -> secrets.tar.gz\n\n")
 

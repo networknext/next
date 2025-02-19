@@ -42,9 +42,9 @@ variable "disable_raspberry" { type = bool }
 variable "disable_ip2location" { type = bool }
 
 locals {
-  google_project_id          = file("../../projects/dev-project-id.txt")
-  google_project_number      = file("../../projects/dev-project-number.txt")
-  google_service_account     = file("../../projects/dev-runtime-service-account.txt")
+  google_project_id          = file("~/secrets/dev-project-id.txt")
+  google_project_number      = file("~/secrets/dev-project-number.txt")
+  google_service_account     = file("~/secrets/dev-runtime-service-account.txt")
   maxmind_license_key        = file("~/secrets/maxmind.txt")
   relay_backend_private_key  = file("~/secrets/dev-relay-backend-private-key.txt")
   server_backend_private_key = file("~/secrets/dev-server-backend-private-key.txt")
