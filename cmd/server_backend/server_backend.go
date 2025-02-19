@@ -508,7 +508,7 @@ func locateIP_Local(ip net.IP) (float32, float32) {
 func locateIP_Dev(ip net.IP) (float32, float32) {
 	ipv4 := ip.To4()
 	if ipv4[0] == 34 || ipv4[0] == 35 {
-		// client running in google cloud: mock lat/long of major US cities for testing
+		// This is a raspberry client running in google cloud: mock lat/long of major US cities for testing
 		index := common.RandomInt(0, 22)
 		switch index {
 		case 0:
@@ -559,8 +559,12 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 			return 40.760799, -111.890999 // salt lake city
 		}
 	}
-	// likely a real client. do ip2location with maxmind
-	return service.GetLocation(ip)
+	// this is a real client. do ip2location with maxmind if enabled, otherwise fallback to fixed location for debugging
+	if enableIP2Location {
+		return service.GetLocation(ip)
+	} else {
+		return 40.7128, -74.0060	// new york
+	}
 }
 
 func locateIP_Real(ip net.IP) (float32, float32) {
