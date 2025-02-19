@@ -33,12 +33,12 @@ variable "raspberry_buyer_private_key" { type = string }
 
 variable "ip2location_bucket_name" { type = string }
 
+variable "test_server_region" { type = string }
+variable "test_server_zone" { type = string }
 variable "test_server_tag" { type = string }
 
 variable "disable_backend" { type = bool }
-
 variable "disable_raspberry" { type = bool }
-
 variable "disable_ip2location" { type = bool }
 
 locals {
