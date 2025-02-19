@@ -129,6 +129,15 @@ resource "google_compute_subnetwork" "development" {
   private_ip_google_access = true
 }
 
+resource "google_compute_subnetwork" "test" {
+  name                     = "test"
+  project                  = local.google_project_id
+  ip_cidr_range            = "10.2.0.0/16"
+  region                   = var.test_server_region
+  network                  = google_compute_network.development.id
+  private_ip_google_access = true
+}
+
 resource "google_compute_subnetwork" "internal_http_load_balancer" {
   name          = "internal-http-load-balancer"
   project       = local.google_project_id
@@ -1105,6 +1114,7 @@ resource "google_compute_router_nat" "nat" {
 
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
+  region = var.test_server_region
 }
 
 resource "google_compute_instance" "test_server" {
@@ -1113,7 +1123,7 @@ resource "google_compute_instance" "test_server" {
 
   name         = "test-server-${var.test_server_tag}"
   machine_type = "n1-standard-2"
-  zone         = var.google_zone
+  zone         = var.test_server_zone
   tags         = ["allow-ssh", "allow-udp-all"]
 
   allow_stopping_for_update = true
@@ -1126,7 +1136,7 @@ resource "google_compute_instance" "test_server" {
 
   network_interface {
     network    = google_compute_network.development.id
-    subnetwork = google_compute_subnetwork.development.id
+    subnetwork = google_compute_subnetwork.test.id
     access_config {
       nat_ip = google_compute_address.test_server_address.address
     }
