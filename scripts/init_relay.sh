@@ -1,5 +1,7 @@
 #!/bin/sh
 
+VPN_ADDRESS="45.79.157.168"
+
 if test -f /etc/init_relay_completed; then
   echo "init relay completed"
   exit 0

@@ -903,7 +903,7 @@ func config(env Environment, regexes []string) {
 
 	// IMPORTANT: if we don't have the global secrets yet (1.0 version of network next), we need to back generate them from the source code...
 
-	if (true) { // (!fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir))) {
+	if (!fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir))) {
 
 		fmt.Printf("extracting global secrets from source:\n\n" );
 
@@ -1480,6 +1480,11 @@ func config(env Environment, regexes []string) {
 	// update scripts
 
 	fmt.Printf("\n------------------------------------------\n         updating scripts\n------------------------------------------\n\n")
+
+	fmt.Printf("scripts/init_relay.sh\n")
+	{
+		replace("scripts/init_relay.sh", "^\\s*VPN_ADDRESS=\".+\"\\s*$", fmt.Sprintf("VPN_ADDRESS=\"%s\"", config.VPNAddress))
+	}
 
 	fmt.Printf("scripts/setup_relay.sh\n")
 	{

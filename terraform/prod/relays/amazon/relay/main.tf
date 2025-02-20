@@ -47,7 +47,7 @@ resource "aws_instance" "relay" {
     create_before_destroy = true
     ignore_changes = [ami]
   }
-  user_data = replace(file("../../../scripts/init_relay.sh"), "$VPN_ADDRESS", var.vpn_address)
+  user_data = file("../../../scripts/init_relay.sh")
 }
 
 # --------------------------------------------------------------------------
