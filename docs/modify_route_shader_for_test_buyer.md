@@ -16,14 +16,14 @@ Open the file "terraform/dev/relays/main.tf" and make the following changes:
 
 Commit the changes:
 
-```
+```console
 git commit -am "disable force next"
 git push origin
 ```
 
 Apply the changes with terraform:
 
-```
+```console
 cd ~/next/terraform/dev/relays
 terraform init
 terraform apply
@@ -33,7 +33,7 @@ The terraform actions have updated the route shader for the test buyer in the po
 
 To make these changes live, we need to commit them to the dev environment:
 
-```
+```console
 cd ~/next
 next database
 next commit
@@ -49,7 +49,7 @@ Please wait a few minutes for the updated settings to take effect, they should b
 
 Connect a test client again:
 
-```
+```console
 run client
 ```
 
