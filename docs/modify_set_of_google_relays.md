@@ -182,4 +182,4 @@ But to actually find this acceleration, we need multiple different networks to o
 
 This means we need to spin up as many different relays in Sao Paulo that we can find from different hosting companies!
 
-Up next: [Modify the set of amazon relays](modify_the_set_of_amazon_relays.md).
+Up next: [Modify set of amazon relays](modify_set_of_amazon_relays.md).
