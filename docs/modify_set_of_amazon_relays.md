@@ -2,44 +2,48 @@
 
 <br>
 
-# Spin dev back up
+# Modify set of amazon relays
 
-Tag a new dev build to trigger a deploy:
+Unfortunately, the AWS terraform provider is structured in such a way that we need to generate much more terraform scripts than google cloud.
 
-```
-git checkout dev
-git tag dev-002
-git push origin dev-002
-```
-
-Wait for the deploy to complete on https://semaphoreci.com
-
-Activate the google cloud dev configuration on your local machine:
+Because of this, the set of amazon relays in not specified in terraform, but in sellers/amazon.go:
 
 ```
-gcloud config configurations activate dev
+	// DEV RELAYS
+
+	var devRelayMap = map[string][]string{
+		"amazon.virginia.1":  {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.2":  {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.ohio.1":      {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.ohio.2":      {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	}
 ```
 
-Wait for SSL certificates to become active:
+To change the set of amazon relays, edit amazon.go and change the devRelayMap to this:
 
 ```
-gcloud compute ssl-certificates list
+	var devRelayMap = map[string][]string{
+		"amazon.virginia.1":  {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.2":  {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.3":  {"amazon.virginia.3", "m4.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.4":  {"amazon.virginia.4", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.5":  {"amazon.virginia.5", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.virginia.6":  {"amazon.virginia.6", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.saopaulo.1":  {"amazon.saopaulo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.saopaulo.2":  {"amazon.saopaulo.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+		"amazon.saopaulo.3":  {"amazon.saopaulo.3", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	}
 ```
 
-Select the dev environment and ping it:
+And then run:
 
 ```
-next select dev
-next ping
+next config
 ```
 
-You should see a response:
+This updates the generated amazon terraform files.
 
-```console
-pong [dev-002]
-```
-
-Next, create dev relays with terraform:
+Next, apply the changes with terraform:
 
 ```
 cd ~/next/terraform/dev/relays
@@ -47,7 +51,49 @@ terraform init
 terraform apply
 ```
 
-Commit the changes terraform made to the database to make them active:
+Please note that depending on your AWS account, amazon.virginia.n will be mapped to different AWS availability zones in your account. See [this document](https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html) for more information.
+
+Because of this, it's likely that you'll see an error that one of the virginia datacenters does not support m4.large or m5a.large machine types.
+
+To fix this, you can view the mapping between network next datacenter name and availability zones on your account by going:
+
+```
+cd ~/next
+next datacenters amazon | grep virginia
+```
+
+And it will print out the mapping of availability zones to network next datacenters for your AWS account:
+
+<img width="918" alt="next datacenters amazon" src="https://github.com/user-attachments/assets/c7bb6b11-ee68-4bc7-b943-b056380bfc0a" />
+	
+To fix any terraform errors, you must use the aws command locally to find what instance types are supported in each AWS availability zone:
+
+For example:
+
+```
+aws ec2 describe-instance-type-offerings --location-type availability-zone --filters Name=location,Values=us-east-1e
+```
+
+Will print out all instance types available in **us-east-1e**, which corresponds to _amazon.virginia.1_ on my AWS account (it will likely be different in your AWS account).0
+
+Then you can edit sellers/amazon.go and setup supported instance types in each availability zone, and then run terraform again:
+
+```
+cd ~/next/terraform/dev/relays
+terraform init
+terraform apply
+```
+
+And once you have the correct machine type for each amazon datacenter it should succeed.
+
+Commit the changes made to sellers/amazon.go to the git repo:
+
+```
+git commit -am "change amazon relays"
+git push origin
+```
+
+Once you have the relays created, commit the database to make the new relay configuration active on the backend:
 
 ```
 cd ~/next
@@ -55,55 +101,18 @@ next database
 next commit
 ```
 
-Connect to the VPN and setup the relays:
+Wait a few minutes for the relays to initialize, then connect to the VPN and setup the new amazon relays:
 
 ```
-next setup
+next setup amazon
 ```
 
-Disconnect from the VPN.
+After a short while, the amazon relays should be online:
 
-Wait 5-10 minutes and all the relays should be online:
-
-```console
-next relays
-
-	gaffer@batman next % next relays
-
-	┌───────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬─────────────────────┐
-	│ Name              │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version             │
-	├───────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼─────────────────────┤
-	│ akamai.atlanta    │ 66.228.56.126:40000  │ 4c1499bedb76d4c3 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.dallas     │ 45.56.124.213:40000  │ a93caa50aede83ce │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.fremont    │ 74.207.254.36:40000  │ 93abc98ceb2e90f  │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.newyork    │ 45.79.163.17:40000   │ 6cc0a603455bf226 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.ohio.1     │ 3.145.161.46:40000   │ 8202db0dab012b82 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.ohio.2     │ 18.219.60.100:40000  │ ae46ceb0b291cb1  │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.virginia.1 │ 3.231.57.221:40000   │ 5e0e4e9688c34d3  │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.virginia.2 │ 18.204.18.110:40000  │ f958ca961febf2ad │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.a   │ 34.67.114.105:40000  │ 1e2e20dbe0b72873 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.b   │ 34.58.5.125:40000    │ 45dffc7b9af1a152 │ online │ 58s    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.c   │ 146.148.94.99:40000  │ 2ff45e2957f7aae4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.2     │ 130.211.207.80:40000 │ 505bec9a4a376968 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.3     │ 34.41.237.105:40000  │ bc5c83b15fb7ce5d │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.6     │ 34.172.89.168:40000  │ c8a8fff602ba9372 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.1     │ 34.162.247.234:40000 │ cf1ee1f55d784043 │ online │ 29m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.2     │ 34.162.208.105:40000 │ ea918c4b7d07a1d3 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.3     │ 34.162.125.248:40000 │ cf96a8f48138ad41 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.1 │ 34.48.205.128:40000  │ 8a94407262f5dfe2 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.2 │ 35.245.14.224:40000  │ 3a460ae16945cfd9 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.3 │ 34.150.140.229:40000 │ 5928d45a42ab20c4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
+```
+next relays amazon
 ```
 
-View your dev portal running at **https://portal-dev.yourdomain.com**
+<img width="1164" alt="next relays amazon" src="https://github.com/user-attachments/assets/f41be280-b757-44f1-a6d8-a3618355cab5" />
 
-You should see sessions running like this:
-
-<img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
-
-And see your relays are all online:
-
-<img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
-
-Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
+Up next: [Modify set of akamai relays](modify_set_of_akamai_relays.md).
