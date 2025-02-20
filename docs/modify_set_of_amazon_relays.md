@@ -8,7 +8,7 @@ Unfortunately, the AWS terraform provider is structured in such a way that we ne
 
 Because of this, the set of amazon relays in not specified in terraform, but in sellers/amazon.go:
 
-```terraform
+```go
 // DEV RELAYS
 
 var devRelayMap = map[string][]string{
@@ -22,7 +22,7 @@ var devRelayMap = map[string][]string{
 
 To change the set of amazon relays, just edit this this file and change the devRelayMap:
 
-```terraform
+```go
 // DEV RELAYS
 
 var devRelayMap = map[string][]string{
