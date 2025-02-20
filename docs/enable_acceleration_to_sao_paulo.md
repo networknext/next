@@ -11,6 +11,7 @@ By default the test buyer is setup so that the following datacenters are acceler
 1. google.iowa.1
 2. google.iowa.2
 3. google.iowa.3
+4. google.iowa.6
 
 In this section we're going to enable acceleration for the google Sao Paulo datacenters:
 
