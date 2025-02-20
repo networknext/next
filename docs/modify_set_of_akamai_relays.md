@@ -126,4 +126,4 @@ next relays akamai
 
 <img width="1158" alt="next relays akamai" src="https://github.com/user-attachments/assets/9be4f7bc-c386-478c-98b8-c5a2154abdb7" />
 
-Up next: [Spin up other relays in Sao Paulo](spin_up_other_relays_in_saopaulo.md).
+Up next: [Spin up other relays in Sao Paulo](spin_up_other_relays_in_sao_paulo.md).
