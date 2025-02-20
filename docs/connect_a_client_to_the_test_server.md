@@ -12,14 +12,14 @@ You can see this test server running in google cloud if you look at VMs:
 
 First, make sure source is built locally:
 
-```
+```console
 cd ~/next
 make
 ```
 
 Now can connect a client to this test server like this:
 
-```
+```console
 run client
 ```
 
