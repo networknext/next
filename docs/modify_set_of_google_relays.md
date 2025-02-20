@@ -6,141 +6,141 @@
 
 Open the file "terraform/dev/relays/main.tf" and change the locals section underneath "GOOGLE RELAYS" to match this:
 
-```
-	# =============
-	# GOOGLE RELAYS
-	# =============
+```terraform
+# =============
+# GOOGLE RELAYS
+# =============
 
-	locals {
+locals {
 
-	  google_credentials = "~/secrets/terraform-dev-relays.json"
-	  google_project     = file("../../projects/dev-relays-project-id.txt")
-	  google_relays = {
+  google_credentials = "~/secrets/terraform-dev-relays.json"
+  google_project     = file("../../projects/dev-relays-project-id.txt")
+  google_relays = {
 
-	    "google.saopaulo.1" = {
-	      datacenter_name = "google.saopaulo.1"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.saopaulo.1" = {
+      datacenter_name = "google.saopaulo.1"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.saopaulo.2" = {
-	      datacenter_name = "google.saopaulo.2"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.saopaulo.2" = {
+      datacenter_name = "google.saopaulo.2"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.saopaulo.3" = {
-	      datacenter_name = "google.saopaulo.3"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.saopaulo.3" = {
+      datacenter_name = "google.saopaulo.3"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.dallas.1" = {
-	      datacenter_name = "google.dallas.1"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.dallas.1" = {
+      datacenter_name = "google.dallas.1"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.dallas.2" = {
-	      datacenter_name = "google.dallas.2"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.dallas.2" = {
+      datacenter_name = "google.dallas.2"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.dallas.3" = {
-	      datacenter_name = "google.dallas.3"
-	      type            = "n2-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.dallas.3" = {
+      datacenter_name = "google.dallas.3"
+      type            = "n2-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.virginia.1" = {
-	      datacenter_name = "google.virginia.1"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.virginia.1" = {
+      datacenter_name = "google.virginia.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.virginia.2" = {
-	      datacenter_name = "google.virginia.2"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.virginia.2" = {
+      datacenter_name = "google.virginia.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.virginia.3" = {
-	      datacenter_name = "google.virginia.3"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.virginia.3" = {
+      datacenter_name = "google.virginia.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.southcarolina.2" = {
-	      datacenter_name = "google.southcarolina.2"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.southcarolina.2" = {
+      datacenter_name = "google.southcarolina.2"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.southcarolina.3" = {
-	      datacenter_name = "google.southcarolina.3"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
+    "google.southcarolina.3" = {
+      datacenter_name = "google.southcarolina.3"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
 
-	    "google.southcarolina.4" = {
-	      datacenter_name = "google.southcarolina.4"
-	      type            = "n1-standard-2"
-	      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-	    },
-	  }
-	}
+    "google.southcarolina.4" = {
+      datacenter_name = "google.southcarolina.4"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+  }
+}
 ```
 
 This changes the set of google cloud relays from:
 
-1. google.iowa.1.a
-2. google.iowa.1.b
-3. google.iowa.1.c
-4. google.iowa.2
-5. google.iowa.3
-6. google.iowa.6
-7. google.ohio.1
-8. google.ohio.2
-9. google.ohio.3
-10. google.virginia.1
-11. google.virginia.2
-12. google.virginia.3
+* google.iowa.1.a
+* google.iowa.1.b
+* google.iowa.1.c
+* google.iowa.2
+* google.iowa.3
+* google.iowa.6
+* google.ohio.1
+* google.ohio.2
+* google.ohio.3
+* google.virginia.1
+* google.virginia.2
+* google.virginia.3
 
 To:
 
-1. google.saopaulo.1
-2. google.saopaulo.2
-3. google.saopaulo.3
-4. google.dallas.1
-5. google.dallas.2
-6. google.dallas.3
-7. google.virginia.1
-8. google.virginia.2
-9. google.virginia.3
-10. google.southcarolina.2
-11. google.southcarolina.3
-12. google.southcarolina.4
+* google.saopaulo.1
+* google.saopaulo.2
+* google.saopaulo.3
+* google.dallas.1
+* google.dallas.2
+* google.dallas.3
+* google.virginia.1
+* google.virginia.2
+* google.virginia.3
+* google.southcarolina.2
+* google.southcarolina.3
+* google.southcarolina.4
 
 The good news is that terraform takes care of all changes for you, including removing old google cloud VMs and adding new ones. It's all automatic. 
 
 First check in your work:
 
-```
+```console
 git commit -am "change google relays"
 git push origin
 ```
 
 Then run terraform:
 
-```
+```console
 cd terraform/dev/relays
 terraform apply
 ```
 
 Commit the database to the backend to make it active:
 
-```
+```console
 cd ~/next
 next database
 next commit
@@ -150,13 +150,13 @@ Wait a few minutes for the relays to initialize...
 
 Connect to the VPN, then setup the new google relays:
 
-```
+```console
 next setup google
 ```
 
 After about 5 minutes the new relays should be online:
 
-```
+```console
 next relays
 ```
 
@@ -168,7 +168,7 @@ Now we can SSH into the test server again:
 
 Then run:
 
-```
+```console
 sudo systemctl restart app && sudo journalctl -fu app
 ```
 
