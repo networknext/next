@@ -22,7 +22,7 @@ git tag dev-004
 git push origin dev-004
 ```
 
-When the deploy is complete, click on the "Servers" item in the portal nav menu, and you should see the test server is now running in Sao Paulo:
+When the deploy succeeds, click on the "Servers" item in the portal nav menu, and you should see the test server is now running in Sao Paulo:
 
 <img width="1448" alt="test server in sao paulo portal" src="https://github.com/user-attachments/assets/dcc259ac-4d06-4120-b1c3-b126d7557033" />
 
