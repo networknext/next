@@ -6,36 +6,35 @@
 
 Open the file "terraform/dev/terraform.tfvars" and set "disable_raspberry" to true:
 
-	(image of config highlighting raspberry disable true)
+<img width="1363" alt="disable raspberry" src="https://github.com/user-attachments/assets/d861a1b2-84eb-4b88-b05f-86b9c480b652" />
 
-Commit your changes to the git repository:
-
+```
 git commit -am "disable raspberry"
 git push origin
+```
 
 Tag the build to trigger a deploy:
 
-	git tag dev-003
-	git push origin dev-003
+```
+git tag dev-003
+git push origin dev-003
+```
 
 This process is how you deploy any code or configuration change to the dev backend.
 
-Tag dev-[n+1]
+1. Tag dev-[n+1]
+2. Push the tag
 
-Push the tag
+The code at the tag is then automatically built and deployed to the dev environment.
 
-The code at the tag is automatically built and deployed to the dev environment.
-
-While the deploy is running you can go to "Instance Groups" in google cloud, and watch deploy -- notice that each instance template name with "002" is being replaced with "003"
+While the deploy is running you can go to "Instance Groups" in google cloud, and watch the deploy -- notice that each instance template name with "002" is being replaced with "003":
 
 	(screenshot showing deploy in progres....)
 
-and when the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each.
+when the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each. They're disabled:
 
 	(screenshot showing completed result)
 
-Go to the portal and you see that the raspberry clients are no longer running.
+Go to your portal and you see that the raspberry clients are no longer running.
 
 	(screenshot)
-
-Up next: [Run your own client and server](run_your_own_client_and_server.md).
