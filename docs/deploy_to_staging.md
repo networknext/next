@@ -9,6 +9,7 @@
 Create a new staging branch and tag it as "staging-001":
 
 ```console
+cd ~/next
 git checkout -b staging
 git push --set-upstream origin staging
 git push origin
