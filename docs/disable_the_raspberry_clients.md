@@ -4,7 +4,13 @@
 
 # Disable the raspberry clients
 
-Open the file "terraform/dev/terraform.tfvars" and set "disable_raspberry" to true:
+The clients in the portal are test clients called "raspberry clients", because we used to run them around the world on raspberry pis in people's homes. 
+
+These days we just simulate clients in people's homes in dev by default, so we exercise codepaths and can easily test the portal is orking.
+
+But as we move forward, we don't want these fake clients running anymore. We want real clients only in the portal.
+
+To do this, open the file "terraform/dev/terraform.tfvars" and set "disable_raspberry" to true:
 
 <img width="1363" alt="disable raspberry" src="https://github.com/user-attachments/assets/d861a1b2-84eb-4b88-b05f-86b9c480b652" />
 
@@ -22,7 +28,7 @@ git tag dev-003
 git push origin dev-003
 ```
 
-This process is how you deploy any code or configuration change to the dev backend.
+By the way, this process is how you deploy any code or configuration change to the dev backend.
 
 1. Tag dev-[n+1]
 2. Push the tag
@@ -31,13 +37,13 @@ The code at the tag is then automatically built and deployed to the dev environm
 
 While the deploy is running you can go to "Instance Groups" in google cloud, and watch the deploy. 
 
-Notice that each instance template name with "002" is being replaced with "003":
-
 <img width="946" alt="during deploy" src="https://github.com/user-attachments/assets/5e0a5b4f-7d72-44a1-86c1-11caeb83caa3" />
 
-when the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each.
+Notice that each instance template name with "002" is being replaced with "003":
 
-They're now disabled.
+When the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each.
+
+They raspberry test server, clients and backend are now disabled.
 
 <img width="946" alt="after deploy" src="https://github.com/user-attachments/assets/685d0e7c-9f0d-4419-be7d-5c51692c8fdc" />
 
