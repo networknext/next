@@ -66,10 +66,10 @@ cd ~/next
 next datacenters amazon | grep virginia
 ```
 
-And it will print out the mapping of availability zones to network next datacenters for your AWS account:
+And it will print out the mapping of availability zones to network next datacenters for your AWS account in virginia:
 
-<img width="918" alt="next datacenters amazon" src="https://github.com/user-attachments/assets/c7bb6b11-ee68-4bc7-b943-b056380bfc0a" />
-	
+<img width="910" alt="next datacenters amazon virginia" src="https://github.com/user-attachments/assets/3ae241fc-24b9-4f9f-a86f-235fc8b6549b" />
+
 To fix any terraform errors, you must use the aws command locally to find what instance types are supported in each AWS availability zone:
 
 For example:
