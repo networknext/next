@@ -80,10 +80,12 @@ aws ec2 describe-instance-type-offerings --location-type availability-zone --fil
 
 Will print out all instance types available in **us-east-1e**, which corresponds to _amazon.virginia.1_ on my AWS account (it will likely be different in your AWS account).0
 
-Then you can edit sellers/amazon.go and setup supported instance types in each availability zone, and then run terraform again:
+Then you can edit sellers/amazon.go and setup supported instance types in each availability zone, and then run next config and terraform again:
 
 ```
-cd ~/next/terraform/dev/relays
+cd ~/next
+next config
+cd terraform/dev/relays
 terraform init
 terraform apply
 ```
@@ -97,7 +99,7 @@ git commit -am "change amazon relays"
 git push origin
 ```
 
-Once you have the relays created, commit the database to make the new relay configuration active on the backend:
+And commit the database to make the new relay configuration active on the backend:
 
 ```
 cd ~/next
