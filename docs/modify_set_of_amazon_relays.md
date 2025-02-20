@@ -17,11 +17,12 @@ var devRelayMap = map[string][]string{
 	"amazon.ohio.1":      {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.ohio.2":      {"amazon.ohio.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
+
 ```
 
 To change the set of amazon relays, edit amazon.go and change the devRelayMap to this:
 
-```
+```terraform
 // DEV RELAYS
 
 var devRelayMap = map[string][]string{
@@ -35,6 +36,7 @@ var devRelayMap = map[string][]string{
 	"amazon.saopaulo.2":  {"amazon.saopaulo.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.saopaulo.3":  {"amazon.saopaulo.3", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
+
 ```
 
 And then run:
