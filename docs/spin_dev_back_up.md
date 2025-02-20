@@ -96,7 +96,7 @@ next relays
 	└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
 ```
 
-View the portal at **https://portal-dev.[your domain]**
+View the portal at **https://portal-dev.yourdomain.com**
 
 You should see sessions running like this:
 
