@@ -102,7 +102,7 @@ You should see sessions running like this:
 
 <img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
 
-And see that your relays being online:
+And see your relays are all online:
 
 <img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
 
