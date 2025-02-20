@@ -119,6 +119,6 @@ After a short while, the amazon relays should be online:
 next relays amazon
 ```
 
-<img width="1164" alt="next relays amazon" src="https://github.com/user-attachments/assets/f41be280-b757-44f1-a6d8-a3618355cab5" />
+<img width="1158" alt="next relays amazon" src="https://github.com/user-attachments/assets/401eb119-a6f9-4f4b-acc1-112c7df332e3" />
 
 Up next: [Modify set of akamai relays](modify_set_of_akamai_relays.md).
