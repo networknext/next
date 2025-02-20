@@ -119,7 +119,8 @@ This is the general process for setting up manual relays in Network Next.
 3. SSH into the relay via `next ssh [relayname]` and run the scripts/init_relay.sh manually
 4. Connect to the VPN
 5. Run `next setup [relayname]` locally
-6. Verify the new relays are up by running `next relays`
+6. Verify the new relay is up by running `next relays`
+7. Wait 5 minutes before the relay is ready to carry traffic
 
 ps. If you cannot SSH in for step #3, it is possible your provider is using a different username for SSH login by default than root. 
 
