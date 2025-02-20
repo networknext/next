@@ -22,6 +22,8 @@ var devRelayMap = map[string][]string{
 To change the set of amazon relays, edit amazon.go and change the devRelayMap to this:
 
 ```
+// DEV RELAYS
+
 var devRelayMap = map[string][]string{
 	"amazon.virginia.1":  {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.virginia.2":  {"amazon.virginia.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
