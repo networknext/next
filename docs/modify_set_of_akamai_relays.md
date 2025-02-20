@@ -98,7 +98,7 @@ git push origin
 Then run terraform:
 
 ```console
-cd ~/nextterraform/dev/relays
+cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
