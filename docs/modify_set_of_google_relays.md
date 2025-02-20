@@ -172,12 +172,14 @@ Then run:
 sudo systemctl restart app && sudo journalctl -fu app
 ```
 
-and you'll see that the test server finds a server relay in Sao Paulo:
+and you'll see that the test server now finds a server relay in Sao Paulo:
 
 <img width="1245" alt="server finds relays" src="https://github.com/user-attachments/assets/703be26e-9a34-420f-aa37-550cc247ee97" />
 
-Now acceleration is _possible_, but to actually find this acceleration, we need multiple different networks to optimize across for clients connecting to google.saopaulo.1
+This is great news. Acceleration is now _possible_.
 
-This means we need to spin up as many different relays in Sao Paulo that we can find from different hosting companies.
+But to actually find this acceleration, we need multiple different networks to optimize across for clients connecting to google.saopaulo.1
+
+This means we need to spin up as many different relays in Sao Paulo that we can find from different hosting companies!
 
 Up next: [Modify the set of amazon relays](modify_the_set_of_amazon_relays.md).
