@@ -101,4 +101,4 @@ Go to https://portal.[yourdomain.com]
 
 Congratulations! Your production environment is now online!
 
-Next step: [Tear down Staging and Production](tear_down_staging_and_production.md)
+Next step: [Tear down Dev, Staging and Production](tear_down_dev_staging_and_production.md)
