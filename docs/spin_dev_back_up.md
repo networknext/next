@@ -12,15 +12,15 @@ git tag dev-002
 git push origin dev-002
 ```
 
-Wait for semaphore build to complete...
+Wait for the deploy to complete on https://semaphoreci.com ...
 
-Activate the google cloud dev configuration:
+Activate the google cloud dev configuration on your local machine:
 
 ```
 gcloud config configurations activate dev
 ```
 
-Wait for SSL certificates to be active:
+Wait for SSL certificates to become active:
 
 ```
 gcloud compute ssl-certificates list
@@ -33,7 +33,13 @@ next select dev
 next ping
 ```
 
-Create dev relays with terraform:
+You should see a response:
+
+```console
+pong [dev-002]
+```
+
+Next, create dev relays with terraform:
 
 ```
 cd ~/next/terraform/dev/relays
@@ -41,7 +47,7 @@ terraform init
 terraform apply
 ```
 
-Commit the changes to the database to make them active:
+Commit the changes terraform made to the database to make them active:
 
 ```
 cd ~/next
@@ -49,7 +55,7 @@ next database
 next commit
 ```
 
-Connect to the VPN and set up all relays:
+Connect to the VPN and setup the relays:
 
 ```
 next setup
@@ -90,13 +96,13 @@ next relays
 	└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
 ```
 
-View the portal at *https://portal-dev.[your domain]*
+View the portal at **https://portal-dev.[your domain]**
 
 You should see sessions running like this:
 
 <img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
 
-And see that your relays are active in the portal:
+And see that your relays being online:
 
 <img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
 
