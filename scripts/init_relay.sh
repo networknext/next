@@ -3,7 +3,7 @@
 VPN_ADDRESS="45.79.157.168"
 
 if test -f /etc/init_relay_completed; then
-  echo "init relay completed"
+  echo "relay already initialized"
   exit 0
 fi
 
@@ -59,10 +59,8 @@ version_below_6_5(){
   fi
 }
 
-if version_below_6_5
+if version_below_6_5; then
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
   sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
   sudo reboot  
-then
-  sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y # saves time in setup_relay.sh
 fi

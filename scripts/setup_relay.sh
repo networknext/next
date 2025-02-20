@@ -3,7 +3,7 @@
 # run once only
 
 if [[ -f /etc/setup_relay_completed ]]; then
-  echo "already setup"
+  echo "relay already setup"
   exit 0
 fi
 
@@ -30,12 +30,15 @@ version_below_6_5(){
   fi
 }
 
-if version_below_6_5
-then
+if version_below_6_5; then
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
   sudo NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
   sudo reboot
 fi
+
+# install linux headers needed for xdp/ebpf
+
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
 
 # make the relay prompt cool
 
