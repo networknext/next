@@ -16,14 +16,14 @@ To do this, open the file "terraform/dev/terraform.tfvars" and set "disable_rasp
 
 Commit your changes to the git repository:
 
-```
+```console
 git commit -am "disable raspberry"
 git push origin
 ```
 
 Then push a tag to trigger a deploy to dev:
 
-```
+```console
 git tag dev-003
 git push origin dev-003
 ```
