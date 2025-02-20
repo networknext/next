@@ -160,9 +160,13 @@ After about 5 minutes the new relays should be online:
 next relays
 ```
 
-	(screenshot showing new relays)
+<img width="1208" alt="relays online" src="https://github.com/user-attachments/assets/a06ef47e-99cd-4952-98a3-2261e388d6f4" />
 
-Now we can SSH into the test server again and run:
+Now we can SSH into the test server again:
+
+<img width="1482" alt="ssh into test server" src="https://github.com/user-attachments/assets/dde2a877-f1a3-4967-a212-0ad5049f86fe" />
+
+Then run:
 
 ```
 sudo systemctl restart app && sudo journalctl -fu app
@@ -170,7 +174,7 @@ sudo systemctl restart app && sudo journalctl -fu app
 
 and you'll see that the test server finds a server relay in Sao Paulo:
 
-	(screenshot of test server)
+<img width="1245" alt="server finds relays" src="https://github.com/user-attachments/assets/703be26e-9a34-420f-aa37-550cc247ee97" />
 
 Now acceleration is _possible_, but to actually find this acceleration, we need multiple different networks to optimize across for clients connecting to google.saopaulo.1
 
