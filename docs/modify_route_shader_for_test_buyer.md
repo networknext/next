@@ -65,4 +65,4 @@ Obviously, it's not particularly impressive to see a session _not_ be accelerate
 
 To make it easier to see _real acceleration_, let's move the test server to Sao Paulo, Brasil.
 
-Up next: [Move the test server to Sao Paulo](move_the_test_server_to_sao_paulo.md).
+Up next: [Move test server to Sao Paulo](move_test_server_to_sao_paulo.md).
