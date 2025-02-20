@@ -4,7 +4,7 @@
 
 # Modify set of amazon relays
 
-Unfortunately, the AWS terraform provider is structured in such a way that we need to generate much more terraform scripts than google cloud.
+Unfortunately, the AWS terraform provider is structured in such a way that we need to generate much more terraform files to get it to work with Network Next relays.
 
 Because of this, the set of amazon relays in not specified in terraform, but in sellers/amazon.go:
 
@@ -20,7 +20,7 @@ var devRelayMap = map[string][]string{
 
 ```
 
-To change the set of amazon relays, edit amazon.go and change the devRelayMap to this:
+To change the set of amazon relays, just edit this this file and change the devRelayMap:
 
 ```terraform
 // DEV RELAYS
@@ -45,7 +45,7 @@ And then run:
 next config
 ```
 
-This updates the generated amazon terraform files.
+This updates the generated amazon terraform files from the definitions in "sellers/amazon.go".
 
 Next, apply the changes with terraform:
 
@@ -55,11 +55,11 @@ terraform init
 terraform apply
 ```
 
-Please note that depending on your AWS account, amazon.virginia.n will be mapped to different AWS availability zones in your account. See [this document](https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html) for more information.
+Please note that depending on your AWS account, amazon.virginia.n will be mapped to different AWS availability zones in your account. This is not something that Network Next does, but it is inherent to how AWS  works. Please see [this document](https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html) for more information.
 
 Because of this, it's likely that you'll see an error that one of the virginia datacenters does not support m4.large or m5a.large machine types.
 
-To fix this, you can view the mapping between network next datacenter name and availability zones on your account by going:
+To fix this, you can view the mapping between Network Next datacenter name and availability zones on your account by going:
 
 ```
 cd ~/next
@@ -70,7 +70,7 @@ And it will print out the mapping of availability zones to network next datacent
 
 <img width="910" alt="next datacenters amazon virginia" src="https://github.com/user-attachments/assets/3ae241fc-24b9-4f9f-a86f-235fc8b6549b" />
 
-To fix any terraform errors, you must use the aws command locally to find what instance types are supported in each AWS availability zone:
+To fix any terraform errors, you must use the `aws` command locally to find what instance types are supported in each AWS availability zone:
 
 For example:
 
@@ -90,7 +90,7 @@ terraform init
 terraform apply
 ```
 
-And once you have the correct machine type for each amazon datacenter it should succeed.
+Once you have the correct machine type for each amazon datacenter it should succeed.
 
 Commit the changes made to sellers/amazon.go to the git repo:
 
