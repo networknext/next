@@ -960,6 +960,15 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
+		If we have debug, print it here. 
+		We no longer send it down to the SDK because of MTU.
+	*/
+
+	if ( state.Debug != nil ) {
+		core.Debug("%s", *state.Debug)
+	}
+
+	/*
 		Track duration of time spent on network next, and if the session has ever been on network next.
 	*/
 
