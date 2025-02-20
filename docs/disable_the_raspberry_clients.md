@@ -35,7 +35,9 @@ Notice that each instance template name with "002" is being replaced with "003":
 
 <img width="946" alt="during deploy" src="https://github.com/user-attachments/assets/5e0a5b4f-7d72-44a1-86c1-11caeb83caa3" />
 
-when the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each. They're disabled:
+when the deploy completes, you'll see the various "raspberry_*" instance groups now have 0 VM instances each.
+
+They're now disabled.
 
 <img width="946" alt="after deploy" src="https://github.com/user-attachments/assets/685d0e7c-9f0d-4419-be7d-5c51692c8fdc" />
 
