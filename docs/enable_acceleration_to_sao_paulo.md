@@ -8,44 +8,52 @@ Each buyer has a set of datacenters that are enabled for acceleration.
 
 By default the test buyer is setup so that the following datacenters are accelerated:
 
-# google.iowa.1
-# google.iowa.2
-# google.iowa.3
+1. google.iowa.1
+2. google.iowa.2
+3. google.iowa.3
 
 In this section we're going to enable acceleration for the google Sao Paulo datacenters:
 
-# google.saopaulo.1
-# google.saopaulo.2
-# google.saopaulo.3
+1. google.saopaulo.1
+2. google.saopaulo.2
+3. google.saopaulo.3
 
 To do this, open the file "terraform/dev/relays/terraform.tfvars", and make the following change:
 
-	(screenshot showing edit)
+<img width="851" alt="add sao paulo datacenters for test buyer" src="https://github.com/user-attachments/assets/83634f32-4b90-42d9-ab00-5db3cbc18874" />
 
 Commit the change:
 
-	git commit -am "add sao paulo datacenters for test buyer"
-	git push origin
+```
+git commit -am "add sao paulo datacenters for test buyer"
+git push origin
+```
 
-Apply the change to the postgres database via terraform:
+Apply the change via terraform:
 
-	cd terraform/dev/relays
-	terraform apply
+```
+cd ~/next/terraform/dev/relays
+terraform apply
+```
 
-And then commit the database to make the changes active in the backend:
+Commit the database to make the changes active in the backend:
 
-	cd ~/next
-	next database
-	next relays
+```
+cd ~/next
+next database
+next relays
+```
 
 You can verify this by running:
 
-	next database
+```
+next database
+```
 
 And you should now see that the test buyer is active for both "ohio" and "saopaulo" google datacenters:
 
-	(screenshot)
+<img width="422" alt="destination datacenters" src="https://github.com/user-attachments/assets/b85f883f-84e9-4a86-8c56-349716661c9f" />
 
 Next, we will to spin up some google relays.
 
-Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
+Up next: [Modify set of google relays](modify_set_of_google_relays.md).
