@@ -2,140 +2,108 @@
 
 <br>
 
-# Create your own buyer
+# Spin dev back up
 
-## 1. Generate new buyer keypair
+Tag a new dev build to trigger a deploy:
 
-Go to the console and type:
+```
+git checkout dev
+git tag dev-002
+git push origin dev-002
+```
+
+Wait for the deploy to complete on https://semaphoreci.com
+
+Activate the google cloud dev configuration on your local machine:
+
+```
+gcloud config configurations activate dev
+```
+
+Wait for SSL certificates to become active:
+
+```
+gcloud compute ssl-certificates list
+```
+
+Select the dev environment and ping it:
+
+```
+next select dev
+next ping
+```
+
+You should see a response:
 
 ```console
-cd ~/next && go run sdk/keygen/keygen.go
+pong [dev-002]
 ```
 
-You will see output like this:
-
-```console
-gaffer@macbook next % go run sdk/keygen/keygen.go
-
-Welcome to Network Next!
-
-This is your public key:
-
-    SPeLMXdfJRtK3E2rEX7L9JIFxpn+cykxtuWAUCZVLbAEcwFrc0oVoQ==
-
-This is your private key:
-
-    SPeLMXdfJRt83tjKOYXbR0JyLdbuaGH7GpK21oTalLITqCOdBVzZ40rcTasRfsv0kgXGmf5zKTG25YBQJlUtsARzAWtzShWh
-
-IMPORTANT: Save your private key in a secure place and don't share it with anybody!
-```
-
-This is your new buyer keypair. The public key can be safely shared with anybody and embedded in your client. The private key should be known only by the server, and not your players.
-
-Save your keys in your secrets directory as `buyer_public_key.txt` and `buyer_private_key.txt` and then back up your secrets directory.
-
-## 2. Create a new buyer in the database
-
-Edit the file `~/next/terraform/dev/relays/main.tf`
-
-A buyer represents your game. If you have multiple games, you will create multiple bueyers.
-
-Let's start with just one. Pick a name for your game. You need a short code for your game, with only a-z characters, and a longer name that is more descriptive.
-
-I'm going to call my game "helsinki", "Helsinki, Finland".
-
-At the bottom, add the following text, replacing "helsinki" and "Helsinki, Finland" with your own buyer code and name:
-
-```
-# ==============
-# HELSINKI BUYER
-# ==============
-
-locals {
-  helsinki_public_key = file("~/secrets/buyer_public_key.txt")
-  helsinki_datacenters = [
-    "google.iowa.1",
-    "google.iowa.2",
-    "google.iowa.3",
-    "google.iowa.6"
-  ]
-}
-
-resource "networknext_route_shader" helsinki {
-  name = "helsinki"
-  acceptable_latency = 50
-  latency_reduction_threshold = 10
-  route_select_threshold = 2
-  route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-}
-
-resource "networknext_buyer" helsinki {
-  name = "Helsinki, Finland"
-  code = "helsinki"
-  debug = true
-  live = true
-  route_shader_id = networknext_route_shader.helsinki.id
-  public_key_base64 = local.buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" helsinki {
-  count = length(local.buyer_datacenters)
-  buyer_id = networknext_buyer.helsinki.id
-  datacenter_id = networknext_datacenter.datacenters[local.buyer_datacenters].id
-  enable_acceleration = true
-}
-```
-
-## 3. Customize your route shader
-
-The route shader is configured as follows:
-
-* `acceptable_latency = 50`. Do not accelerate any player when their latency is already below 50ms. This is good enough and not worth accelerating below. This is a recommended value to start with.
-  
-* `latency_reduction_threshold = 10`. Do not accelerate a player unless we can find a latency reduction of _at least_ 10 milliseconds.
-
-* `route_select_threshold = 2`. This finds the absolute lowest latency route within 2ms of the best route available. This helps load balance across multiple routes that are effectively close enough together, instead of everybody going down a route that is temporarily 1 millisecond faster.
-
-* `route_switch_threshold = 5`. Hold the current Network Next route, unless a better route is available with at least 5ms lower latency than the current route. Don't set this too low, or the route will flap around every 10 seconds. In the future, I recommend that you increase this to 10ms, but right now 5ms is fine.
-
-* `acceptable_packet_loss_instant = 0.25`. If packet loss > 0.25% occurs in any 10 second period, accelerate the player to reduce packet loss. This catches packet loss spikes.
-
-* `acceptable_packet_loss_sustained = 0.1`. If packet loss > 0.1% occurs for 30 seconds, accelerate the player to reduce packet loss. This captures packet loss that is lower in intensity, but is sustained over a longer period.
-
-* `bandwidth_envelope_up_kbps = 256`. This is the maximum bandwidth in kilobits per-second, kilobits, not kilobytes, sent from client to server. We don't need to change this, but later on when you setup your own buyer you should adjust it to the maximum bandwidth your client will send up to to the server. If the client sends more bandwidth than this, it will not be accelerated (eg. during a load screen, this is typically OK).
-
-* `bandwidth_envelope_down_kbps = 256`. The bandwidth down from server to client in kilobits per-second. Again, we don't need to change this yet.
-
-Make any changes you want to make to the route shader. For example, you could change acceptable latency to 100ms if your game is not that latency sensitive, or change it to 0ms if your game is very latency sensitive.
-
-## 4. Update the postgres database with terraform
-
-Run terraform to make your changes:
+Next, create dev relays with terraform:
 
 ```
 cd ~/next/terraform/dev/relays
+terraform init
 terraform apply
 ```
 
-## 5. Commit the database to the backend
+Commit the changes terraform made to the database to make them active:
 
-Commit the updated database changes to the backend so they take effect:
-
-```console
+```
+cd ~/next
 next database
 next commit
 ```
 
-Your changes will be active with the runtime within 60 seconds.
+Connect to the VPN and setup the relays:
 
-## 6. Verify your buyer exists in the portal
+```
+next setup
+```
 
-Go to the portal and you should now be able to go to the "Buyers" page and see your new buyer:
+Disconnect from the VPN.
 
-<img width="1462" alt="image" src="https://github.com/networknext/next/assets/696656/ef5ecb09-2948-403c-9e78-c0957135ba66">
+Wait 5-10 minutes and all the relays should be online:
+
+```console
+next relays
+
+	gaffer@batman next % next relays
+
+	┌───────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬─────────────────────┐
+	│ Name              │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version             │
+	├───────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼─────────────────────┤
+	│ akamai.atlanta    │ 66.228.56.126:40000  │ 4c1499bedb76d4c3 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
+	│ akamai.dallas     │ 45.56.124.213:40000  │ a93caa50aede83ce │ online │ 26m    │ 0        │ relay-release-1.0.0 │
+	│ akamai.fremont    │ 74.207.254.36:40000  │ 93abc98ceb2e90f  │ online │ 27m    │ 0        │ relay-release-1.0.0 │
+	│ akamai.newyork    │ 45.79.163.17:40000   │ 6cc0a603455bf226 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
+	│ amazon.ohio.1     │ 3.145.161.46:40000   │ 8202db0dab012b82 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	│ amazon.ohio.2     │ 18.219.60.100:40000  │ ae46ceb0b291cb1  │ online │ 31m    │ 0        │ relay-release-1.0.0 │
+	│ amazon.virginia.1 │ 3.231.57.221:40000   │ 5e0e4e9688c34d3  │ online │ 30m    │ 0        │ relay-release-1.0.0 │
+	│ amazon.virginia.2 │ 18.204.18.110:40000  │ f958ca961febf2ad │ online │ 31m    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.1.a   │ 34.67.114.105:40000  │ 1e2e20dbe0b72873 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.1.b   │ 34.58.5.125:40000    │ 45dffc7b9af1a152 │ online │ 58s    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.1.c   │ 146.148.94.99:40000  │ 2ff45e2957f7aae4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.2     │ 130.211.207.80:40000 │ 505bec9a4a376968 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.3     │ 34.41.237.105:40000  │ bc5c83b15fb7ce5d │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	│ google.iowa.6     │ 34.172.89.168:40000  │ c8a8fff602ba9372 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	│ google.ohio.1     │ 34.162.247.234:40000 │ cf1ee1f55d784043 │ online │ 29m    │ 0        │ relay-release-1.0.0 │
+	│ google.ohio.2     │ 34.162.208.105:40000 │ ea918c4b7d07a1d3 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	│ google.ohio.3     │ 34.162.125.248:40000 │ cf96a8f48138ad41 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
+	│ google.virginia.1 │ 34.48.205.128:40000  │ 8a94407262f5dfe2 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
+	│ google.virginia.2 │ 35.245.14.224:40000  │ 3a460ae16945cfd9 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
+	│ google.virginia.3 │ 34.150.140.229:40000 │ 5928d45a42ab20c4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
+	└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
+```
+
+View your dev portal running at **https://portal-dev.yourdomain.com**
+
+You should see sessions running like this:
+
+<img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
+
+And see your relays are all online:
+
+<img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
 
 Up next: [Run your own client and server](run_your_own_client_and_server.md).
