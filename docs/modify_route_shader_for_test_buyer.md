@@ -61,7 +61,7 @@ Drilling in to the session you can now see only the non-accelerated latency, so 
 
 <img width="1413" alt="session detail not accelerated" src="https://github.com/user-attachments/assets/34a08352-6c05-4d3d-8f38-73f7eb6412bf" />
 
-Obviously, it's not particularly impressive to see a session _not_ be accelerated. We want to see some acceleration. 
+Obviously, it's not particularly impressive to see a session _not_ be accelerated. We want to see some acceleration!
 
 To make it easier to see _real acceleration_, let's move the test server to Sao Paulo, Brasil.
 
