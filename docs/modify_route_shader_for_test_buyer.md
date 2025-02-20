@@ -12,12 +12,12 @@ Let's modify the route shader for the test buyer, so it only accelerates players
 
 Open the file "terraform/dev/relays/main.tf" and make the following changes:
 
-<img width="954" alt="change test buyer route shader" src="https://github.com/user-attachments/assets/5ef9f0b2-b40d-4138-8d71-6c727a73e0d5" />
+<img width="556" alt="force next false" src="https://github.com/user-attachments/assets/d76530fd-9505-4c92-9adc-d5d777634ed0" />
 
 Commit the changes:
 
 ```
-git commit -am "adjust route shader for test buyer"
+git commit -am "disable force next"
 git push origin
 ```
 
