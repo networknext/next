@@ -275,17 +275,7 @@ Order a bare metal server from datapacket.com at the datacenter you want. It mus
 
 SSH into your relay.
 
-Set the env var VPN_ADDRESS to the address of your VPN:
-
-```
-export VPN_ADDRESS=(your VPN IP address)`
-```
-
-Run the init relay script:
-
-```
-./scripts/init_relay.sh
-```
+Copy and paste `scripts/init_relay.sh` and run it on the relay:
 
 This script does a few things:
 
