@@ -80,7 +80,7 @@ cd terraform/dev/relays
 terraform apply
 ```
 
-Commit your changes to the backend:
+And commit your changes to the backend:
 
 ```console
 cd ~/next
