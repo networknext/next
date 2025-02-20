@@ -12,7 +12,7 @@ git tag dev-002
 git push origin dev-002
 ```
 
-Wait for the deploy to complete on https://semaphoreci.com ...
+Wait for the deploy to complete on https://semaphoreci.com
 
 Activate the google cloud dev configuration on your local machine:
 
