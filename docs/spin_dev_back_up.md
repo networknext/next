@@ -106,4 +106,4 @@ And see your relays are all online:
 
 <img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
 
-Up next: [Run your own client and server](run_your_own_client_and_server.md).
+Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
