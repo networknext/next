@@ -2,108 +2,51 @@
 
 <br>
 
-# Spin dev back up
+# Move test server to Sao Paulo
 
-Tag a new dev build to trigger a deploy:
+Edit the file "terraform/dev/backend/terraform.tfvars" and change the test_server_zone to "southamerica-east1-a":
 
-```
-git checkout dev
-git tag dev-002
-git push origin dev-002
-```
-
-Wait for the deploy to complete on https://semaphoreci.com
-
-Activate the google cloud dev configuration on your local machine:
+<img width="1120" alt="change test server region and zone" src="https://github.com/user-attachments/assets/834fe79c-1ecf-4e4d-a4e3-a6dac093ba41" />
+	
+Commit the changes:
 
 ```
-gcloud config configurations activate dev
+git commit -am "change test server zone to sao paulo"
+git push origin
 ```
 
-Wait for SSL certificates to become active:
+Tag a new dev release:
 
 ```
-gcloud compute ssl-certificates list
+git tag dev-004
+git push origin dev-004
 ```
 
-Select the dev environment and ping it:
+When the deploy is complete, click on the "Servers" item in the portal nav menu, and you should see the test server is now running in Sao Paulo:
+
+<img width="1448" alt="test server in sao paulo portal" src="https://github.com/user-attachments/assets/dcc259ac-4d06-4120-b1c3-b126d7557033" />
+
+Let's SSH into the test server and run "sudo journalctl -fu server" to view its log:
+
+<img width="1499" alt="ssh into test server in sao paulo" src="https://github.com/user-attachments/assets/37e180e1-d657-4231-99bd-658f92055d2c" />
+
+The test server log shows that the server is autodetecting that it's running in google.saopaulo.1, but it cannot find any server relays:
+
+<img width="1076" alt="server found 0 server relays" src="https://github.com/user-attachments/assets/41223c50-ec97-4cc0-9187-fe04caf91759" />
+
+Because of this, right now you can connect a test client to the Sao Paulo datacenter and it will connect fine:
 
 ```
-next select dev
-next ping
+run client
 ```
 
-You should see a response:
+But the client is not accelerated.
 
-```console
-pong [dev-002]
-```
+Network Next requires two things before it can accelerate traffic to a server running in a datacenter:
 
-Next, create dev relays with terraform:
+1. The buyer must have acceleration enabled for the datacenter
+2. There must be at least one relay in the same datacenter as the server
 
-```
-cd ~/next/terraform/dev/relays
-terraform init
-terraform apply
-```
-
-Commit the changes terraform made to the database to make them active:
-
-```
-cd ~/next
-next database
-next commit
-```
-
-Connect to the VPN and setup the relays:
-
-```
-next setup
-```
-
-Disconnect from the VPN.
-
-Wait 5-10 minutes and all the relays should be online:
-
-```console
-next relays
-
-	gaffer@batman next % next relays
-
-	┌───────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬─────────────────────┐
-	│ Name              │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version             │
-	├───────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼─────────────────────┤
-	│ akamai.atlanta    │ 66.228.56.126:40000  │ 4c1499bedb76d4c3 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.dallas     │ 45.56.124.213:40000  │ a93caa50aede83ce │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.fremont    │ 74.207.254.36:40000  │ 93abc98ceb2e90f  │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ akamai.newyork    │ 45.79.163.17:40000   │ 6cc0a603455bf226 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.ohio.1     │ 3.145.161.46:40000   │ 8202db0dab012b82 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.ohio.2     │ 18.219.60.100:40000  │ ae46ceb0b291cb1  │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.virginia.1 │ 3.231.57.221:40000   │ 5e0e4e9688c34d3  │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-	│ amazon.virginia.2 │ 18.204.18.110:40000  │ f958ca961febf2ad │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.a   │ 34.67.114.105:40000  │ 1e2e20dbe0b72873 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.b   │ 34.58.5.125:40000    │ 45dffc7b9af1a152 │ online │ 58s    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.1.c   │ 146.148.94.99:40000  │ 2ff45e2957f7aae4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.2     │ 130.211.207.80:40000 │ 505bec9a4a376968 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.3     │ 34.41.237.105:40000  │ bc5c83b15fb7ce5d │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.iowa.6     │ 34.172.89.168:40000  │ c8a8fff602ba9372 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.1     │ 34.162.247.234:40000 │ cf1ee1f55d784043 │ online │ 29m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.2     │ 34.162.208.105:40000 │ ea918c4b7d07a1d3 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	│ google.ohio.3     │ 34.162.125.248:40000 │ cf96a8f48138ad41 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.1 │ 34.48.205.128:40000  │ 8a94407262f5dfe2 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.2 │ 35.245.14.224:40000  │ 3a460ae16945cfd9 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-	│ google.virginia.3 │ 34.150.140.229:40000 │ 5928d45a42ab20c4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-	└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
-```
-
-View your dev portal running at **https://portal-dev.yourdomain.com**
-
-You should see sessions running like this:
-
-<img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
-
-And see your relays are all online:
-
-<img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
+In the next steps, we're going to enable acceleration for Sao Paulo for the test buyer, and then we'll spin up some google cloud relays in Sao Paulo to act as server relays.
 
 Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
