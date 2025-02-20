@@ -9,6 +9,7 @@
 Create a new dev branch and tag it as "dev-001":
 
 ```console
+cd ~/next
 git checkout -b dev
 git push --set-upstream origin dev
 git push origin
