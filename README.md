@@ -35,12 +35,13 @@ This way you can target network acceleration to players who need it the most, wh
 3. [Connect a client to the test server](docs/connect_a_client_to_the_test_server.md)
 4. [Modify route shader for test buyer](docs/modify_route_shader_for_test_buyer.md)
 5. [Move test server to Sao Paulo](docs/move_test_server_to_sao_paulo.md)
-6. [Modify set of google relays](docs/modify_set_of_google_cloud_relays.md)
-7. [Modify set of amazon relays](docs/modify_set_of_amazon_relays.md)
-8. [Modify set of akamai relays](docs/modify_set_of_akamai_relays.md)
-9. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
-10. [Spin up relays near you](docs/spin_up_relays_near_you.md)
-11. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
+6. [Enable acceleration to Sao Paulo](docs/enable_acceleration_to_sao_paulo.md)
+7. [Modify set of google relays](docs/modify_set_of_google_cloud_relays.md)
+8. [Modify set of amazon relays](docs/modify_set_of_amazon_relays.md)
+9. [Modify set of akamai relays](docs/modify_set_of_akamai_relays.md)
+10. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
+11. [Spin up relays near you](docs/spin_up_relays_near_you.md)
+12. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
 
 # Integrate Network Next with your Game
 
