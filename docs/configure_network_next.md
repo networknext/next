@@ -22,7 +22,7 @@ Edit the config.json file at the root fo the next repository.
 
 By default it should contain something like this:
 
-```
+```json
 {
   "company_name": "alocasia",
   "vpn_address": "45.79.157.168",
