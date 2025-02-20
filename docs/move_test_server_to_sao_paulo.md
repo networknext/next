@@ -4,20 +4,20 @@
 
 # Move test server to Sao Paulo
 
-Edit the file "terraform/dev/backend/terraform.tfvars" and change the test_server_zone to "southamerica-east1-a":
+Edit the file "terraform/dev/backend/terraform.tfvars" and make the following changes:
 
 <img width="1120" alt="change test server region and zone" src="https://github.com/user-attachments/assets/834fe79c-1ecf-4e4d-a4e3-a6dac093ba41" />
 	
 Commit the changes:
 
-```
+```console
 git commit -am "change test server zone to sao paulo"
 git push origin
 ```
 
 Tag a new dev release:
 
-```
+```console
 git tag dev-004
 git push origin dev-004
 ```

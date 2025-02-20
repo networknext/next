@@ -8,16 +8,16 @@ Each buyer has a set of datacenters that are enabled for acceleration.
 
 By default the test buyer is setup so that the following datacenters are accelerated:
 
-1. google.iowa.1
-2. google.iowa.2
-3. google.iowa.3
-4. google.iowa.6
+* google.iowa.1
+* google.iowa.2
+* google.iowa.3
+* google.iowa.6
 
-In this section we're going to enable acceleration for the google Sao Paulo datacenters:
+In this section we're going to enable acceleration for these datacenters as well:
 
-1. google.saopaulo.1
-2. google.saopaulo.2
-3. google.saopaulo.3
+* google.saopaulo.1
+* google.saopaulo.2
+* google.saopaulo.3
 
 To do this, open the file "terraform/dev/relays/terraform.tfvars", and make the following change:
 
@@ -25,29 +25,29 @@ To do this, open the file "terraform/dev/relays/terraform.tfvars", and make the 
 
 Commit the change:
 
-```
+```console
 git commit -am "add sao paulo datacenters for test buyer"
 git push origin
 ```
 
 Apply the change via terraform:
 
-```
+```console
 cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
 Commit the database to make the changes active in the backend:
 
-```
+```console
 cd ~/next
 next database
 next relays
 ```
 
-You can verify this by running:
+Verify the change by running:
 
-```
+```console
 next database
 ```
 
