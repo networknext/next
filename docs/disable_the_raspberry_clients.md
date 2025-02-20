@@ -51,3 +51,5 @@ The raspberry test server, clients and backend are now disabled.
 Go to your portal and you see that the raspberry clients are no longer running.
 
 <img width="1438" alt="no sessions" src="https://github.com/user-attachments/assets/1fb2f92e-1473-4de6-b413-9cec94f1dd79" />
+
+Up next: [Connect a client to the test server](connect_a_client_to_the_test_server.md).
