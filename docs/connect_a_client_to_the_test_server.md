@@ -47,4 +47,4 @@ Don't be concerned if you see the accelerated latency is higher than the non-acc
 
 We will fix this in the next step.
 
-Up next: [Run your own client and server](run_your_own_client_and_server.md).
+Up next: [Modify route shader for test buyer](modify_route_shader_for_test_buyer.md).
