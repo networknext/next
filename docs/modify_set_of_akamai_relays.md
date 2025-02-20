@@ -90,21 +90,21 @@ locals {
 
 Check in your changes:
 
-```
+```console
 git commit -am "change akamai relays"
 git push origin
 ```
 
 Then run terraform:
 
-```
+```console
 cd ~/nextterraform/dev/relays
 terraform apply
 ```
 
-Commit the database to the backend to make it active:
+And commit the database to the backend to make it active:
 
-```
+```console
 cd ~/next
 next database
 next commit
@@ -114,13 +114,13 @@ Wait a few minutes for the relays to initialize...
 
 Connect to the VPN, then setup the new akamai relays:
 
-```
+```console
 next setup akamai
 ```
 
 After about 5 minutes the new relays should be online:
 
-```
+```console
 next relays akamai
 ```
 
