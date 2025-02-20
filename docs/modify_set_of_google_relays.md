@@ -4,7 +4,7 @@
 
 # Modify set of google relays
 
-Open the file "terraform/dev/relays/main.tf" and change the locals section underneath it to match this:
+Open the file "terraform/dev/relays/main.tf" and change the locals section underneath "GOOGLE RELAYS" to match this:
 
 ```
 	# =============
