@@ -34,19 +34,15 @@ The test server log shows that the server is autodetecting that it's running in 
 
 <img width="1076" alt="server found 0 server relays" src="https://github.com/user-attachments/assets/41223c50-ec97-4cc0-9187-fe04caf91759" />
 
-Because of this, right now you can connect a test client to the Sao Paulo datacenter and it will connect fine:
+The test server cannot find any server relays. 
 
-```
-run client
-```
+Because of this right now you can connect a test client to the Sao Paulo datacenter and it will connect fine, but it will not be accelerated.
 
-But the client is not accelerated.
-
-Network Next requires two things before it can accelerate traffic to a server running in a datacenter:
+Network Next requires _two things_ before it can accelerate traffic to a server running in a datacenter:
 
 1. The buyer must have acceleration enabled for the datacenter
 2. There must be at least one relay in the same datacenter as the server
 
 In the next steps, we're going to enable acceleration for Sao Paulo for the test buyer, and then we'll spin up some google cloud relays in Sao Paulo to act as server relays.
 
-Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
+Up next: [Enable acceleration to Sao Paulo](enable_acceleration_to_sao_paulo.md).
