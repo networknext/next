@@ -10,7 +10,7 @@ These days we just simulate clients in dev by default, it's much less work, and 
 
 As we move forward, we don't want these fake clients running anymore. We only want _real clients_ in the portal.
 
-To do this, open the file "terraform/dev/terraform.tfvars" and set "disable_raspberry" to true:
+To do this, open the file `terraform/dev/terraform.tfvars` and set "disable_raspberry" to true:
 
 <img width="1363" alt="disable raspberry" src="https://github.com/user-attachments/assets/d861a1b2-84eb-4b88-b05f-86b9c480b652" />
 
