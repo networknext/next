@@ -4,7 +4,7 @@
 
 # Move test server to Sao Paulo
 
-Edit the file "terraform/dev/backend/terraform.tfvars" and make the following changes:
+Edit the file `terraform/dev/backend/terraform.tfvars` and make the following changes:
 
 <img width="1120" alt="change test server region and zone" src="https://github.com/user-attachments/assets/834fe79c-1ecf-4e4d-a4e3-a6dac093ba41" />
 	
@@ -26,7 +26,7 @@ When the deploy succeeds, click on the "Servers" item in the portal nav menu, an
 
 <img width="1448" alt="test server in sao paulo portal" src="https://github.com/user-attachments/assets/dcc259ac-4d06-4120-b1c3-b126d7557033" />
 
-Let's SSH into the test server and run "sudo journalctl -fu server" to view its log:
+Let's SSH into the test server and run `sudo journalctl -fu server` to view its log:
 
 <img width="1499" alt="ssh into test server in sao paulo" src="https://github.com/user-attachments/assets/37e180e1-d657-4231-99bd-658f92055d2c" />
 
