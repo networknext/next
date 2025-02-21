@@ -4,7 +4,7 @@
 
 # Modify set of akamai relays
 
-Open the file "terraform/dev/relays/main.tf" and replace the Akamai relays section:
+Open the file `terraform/dev/relays/main.tf` and replace the akamai relays section:
 
 ```terraform
 # =============
@@ -102,7 +102,7 @@ cd ~/next/terraform/dev/relays
 terraform apply
 ```
 
-And commit the database to the backend to make it active:
+And commit the database to the backend:
 
 ```console
 cd ~/next
