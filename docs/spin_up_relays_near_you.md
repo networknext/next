@@ -79,7 +79,7 @@ As a second example, what instead of New York if you were in Hangzhou, Mainland 
 
 I would suggest that relays in Hong Kong and Singapore would be an excellent starting point:
 
-```
+```console
 gaffer@batman next % next datacenters singapore hong kong
 
 ┌─────────────────────────┬─────────────────────────────┬──────────┬───────────┐
@@ -107,6 +107,8 @@ gaffer@batman next % next datacenters singapore hong kong
 └─────────────────────────┴─────────────────────────────┴──────────┴───────────┘
 ```
 
-And perhaps on top of this, if you have access to local bare metal and cloud relays in Hangzhou, that would also be an excellent place to run relays, but you'd probably also have to do some work adding your own seller under `terraform/sellers` so Network Next knows about new sellers and datacenters in Mainland China.
+And perhaps on top of this, if you have access to local bare metal and cloud relays in Hangzhou, China that would also be an excellent place to run relays.
+
+You'd probably also have to do some work adding your own seller under `terraform/sellers` so Network Next knows about new sellers and datacenters in Mainland China, but I'm happy to help you with this and it's pretty easy.
 
 Up next: [Test acceleration to Sao Paulo](test_acceleration_to_sao_paulo.md).
