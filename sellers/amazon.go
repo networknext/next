@@ -437,7 +437,18 @@ terraform {
 
 		fmt.Fprintf(file, "\nlocals {\n\n  relays = {\n\n")
 
-		for k, v := range devRelayMap {
+		devRelayNames := make([]string, len(devRelayMap))
+		index := 0
+		for k, _ := range devRelayMap {
+			devRelayNames[index] = k
+			index++
+		}
+
+		sort.SliceStable(devRelayNames, func(i, j int) bool { return devRelayNames[i] < devRelayNames[j] })
+
+		for i := range devRelayNames {
+			k := devRelayNames[i]
+			v := devRelayMap[k]
 			fmt.Fprintf(file, "    \"%s\" = { datacenter_name = \"%s\" },\n", k, v[0])
 		}
 
@@ -458,7 +469,9 @@ terraform {
 	}
 	`
 
-		for k, v := range devRelayMap {
+		for i := range devRelayNames {
+			k := devRelayNames[i]
+			v := devRelayMap[k]
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
 
@@ -487,7 +500,9 @@ terraform {
 	    }
 
 	`
-		for k, v := range devRelayMap {
+		for i := range devRelayNames {
+			k := devRelayNames[i]
+			v := devRelayMap[k]
 			region := datacenterToRegion[v[0]]
 			internal_group := region
 			if datacenterIsLocal[v[0]] {
@@ -584,7 +599,18 @@ terraform {
 
 		fmt.Fprintf(file, "\nlocals {\n\n  relays = {\n\n")
 
-		for k, v := range prodRelayMap {
+		prodRelayNames := make([]string, len(prodRelayMap))
+		index := 0
+		for k, _ := range prodRelayMap {
+			prodRelayNames[index] = k
+			index++
+		}
+
+		sort.SliceStable(prodRelayNames, func(i, j int) bool { return prodRelayNames[i] < prodRelayNames[j] })
+
+		for i := range prodRelayNames {
+			k := prodRelayNames[i]
+			v := prodRelayMap[k]
 			fmt.Fprintf(file, "    \"%s\" = { datacenter_name = \"%s\" },\n", k, v[0])
 		}
 
@@ -605,7 +631,9 @@ terraform {
 	}
 	`
 
-		for k, v := range prodRelayMap {
+		for i := range prodRelayNames {
+			k := prodRelayNames[i]
+			v := prodRelayMap[k]
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
 
@@ -634,7 +662,9 @@ terraform {
 	    }
 
 	`
-		for k, v := range prodRelayMap {
+		for i := range prodRelayNames {
+			k := prodRelayNames[i]
+			v := prodRelayMap[k]
 			region := datacenterToRegion[v[0]]
 			internal_group := region
 			if datacenterIsLocal[v[0]] {
