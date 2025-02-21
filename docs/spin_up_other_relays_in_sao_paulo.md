@@ -100,7 +100,7 @@ Now you can ssh in to the latitude relays:
 next ssh latitude.saopaulo.1
 ```
 
-Inside the SSH session, copy and paste the contents of the file "scripts/init_relay.sh" to the console and press enter.
+Inside the SSH session, copy and paste the contents of the file `scripts/init_relay.sh` to the console and press enter.
 
 Do the same thing for latitude.saopaulo.2 relay.
 
@@ -110,15 +110,15 @@ Next, connect to the VPN and run:
 next setup latitude
 ```
 
-Wait a few minutes, and you should see the latitude relays are now online:
+Wait a few minutes, and you should see that both latitude relays are now online:
 
 <img width="1228" alt="next relays latitude online" src="https://github.com/user-attachments/assets/2204c446-58eb-4b55-98af-1c3659a415f8" />
 
 This is the general process for setting up manual relays in Network Next.
 
 1. Create the relay manually on the provider website or portal
-2. Do whatever you need to do to make it so the relay can be SSH'd into with ~/secrets/next_ssh.pub key
-3. SSH into the relay via `next ssh [relayname]` and run the scripts/init_relay.sh manually
+2. Do whatever you need to do so you can SSH into the relay with `~/secrets/next_ssh.pub` key
+3. SSH into the relay via `next ssh [relayname]` and run `scripts/init_relay.sh` manually
 4. Connect to the VPN
 5. Run `next setup [relayname]` locally
 6. Verify the new relay is up by running `next relays`
@@ -126,7 +126,7 @@ This is the general process for setting up manual relays in Network Next.
 
 ps. If you cannot SSH in for step #3, it is possible your provider is using a different username for SSH login by default than root. 
 
-To fix this, edit the file: "terraform/[sellername]/main.tf" and adjust the `ssh_user` variable.
+To fix this, edit the file: `terraform/[sellername]/main.tf` and adjust the `ssh_user` variable.
 
 Here is how I made that change for latitude already:
    
