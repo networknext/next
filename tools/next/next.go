@@ -1,5 +1,5 @@
 /*
-   Network Next. Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
+   Network Next. Copyright © 2017 - 2025 Network Next, Inc. All rights reserved.
 */
 
 package main
@@ -44,6 +44,8 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
+var env Environment
+
 func main() {
 
 	if !env.Exists() {
@@ -73,7 +75,7 @@ func main() {
 		ShortHelp:  "Select environment to use (local|dev|staging|prod)",
 
 		Exec: func(ctx context.Context, args []string) error {
-			select_function(env, args)
+			selectEnvironment(args)
 			return nil
 		},
 	}
@@ -614,7 +616,7 @@ func generateNextSSHKey() {
 	}
 }
 
-func select_function(env Environment, args []string) error {
+func selectEnvironment(args []string) error {
 
 	if len(args) == 0 {
 		handleRunTimeError(fmt.Sprintln("Provide an environment to switch to (local|dev|staging|prod)"), 0)
@@ -1283,7 +1285,7 @@ func config(env Environment, regexes []string) {
 	// IMPORTANT: Make sure we select local.env if we don't have any .env file yet, otherwise it will fail
 
 	if !fileExists(".env") {
-		select_function(env, []string{"local"})
+		selectEnvironment([]string{"local"})
 	}
 
 	// load config.json
@@ -1901,11 +1903,13 @@ func getDatabase() *db.Database {
 			fmt.Printf("%s\n", response.Error)
 			os.Exit(1)
 		}
+
 		database_binary, err := base64.StdEncoding.DecodeString(response.Database)
 		if err != nil {
 			fmt.Printf("error: could not decode base64 database string\n")
 			os.Exit(1)
 		}
+
 		os.WriteFile("database.bin", database_binary, 0644)
 	}
 
@@ -3130,8 +3134,6 @@ func handleRunTimeError(msg string, level int) {
 	fmt.Printf("\n")
 	os.Exit(level)
 }
-
-var env Environment
 
 func getKeyValue(envFile string, keyName string) string {
 	value := bashQuiet(fmt.Sprintf("cat %s | awk -v key=%s -F= '$1 == key { sub(/^[^=]+=/, \"\"); print }'", envFile, keyName))
