@@ -111,4 +111,4 @@ And perhaps on top of this, if you have access to local bare metal and cloud rel
 
 You'd probably also have to do some work adding your own seller under `terraform/sellers` so Network Next knows about new sellers and datacenters in Mainland China, but I'm happy to help you with this and it's pretty easy.
 
-Up next: [Test acceleration to Sao Paulo](test_acceleration_to_sao_paulo.md).
+Up next: [Test acceleration to Sao Paulo](test_acceleration_to_sao_paolo.md).
