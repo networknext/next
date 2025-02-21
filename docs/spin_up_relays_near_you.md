@@ -2,108 +2,109 @@
 
 <br>
 
-# Spin dev back up
+# Spin up relays near you
 
-Tag a new dev build to trigger a deploy:
+Network Next takes advantage of relays near the client, as well as near the server.
 
-```console
-git checkout dev
-git tag dev-002
-git push origin dev-002
-```
+For example, I live in New York, so to get the best acceleration to Sao Paulo, I need to also spin up as many relays near me as possible, from as many different providers that I can find.
 
-Wait for the deploy to complete on https://semaphoreci.com
-
-Activate the google cloud dev configuration on your local machine:
+I can run ```next datacenters newyork``` to see a list of datacenters where I can run relays in New York:
 
 ```console
-gcloud config configurations activate dev
+gaffer@batman next % next datacenters newyork
+
+┌───────────────────────┬──────────────────────────────────┬──────────┬───────────┐
+│ Name                  │ Native                           │ Latitude │ Longitude │
+├───────────────────────┼──────────────────────────────────┼──────────┼───────────┤
+│ akamai.newyork        │ us-east                          │ 40.71    │ -74.01    │
+│ amazon.philadelphia.1 │ use1-phl1-az1 (us-east-1-phl-1a) │ 39.95    │ -75.17    │
+│ colocrossing.newyork  │                                  │ 40.7128  │ -74.006   │
+│ datapacket.newyork    │                                  │ 40.7128  │ -74.006   │
+│ equinix.newyork       │ NY                               │ 40.7128  │ -74.006   │
+│ gcore.newyork         │                                  │ 40.7128  │ -74.006   │
+│ hivelocity.newyork    │ NYC1                             │ 40.7128  │ -74.006   │
+│ i3d.newark            │                                  │ 40.7357  │ -74.1724  │
+│ latitude.newyork      │ NYC                              │ 40.7128  │ -74.006   │
+└───────────────────────┴──────────────────────────────────┴──────────┴───────────┘
 ```
 
-Wait for SSL certificates to become active:
+I also know that Virginia is a major hub on the way down the East Coast, so I could run relays here:
 
 ```console
-gcloud compute ssl-certificates list
+gaffer@batman next % next datacenters virginia
+
+┌────────────────────────────┬───────────────────────┬──────────┬───────────┐
+│ Name                       │ Native                │ Latitude │ Longitude │
+├────────────────────────────┼───────────────────────┼──────────┼───────────┤
+│ amazon.virginia.1          │ use1-az1 (us-east-1c) │ 39.04    │ -77.49    │
+│ amazon.virginia.2          │ use1-az2 (us-east-1d) │ 39.04    │ -77.49    │
+│ amazon.virginia.3          │ use1-az3 (us-east-1e) │ 39.04    │ -77.49    │
+│ amazon.virginia.4          │ use1-az4 (us-east-1a) │ 39.04    │ -77.49    │
+│ amazon.virginia.5          │ use1-az5 (us-east-1f) │ 39.04    │ -77.49    │
+│ amazon.virginia.6          │ use1-az6 (us-east-1b) │ 39.04    │ -77.49    │
+│ datapacket.ashburn         │                       │ 39.0438  │ -77.4874  │
+│ equinix.washingtondc       │ DC                    │ 38.9072  │ -77.0369  │
+│ gcore.ashburn              │                       │ 39.0438  │ -77.4874  │
+│ gcore.manassas             │                       │ 38.7509  │ -77.4753  │
+│ google.virginia.1          │ us-east4-a            │ 37.43    │ -78.66    │
+│ google.virginia.2          │ us-east4-b            │ 37.43    │ -78.66    │
+│ google.virginia.3          │ us-east4-c            │ 37.43    │ -78.66    │
+│ i3d.ashburn                │                       │ 39.0438  │ -77.4874  │
+│ latitude.ashburn           │ ASH                   │ 39.0438  │ -77.4874  │
+│ phoenixnap.ashburn         │                       │ 39.0438  │ -77.4874  │
+│ serversdotcom.washingtondc │                       │ 38.9072  │ -77.0369  │
+│ zenlayer.washingtondc      │                       │ 38.9072  │ -77.0369  │
+└────────────────────────────┴───────────────────────┴──────────┴───────────┘
 ```
 
-Select the dev environment and ping it:
+And I know that Miami is a key interchange between the United States and South America:
 
-```console
-next select dev
-next ping
+```
+gaffer@batman next % next datacenters miami
+
+┌──────────────────┬────────┬──────────┬───────────┐
+│ Name             │ Native │ Latitude │ Longitude │
+├──────────────────┼────────┼──────────┼───────────┤
+│ akamai.miami     │ us-mia │ 25.76    │ -80.19    │
+│ datapacket.miami │        │ 25.7617  │ -80.1918  │
+│ equinix.miami    │ MI     │ 25.7617  │ -80.1918  │
+│ gcore.miami      │        │ 25.7617  │ -80.1918  │
+│ hivelocity.miami │ MIA1   │ 25.7617  │ -80.1918  │
+│ latitude.miami   │ MIA    │ 25.7617  │ -80.1918  │
+│ velia.miami      │        │ 25.7617  │ -80.1918  │
+└──────────────────┴────────┴──────────┴───────────┘
 ```
 
-You should see a response:
+As an example, what if you were in Southern Mainland China?
 
-```console
-pong [dev-002]
+I would suggest then that relays in Hong Kong and Singapore would be an excellent starting point:
+
+```
+gaffer@batman next % next datacenters singapore hong kong
+
+┌─────────────────────────┬─────────────────────────────┬──────────┬───────────┐
+│ Name                    │ Native                      │ Latitude │ Longitude │
+├─────────────────────────┼─────────────────────────────┼──────────┼───────────┤
+│ akamai.singapore.1      │ ap-south                    │ 1.35     │ 103.82    │
+│ akamai.singapore.2      │ sg-sin-2                    │ 1.35     │ 103.82    │
+│ amazon.singapore.1      │ apse1-az1 (ap-southeast-1a) │ 1.35     │ 103.82    │
+│ amazon.singapore.2      │ apse1-az2 (ap-southeast-1b) │ 1.35     │ 103.82    │
+│ amazon.singapore.3      │ apse1-az3 (ap-southeast-1c) │ 1.35     │ 103.82    │
+│ datapacket.singapore    │                             │ 1.3521   │ 103.8198  │
+│ equinix.singapore       │ SG                          │ 1.3521   │ 103.8198  │
+│ gcore.singapore         │                             │ 1.3521   │ 103.8198  │
+│ google.singapore.1      │ asia-southeast1-a           │ 1.35     │ 103.82    │
+│ google.singapore.2      │ asia-southeast1-b           │ 1.35     │ 103.82    │
+│ google.singapore.3      │ asia-southeast1-c           │ 1.35     │ 103.82    │
+│ i3d.hongkong            │                             │ 1.3521   │ 103.8198  │
+│ i3d.singapore           │                             │ 1.3521   │ 103.8198  │
+│ oneqode.hongkong        │                             │ 1.3521   │ 103.8198  │
+│ oneqode.singapore       │                             │ 1.3521   │ 103.8198  │
+│ phoenixnap.singapore    │                             │ 1.3521   │ 103.8198  │
+│ serversdotcom.singapore │                             │ 1.3521   │ 103.8198  │
+│ velia.singapore         │                             │ 1.3521   │ 103.8198  │
+│ zenlayer.singapore      │                             │ 1.3521   │ 103.8198  │
+└─────────────────────────┴─────────────────────────────┴──────────┴───────────┘
 ```
 
-Next, create dev relays with terraform:
-
-```console
-cd ~/next/terraform/dev/relays
-terraform init
-terraform apply
-```
-
-Commit the changes terraform made to the database to make them active:
-
-```console
-cd ~/next
-next database
-next commit
-```
-
-Connect to the VPN and setup the relays:
-
-```console
-next setup
-```
-
-Disconnect from the VPN.
-
-Wait 5-10 minutes and all the relays should be online:
-
-```console
-next relays
-
-gaffer@batman next % next relays
-
-┌───────────────────┬──────────────────────┬──────────────────┬────────┬────────┬──────────┬─────────────────────┐
-│ Name              │ PublicAddress        │ Id               │ Status │ Uptime │ Sessions │ Version             │
-├───────────────────┼──────────────────────┼──────────────────┼────────┼────────┼──────────┼─────────────────────┤
-│ akamai.atlanta    │ 66.228.56.126:40000  │ 4c1499bedb76d4c3 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-│ akamai.dallas     │ 45.56.124.213:40000  │ a93caa50aede83ce │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-│ akamai.fremont    │ 74.207.254.36:40000  │ 93abc98ceb2e90f  │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-│ akamai.newyork    │ 45.79.163.17:40000   │ 6cc0a603455bf226 │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-│ amazon.ohio.1     │ 3.145.161.46:40000   │ 8202db0dab012b82 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-│ amazon.ohio.2     │ 18.219.60.100:40000  │ ae46ceb0b291cb1  │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-│ amazon.virginia.1 │ 3.231.57.221:40000   │ 5e0e4e9688c34d3  │ online │ 30m    │ 0        │ relay-release-1.0.0 │
-│ amazon.virginia.2 │ 18.204.18.110:40000  │ f958ca961febf2ad │ online │ 31m    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.1.a   │ 34.67.114.105:40000  │ 1e2e20dbe0b72873 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.1.b   │ 34.58.5.125:40000    │ 45dffc7b9af1a152 │ online │ 58s    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.1.c   │ 146.148.94.99:40000  │ 2ff45e2957f7aae4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.2     │ 130.211.207.80:40000 │ 505bec9a4a376968 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.3     │ 34.41.237.105:40000  │ bc5c83b15fb7ce5d │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-│ google.iowa.6     │ 34.172.89.168:40000  │ c8a8fff602ba9372 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-│ google.ohio.1     │ 34.162.247.234:40000 │ cf1ee1f55d784043 │ online │ 29m    │ 0        │ relay-release-1.0.0 │
-│ google.ohio.2     │ 34.162.208.105:40000 │ ea918c4b7d07a1d3 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-│ google.ohio.3     │ 34.162.125.248:40000 │ cf96a8f48138ad41 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-│ google.virginia.1 │ 34.48.205.128:40000  │ 8a94407262f5dfe2 │ online │ 26m    │ 0        │ relay-release-1.0.0 │
-│ google.virginia.2 │ 35.245.14.224:40000  │ 3a460ae16945cfd9 │ online │ 27m    │ 0        │ relay-release-1.0.0 │
-│ google.virginia.3 │ 34.150.140.229:40000 │ 5928d45a42ab20c4 │ online │ 28m    │ 0        │ relay-release-1.0.0 │
-└───────────────────┴──────────────────────┴──────────────────┴────────┴────────┴──────────┴─────────────────────┘
-```
-
-View your dev portal running at https://portal-dev.[yourdomain.com]
-
-You should see sessions running like this:
-
-<img width="1422" alt="raspberry sessions" src="https://github.com/user-attachments/assets/43deea3c-62cd-441f-9d30-a064c16520c2" />
-
-And see your relays are all online:
-
-<img width="1422" alt="relays" src="https://github.com/user-attachments/assets/ed4d7dd0-ef64-462e-8595-78c9e07e9b38" />
-
-Up next: [Disable the raspberry clients](disable_the_raspberry_clients.md).
+Up next: [Test acceleration to Sao Paulo](test_acceleration_to_sao_paulo.md).
