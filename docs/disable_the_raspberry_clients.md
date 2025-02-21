@@ -6,8 +6,6 @@
 
 The clients in the portal are test clients called "raspberry clients", because when we first developed Network Next, we ran hundreds of test clients around the world on raspberry pi's in people's homes. 
 
-These days we just simulate clients in dev by default, it's much less work, and we can still exercise codepaths and can easily test the portal and backend are working.
-
 As we move forward, we don't want these fake clients running anymore. We only want _real clients_ in the portal.
 
 To do this, open the file `terraform/dev/terraform.tfvars` and set "disable_raspberry" to true:
