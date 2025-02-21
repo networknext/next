@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"math/rand"
 
 	"github.com/networknext/next/modules/common"
 )
@@ -62,6 +63,9 @@ VALUES(
 	(select seller_id from sellers where seller_code = 'test')
 );
 `
+
+	// IMPORTANT: Set random seed because I don't want different random lat/longs generated each time you run "next config". It's annoying!
+	rand.Seed(0x12345)
 
 	for i := 0; i < NumRelays; i++ {
 		fmt.Fprintf(file, datacenter_format, i, randomLatitude(), randomLongitude())
