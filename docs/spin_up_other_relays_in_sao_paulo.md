@@ -20,7 +20,7 @@ You'll see:
 
 <img width="747" alt="datacenters in sao paulo" src="https://github.com/user-attachments/assets/f29a1426-1035-4d14-a083-cd3f5ea60554" />
 
-I recommend that you set up at least the following bare metal providers in Sao Paulo, in addition to the google, amazon and akamai relays already set up.
+I recommend that you set up _at least_ the following bare metal providers in Sao Paulo, in addition to the google, amazon and akamai relays already set up.
 
 * datapacket.saopaulo
 * gcore.saopaulo
