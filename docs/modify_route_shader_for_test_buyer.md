@@ -10,7 +10,7 @@ Right now the route shader is set to always take network next - even if there is
 
 Let's modify the route shader for the test buyer, so it only accelerates players if we can find at least 1 millisecond of latency reduction.
 
-Open the file "terraform/dev/relays/main.tf" and make the following changes:
+Open the file `terraform/dev/relays/main.tf` and make the following changes:
 
 <img width="556" alt="force next false" src="https://github.com/user-attachments/assets/d76530fd-9505-4c92-9adc-d5d777634ed0" />
 
