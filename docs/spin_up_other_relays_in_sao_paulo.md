@@ -37,7 +37,7 @@ The sellers above are _manual_, meaning there is no terraform provider support a
 
 As an example, let's work through this process for latitude.saopaulo.1 and latitude.saopaulo.2
 
-First, sign in to https://latitude.sh and setup an SSH key with the public key set to the contents of ~/secrets/next_ssh.pub and call this SSH key "Network Next".
+First, sign in to https://latitude.sh and setup an SSH key with the public key set to the contents of `~/secrets/next_ssh.pub` and call this SSH key "Network Next".
 
 Then, create two bare metal servers in "Sao Paulo", and "Sao Paulo 2" datacenters respectively, making sure to set them as Ubuntu, and for them to use the "Network Next" SSH key, and hourly billing.
 
