@@ -16,7 +16,7 @@ Let's see what other sellers have datacenters in Sao Paulo:
 next datacenters saopaulo
 ```
 
-You'll see:
+You'll should see something like this:
 
 <img width="747" alt="datacenters in sao paulo" src="https://github.com/user-attachments/assets/f29a1426-1035-4d14-a083-cd3f5ea60554" />
 
