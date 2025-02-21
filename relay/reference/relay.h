@@ -1,6 +1,6 @@
 /*
     Network Next Relay (reference)
-    Copyright © 2017 - 2024 Network Next, Inc. All rights reserved.
+    Copyright © 2017 - 2025 Network Next, Inc. All rights reserved.
 */
 
 #include <stdint.h>
