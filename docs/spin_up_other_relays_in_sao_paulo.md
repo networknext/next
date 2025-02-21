@@ -20,7 +20,7 @@ You'll should see something like this:
 
 <img width="747" alt="datacenters in sao paulo" src="https://github.com/user-attachments/assets/f29a1426-1035-4d14-a083-cd3f5ea60554" />
 
-I recommend that you set up _at least_ the following bare metal providers in Sao Paulo, in addition to the google, amazon and akamai relays already set up.
+I recommend that you set up _at least_ the following bare metal providers in Sao Paulo, in addition to the google, amazon and akamai relays already set up:
 
 * datapacket.saopaulo
 * gcore.saopaulo
@@ -75,14 +75,14 @@ git commit -am "add latitude relays in sao paulo"
 git push origin
 ```
 
-And then apply your changes to the database via terraform:
+Apply your changes via terraform:
 
 ```console
 cd terraform/dev/relays
 terraform apply
 ```
 
-And commit your changes to the backend:
+Then commit your changes to the backend:
 
 ```console
 cd ~/next
@@ -90,7 +90,7 @@ next database
 next commit
 ```
 
-Run next relays and you should see the latitude relays added to the list, but they are currently offline:
+Run `next relays` and you should see the latitude relays added to the list, but they are currently offline:
 
 <img width="1228" alt="next relays latitude offline" src="https://github.com/user-attachments/assets/e5809908-944c-485e-a17d-695612f7e99b" />
 
@@ -116,22 +116,22 @@ Wait a few minutes, and you should see that both latitude relays are now online:
 
 This is the general process for setting up manual relays in Network Next.
 
-1. Create the relay manually on the provider website or portal
+1. Create the relay manually on the provider website or portal (or order the bare metal machine)
 2. Do whatever you need to do so you can SSH into the relay with `~/secrets/next_ssh.pub` key
 3. SSH into the relay via `next ssh [relayname]` and run `scripts/init_relay.sh` manually
 4. Connect to the VPN
-5. Run `next setup [relayname]` locally
+5. Run `next setup [relayname]`
 6. Verify the new relay is up by running `next relays`
 7. Wait 5 minutes before the relay is ready to carry traffic
 
-ps. If you cannot SSH in for step #3, it is possible your provider is using a different username for SSH login by default than root. 
+ps. If you cannot SSH in for step #3, it is possible your provider is using a different username for SSH login by default than 'root'. 
 
-To fix this, edit the file: `terraform/[sellername]/main.tf` and adjust the `ssh_user` variable.
+To fix this, edit the file: `terraform/[sellername]/main.tf` for your seller and adjust the `ssh_user` variable.
 
-Here is how I made that change for latitude already:
+I made that change for latitude already:
    
 <img width="879" alt="latitude ssh user" src="https://github.com/user-attachments/assets/25933124-7948-4c70-8fc0-71c77d05aab9" />
 
-If you need to do this for a supplier, please let me know so I can make the change in the root Network Next git repository for you.
+If you need to do this for a seller to work, please let me know so I can make the change in the Network Next git repository for you.
 
 Up next: [Spin up relays near you](spin_up_relays_near_you.md).
