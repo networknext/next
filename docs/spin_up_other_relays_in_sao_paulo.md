@@ -29,7 +29,9 @@ I recommend that you set up _at least_ the following bare metal providers in Sao
 * latitude.saopaulo.2
 * phoenixnap.saopaulo
 * serversdotcom.saopaulo
-* zenlayer.saopaulo 
+* zenlayer.saopaulo
+
+These are all the datacenters in (and near) Sao Paulo that Network Next already knows about.
 
 The sellers above are _manual_, meaning there is no terraform provider support automatically creating and destroying relays for you. You have to do this manually, and then link the relays to terraform by IP address.
 
@@ -37,9 +39,9 @@ As an example, let's work through this process for latitude.saopaulo.1 and latit
 
 First, sign in to https://latitude.sh and setup an SSH key with the public key set to the contents of ~/secrets/next_ssh.pub and call this SSH key "Network Next".
 
-Then, create two hourly bare metals machines in sao paulo, and sao paulo 2 datacenters respectively, making sure to set them as Ubuntu, and for them to use the "Network Next" SSH key, and hourly billing.
+Then, create two bare metal servers in "Sao Paulo", and "Sao Paulo 2" datacenters respectively, making sure to set them as Ubuntu, and for them to use the "Network Next" SSH key, and hourly billing.
 
-Next, open up terraform/dev/relays/main.tf and change the latitude section to:
+Next, open up `terraform/dev/relays/main.tf` and change the latitude section to:
 
 ```terraform
 # ===============
