@@ -41,7 +41,7 @@ This way you can target network acceleration to players who need it the most, wh
 9. [Modify set of akamai relays](docs/modify_set_of_akamai_relays.md)
 10. [Spin up other relays in Sao Paulo](docs/spin_up_other_relays_in_sao_paulo.md)
 11. [Spin up relays near you](docs/spin_up_relays_near_you.md)
-12. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paulo.md)
+12. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paolo.md)
 
 # Integrate Network Next with your Game
 
