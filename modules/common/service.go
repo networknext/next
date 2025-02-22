@@ -17,6 +17,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"os/exec"
+	"bufio"
 
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -37,6 +39,56 @@ var (
 	commitHash    string
 	tag           string
 )
+
+func RunCommand(command string, args []string) (bool, string) {
+
+	cmd := exec.Command(command, args...)
+
+	stdoutReader, err := cmd.StdoutPipe()
+	if err != nil {
+		return false, ""
+	}
+
+	var wait sync.WaitGroup
+	var mutex sync.Mutex
+
+	output := ""
+
+	stdoutScanner := bufio.NewScanner(stdoutReader)
+	wait.Add(1)
+	go func() {
+		for stdoutScanner.Scan() {
+			mutex.Lock()
+			output += stdoutScanner.Text() + "\n"
+			mutex.Unlock()
+		}
+		wait.Done()
+	}()
+
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Start()
+	if err != nil {
+		return false, output
+	}
+
+	wait.Wait()
+
+	err = cmd.Wait()
+	if err != nil {
+		return false, output
+	}
+
+	return true, output
+}
+
+func Bash(command string) (bool, string) {
+	return RunCommand("bash", []string{"-c", command})
+}
+
+func DownloadFromStorage(url string, outputPath string) {
+	Bash(fmt.Sprintf("gcloud storage cp %s %s", url, outputPath))
+}
 
 type RelayData struct {
 	NumRelays          int
@@ -73,7 +125,7 @@ type Service struct {
 	Context           context.Context
 	ContextCancelFunc context.CancelFunc
 
-	GoogleProjectId string
+    GoogleProjectId string
 
 	// ------------------
 
@@ -102,8 +154,6 @@ type Service struct {
 	routeMatrixMutex    sync.RWMutex
 	routeMatrix         *RouteMatrix
 	routeMatrixDatabase *db.Database
-
-	google *GoogleCloudHandler
 
 	ip2location_mutex   sync.RWMutex
 	ip2location_isp_db  *maxminddb.Reader
@@ -171,16 +221,10 @@ func CreateService(serviceName string) *Service {
 
 	service.runStatusUpdateLoop()
 
-	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
-	if service.GoogleProjectId != "" {
-		core.Log("google project id: %s", service.GoogleProjectId)
-		google, err := NewGoogleCloudHandler(service.Context, service.GoogleProjectId)
-		if err != nil {
-			core.Error("failed to create google cloud handler: %v", err)
-			os.Exit(1)
-		}
-		service.google = google
-	}
+    service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
+    if service.GoogleProjectId != "" {
+        core.Log("google project id is '%s'", service.GoogleProjectId)
+    }
 
 	service.sendTrafficToMe = func() bool { return true }
 	service.machineIsHealthy = func() bool { return true }
@@ -764,11 +808,6 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 	syncInterval := envvar.GetDuration("DATABASE_SYNC_INTERVAL", time.Minute)
 
-	if service.google == nil {
-		core.Error("You must pass in GOOGLE_PROJECT_ID")
-		os.Exit(1)
-	}
-
 	go func() {
 
 		ticker := time.NewTicker(syncInterval)
@@ -785,15 +824,11 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 					// reload from google cloud storage
 
-					core.Debug("reloading database from google cloud storage: %s", databaseURL)
+					core.Debug("reloading database from google cloud storage: '%s'", databaseURL)
 
 					tempFile := databasePath + "-temp"
 
-					err := service.google.CopyFromBucketToLocal(ctx, databaseURL, tempFile)
-					if err != nil {
-						core.Warn("failed to download database.bin from google cloud storage: %v", err)
-						break
-					}
+					DownloadFromStorage(databaseURL, tempFile)
 
 					newDatabase, err := db.LoadDatabase(tempFile)
 					if err != nil {
