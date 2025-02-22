@@ -373,8 +373,18 @@ func client() {
 	if env.Name == "local" {
 		bash("cd dist && ./client")
 	} else {
-		filename := fmt.Sprintf("terraform/projects/%s-project-id.txt", env.Name)
-		projectId, _ := os.ReadFile(filename)
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("error: could not get users home dir: %v\n\n", err)
+			os.Exit(1)
+		}
+		filename := fmt.Sprintf("%s/secrets/%s-project-id.txt", homeDir, env.Name)
+		fmt.Printf("filename is '%s'\n", filename)
+		projectId, err := os.ReadFile(filename)
+		if err != nil {
+			fmt.Printf("\nerror: could not load project file '%s'\n\n", )
+			os.Exit(1)
+		}
 		_, output := bash_output(fmt.Sprintf("gcloud compute addresses list --project %s", projectId))
 		lines := strings.Split(output, "\n")
 		found := false
