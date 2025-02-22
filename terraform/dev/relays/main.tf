@@ -179,20 +179,14 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
+    "akamai.fremont" = {
+      datacenter_name = "akamai.fremont"
+      type            = "g6-dedicated-2"
+      image           = "linode/ubuntu22.04"
+    }
+    
     "akamai.dallas" = {
       datacenter_name = "akamai.dallas"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
-
-    "akamai.miami" = {
-      datacenter_name = "akamai.miami"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
-
-    "akamai.saopaulo" = {
-      datacenter_name = "akamai.saopaulo"
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     }
