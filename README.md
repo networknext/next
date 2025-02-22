@@ -43,7 +43,7 @@ This way you can target network acceleration to players who need it the most, wh
 11. [Spin up relays near you](docs/spin_up_relays_near_you.md)
 12. [Test acceleration to Sao Paulo](docs/test_acceleration_to_sao_paolo.md)
 
-# Integrate Network Next with your Game
+# Integrate with your Game
 
 1. [Create your own buyer](docs/create_your_own_buyer.md)
 2. [Customize your route shader](docs/customize_your_route_shader.md)
