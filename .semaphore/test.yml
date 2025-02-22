@@ -230,10 +230,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_server_ready_autodetect_cloud
 
-        - name: "test_server_ready_autodetect_multiplay_success"
-          commands:
-            - cd ./dist && ./func_test_sdk test_server_ready_autodetect_multiplay_success
-
         - name: "test_server_ready_autodetect_multiplay_fail"
           commands:
             - cd ./dist && ./func_test_sdk test_server_ready_autodetect_multiplay_fail

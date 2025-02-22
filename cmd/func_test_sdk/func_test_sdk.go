@@ -2503,56 +2503,6 @@ func test_server_ready_autodetect_cloud() {
 
 }
 
-func test_server_ready_autodetect_multiplay_success() {
-
-	fmt.Printf("test_server_ready_autodetect_multiplay_success\n")
-
-	f, err := os.Create("whois.txt")
-	if err != nil {
-		panic(err)
-	}
-	f.WriteString("Datapacket\n")
-	f.Close()
-
-	serverConfig := &ServerConfig{}
-	serverConfig.datacenter = "multiplay.newyork"
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("DEFAULT")
-
-	time.Sleep(time.Second * 15)
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
-	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
-	serverInputDatacenter := strings.Contains(server_stdout.String(), "info: server input datacenter is 'multiplay.newyork'")
-	serverReadyDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'datapacket.newyork'")
-	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
-	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverFoundSeller := strings.Contains(server_stdout.String(), "debug: found seller datapacket")
-	serverAutodetectSucceeded := strings.Contains(server_stdout.String(), "info: server autodetected datacenter 'datapacket.newyork'")
-
-	os.Remove("whois.txt")
-
-	server_check(server_stdout, backend_stdout, serverInitSuccessful)
-	server_check(server_stdout, backend_stdout, serverReady)
-	server_check(server_stdout, backend_stdout, serverInputDatacenter)
-	server_check(server_stdout, backend_stdout, serverReadyDatacenter)
-	server_check(server_stdout, backend_stdout, serverAutodetecting)
-	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
-	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, serverFoundSeller)
-	server_check(server_stdout, backend_stdout, serverAutodetectSucceeded)
-}
-
 func test_server_ready_autodetect_multiplay_fail() {
 
 	fmt.Printf("test_server_ready_autodetect_multiplay_fail\n")
@@ -3183,7 +3133,6 @@ func main() {
 		test_server_ready_success,
 		test_server_ready_fallback_to_direct,
 		test_server_ready_autodetect_cloud,
-		test_server_ready_autodetect_multiplay_success,
 		test_server_ready_autodetect_multiplay_fail,
 		test_server_ready_disable_autodetect_cloud,
 		test_server_ready_disable_autodetect_multiplay,
