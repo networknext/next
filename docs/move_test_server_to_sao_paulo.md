@@ -34,9 +34,7 @@ The test server log shows that the server is autodetecting that it's running in 
 
 <img width="759" alt="server relays not found" src="https://github.com/user-attachments/assets/789f5664-66f6-47c8-8720-6e33819d6669" />
 
-The test server cannot find any server relays. 
-
-Because of this right now you can connect a test client to the Sao Paulo datacenter and it will connect fine, but it will not be accelerated.
+Because of this you can connect a test client to the Sao Paulo datacenter and it will connect fine, but it will not be accelerated.
 
 Network Next requires _two things_ before it can accelerate traffic to a server running in a datacenter:
 
