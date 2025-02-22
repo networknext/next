@@ -53,7 +53,7 @@ Connect a test client again:
 run client
 ```
 
-You will see that now it probably won't be accelerated:
+You will see that now it _probably_ won't be accelerated:
 
 <img width="1414" alt="session not accelerated" src="https://github.com/user-attachments/assets/500106f0-c5d4-4d4f-bcb6-060805e91ff3" />
 
