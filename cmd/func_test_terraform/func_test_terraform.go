@@ -190,7 +190,7 @@ resource "networknext_buyer" "test" {
   name = "Test Buyer"
   code = "test"
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = "1928371987391287398719387"
+  public_key_base64 = "C5Pyu+73R2XZvdxDZW4v8qfLs4K2vGb6q9lXgHnaxf/lInW1HWJMHQ=="
   live = true
   debug = true
 }
@@ -336,7 +336,7 @@ resource "networknext_buyer" "test" {
   name = "Test Buyer (update)"
   code = "test"
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = "aoesnuhaonuthaontehunathunath"
+  public_key_base64 = "C5Pyu+73R2XZvdxDZW4v8qfLs4K2vGb6q9lXgHnaxf/lInW1HWJMHQ=="
 }
 
 data "networknext_buyers" "test" {
