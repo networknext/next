@@ -14,7 +14,7 @@ Open the file `terraform/dev/relays/main.tf` and change the locals section under
 locals {
 
   google_credentials = "~/secrets/terraform-dev-relays.json"
-  google_project     = file("../../projects/dev-relays-project-id.txt")
+  google_project     = file("~/secrets/dev-relays-project-id.txt")
   google_relays = {
 
     "google.saopaulo.1" = {

@@ -19,7 +19,7 @@ In this section we're going to enable acceleration for these datacenters as well
 * google.saopaulo.2
 * google.saopaulo.3
 
-To do this, open the file "terraform/dev/relays/terraform.tfvars", and make the following change:
+First, open the file `terraform/dev/relays/terraform.tfvars` and make the following change:
 
 <img width="851" alt="add sao paulo datacenters for test buyer" src="https://github.com/user-attachments/assets/83634f32-4b90-42d9-ab00-5db3cbc18874" />
 
@@ -55,6 +55,6 @@ And you should now see that the test buyer is active for both "ohio" and "saopau
 
 <img width="422" alt="destination datacenters" src="https://github.com/user-attachments/assets/b85f883f-84e9-4a86-8c56-349716661c9f" />
 
-Next, we will to spin up some google relays.
+Next, we will spin up some google relays in Sao Paulo.
 
 Up next: [Modify set of google relays](modify_set_of_google_relays.md).

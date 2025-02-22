@@ -22,7 +22,7 @@ git tag dev-004
 git push origin dev-004
 ```
 
-When the deploy succeeds, click on the "Servers" item in the portal nav menu, and you should see the test server is now running in Sao Paulo:
+When the deploy succeeds, click on the "Servers" in the portal, and you should see the test server is now running in Sao Paulo:
 
 <img width="1448" alt="test server in sao paulo portal" src="https://github.com/user-attachments/assets/dcc259ac-4d06-4120-b1c3-b126d7557033" />
 
@@ -32,11 +32,9 @@ Let's SSH into the test server and run `sudo journalctl -fu server` to view its 
 
 The test server log shows that the server is autodetecting that it's running in google.saopaulo.1, but it cannot find any server relays:
 
-<img width="1076" alt="server found 0 server relays" src="https://github.com/user-attachments/assets/41223c50-ec97-4cc0-9187-fe04caf91759" />
+<img width="759" alt="server relays not found" src="https://github.com/user-attachments/assets/789f5664-66f6-47c8-8720-6e33819d6669" />
 
-The test server cannot find any server relays. 
-
-Because of this right now you can connect a test client to the Sao Paulo datacenter and it will connect fine, but it will not be accelerated.
+Because of this you can connect a test client to the Sao Paulo datacenter and it will connect fine, but it will not be accelerated.
 
 Network Next requires _two things_ before it can accelerate traffic to a server running in a datacenter:
 
