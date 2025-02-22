@@ -379,7 +379,6 @@ func client() {
 			os.Exit(1)
 		}
 		filename := fmt.Sprintf("%s/secrets/%s-project-id.txt", homeDir, env.Name)
-		fmt.Printf("filename is '%s'\n", filename)
 		projectId, err := os.ReadFile(filename)
 		if err != nil {
 			fmt.Printf("\nerror: could not load project file '%s'\n\n", )
