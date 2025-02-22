@@ -32,7 +32,7 @@ Let's SSH into the test server and run `sudo journalctl -fu server` to view its 
 
 The test server log shows that the server is autodetecting that it's running in google.saopaulo.1, but it cannot find any server relays:
 
-<img width="1076" alt="server found 0 server relays" src="https://github.com/user-attachments/assets/41223c50-ec97-4cc0-9187-fe04caf91759" />
+<img width="759" alt="server relays not found" src="https://github.com/user-attachments/assets/789f5664-66f6-47c8-8720-6e33819d6669" />
 
 The test server cannot find any server relays. 
 
