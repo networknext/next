@@ -789,7 +789,11 @@ func (service *Service) watchDatabase(ctx context.Context, databasePath string, 
 
 					tempFile := databasePath + "-temp"
 
-					service.google.CopyFromBucketToLocal(ctx, databaseURL, tempFile)
+					err := service.google.CopyFromBucketToLocal(ctx, databaseURL, tempFile)
+					if err != nil {
+						core.Warn("failed to download database.bin from google cloud storage")
+						break
+					}
 
 					newDatabase, err := db.LoadDatabase(tempFile)
 					if err != nil {
