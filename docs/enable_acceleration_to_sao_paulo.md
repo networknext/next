@@ -19,7 +19,7 @@ In this section we're going to enable acceleration for these datacenters as well
 * google.saopaulo.2
 * google.saopaulo.3
 
-Open the file `terraform/dev/relays/terraform.tfvars` and make the following change:
+First, open the file `terraform/dev/relays/terraform.tfvars` and make the following change:
 
 <img width="851" alt="add sao paulo datacenters for test buyer" src="https://github.com/user-attachments/assets/83634f32-4b90-42d9-ab00-5db3cbc18874" />
 
