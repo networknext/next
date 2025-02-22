@@ -12,4 +12,4 @@ Here is the acceleration I see from New York, over Wi-Fi on Spectrum Cable inter
 
 How much acceleration do you see from your location?
 
-Up next: [Back to main documentation](README.md).
+Up next: [Back to main documentation](../README.md).
