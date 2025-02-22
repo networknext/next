@@ -4,7 +4,7 @@
 
 # Test acceleration to Sao Paulo
 
-Now we can just go `run server` and it should be accelerated.
+Now we can just go `run client` and it should be accelerated.
 
 Here is the acceleration I see from New York, over Wi-Fi on Spectrum Cable internet:
 
