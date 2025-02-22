@@ -838,7 +838,7 @@ func test_relay() {
 
 	relayId := uint64(0)
 	{
-		relay := admin.RelayData{RelayName: "test", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
+		relay := admin.RelayData{RelayName: "test", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1", PublicKeyBase64: "C5Pyu+73R2XZvdxDZW4v8qfLs4K2vGb6q9lXgHnaxf/lInW1HWJMHQ=="}
 
 		var response CreateRelayResponse
 
@@ -935,7 +935,7 @@ func test_relay() {
 
 	// update relay
 	{
-		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1"}
+		relay := admin.RelayData{RelayId: relayId, RelayName: "Updated", DatacenterId: datacenterId, PublicIP: "127.0.0.1", InternalIP: "0.0.0.0", SSH_IP: "127.0.0.1", PublicKeyBase64: "C5Pyu+73R2XZvdxDZW4v8qfLs4K2vGb6q9lXgHnaxf/lInW1HWJMHQ=="}
 
 		response := UpdateRelayResponse{}
 
