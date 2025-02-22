@@ -55,6 +55,6 @@ And you should now see that the test buyer is active for both "ohio" and "saopau
 
 <img width="422" alt="destination datacenters" src="https://github.com/user-attachments/assets/b85f883f-84e9-4a86-8c56-349716661c9f" />
 
-Next, we will to spin up some google relays.
+Next, we will spin up some google relays in Sao Paulo.
 
 Up next: [Modify set of google relays](modify_set_of_google_relays.md).
