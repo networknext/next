@@ -17,7 +17,7 @@ require (
 	github.com/modood/table v0.0.0-20220527013332-8d47e76dad33
 	github.com/oschwald/maxminddb-golang v1.13.1
 	github.com/peterbourgon/ff/v3 v3.4.0
-	github.com/redis/go-redis/v9 v9.7.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/rs/cors v1.11.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.35.0
