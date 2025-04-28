@@ -8,8 +8,6 @@ It works by monitoring player connections and sending game traffic down an optim
 
 You decide when to accelerate your players. Set acceptable latency, jitter and packet loss values and only accelerate players when they're above them. You can also set how much latency reduction is required for acceleration.
 
-This way you can target network acceleration to players who need it the most, while not wasting money accelerating players who already have good network performance!
-
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/master.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
 # Install Network Next
