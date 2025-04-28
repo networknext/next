@@ -2,6 +2,8 @@
 
 <br>
 
+[![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
+
 Network Next is a **network accelerator** for multiplayer games. 
 
 It works by monitoring player connections and sending game traffic down an optimized route when the default internet route has high latency, jitter or packet loss.
@@ -11,8 +13,6 @@ You decide when to accelerate your players. Set acceptable latency, jitter and p
 Network Next is source available and free to use for multiplayer games if you host the software yourself.
 
 Network Next, Inc. offers commercial support, custom software development and a fully managed hosted offering with uptime guarantees and SLA. Please [contact us](mailto:glenn@networknext.com) if you are interested.
-
-[![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
 # Install Network Next
 
