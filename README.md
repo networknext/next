@@ -8,6 +8,8 @@ It works by monitoring player connections and sending game traffic down an optim
 
 You decide when to accelerate your players. Set acceptable latency, jitter and packet loss values and only accelerate players that are above them. You can also set how much latency reduction is required for acceleration.
 
+Network Next is source available and free to use for multiplayer games. We offer commercial support and enterprise editions with SLA. Please [contact us](mailto:glenn@networknext.com) if you are interested.
+
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/master.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
 # Install Network Next
