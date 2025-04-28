@@ -12,7 +12,7 @@ Network Next is source available and free to use for multiplayer games if you ho
 
 Network Next, Inc. offers commercial support, custom software development and a fully managed hosted offering with uptime guarantees and SLA. Please [contact us](mailto:glenn@networknext.com) if you are interested.
 
-[![Build Status](https://networknext.semaphoreci.com/badges/next/branches/master.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
+[![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
 # Install Network Next
 
