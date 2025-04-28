@@ -1,6 +1,11 @@
 /*
-    Network Next Relay.
-    Copyright © 2017 - 2025 Network Next, Inc. All rights reserved.
+    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
+    
+    Licensed under the Network Next Source Available License 1.0
+
+    If you use this software with a game, you must add this to your credits:
+
+    "This game uses Network Next (networknext.com)"
 */
 
 #include "relay.h"
