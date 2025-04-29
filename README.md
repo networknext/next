@@ -12,7 +12,7 @@ You decide when to accelerate your players. Set acceptable latency, jitter and p
 
 Network Next is source available and free to use for multiplayer games if you host the software yourself.
 
-Network Next, Inc. offers a fully managed hosted offering with uptime guarantees and SLA, commercial support and an SLA. Please [contact us](mailto:glenn@networknext.com) if you are interested in this.
+Network Next, Inc. offers a fully managed hosted offering with uptime guarantees and commercial support. Please [contact us](mailto:glenn@networknext.com) if you are interested in this.
 
 # Install Network Next
 
