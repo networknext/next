@@ -12,7 +12,7 @@ You decide when to accelerate your players. Set acceptable latency, jitter and p
 
 Network Next is source available and free to use when you host the software yourself.
 
-Network Next, Inc. offers a fully managed solution with uptime guarantees and commercial support. Please [contact us](mailto:glenn@networknext.com) if you'd like to know more.
+Network Next, Inc. offers a hosted solution with uptime guarantees and commercial support. Please [contact us](mailto:glenn@networknext.com) if you'd like to know more.
 
 # Install Network Next
 
