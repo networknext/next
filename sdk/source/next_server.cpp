@@ -3781,7 +3781,12 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 packet.server_relay_packet_loss[j] = server->stats_server_relay_packet_loss[j];
             }
 
-            packet.client_address = session->address;
+            // IMPORTANT: Anonymize the client address before passing up to the backend.
+            // We do this because a player's IP address is personal data according to GDPR.
+            next_address_t anonymized_address = session->address;
+            next_address_anonymize( &anonymized_address );
+
+            packet.client_address = anonymized_address;
             packet.server_address = server->server_address;
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
