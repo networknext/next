@@ -6,7 +6,7 @@ solution "next"
 	rtti "Off"
 	warnings "Extra"
 	floatingpoint "Fast"
-	flags { "FatalWarnings" }
+	fatalwarnings { "All" }
 	defines { "NEXT_DEVELOPMENT" }
 	filter "configurations:Debug"
 		symbols "On"
