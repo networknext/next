@@ -3992,7 +3992,7 @@ int main_update( main_t * main )
 
     relay_stats_message_t * relay_thread_stats = (relay_stats_message_t*) alloca( main->num_threads * sizeof(relay_stats_message_t) );
 
-    memset( &relay_thread_stats, 0, sizeof(relay_stats_message_t) * main->num_threads );
+    memset( relay_thread_stats, 0, sizeof(relay_stats_message_t) * main->num_threads );
 
     while ( true )
     {
@@ -6215,7 +6215,7 @@ int main( int argc, const char ** argv )
     relay_address_t ping_thread_address;
 
     relay_platform_socket_t ** ping_socket = (relay_platform_socket_t**) alloca( num_ping_sockets * sizeof(relay_platform_socket_t*) );
-    memset( &ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
+    memset( ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
     for ( int i = 0; i < num_ping_sockets; i++ )
     {
         printf( "Creating ping socket %d\n", i );
@@ -6282,8 +6282,8 @@ int main( int argc, const char ** argv )
 
     // create relay sockets
 
-    relay_platform_socket_t ** relay_socket = (relay_platform_socket_t**) alloca( num_threads * sizeof(relay_platform_socket_t) );
-    memset( &relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
+    relay_platform_socket_t ** relay_socket = (relay_platform_socket_t**) alloca( num_threads * sizeof(relay_platform_socket_t*) );
+    memset( relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
     for ( int i = 0; i < num_threads; i++ )
     {
         printf( "Creating relay socket %d\n", i );
@@ -6313,7 +6313,7 @@ int main( int argc, const char ** argv )
 
     relay_t * relay = (relay_t*) alloca( num_threads * sizeof(relay_t) );
 
-    memset( &relay, 0, sizeof(relay_t) * num_threads );
+    memset( relay, 0, sizeof(relay_t) * num_threads );
 
     relay_platform_thread_t ** relay_thread = (relay_platform_thread_t**) alloca( num_threads * sizeof(relay_platform_thread_t*) );
 
