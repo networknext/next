@@ -105,7 +105,7 @@ func happy_path(wait bool) int {
 
 	session_cruncher_initialized := false
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 1000; i++ {
 		if strings.Contains(session_cruncher_stdout.String(), "starting http server on port 40200") {
 			session_cruncher_initialized = true
 			break
@@ -133,7 +133,7 @@ func happy_path(wait bool) int {
 
 	server_cruncher_initialized := false
 
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 1000; i++ {
 		if strings.Contains(server_cruncher_stdout.String(), "starting http server on port 40300") {
 			server_cruncher_initialized = true
 			break

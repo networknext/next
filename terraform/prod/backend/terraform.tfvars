@@ -8,24 +8,24 @@ google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
 google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"] 	# IMPORTANT: c3 family is only available in these zones, not us-central1-f
-google_artifacts_bucket     = "gs://theodore_network_next_backend_artifacts"
-google_database_bucket      = "gs://theodore_network_next_database_files"
+google_artifacts_bucket     = "gs://next_network_next_backend_artifacts"
+google_database_bucket      = "gs://next_network_next_database_files"
 
 cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
 cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
 cloudflare_domain           = "virtualgo.net"
 
-test_buyer_public_key       = "yaL9uP7tOnc4mG0DMCzRkOs5lShqN0zzrIn6s9jgao1iIv1//3g/Yw=="
-test_buyer_private_key      = "yaL9uP7tOncF85rlqE3P/Kee/C945C3e57zslfjB3h7/agqRKuyGHDiYbQMwLNGQ6zmVKGo3TPOsifqz2OBqjWIi/X//eD9j"
+test_buyer_public_key       = "OPsJ/biQrnQEgoJr2oo9zeJG9vVkOUpWklw2+O2nfyy1BljyFxrU8Q=="
+test_buyer_private_key      = "OPsJ/biQrnQWRDrCHrOYPpYR/aRkRJA3IhJKx1ZZu95p59UokTB6/gSCgmvaij3N4kb29WQ5SlaSXDb47ad/LLUGWPIXGtTx"
 
-raspberry_buyer_public_key  = "fUJEyRqdR0X/63g6jCCnXgetsWuzG74zqg5xB4KeJMFK7EyBaXnb1A=="
-raspberry_buyer_private_key = "fUJEyRqdR0UE0yFmg9tHAE6flSw2TnVD7+jA3q6etkbMudO84dyujf/reDqMIKdeB62xa7MbvjOqDnEHgp4kwUrsTIFpedvU"
+raspberry_buyer_public_key  = "YJHQ5FGeoveQMdSzLRmbOKFRVY6QeMyUX1c4kRA72anucqnPRBr8IA=="
+raspberry_buyer_private_key = "YJHQ5FGeovcEX0r2r9P1LH+8tnnA3oQ7RSV6f/r0ihkbC2MOLVVbsJAx1LMtGZs4oVFVjpB4zJRfVziREDvZqe5yqc9EGvwg"
 
-ip2location_bucket_name     = "theodore_network_next_prod"
+ip2location_bucket_name     = "next_network_next_prod"
 
-relay_backend_public_key    = "Xg+WVwYouISwX/2h3Slu8knq5W/d+6AID0aF/Vatfg0="
+relay_backend_public_key    = "unH/Yxm0C6JCZ1dTGZH2BTBOFhGMcYsOEDURd9qY72w="
 
-server_backend_public_key   = "f3QGkf+Hy5BATBPq+IGzoTSrWVosmQTcBDU8BHEL0z0="
+server_backend_public_key   = "Uycn3KibCfXJo1uM+NNWgCySRzM2Ti3bhvom9XBkxfE="
 
 test_server_region          = "us-central1"
 test_server_zone            = "us-central1-a"

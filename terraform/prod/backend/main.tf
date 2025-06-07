@@ -70,7 +70,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "theodore_network_next_terraform"
+    bucket  = "next_network_next_terraform"
     prefix  = "production"
   }
 }
