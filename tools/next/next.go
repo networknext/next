@@ -1663,8 +1663,8 @@ func secrets() {
 
 	fmt.Printf("moving secrets from terraform/projects to ~/secrets...\n")
 
-	bash("mv -f terraform/projects/*.txt ~/secrets")
-	bash("mv -f terraform/projects/*.json ~/secrets")
+	bash("mv -f terraform/projects/*.txt ~/secrets 2> /dev/null")
+	bash("mv -f terraform/projects/*.json ~/secrets 2> /dev/null")
 
 	fmt.Printf("\nzipping up secrets -> secrets.tar.gz\n\n")
 
