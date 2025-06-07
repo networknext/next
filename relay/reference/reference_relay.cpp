@@ -197,7 +197,7 @@
 
 #define RELAY_NUM_COUNTERS                                                                     150
 
-#define RELAY_SPAM 																			     0
+#define RELAY_SPAM                                                                               0
 
 // -------------------------------------------------------------------------------------
 
@@ -3990,9 +3990,9 @@ int main_update( main_t * main )
 {
     // pump relay stats messages
 
-    relay_stats_message_t * relay_thread_stats = (relay_stats_message_t*) alloca( main->num_threads * sizeof(relay_stats_message_t) );
+    relay_stats_message_t relay_thread_stats[main->num_threads];
 
-    memset( relay_thread_stats, 0, sizeof(relay_stats_message_t) * main->num_threads );
+    memset( &relay_thread_stats, 0, sizeof(relay_stats_message_t) * main->num_threads );
 
     while ( true )
     {
@@ -4079,7 +4079,7 @@ int main_update( main_t * main )
         relay_write_uint16( &p, uint16_t( integer_packet_loss ) );
     }
 
-	uint32_t session_count = 0;
+    uint32_t session_count = 0;
     uint32_t envelope_bandwidth_up_kbps = 0.0f;
     uint32_t envelope_bandwidth_down_kbps = 0.0f;
     float packets_sent_per_second = 0.0f;
@@ -4091,7 +4091,7 @@ int main_update( main_t * main )
     float relay_pings_per_second = 0.0f;
 
     relay_platform_mutex_acquire( main->session_map_mutex );
-	session_count = main->session_map->size();
+    session_count = main->session_map->size();
     relay_platform_mutex_release( main->session_map_mutex );
     envelope_bandwidth_up_kbps = main->envelope_bandwidth_kbps_up;
     envelope_bandwidth_down_kbps = main->envelope_bandwidth_kbps_down;
@@ -4365,7 +4365,7 @@ int main_update( main_t * main )
     if ( !main->disable_destroy )
 #endif // #if RELAY_TEST
     {
-    	relay_platform_mutex_acquire( main->session_map_mutex );
+        relay_platform_mutex_acquire( main->session_map_mutex );
         std::map<session_key_t, relay_session_t*>::iterator iter = main->session_map->begin();
         while ( iter != main->session_map->end() )
         {
@@ -4381,7 +4381,7 @@ int main_update( main_t * main )
                 iter++;
             }
         }
-    	relay_platform_mutex_release( main->session_map_mutex );
+        relay_platform_mutex_release( main->session_map_mutex );
     }
 
     // automatic version updates
@@ -4566,7 +4566,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
         if ( relay->control.current_timestamp == 0 )
         {
-            relay_printf( "relay is not ready yet" );
             continue;
         }
 
@@ -4721,7 +4720,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         if ( packet_id == RELAY_PING_PACKET )
         {
 #if RELAY_SPAM
-        	char buffer[256];
+            char buffer[256];
             relay_printf( "received relay ping packet from %s", relay_address_to_string( &from, buffer ) );
 #endif // #if RELAY_SPAM
 
@@ -4790,7 +4789,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         else if ( packet_id == RELAY_PONG_PACKET )
         {
 #if RELAY_SPAM
-        	char buffer[256];
+            char buffer[256];
             relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
 #endif // #if RELAY_SPAM
 
@@ -5074,9 +5073,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -5170,9 +5169,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -5277,9 +5276,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -5304,7 +5303,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
+            uint8_t game_packet_data[game_packet_bytes];
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t next_address_data[4];
@@ -5389,9 +5388,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -5414,7 +5413,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
+            uint8_t game_packet_data[game_packet_bytes];
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t prev_address_data[4];
@@ -5494,9 +5493,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -5599,9 +5598,9 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 main->envelope_bandwidth_kbps_up -= session->kbps_up;
                 main->envelope_bandwidth_kbps_down -= session->kbps_down;
                 relay->counters[RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED]++;
-	            relay_platform_mutex_acquire( relay->session_map_mutex );
+                relay_platform_mutex_acquire( relay->session_map_mutex );
                 relay->session_map->erase(key);
-	            relay_platform_mutex_release( relay->session_map_mutex );
+                relay_platform_mutex_release( relay->session_map_mutex );
                 free( session );
                 continue;
             }
@@ -6184,7 +6183,7 @@ int main( int argc, const char ** argv )
     const char * num_threads_env = relay_platform_getenv( "RELAY_NUM_THREADS" );
     if ( num_threads_env )
     {
-    	num_threads = atoi( num_threads_env );
+        num_threads = atoi( num_threads_env );
     }
 
     printf( "Creating %d relay threads\n", num_threads );
@@ -6192,8 +6191,8 @@ int main( int argc, const char ** argv )
     relay_queue_t * relay_stats_queue = relay_queue_create( num_threads * 64 );
     relay_platform_mutex_t * relay_stats_mutex = relay_platform_mutex_create();
 
-    relay_queue_t ** relay_control_queue = (relay_queue_t**) alloca( num_threads * sizeof(relay_queue_t*) );
-    relay_platform_mutex_t ** relay_control_mutex = (relay_platform_mutex_t**) alloca( num_threads * sizeof(relay_platform_mutex_t*) );
+    relay_queue_t * relay_control_queue[num_threads];
+    relay_platform_mutex_t * relay_control_mutex[num_threads];
     for ( int i = 0; i < num_threads; i++ )
     {
         relay_control_queue[i] = relay_queue_create( 64 );
@@ -6214,8 +6213,8 @@ int main( int argc, const char ** argv )
 
     relay_address_t ping_thread_address;
 
-    relay_platform_socket_t ** ping_socket = (relay_platform_socket_t**) alloca( num_ping_sockets * sizeof(relay_platform_socket_t*) );
-    memset( ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
+    relay_platform_socket_t * ping_socket[num_ping_sockets];
+    memset( &ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
     for ( int i = 0; i < num_ping_sockets; i++ )
     {
         printf( "Creating ping socket %d\n", i );
@@ -6282,8 +6281,8 @@ int main( int argc, const char ** argv )
 
     // create relay sockets
 
-    relay_platform_socket_t ** relay_socket = (relay_platform_socket_t**) alloca( num_threads * sizeof(relay_platform_socket_t*) );
-    memset( relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
+    relay_platform_socket_t * relay_socket[num_threads];
+    memset( &relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
     for ( int i = 0; i < num_threads; i++ )
     {
         printf( "Creating relay socket %d\n", i );
@@ -6311,11 +6310,11 @@ int main( int argc, const char ** argv )
 
     // create relay threads
 
-    relay_t * relay = (relay_t*) alloca( num_threads * sizeof(relay_t) );
+    relay_t relay[num_threads];
 
-    memset( relay, 0, sizeof(relay_t) * num_threads );
+    memset( &relay, 0, sizeof(relay_t) * num_threads );
 
-    relay_platform_thread_t ** relay_thread = (relay_platform_thread_t**) alloca( num_threads * sizeof(relay_platform_thread_t*) );
+    relay_platform_thread_t * relay_thread[num_threads];
 
     for ( int i = 0; i < num_threads; i++ )
     {
@@ -6631,12 +6630,12 @@ int main( int argc, const char ** argv )
 
     if ( session_map != NULL )
     {
-	    for ( std::map<session_key_t, relay_session_t*>::iterator itor = session_map->begin(); itor != session_map->end(); ++itor )
-	    {
-	        delete itor->second;
-	    }
+        for ( std::map<session_key_t, relay_session_t*>::iterator itor = session_map->begin(); itor != session_map->end(); ++itor )
+        {
+            delete itor->second;
+        }
 
-	    delete session_map;
+        delete session_map;
     }
 
     printf( "Destroying message queues\n" );

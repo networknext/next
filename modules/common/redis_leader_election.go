@@ -161,10 +161,10 @@ func (leaderElection *RedisLeaderElection) Update(ctx context.Context) {
 
 	leaderElection.redisClient.HSet(ctx, key, field, value)
 
-	// wait for the initial delay
+	// wait for leader election initial delay
 
 	if int(time.Since(leaderElection.startTime).Seconds()) < leaderElection.config.InitialDelay {
-		core.Debug("initial delay (%d)", leaderElection.config.InitialDelay)
+		core.Debug("waiting for leader election initial delay (%d)", leaderElection.config.InitialDelay)
 		return
 	}
 

@@ -578,7 +578,9 @@ func processFallbackToDirect(service *common.Service, channel chan uint64) {
 	go func() {
 		for {
 			_ = <-channel
-			countersPublisher.MessageChannel <- "fallback_to_direct"
+			if enableRedisTimeSeries {
+				countersPublisher.MessageChannel <- "fallback_to_direct"
+			}
 		}
 	}()
 }
