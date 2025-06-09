@@ -28,7 +28,8 @@ blocks:
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j config=${CONFIG}_${PLATFORM}
+            - make config=${CONFIG}_${PLATFORM}
+#            - make -j config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on MacOS"
