@@ -25,6 +25,7 @@ blocks:
             - env_var: PLATFORM
               values: [ "portable", "x64", "avx", "avx2" ]
           commands:
+            - cd sdk
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
@@ -51,6 +52,7 @@ blocks:
             - env_var: PLATFORM
               values: [ "portable", "x64", "avx", "avx2" ]
           commands:
+            - cd sdk
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
@@ -74,6 +76,7 @@ blocks:
             - env_var: CONFIG
               values: [ "debug_portable", "release_portable" ]
           commands:
+            - cd sdk
             - brew install premake
             - premake5 gmake
             - make -j config=$CONFIG
@@ -95,6 +98,7 @@ blocks:
             - env_var: CONFIG
               values: [ "memorycheck_portable" ]
           commands:
+            - cd sdk
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
@@ -118,6 +122,7 @@ blocks:
             - env_var: CONFIG
               values: [ "memorycheck_portable" ]
           commands:
+            - cd sdk
             - curl -L https://github.com/premake/premake-core/releases/download/v5.0.0-alpha14/premake-5.0.0-alpha14-linux.tar.gz | tar -xvz
             - chmod +x premake5
             - ./premake5 gmake
