@@ -2207,6 +2207,10 @@ void test_relay_manager()
     uint8_t relay_ping_tokens[NEXT_MAX_CLIENT_RELAYS * NEXT_PING_TOKEN_BYTES];
     uint64_t relay_ping_expire_timestamp = 0x129387193871987LL;
 
+    memset( relay_ids, 0, sizeof(relay_ids) );
+    memset( relay_addresses, 0, sizeof(relay_addresses) );
+    memset( relay_ping_tokens, 0, sizeof(relay_ping_tokens) );
+
     for ( int i = 0; i < NEXT_MAX_CLIENT_RELAYS; ++i )
     {
         relay_ids[i] = i;
