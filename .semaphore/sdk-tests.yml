@@ -9,7 +9,7 @@ agent:
 
 blocks:
 
-  - name: "Test on Ubuntu 20.04 LTS"
+  - name: "Test on Linux"
     dependencies: []
     task:
       prologue:
