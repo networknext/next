@@ -19,8 +19,6 @@ import (
 
 const TopSessionsCount = 10000
 
-const NumBuckets = 1000
-
 const SessionBatchVersion = uint64(0)
 
 const TopSessionsVersion = uint64(0)
@@ -76,6 +74,7 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
+var numBuckets int
 var enableRedisTimeSeries bool
 var redisTimeSeriesCluster []string
 var redisTimeSeriesHostname string
@@ -84,6 +83,7 @@ var service *common.Service
 
 func main() {
 
+	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
@@ -95,20 +95,29 @@ func main() {
 
 	service = common.CreateService("session_cruncher")
 
+	core.Debug("before loading database");
+
 	service.LoadDatabase(nil, nil)
+
+	core.Debug("after loading database");
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
-	buckets = make([]Bucket, NumBuckets)
+	core.Debug("after setting router handlers")
+
+	buckets = make([]Bucket, numBuckets)
 	for i := range buckets {
+		core.Debug("create bucket #%d", i)
 		buckets[i].index = i
 		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
 		buckets[i].totalSessions = NewSortedSet()
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
 	}
+
+	core.Debug("after buckets (num buckets=1000)")
 
 	UpdateTopSessions(&TopSessions{})
 
@@ -217,7 +226,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 
 func TestThread() {
 	for {
-		for index := 0; index < NumBuckets; index++ {
+		for index := 0; index < numBuckets; index++ {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
@@ -232,13 +241,13 @@ func TestThread() {
 }
 
 func GetBucketIndex(score uint32) int {
-	index := score
+	index := int(score)
 	if index < 0 {
 		index = 0
-	} else if index > NumBuckets-1 {
-		index = NumBuckets - 1
+	} else if index > numBuckets-1 {
+		index = numBuckets - 1
 	}
-	return int(index)
+	return index
 }
 
 func StartProcessThread(bucket *Bucket) {
@@ -302,21 +311,21 @@ func TopSessionsThread() {
 
 		core.Debug("-------------------------------------------------------------------")
 
-		totalSessions := make([]*SortedSet, NumBuckets)
-		mapEntries := make([]map[uint64]MapEntry, NumBuckets)
+		totalSessions := make([]*SortedSet, numBuckets)
+		mapEntries := make([]map[uint64]MapEntry, numBuckets)
 
-		for i := 0; i < NumBuckets; i++ {
+		for i := 0; i < numBuckets; i++ {
 			buckets[i].mutex.Lock()
 		}
 
-		for i := 0; i < NumBuckets; i++ {
+		for i := 0; i < numBuckets; i++ {
 			totalSessions[i] = buckets[i].totalSessions
 			mapEntries[i] = buckets[i].mapEntries
 			buckets[i].totalSessions = NewSortedSet()
 			buckets[i].mapEntries = make(map[uint64]MapEntry, TopSessionsCount)
 		}
 
-		for i := 0; i < NumBuckets; i++ {
+		for i := 0; i < numBuckets; i++ {
 			buckets[i].mutex.Unlock()
 		}
 
@@ -333,7 +342,7 @@ func TopSessionsThread() {
 
 		sessions := make([]Session, 0, TopSessionsCount)
 
-		for i := 0; i < NumBuckets; i++ {
+		for i := 0; i < numBuckets; i++ {
 			bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
 			for j := range bucketTotalSessions {
 				if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
@@ -408,7 +417,7 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	body = body[8:]
 
 	index := 0
-	for j := 0; j < NumBuckets; j++ {
+	for j := 0; j < numBuckets; j++ {
 		var numUpdates uint32
 		encoding.ReadUint32(body[:], &index, &numUpdates)
 		batch := make([]SessionUpdate, numUpdates)
