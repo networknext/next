@@ -43,7 +43,7 @@ update-schemas:
 
 .PHONY: build
 build: update-schemas
-	@make -s build-fast -j
+	@make -s build-fast
 
 .PHONY: build-fast
 build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/relay-release dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
@@ -51,7 +51,7 @@ build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/relay-release dist/client 
 .PHONY: rebuild
 rebuild: clean update-schemas ## rebuild everything
 	@echo rebuilding...
-	@make build -j
+	@make build
 
 .PHONY: clean
 clean: ## clean everything

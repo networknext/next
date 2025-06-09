@@ -6300,7 +6300,7 @@ int main( int argc, const char ** argv )
 
     main_t main;
 
-    memset( &main, 0, sizeof(main_t) );
+    memset( (char*) &main, 0, sizeof(main_t) );
 
     // create sessions map and mutex
 
@@ -6312,7 +6312,7 @@ int main( int argc, const char ** argv )
 
     relay_t relay[num_threads];
 
-    memset( &relay, 0, sizeof(relay_t) * num_threads );
+    memset( (char*) &relay, 0, sizeof(relay_t) * num_threads );
 
     relay_platform_thread_t * relay_thread[num_threads];
 
