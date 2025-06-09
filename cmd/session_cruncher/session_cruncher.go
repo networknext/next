@@ -95,29 +95,20 @@ func main() {
 
 	service = common.CreateService("session_cruncher")
 
-	core.Debug("before loading database");
-
 	service.LoadDatabase(nil, nil)
-
-	core.Debug("after loading database");
 
 	service.Router.HandleFunc("/session_batch", sessionBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
-	core.Debug("after setting router handlers")
-
 	buckets = make([]Bucket, numBuckets)
 	for i := range buckets {
-		core.Debug("create bucket #%d", i)
 		buckets[i].index = i
 		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
 		buckets[i].totalSessions = NewSortedSet()
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
 	}
-
-	core.Debug("after buckets (num buckets=1000)")
 
 	UpdateTopSessions(&TopSessions{})
 
