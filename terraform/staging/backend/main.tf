@@ -787,6 +787,7 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    NUM_BUCKETS=1000
     EOF
     sudo systemctl start app.service
   EOF1
