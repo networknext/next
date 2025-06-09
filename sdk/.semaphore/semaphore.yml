@@ -30,7 +30,7 @@ blocks:
             - ./premake5 gmake
             - sem-version c $GCC_VERSION
             - gcc --version
-            - make -j32 config=${CONFIG}_${PLATFORM}
+            - make -j config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on Ubuntu 20.04 LTS"
@@ -55,7 +55,7 @@ blocks:
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j32 config=${CONFIG}_${PLATFORM}
+            - make -j config=${CONFIG}_${PLATFORM}
             - ./bin/test
 
   - name: "Test on MacOS"
@@ -76,7 +76,7 @@ blocks:
           commands:
             - brew install premake
             - premake5 gmake
-            - make -j32 config=$CONFIG
+            - make -j config=$CONFIG
             - ./bin/test
 
   - name: "Soak Test"
@@ -99,7 +99,7 @@ blocks:
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j32 config=$CONFIG soak
+            - make -j config=$CONFIG soak
             - ./bin/soak 60
 
   - name: "Fuzz Test"
@@ -122,5 +122,5 @@ blocks:
             - chmod +x premake5
             - ./premake5 gmake
             - gcc --version
-            - make -j32 config=$CONFIG fuzz
+            - make -j config=$CONFIG fuzz
             - ./bin/fuzz 60
