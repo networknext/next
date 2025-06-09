@@ -1,6 +1,6 @@
 version: v1.0
 
-name: Test
+name: Functional Tests
 
 agent:
   machine:

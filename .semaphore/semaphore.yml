@@ -205,8 +205,14 @@ blocks:
 
 promotions:
 
-  - name: "Run Tests"
-    pipeline_file: test.yml
+  - name: "SDK Tests"
+    pipeline_file: sdk-tests.yml
+
+  - name: "Functional Tests"
+    pipeline_file: functional-tests.yml
+
+  - name: "Happy Path"
+    pipeline_file: happy-path.yml
 
   - name: "Upload Artifacts"
     pipeline_file: upload-artifacts.yml
@@ -221,6 +227,3 @@ promotions:
 
   - name: "Update Golang Cache"
     pipeline_file: update-golang-cache.yml
-
-  - name: "Happy Path"
-    pipeline_file: happy-path.yml
