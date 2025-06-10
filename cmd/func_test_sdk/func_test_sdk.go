@@ -1714,16 +1714,29 @@ func test_server_under_load() {
 	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
 	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
 
-	clientConfig := &ClientConfig{}
-	clientConfig.duration = 100.0
-	clientConfig.buyer_public_key = TestBuyerPublicKey
+	relaysInited := false
+	for i := 0; i < 60; i++ {
+		if strings.Contains(relay_1_stdout.String(), "Relay initialized") && strings.Contains(relay_2_stdout.String(), "Relay initialized") && strings.Contains(relay_3_stdout.String(), "Relay initialized") {
+			relaysInited = true
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	if !relaysInited {
+		panic("relays did not init")
+	}
 
 	serverConfig := &ServerConfig{}
 	serverConfig.buyer_private_key = TestBuyerPrivateKey
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	const MaxClients = 1
+	const MaxClients = 2
+
+	clientConfig := &ClientConfig{}
+	clientConfig.duration = 100.0
+	clientConfig.buyer_public_key = TestBuyerPublicKey
 
 	client_cmd := make([]*exec.Cmd, MaxClients)
 	client_stdout := make([]*bytes.Buffer, MaxClients)

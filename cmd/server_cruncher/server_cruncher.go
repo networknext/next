@@ -135,8 +135,8 @@ func UpdateTopServers(newTopServers *TopServers) {
 }
 
 func TopSessionsThread() {
-	minuteTicker := common.NewMinuteTicker()
-	minuteTicker.Run(service.Context, func() {
+	rateTicker := common.NewRateTicker(time.Second)
+	rateTicker.Run(service.Context, func() {
 
 		core.Debug("-------------------------------------------------------------------")
 

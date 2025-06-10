@@ -3682,6 +3682,7 @@ struct relay_control_message_t
     uint8_t next_magic[8];
     uint8_t current_magic[8];
     uint8_t previous_magic[8];
+    bool has_ping_key;
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
 };
@@ -4327,6 +4328,7 @@ int main_update( main_t * main )
 
         message->current_timestamp = response_timestamp;
 
+        message->has_ping_key = true;
         memcpy( message->ping_key, ping_key, RELAY_PING_KEY_BYTES );
 
         memcpy( message->relay_secret_key, main->relay_secret_key, RELAY_SECRET_KEY_BYTES );
@@ -4725,6 +4727,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             char buffer[256];
             relay_printf( "received relay ping packet from %s", relay_address_to_string( &from, buffer ) );
 #endif // #if RELAY_SPAM
+
+            if ( !relay->control.has_ping_key )
+            {
+#if RELAY_SPAM
+                relay_printf( "don't have relay ping key yet" );
+#endif // #if RELAY_SPAM
+                continue;
+            }
 
             relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED]++;
 
@@ -5305,7 +5315,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
+            uint8_t game_packet_data[RELAY_MAX_PACKET_BYTES];
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t next_address_data[4];
@@ -5415,7 +5425,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
+            uint8_t game_packet_data[RELAY_MAX_PACKET_BYTES];
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t prev_address_data[4];
@@ -5729,6 +5739,14 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             relay_printf( "received server ping packet" );
 
             relay->counters[RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED]++;
+
+            if ( !relay->control.has_ping_key )
+            {
+#if RELAY_SPAM
+                relay_printf( "don't have relay ping key yet" );
+#endif // #if RELAY_SPAM
+                continue;
+            }
 
             if ( packet_bytes != 8 + 8 + RELAY_PING_TOKEN_BYTES )
             {
@@ -6209,13 +6227,22 @@ int main( int argc, const char ** argv )
     {
         relay_control_queue[i] = relay_queue_create( 64 );
         relay_control_mutex[i] = relay_platform_mutex_create();
+
+        assert( relay_control_queue[i] );
+        assert( relay_control_mutex[i] );
     }
 
     relay_queue_t * ping_control_queue = relay_queue_create( 64 );
     relay_platform_mutex_t * ping_control_mutex = relay_platform_mutex_create();
 
+    assert( ping_control_queue );
+    assert( ping_control_mutex );
+
     relay_queue_t * ping_stats_queue = relay_queue_create( 64 );
     relay_platform_mutex_t * ping_stats_mutex = relay_platform_mutex_create();
+
+    assert( ping_stats_queue );
+    assert( ping_stats_mutex );
 
     // =============================================================================================================================
 
@@ -6226,7 +6253,7 @@ int main( int argc, const char ** argv )
     relay_address_t ping_thread_address;
 
     relay_platform_socket_t * ping_socket[RELAY_MAX_THREADS];
-    memset( ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
+    memset( (char*) &ping_socket[0], 0, sizeof(ping_socket) );
     for ( int i = 0; i < num_ping_sockets; i++ )
     {
         printf( "Creating ping socket %d\n", i );
@@ -6294,7 +6321,7 @@ int main( int argc, const char ** argv )
     // create relay sockets
 
     relay_platform_socket_t * relay_socket[RELAY_MAX_THREADS];
-    memset( relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
+    memset( relay_socket, 0, sizeof(relay_socket) );
     for ( int i = 0; i < num_threads; i++ )
     {
         printf( "Creating relay socket %d\n", i );
@@ -6327,6 +6354,8 @@ int main( int argc, const char ** argv )
     memset( (char*) relay, 0, sizeof(relay) );
 
     relay_platform_thread_t * relay_thread[RELAY_MAX_THREADS];
+
+    memset( relay_thread, 0, sizeof(relay_thread) );
 
     for ( int i = 0; i < num_threads; i++ )
     {

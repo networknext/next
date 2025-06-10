@@ -284,7 +284,7 @@ func relay() {
 	if relayPort == "" {
 		relayPort = "2000"
 	}
-	bash(fmt.Sprintf("cd dist && RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./relay-debug", relayPort))
+	bash(fmt.Sprintf("cd dist && RELAY_NUM_THREADS=1 RELAY_PUBLIC_ADDRESS=127.0.0.1:%s ./relay-debug", relayPort))
 }
 
 func server_backend() {

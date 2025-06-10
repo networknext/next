@@ -157,8 +157,8 @@ func UpdateAcceleratedPercent(service *common.Service) {
 
 	go func() {
 
-		minuteTicker := common.NewMinuteTicker()
-		minuteTicker.Run(service.Context, func() {
+		rateTicker := common.NewRateTicker(time.Second)
+		rateTicker.Run(service.Context, func() {
 
 			database := service.Database()
 			if database == nil {
@@ -297,8 +297,8 @@ func UpdateMapData(newMapPoints *MapPoints) {
 }
 
 func TopSessionsThread() {
-	minuteTicker := common.NewMinuteTicker()
-	minuteTicker.Run(service.Context, func() {
+	rateTicker := common.NewRateTicker(time.Second)
+	rateTicker.Run(service.Context, func() {
 
 		core.Debug("-------------------------------------------------------------------")
 
