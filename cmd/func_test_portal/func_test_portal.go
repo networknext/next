@@ -195,7 +195,7 @@ func RunSessionInsertThreads(threadCount int) {
 
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			sessionInserter := portal.CreateSessionInserter(context.Background(), redisClient, SessionCruncherURL, 1000)
+			sessionInserter := portal.CreateSessionInserter(context.Background(), redisClient, SessionCruncherURL, 10, 1000)
 
 			clientRelayInserter := portal.CreateClientRelayInserter(redisClient, 1000)
 
@@ -246,7 +246,7 @@ func RunServerInsertThreads(threadCount int) {
 
 			redisClient := common.CreateRedisClient("127.0.0.1:6379")
 
-			serverInserter := portal.CreateServerInserter(context.Background(), redisClient, ServerCruncherURL, 1000)
+			serverInserter := portal.CreateServerInserter(context.Background(), redisClient, ServerCruncherURL, 10, 1000)
 
 			for {
 

@@ -805,8 +805,6 @@ func GenerateRandomRelaySample() *RelaySample {
 
 // ------------------------------------------------------------------------------------------------------------
 
-const NumBuckets = 1000
-
 type SessionCruncherEntry struct {
 	SessionId uint64
 	Score     uint32
@@ -817,6 +815,7 @@ type SessionCruncherEntry struct {
 
 type SessionCruncherPublisherConfig struct {
 	URL                string
+	NumBuckets         int
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
@@ -881,13 +880,13 @@ func (publisher *SessionCruncherPublisher) updateMessageChannel(ctx context.Cont
 
 func (publisher *SessionCruncherPublisher) sendBatch() {
 
-	batchSize := [NumBuckets]uint32{}
+	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
 		batchSize[publisher.batchMessages[i].Score]++
 	}
 
-	batch := make([][]SessionCruncherEntry, NumBuckets)
+	batch := make([][]SessionCruncherEntry, publisher.config.NumBuckets)
 
 	for i := range batchSize {
 		batch[i] = make([]SessionCruncherEntry, 0, batchSize[i])
@@ -898,7 +897,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 		batch[index] = append(batch[index], publisher.batchMessages[i])
 	}
 
-	size := 8 + 4*NumBuckets
+	size := 8 + 4*publisher.config.NumBuckets
 	for i := range batchSize {
 		size += int(batchSize[i]) * (8 + 1 + 4 + 4)
 	}
@@ -909,7 +908,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	encoding.WriteUint64(data[:], &index, SessionBatchVersion_Write)
 
-	for i := 0; i < NumBuckets; i++ {
+	for i := 0; i < publisher.config.NumBuckets; i++ {
 		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
 		for j := range batch[i] {
 			encoding.WriteUint64(data[:], &index, batch[i][j].SessionId)
@@ -985,13 +984,13 @@ type SessionInserter struct {
 	publisher     *SessionCruncherPublisher
 }
 
-func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessionCruncherURL string, batchSize int) *SessionInserter {
+func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessionCruncherURL string, numBuckets int, batchSize int) *SessionInserter {
 	inserter := SessionInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
-	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL + "/session_batch", BatchSize: batchSize})
+	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL + "/session_batch", NumBuckets: numBuckets, BatchSize: batchSize})
 	return &inserter
 }
 
@@ -1473,6 +1472,7 @@ type ServerCruncherEntry struct {
 
 type ServerCruncherPublisherConfig struct {
 	URL                string
+	NumBuckets         int
 	BatchSize          int
 	BatchDuration      time.Duration
 	MessageChannelSize int
@@ -1537,13 +1537,13 @@ func (publisher *ServerCruncherPublisher) updateMessageChannel(ctx context.Conte
 
 func (publisher *ServerCruncherPublisher) sendBatch() {
 
-	batchSize := [NumBuckets]uint32{}
+	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
 		batchSize[publisher.batchMessages[i].Score]++
 	}
 
-	batch := make([][]ServerCruncherEntry, NumBuckets)
+	batch := make([][]ServerCruncherEntry, publisher.config.NumBuckets)
 
 	for i := range batchSize {
 		batch[i] = make([]ServerCruncherEntry, 0, batchSize[i])
@@ -1554,7 +1554,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 		batch[index] = append(batch[index], publisher.batchMessages[i])
 	}
 
-	size := 8 + 4*NumBuckets
+	size := 8 + 4*publisher.config.NumBuckets
 	for i := range batchSize {
 		size += 4 + int(batchSize[i])*(MaxServerAddressLength+8)
 	}
@@ -1565,7 +1565,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	encoding.WriteUint64(data[:], &index, ServerBatchVersion_Write)
 
-	for i := 0; i < NumBuckets; i++ {
+	for i := 0; i < publisher.config.NumBuckets; i++ {
 		encoding.WriteUint32(data[:], &index, uint32(batchSize[i]))
 		for j := range batch[i] {
 			encoding.WriteString(data, &index, batch[i][j].ServerAddress, MaxServerAddressLength)
@@ -1610,13 +1610,13 @@ type ServerInserter struct {
 	publisher     *ServerCruncherPublisher
 }
 
-func CreateServerInserter(ctx context.Context, redisClient redis.Cmdable, serverCruncherURL string, batchSize int) *ServerInserter {
+func CreateServerInserter(ctx context.Context, redisClient redis.Cmdable, serverCruncherURL string, numBuckets int, batchSize int) *ServerInserter {
 	inserter := ServerInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
-	inserter.publisher = CreateServerCruncherPublisher(ctx, ServerCruncherPublisherConfig{URL: serverCruncherURL + "/server_batch", BatchSize: batchSize})
+	inserter.publisher = CreateServerCruncherPublisher(ctx, ServerCruncherPublisherConfig{URL: serverCruncherURL + "/server_batch", NumBuckets: numBuckets, BatchSize: batchSize})
 	return &inserter
 }
 
@@ -1626,7 +1626,7 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	serverId := common.HashString(serverData.ServerAddress)
 
-	score := (uint32(serverId) ^ uint32(serverId>>32)) % NumBuckets
+	score := (uint32(serverId) ^ uint32(serverId>>32)) % uint32(inserter.publisher.config.NumBuckets)
 
 	entry := ServerCruncherEntry{
 		ServerAddress: serverData.ServerAddress,
