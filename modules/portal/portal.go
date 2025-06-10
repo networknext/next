@@ -21,6 +21,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var MaxScore = 1000
+
 // --------------------------------------------------------------------------------------------------
 
 type SessionData struct {
@@ -883,8 +885,11 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
-		index := i % publisher.config.NumBuckets
-		batchSize[publisher.batchMessages[index].Score]++
+		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
+		if batchIndex > publisher.config.NumBuckets - 1 {
+			batchIndex = publisher.config.NumBuckets - 1
+		}
+		batchSize[batchIndex]++
 	}
 
 	batch := make([][]SessionCruncherEntry, publisher.config.NumBuckets)
@@ -894,8 +899,11 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	}
 
 	for i := range publisher.batchMessages {
-		index := int(publisher.batchMessages[i].Score)
-		batch[index] = append(batch[index], publisher.batchMessages[i])
+		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
+		if batchIndex > publisher.config.NumBuckets - 1 {
+			batchIndex = publisher.config.NumBuckets - 1
+		}
+		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
 	}
 
 	size := 8 + 4*publisher.config.NumBuckets
@@ -1541,7 +1549,11 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
-		batchSize[publisher.batchMessages[i].Score]++
+		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
+		if batchIndex > publisher.config.NumBuckets - 1 {
+			batchIndex = publisher.config.NumBuckets - 1
+		}
+		batchSize[batchIndex]++
 	}
 
 	batch := make([][]ServerCruncherEntry, publisher.config.NumBuckets)
@@ -1551,8 +1563,11 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 	}
 
 	for i := range publisher.batchMessages {
-		index := int(publisher.batchMessages[i].Score)
-		batch[index] = append(batch[index], publisher.batchMessages[i])
+		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
+		if batchIndex > publisher.config.NumBuckets - 1 {
+			batchIndex = publisher.config.NumBuckets - 1
+		}
+		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
 	}
 
 	size := 8 + 4*publisher.config.NumBuckets
@@ -1627,7 +1642,7 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	serverId := common.HashString(serverData.ServerAddress)
 
-	score := (uint32(serverId) ^ uint32(serverId>>32)) % uint32(inserter.publisher.config.NumBuckets)
+	score := (uint32(serverId) ^ uint32(serverId>>32)) % uint32(MaxScore)
 
 	entry := ServerCruncherEntry{
 		ServerAddress: serverData.ServerAddress,
