@@ -1732,7 +1732,7 @@ func test_server_under_load() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	const MaxClients = 2
+	const MaxClients = 30
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 100.0
