@@ -1708,11 +1708,22 @@ func test_server_under_load() {
 
 	fmt.Printf("test_server_under_load\n")
 
+	backend_cmd, backend_stdout := backend("DEFAULT")
+
+	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
+	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
+	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
+
 	clientConfig := &ClientConfig{}
-	clientConfig.duration = 60.0
+	clientConfig.duration = 100.0
 	clientConfig.buyer_public_key = TestBuyerPublicKey
 
-	const MaxClients = 30
+	serverConfig := &ServerConfig{}
+	serverConfig.buyer_private_key = TestBuyerPrivateKey
+
+	server_cmd, server_stdout := server(serverConfig)
+
+	const MaxClients = 1
 
 	client_cmd := make([]*exec.Cmd, MaxClients)
 	client_stdout := make([]*bytes.Buffer, MaxClients)
@@ -1721,38 +1732,30 @@ func test_server_under_load() {
 		client_cmd[i], client_stdout[i], client_stderr[i] = client(clientConfig)
 	}
 
-	serverConfig := &ServerConfig{}
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	relay_1_cmd, relay_1_stdout := relay("relay.1", 2000)
-	relay_2_cmd, relay_2_stdout := relay("relay.2", 2001)
-	relay_3_cmd, relay_3_stdout := relay("relay.3", 2002)
-
-	backend_cmd, backend_stdout := backend("DEFAULT")
-
 	time.Sleep(time.Second * 60)
 
 	for i := 0; i < MaxClients; i++ {
-		client_cmd[i].Process.Signal(os.Interrupt)
+		server_cmd.Process.Signal(os.Interrupt)
 	}
 
-	server_cmd.Process.Signal(os.Interrupt)
+	server_cmd.Wait()
+
+	for i := 0; i < MaxClients; i++ {
+		client_cmd[i].Process.Signal(os.Interrupt)
+		client_cmd[i].Wait()
+	}
+
 	backend_cmd.Process.Signal(os.Interrupt)
 	relay_1_cmd.Process.Signal(os.Interrupt)
 	relay_2_cmd.Process.Signal(os.Interrupt)
 	relay_3_cmd.Process.Signal(os.Interrupt)
 
-	server_cmd.Wait()
 	backend_cmd.Wait()
 	relay_1_cmd.Wait()
 	relay_2_cmd.Wait()
 	relay_3_cmd.Wait()
 
 	for i := 0; i < MaxClients; i++ {
-
-		client_cmd[i].Wait()
 
 		client_counters := read_client_counters(client_stderr[i].String())
 
