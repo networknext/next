@@ -883,7 +883,8 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
-		batchSize[publisher.batchMessages[i].Score]++
+		index := i % publisher.config.NumBuckets
+		batchSize[publisher.batchMessages[index].Score]++
 	}
 
 	batch := make([][]SessionCruncherEntry, publisher.config.NumBuckets)
