@@ -1205,12 +1205,3 @@ blocks:
             - ./run load-test-session-update
 
 # ------------------------------------------------------------------------------------------------------------
-
-promotions:
-
-  - name: "Upload Artifacts"
-    pipeline_file: upload-artifacts.yml
-    auto_promote:
-      when: "result = 'passed' and tag =~ '.*'"
-
-# ------------------------------------------------------------------------------------------------------------
