@@ -23,6 +23,8 @@
 #include <sys/sysinfo.h>
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
+#define RELAY_MAX_THREADS                                                                       64
+
 #define RELAY_MTU                                                                             1200
 
 #define RELAY_MAX_PACKET_BYTES                                                                1384
@@ -3990,9 +3992,9 @@ int main_update( main_t * main )
 {
     // pump relay stats messages
 
-    relay_stats_message_t relay_thread_stats[main->num_threads];
+    relay_stats_message_t relay_thread_stats[RELAY_MAX_THREADS];
 
-    memset( &relay_thread_stats, 0, sizeof(relay_stats_message_t) * main->num_threads );
+    memset( relay_thread_stats, 0, sizeof(relay_thread_stats) );
 
     while ( true )
     {
@@ -5303,7 +5305,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t game_packet_data[game_packet_bytes];
+            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t next_address_data[4];
@@ -5413,7 +5415,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             const_p += RELAY_HEADER_BYTES;
             int game_packet_bytes = packet_bytes - RELAY_HEADER_BYTES;
-            uint8_t game_packet_data[game_packet_bytes];
+            uint8_t * game_packet_data = (uint8_t*) alloca( game_packet_bytes );
             relay_read_bytes( &const_p, game_packet_data, game_packet_bytes );
 
             uint8_t prev_address_data[4];
@@ -6186,13 +6188,23 @@ int main( int argc, const char ** argv )
         num_threads = atoi( num_threads_env );
     }
 
+    if ( num_threads < 1 )
+    {
+        num_threads = 1;
+    }
+
+    if ( num_threads > RELAY_MAX_THREADS )
+    {
+        num_threads = RELAY_MAX_THREADS;
+    }
+
     printf( "Creating %d relay threads\n", num_threads );
 
     relay_queue_t * relay_stats_queue = relay_queue_create( num_threads * 64 );
     relay_platform_mutex_t * relay_stats_mutex = relay_platform_mutex_create();
 
-    relay_queue_t * relay_control_queue[num_threads];
-    relay_platform_mutex_t * relay_control_mutex[num_threads];
+    relay_queue_t * relay_control_queue[RELAY_MAX_THREADS];
+    relay_platform_mutex_t * relay_control_mutex[RELAY_MAX_THREADS];
     for ( int i = 0; i < num_threads; i++ )
     {
         relay_control_queue[i] = relay_queue_create( 64 );
@@ -6213,8 +6225,8 @@ int main( int argc, const char ** argv )
 
     relay_address_t ping_thread_address;
 
-    relay_platform_socket_t * ping_socket[num_ping_sockets];
-    memset( &ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
+    relay_platform_socket_t * ping_socket[RELAY_MAX_THREADS];
+    memset( ping_socket, 0, sizeof(relay_platform_socket_t*) * num_ping_sockets );
     for ( int i = 0; i < num_ping_sockets; i++ )
     {
         printf( "Creating ping socket %d\n", i );
@@ -6281,8 +6293,8 @@ int main( int argc, const char ** argv )
 
     // create relay sockets
 
-    relay_platform_socket_t * relay_socket[num_threads];
-    memset( &relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
+    relay_platform_socket_t * relay_socket[RELAY_MAX_THREADS];
+    memset( relay_socket, 0, sizeof(relay_platform_socket_t*) * num_threads );
     for ( int i = 0; i < num_threads; i++ )
     {
         printf( "Creating relay socket %d\n", i );
@@ -6310,11 +6322,11 @@ int main( int argc, const char ** argv )
 
     // create relay threads
 
-    relay_t relay[num_threads];
+    relay_t relay[RELAY_MAX_THREADS];
 
-    memset( (char*) &relay, 0, sizeof(relay_t) * num_threads );
+    memset( (char*) relay, 0, sizeof(relay) );
 
-    relay_platform_thread_t * relay_thread[num_threads];
+    relay_platform_thread_t * relay_thread[RELAY_MAX_THREADS];
 
     for ( int i = 0; i < num_threads; i++ )
     {
