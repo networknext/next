@@ -91,29 +91,27 @@ func RelayId(relayAddress string) uint64 {
 
 // ---------------------------------------------------------------
 
-type RateTicker struct {
-	rate       time.Duration
+type MinuteTicker struct {
 	ticker     *time.Ticker
-	nextTick   time.Time
+	nextMinute time.Time
 }
 
-func NewRateTicker(rate time.Duration) *RateTicker {
-	rateTicker := RateTicker{}
-	rateTicker.rate = rate
-	rateTicker.ticker = time.NewTicker(time.Second)
-	rateTicker.nextTick = time.Now().Truncate(rate).Add(rate)
-	return &rateTicker
+func NewMinuteTicker() *MinuteTicker {
+	minuteTicker := MinuteTicker{}
+	minuteTicker.ticker = time.NewTicker(time.Second)
+	minuteTicker.nextMinute = time.Now().Truncate(time.Minute).Add(time.Minute)
+	return &minuteTicker
 }
 
-func (rateTicker *RateTicker) Run(ctx context.Context, tick func()) {
+func (minuteTicker *MinuteTicker) Run(ctx context.Context, tick func()) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-rateTicker.ticker.C:
-			if time.Now().Unix() >= rateTicker.nextTick.Unix() {
+		case <-minuteTicker.ticker.C:
+			if time.Now().Unix() > minuteTicker.nextMinute.Unix() {
 				go tick()
-				rateTicker.nextTick = rateTicker.nextTick.Add(rateTicker.rate)
+				minuteTicker.nextMinute = minuteTicker.nextMinute.Add(time.Minute)
 			}
 		}
 	}
