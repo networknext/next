@@ -1732,10 +1732,10 @@ func test_server_under_load() {
 
 	server_cmd, server_stdout := server(serverConfig)
 
-	const MaxClients = 10
+	const MaxClients = 100
 
 	clientConfig := &ClientConfig{}
-	clientConfig.duration = 100.0
+	clientConfig.duration = 50
 	clientConfig.buyer_public_key = TestBuyerPublicKey
 
 	client_cmd := make([]*exec.Cmd, MaxClients)
