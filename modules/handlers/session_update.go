@@ -1077,7 +1077,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Timestamp = state.StartTimestamp
 
-	message.ClientAddress = state.Request.ClientAddress
+	message.ClientAddress = core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ServerAddress = state.Request.ServerAddress
 
 	message.SDKVersion_Major = byte(state.Request.Version.Major)
@@ -1222,7 +1222,8 @@ func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 		message.UserHash = int64(state.Request.UserHash)
 		message.Latitude = state.Output.Latitude
 		message.Longitude = state.Output.Longitude
-		message.ClientAddress = state.Request.ClientAddress.String()
+		anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
+		message.ClientAddress = anonymizedClientAddress.String()
 		message.ConnectionType = int32(state.Request.ConnectionType)
 		message.PlatformType = int32(state.Request.PlatformType)
 		message.ClientRelayId = int64(state.Request.ClientRelayIds[i])
@@ -1347,7 +1348,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.UserHash = int64(state.Request.UserHash)
 	message.Latitude = state.Input.Latitude
 	message.Longitude = state.Input.Longitude
-	message.ClientAddress = state.Request.ClientAddress.String()
+	anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
+	message.ClientAddress = anonymizedClientAddress.String()
 	message.ServerAddress = state.Request.ServerAddress.String()
 	message.ConnectionType = int32(state.Request.ConnectionType)
 	message.PlatformType = int32(state.Request.PlatformType)

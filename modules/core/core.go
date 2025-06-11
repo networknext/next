@@ -169,6 +169,26 @@ func ReadAddress_IPv4(buffer []byte) net.UDPAddr {
 	return net.UDPAddr{IP: net.IPv4(buffer[0], buffer[1], buffer[2], buffer[3]), Port: ((int)(binary.LittleEndian.Uint16(buffer[4:])))}
 }
 
+func AnonymizeAddress(address net.UDPAddr) net.UDPAddr {
+	ipv4 := address.IP.To4()
+	if ipv4 != nil {
+		return net.UDPAddr{IP: net.IPv4(ipv4[0], ipv4[1], ipv4[2], 0), Port: 0}
+	} else {
+		address.Port = 0
+		address.IP[6] = 0
+		address.IP[7] = 0
+		address.IP[8] = 0
+		address.IP[9] = 0
+		address.IP[10] = 0
+		address.IP[11] = 0
+		address.IP[12] = 0
+		address.IP[13] = 0
+		address.IP[14] = 0
+		address.IP[15] = 0
+		return address
+	}
+}
+
 // ---------------------------------------------------
 
 type RouteManager struct {

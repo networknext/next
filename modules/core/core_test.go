@@ -113,6 +113,18 @@ func TestAddress(t *testing.T) {
 	CheckIPv6Address(t, "[::1]:80", "[::1]:80")
 }
 
+func TestAnonymizeAddress_IPv4(t *testing.T) {
+	ipv4 := core.ParseAddress("1.2.3.4:50000")
+	anonymized := core.AnonymizeAddress(ipv4)
+	assert.Equal(t, anonymized.String(), "1.2.3.0:0")
+}
+
+func TestAnonymizeAddress_IPv6(t *testing.T) {
+	ipv6 := core.ParseAddress("[2001:0db8:85a3:0000:0000:8a2e:0370:7334]:49999")
+	anonymized := core.AnonymizeAddress(ipv6)
+	assert.Equal(t, anonymized.String(), "[2001:db8:85a3::]:0")
+}
+
 func TestRouteManager(t *testing.T) {
 
 	t.Parallel()

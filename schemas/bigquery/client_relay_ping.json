@@ -39,7 +39,7 @@
     "name": "client_address",
     "type": "STRING",
     "mode": "REQUIRED",
-    "description": "Client address and port number"
+    "description": "Client address (anonymized)"
   },
   {
     "name": "connection_type",
