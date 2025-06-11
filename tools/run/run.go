@@ -261,12 +261,20 @@ func getAPIPrivateKey() string {
 		os.Exit(1)
 	}
 	filename := fmt.Sprintf("%s/secrets/%s-api-private-key.txt", homeDir, env.Name)
-	data, err := os.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("error: could not read api private key from secrets dir: %v\n\n", err)
-		os.Exit(1)
+	_, err = os.Stat(filename)
+	if env.Name == "local" && os.IsNotExist(err) {
+		// local env during setup. user has not called "next config" yet. use a default value so they can run happy path locally
+		return "fhWwyybJcUVgvewtGqepaHCwpNdAeCBxsYXuPNFNgSaIZbgqQJKOuuQfzuHCJKDB"
+	} else {
+		// common path: secrets dir exists. get generated API private key from there
+		data, err := os.ReadFile(filename)
+		if err != nil {
+			fmt.Printf("error: could not read api private key from secrets dir: %v\n\n", err)
+			os.Exit(1)
+		}
+		return string(data)
 	}
-	return string(data)
+
 }
 
 func api() {
