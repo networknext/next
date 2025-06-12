@@ -23,7 +23,13 @@ The configuration of all the permissions, service accounts and cloud storage buc
 
 _You need to perform this step only once._
 
-At the console:
+First setup the application default login, so terraform can access your google cloud account:
+
+```console
+gcloud auth application-default login
+```
+
+Then create the google cloud projects using terraform:
 
 ```console
 cd ~/next/terraform/projects
