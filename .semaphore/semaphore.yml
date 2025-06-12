@@ -42,15 +42,15 @@ blocks:
       jobs:
         - name: "Build libsodium.so"
           commands:
-            - wget https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
+            - wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz
             - tar -zxf libsodium*
-            - cd libsodium-1.0.20
+            - cd libsodium-1.0.18
             - ./configure
             - make -j
             - sudo make install
             - ls -al /usr/local/lib
             - artifact push workflow /usr/local/lib/libsodium.so --force
-
+            
   - name: "Backend"
     dependencies: []
     task:
