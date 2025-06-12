@@ -215,9 +215,7 @@ Next step: [Setup Prerequisites](setup_prerequisites.md).
 
    Follow instructions here: https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent
 
-8. Clone repo and cd into it
-
-   `git clone git@github.com:networknext/next.git`
+8. Go to the next directory on the command line
 
    `cd next`
 
