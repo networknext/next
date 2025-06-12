@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-const APIPrivateKey = "fhWwyybJcUVgvewtGqepaHCwpNdAeCBxsYXuPNFNgSaIZbgqQJKOuuQfzuHCJKDB"
+const APIPrivateKey = "uKUsmTySUVEssqBmVNciJWWolchcGGhFzRWMpydwOtVExvqYpHMotnkanNTaGHHh"
 
 // ----------------------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTI0NzI5MH0.x_X99Wt_xkdr8UkpVwSg5BG6naLwn-zC4P2UN8aWIpE"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTczODE4OX0.I89NXJCRMU_pIjnSleAnbux5HNsHhymzQ_SVatFo3b4"
 }
 
 # ---------------------------------------------------------
@@ -243,7 +243,7 @@ terraform {
 
 provider "networknext" {
   hostname = "http://localhost:50000"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTI0NzI5MH0.x_X99Wt_xkdr8UkpVwSg5BG6naLwn-zC4P2UN8aWIpE"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTczODE4OX0.I89NXJCRMU_pIjnSleAnbux5HNsHhymzQ_SVatFo3b4"
 }
 
 # ---------------------------------------------------------

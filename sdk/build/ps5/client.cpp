@@ -14,7 +14,7 @@
 
 const char * server_address = "35.232.190.226:30000";
 
-const char * buyer_public_key = "OPsJ/biQrnQEgoJr2oo9zeJG9vVkOUpWklw2+O2nfyy1BljyFxrU8Q==";
+const char * buyer_public_key = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ==";
 
 unsigned int sceLibcHeapExtendedAlloc = 1;
 

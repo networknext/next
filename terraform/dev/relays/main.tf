@@ -26,14 +26,14 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "dev_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api-dev.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTI0NzI5MH0.oEDVqZhtLlSNEtk3yUvdpJzR3cAPROyzxyBWXgBj7Xw"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTczODE4OX0.c2mPjSWM_CSw8Z7SqvW7CRRFIY5kxh5DMHkQxgo5TQE"
 }
 
 # ----------------------------------------------------------------------------------------
