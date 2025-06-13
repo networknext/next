@@ -7,7 +7,7 @@ google_credentials          = "~/secrets/terraform-dev.json"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
-google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
+google_zones                = ["us-central1-a"]
 google_artifacts_bucket     = "gs://sloclap_network_next_backend_artifacts"
 google_database_bucket      = "gs://sloclap_network_next_database_files"
 
