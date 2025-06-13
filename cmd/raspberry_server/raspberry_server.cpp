@@ -83,7 +83,8 @@ int main()
 {
     printf( "\nRaspberry Server\n\n" );
 
-    raspberry_fake_latency = true;
+    // todo: turn this back on once debugging is finished
+    raspberry_fake_latency = false; // true;
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
