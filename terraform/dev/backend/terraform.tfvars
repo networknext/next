@@ -30,7 +30,7 @@ relay_backend_public_key    = "Z+9puZkCkV03nm4yO49ySF+H181jAlWVy7JPGMlk10I="
 server_backend_public_key   = "0dvRVqU+krtetlEosEdPN+IxVsNqi7/+Hi6gVjSwSl0="
 
 test_server_region          = "us-central1"
-test_server_zone            = ["us-central1-a"]
+test_server_zone            = "us-central1-a"
 test_server_tag             = "007" # increment this each time you want to deploy the test server
 
 disable_backend             = false
