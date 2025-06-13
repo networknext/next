@@ -1003,7 +1003,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
-    RASPBERRY_NUM_CLIENTS=256
+    RASPBERRY_NUM_CLIENTS=1
     EOF
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     ldconfig
