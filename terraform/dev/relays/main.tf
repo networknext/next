@@ -78,6 +78,18 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    "google.iowa.1.f" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.g" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n1-standard-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
     "google.iowa.2" = {
       datacenter_name = "google.iowa.2"
       type            = "n1-standard-2"

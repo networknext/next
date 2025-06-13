@@ -33,6 +33,6 @@ test_server_region          = "us-central1"
 test_server_zone            = "us-central1-a"
 test_server_tag             = "007" # increment this each time you want to deploy the test server
 
-disable_backend             = false
-disable_raspberry           = false
+disable_backend             = true
+disable_raspberry           = true
 disable_ip2location         = true

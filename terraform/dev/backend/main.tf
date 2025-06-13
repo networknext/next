@@ -877,7 +877,7 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-udp-40000"]
-  target_size                = var.disable_backend ? 0 : 1
+  target_size                = var.disable_backend ? 0 : 2
   initial_delay              = 180
 
   depends_on = [
