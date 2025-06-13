@@ -7,7 +7,7 @@ google_credentials          = "~/secrets/terraform-dev.json"
 google_location             = "US"
 google_region               = "us-central1"
 google_zone                 = "us-central1-a"
-google_zones                = ["us-central1-a"]
+google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]
 google_artifacts_bucket     = "gs://sloclap_network_next_backend_artifacts"
 google_database_bucket      = "gs://sloclap_network_next_database_files"
 
@@ -18,6 +18,8 @@ cloudflare_domain           = "virtualgo.net"
 test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
 test_buyer_private_key      = "AzcqXbdP3TwX+9o9VfR7RcX2cq34UPdEsR2ztUnwxlTb/R49EiV5a2resciNEFLgF8bs6gpX08Bl8HStjtr4Ct2LMHMUB3a9"
 
+raspberry_region            = "us-central1"
+raspberry_zones             = ["us-central1-a"]
 raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
 raspberry_buyer_private_key = "gtdzp3hCfJ+Xl4L4PsLbaBlzLeIogMkmzArY3r19jSenj1t4TAQKGlj7o46mxagwKExeFcYNGdju+QV0fA2pVbRt2nqONPHp"
 
