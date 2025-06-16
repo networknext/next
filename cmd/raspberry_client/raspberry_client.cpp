@@ -87,7 +87,7 @@ void client_thread_function( void * data )
             exit(1);
         }
 
-        char buffer[1024];
+        char buffer[10*1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
         {
             if ( num_servers >= MaxServers )
