@@ -28,6 +28,8 @@ variable "server_backend_public_key" { type = string }
 variable "test_buyer_public_key" { type = string }
 variable "test_buyer_private_key" { type = string }
 
+variable "raspberry_region" { type = string }
+variable "raspberry_zones" { type = list(string) }
 variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_buyer_private_key" { type = string }
 
@@ -1079,8 +1081,8 @@ module "raspberry_server" {
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
-  region             = var.google_region
-  zones              = var.google_zones
+  region             = var.raspberry_region
+  zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
@@ -1119,8 +1121,8 @@ module "raspberry_client" {
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
-  region             = var.google_region
-  zones              = var.google_zones
+  region             = var.raspberry_region
+  zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
