@@ -189,6 +189,7 @@ module "amazon_relays" {
 
 locals {
 
+  /*
   akamai_relays = {
 
     "akamai.newyork" = {
@@ -216,6 +217,7 @@ locals {
     }
 
   }
+  */
 }
 
 module "akamai_relays" {
