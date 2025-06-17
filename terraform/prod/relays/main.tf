@@ -128,62 +128,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    # OREGON
-
-    "google.oregon.1" = {
-      datacenter_name = "google.oregon.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # LOS ANGELES
-
-    "google.losangeles.1" = {
-      datacenter_name = "google.losangeles.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SALT LAKE CITY
-
-    "google.saltlakecity.1" = {
-      datacenter_name = "google.saltlakecity.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SOUTH CAROLINA
-
-    "google.southcarolina.2" = {
-      datacenter_name = "google.southcarolina.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # VIRGINIA
-
-    "google.virginia.1" = {
-      datacenter_name = "google.virginia.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # DALLAS
-
-    "google.dallas.1" = {
-      datacenter_name = "google.dallas.1"
-      type            = "n2-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # OHIO
-
-    "google.ohio.1" = {
-      datacenter_name = "google.ohio.1"
-      type            = "n2-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
   }
 }
 
