@@ -1209,15 +1209,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES != data_end )
-                                {
-                                    relay_printf( "wrong size" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
                                 __u8 * payload = packet_data + 18;
 
                                 __u64 expire_timestamp;
@@ -1263,7 +1254,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
                                 if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
                                 {
-                                    relay_printf( "did not verify" );
+                                    relay_printf( "did not verify: %x:%d -> %x:%d", ip->saddr, udp->source, ip->daddr, udp->dest );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
