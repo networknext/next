@@ -1241,6 +1241,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
@@ -1260,6 +1261,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+                                */
 
                                 struct whitelist_key key;
                                 key.address = ip->saddr;
@@ -1334,6 +1336,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                // todo: disable for now
+                                /*
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = 0; // IMPORTANT: Some NAT change the client port, so it is set to zero in client ping token
@@ -1353,6 +1357,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+                                */
                                 
                                 struct whitelist_key key;
                                 key.address = ip->saddr;
@@ -1427,6 +1432,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                // todo: disable
+                                /*
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
@@ -1446,6 +1453,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+                                */
                                 
                                 struct whitelist_key key;
                                 key.address = ip->saddr;
