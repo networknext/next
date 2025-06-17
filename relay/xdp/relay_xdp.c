@@ -156,7 +156,7 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->saddr = ip->daddr;
     ip->daddr = b;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= __constant_htons( DO_NOT_FRAGMENT );
+    ip->frag_off |= __constant_htons( IP_DO_NOT_FRAGMENT );
     ip->check = 0;
 
     char c[ETH_ALEN];
