@@ -646,6 +646,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             // Drop UDP packet if it is a fragment
 
+                            // todo: temporary disable. not sure what is going on here
+                            /*
                             if ( ( ip->frag_off & __constant_htons(~0x2000) ) != 0 )
                             {
                                 relay_printf( "dropped udp fragment" );
@@ -654,6 +656,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                 return XDP_DROP;
                             }
+                            */
 
                             // Basic packet filter
 
