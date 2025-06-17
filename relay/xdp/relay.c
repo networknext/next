@@ -83,7 +83,7 @@ int main( int argc, char *argv[] )
 
     printf( "[network next relay]\n" );
 
-    printf( "Relay version is %s", relay_version );
+    printf( "Relay version is %s\n", relay_version );
 
     signal( SIGINT,  interrupt_handler );
     signal( SIGTERM, clean_shutdown_handler );
