@@ -224,12 +224,6 @@ resource "google_storage_bucket_object" "google_txt" {
   bucket = google_storage_bucket.sdk_config.name
 }
 
-resource "google_storage_bucket_object" "multiplay_txt" {
-  name   = "multiplay.txt"
-  source = "../../config/multiplay.txt"
-  bucket = google_storage_bucket.sdk_config.name
-}
-
 resource "google_storage_bucket_object" "akamai_txt" {
   name   = "akamai.txt"
   source = "../../config/akamai.txt"
