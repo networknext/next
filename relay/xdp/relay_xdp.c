@@ -629,11 +629,17 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 return XDP_DROP;
                             }
 
+                            // Print packet type so we can see what's up while we debug the fragment stuff...
+
+                            __u8 packet_type = packet_data[0];
+
+                            relay_printf( "received packet type %d\n", packet_type );                    
+
                             // Drop UDP packet if it is a fragment
 
                             if ( ( ip->frag_off & __constant_htons(~0x2000) ) != 0 )
                             {
-                                relay_printf( "dropped udp fragment" );
+                                relay_printf( "dropped udp fragment: %x", ip->frag_off );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -642,10 +648,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         }
 
                         // ...
-
-                        __u8 packet_type = packet_data[0];
-
-                        relay_printf( "received packet type %d\n", packet_type );                    
 
                         return XDP_PASS;
                     }
