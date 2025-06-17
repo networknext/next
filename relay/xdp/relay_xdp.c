@@ -646,7 +646,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             // Drop UDP packet if it is a fragment
 
-                            if ( ( ip->frag_off & ~0x2000 ) != 0 )
+                            if ( ( ip->frag_off & __constant_htons(~0x2000) ) != 0 )
                             {
                                 relay_printf( "dropped udp fragment" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
