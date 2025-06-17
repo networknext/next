@@ -22,6 +22,8 @@
 
 #include "relay_shared.h"
 
+#define IP_DO_NOT_FRAGMENT 0x4000
+
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_ntohs(x)        __builtin_bswap16(x)
@@ -352,8 +354,6 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[16] = chonkle[13];
     packet_data[17] = chonkle[14];
 }
-
-#define IP_DO_NOT_FRAGMENT 0x4000
 
 static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_address, __u16 dest_port, __u8 * magic )
 {
