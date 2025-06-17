@@ -751,7 +751,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             state = (struct relay_state*) bpf_map_lookup_elem( &state_map, &key );
                             if ( state == NULL )
                             {
-                                relay_printf( "null state" );
+                                relay_printf( "null relay state" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                 return XDP_DROP;
