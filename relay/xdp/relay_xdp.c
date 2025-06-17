@@ -22,8 +22,6 @@
 
 #include "relay_shared.h"
 
-#define IP_DO_NOT_FRAGMENT 0x4000
-
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 #define bpf_ntohs(x)        __builtin_bswap16(x)
@@ -156,7 +154,6 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->saddr = ip->daddr;
     ip->daddr = b;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= __constant_htons( IP_DO_NOT_FRAGMENT );
     ip->check = 0;
 
     char c[ETH_ALEN];
@@ -354,7 +351,6 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
     ip->saddr = ip->daddr;
     ip->daddr = dest_address;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= __constant_htons( IP_DO_NOT_FRAGMENT );
     ip->check = 0;
 
     struct whitelist_key key;
@@ -628,26 +624,110 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                 return XDP_DROP;
                             }
-
-                            // Print packet type so we can see what's up while we debug the fragment stuff...
-
-                            __u8 packet_type = packet_data[0];
-
-                            relay_printf( "received packet type %d\n", packet_type );                    
-
-                            // Drop UDP packet if it is a fragment
-
-                            if ( ( ip->frag_off & __constant_htons(~0x2000) ) != 0 )
-                            {
-                                relay_printf( "dropped udp fragment: %x", ip->frag_off );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
-                            }
                         }
 
-                        // ...
+                        __u8 packet_type = packet_data[0];
+
+                        switch ( packet_type )
+                        {
+                            case RELAY_PING_PACKET:
+                            {
+                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
+
+                                // IMPORTANT: for verifier
+                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "relay ping packet is wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u8 * payload = packet_data + 18;
+
+                                __u64 expire_timestamp;
+                                expire_timestamp  = payload[8];
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 1] ) ) << 8  );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 2] ) ) << 16 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 3] ) ) << 24 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 4] ) ) << 32 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 5] ) ) << 40 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 6] ) ) << 48 );
+                                expire_timestamp |= ( ( (__u64)( payload[8 + 7] ) ) << 56 );
+
+                                if ( expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 relay_map_key = ( ( (__u64)ip->saddr ) << 32 ) | udp->source;
+                                void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
+                                if ( relay_map_value == NULL )
+                                {
+                                    relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_UNKNOWN_RELAY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                struct ping_token_data verify_data;
+                                verify_data.source_address = ip->saddr;
+                                verify_data.source_port = udp->source;
+                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_port = udp->dest;
+                                verify_data.expire_timestamp = expire_timestamp;
+                                memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
+
+                                __u8 hash[32];
+                                bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
+                                __u8 * ping_token = packet_data + 8 + 8 + 1;
+                                if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
+                                {
+                                    relay_printf( "did not verify: %x:%d -> %x:%d", ip->saddr, bpf_ntohs( udp->source ), ip->daddr, bpf_ntohs( udp->dest ) );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */
+
+                                struct whitelist_key key;
+                                key.address = ip->saddr;
+                                key.port = udp->source;
+                                
+                                struct whitelist_value value;
+                                value.expire_timestamp = state->current_timestamp + 30;
+                                memcpy( value.source_address, eth->h_source, 6 );
+                                memcpy( value.dest_address, eth->h_dest, 6 );
+
+                                bpf_map_update_elem( &whitelist_map, &key, &value, BPF_ANY );
+
+                                packet_data[0] = RELAY_PONG_PACKET;
+
+                                const int payload_bytes = 18 + 8;
+
+                                relay_reflect_packet( data, payload_bytes, state->current_magic );
+
+                                bpf_xdp_adjust_tail( ctx, -( 8 + 1 + RELAY_PING_TOKEN_BYTES ) );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+        
+                                relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
+
+                                return XDP_TX;
+                            }
+                        }
 
                         return XDP_PASS;
                     }
