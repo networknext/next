@@ -1195,7 +1195,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet" );
+                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
@@ -1286,6 +1286,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
         
+                                relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
+
                                 return XDP_TX;
                             }
                             break;
