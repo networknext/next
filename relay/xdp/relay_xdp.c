@@ -590,7 +590,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
             if ( (void*)ip + sizeof(struct iphdr) > data_end )
             {
-                relay_printf( "dropped ipv4 packet because it's smaller than ipv4 header" );
+                // relay_printf( "dropped ipv4 packet because it's smaller than ipv4 header" );
                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                 return XDP_DROP;
@@ -605,7 +605,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                 if ( ip->ihl != 5 )
                 {
-                    relay_printf( "dropped udp packet because ip header is not 20 bytes" );
+                    // relay_printf( "dropped udp packet because ip header is not 20 bytes" );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROP_LARGE_IP_HEADER );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -625,7 +625,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             if ( (void*)packet_data + 18 > data_end )
                             {
-                                relay_printf( "packet is too small" );
+                                // relay_printf( "packet is too small" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_SMALL );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -638,7 +638,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             if ( packet_bytes > 1400 )
                             {
-                                relay_printf( "packet is too large" );
+                                // relay_printf( "packet is too large" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_LARGE );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -678,7 +678,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                  packet_data[16] < 0xD2 || packet_data[16] > 0xF1                                                         ||
                                  packet_data[17] < 0x11 || packet_data[17] > 0x90 )
                             {
-                                relay_printf( "basic packet filter dropped packet" );
+                                // relay_printf( "basic packet filter dropped packet" );
                                 INCREMENT_COUNTER( RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1199,14 +1199,14 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
+                                // relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
                                 // IMPORTANT: for verifier
                                 if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    // relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1227,7 +1227,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "expired: %lld < %lld", expire_timestamp, state->current_timestamp );
+                                    // relay_printf( "expired: %lld < %lld", expire_timestamp, state->current_timestamp );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1238,7 +1238,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
                                 if ( relay_map_value == NULL )
                                 {
-                                    relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
+                                    // relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_UNKNOWN_RELAY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1290,7 +1290,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
         
-                                relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
+                                // relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
 
                                 return XDP_TX;
                             }
@@ -1298,7 +1298,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             case RELAY_CLIENT_PING_PACKET:
                             {
-                                relay_printf( "client ping packet" );
+                                // relay_printf( "client ping packet" );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED );
 
