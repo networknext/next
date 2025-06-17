@@ -169,7 +169,7 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->saddr = ip->daddr;
     ip->daddr = b;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= htons( IP_DF );
+    ip->frag_off |= __constant_htons( IP_DO_NOT_FRAGMENT );
     ip->check = 0;
 
     char c[ETH_ALEN];
@@ -353,6 +353,8 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[17] = chonkle[14];
 }
 
+#define IP_DO_NOT_FRAGMENT 0x4000
+
 static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_address, __u16 dest_port, __u8 * magic )
 {
     struct ethhdr * eth = data;
@@ -367,7 +369,7 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
     ip->saddr = ip->daddr;
     ip->daddr = dest_address;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= htons( IP_DF );
+    ip->frag_off |= __constant_htons( IP_DO_NOT_FRAGMENT );
     ip->check = 0;
 
     struct whitelist_key key;
@@ -2123,7 +2125,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
                                 packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
 
-                                uint64_t client_to_server_sequence = session->payload_client_to_server_sequence;
+                                __u64 client_to_server_sequence = session->payload_client_to_server_sequence;
 
                                 if ( packet_sequence <= client_to_server_sequence )
                                 {
