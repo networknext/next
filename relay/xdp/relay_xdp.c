@@ -684,6 +684,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 return XDP_DROP;
                             }
 
+                            // todo: temporary disable
+                            /*
                             // Advanced packet filter
 
                             __u32 from = ip->saddr;
@@ -1185,6 +1187,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     }
                                 }
                             }
+                            */
                         }
 
                         // process packet types before whitelist check, these packet types can add the source address to the whitelist

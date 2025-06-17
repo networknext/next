@@ -5,7 +5,7 @@
 #ifndef RELAY_VERSION_H
 #define RELAY_VERSION_H
 
-#define RELAY_VERSION                                        "1.0.3"
+#define RELAY_VERSION                                        "1.0.4"
 
 #define RELAY_VERSION_LENGTH                                      32
 
