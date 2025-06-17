@@ -102,7 +102,8 @@ struct chacha20poly1305_crypto
     __u8 key[CHACHA20POLY1305_KEY_SIZE];
 };
 
-int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz ) __ksym;
+// todo
+// int bpf_relay_sha256( void * data, int data__sz, void * output, int output__sz ) __ksym;
 
 int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chacha20poly1305_crypto * crypto ) __ksym;
 
@@ -1198,7 +1199,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet" ); // from %x:%d", ip->saddr, udp->source );
+                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
@@ -1289,7 +1290,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
         
-                                // relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
+                                relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
 
                                 return XDP_TX;
                             }
@@ -1750,6 +1751,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -1774,7 +1776,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
+                                */ 
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
@@ -1999,6 +2002,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2023,7 +2027,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
+                                */ 
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
@@ -2143,6 +2148,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2168,6 +2174,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 } 
+                                */
 
                                 __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
@@ -2285,6 +2292,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2309,7 +2317,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
+                                */ 
 
                                 __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
@@ -2424,6 +2433,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2448,7 +2458,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
+                                */ 
 
                                 if ( packet_sequence > client_to_server_sequence )
                                 {
@@ -2568,6 +2579,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                /*
                                 relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2592,7 +2604,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
+                                */ 
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
    
