@@ -4800,16 +4800,17 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
-#if RELAY_SPAM
+            // todo
+// #if RELAY_SPAM
             char buffer[256];
             relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
-#endif // #if RELAY_SPAM
+// #endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
             if ( packet_bytes != 8 )
             {
-                relay_printf( "wrong size" );
+                relay_printf( "relay pong packet is wrong size" );
                 relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -4836,7 +4837,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes < int( RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES * 2 ) )
             {
-                relay_printf( "wrong size" );
+                relay_printf( "route request packet is the wrong size" );
                 relay->counters[RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -4946,7 +4947,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-                relay_printf( "wrong size: expected %d, got %d", RELAY_HEADER_BYTES, packet_bytes );
+                relay_printf( "route response packet is the wrong size: expected %d, got %d", RELAY_HEADER_BYTES, packet_bytes );
                 relay->counters[RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5047,7 +5048,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes < int( RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES * 2 ) )
             {
-                relay_printf( "wrong size" );
+                relay_printf( "continue request packet is the wrong size" );
                 relay->counters[RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE]++;
                 continue;
             }
@@ -5149,7 +5150,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
             if ( packet_bytes != RELAY_HEADER_BYTES )
             {
-                relay_printf( "wrong size" );
+                relay_printf( "continue response packet is the wrong size" );
                 relay->counters[RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE]++;
                 continue;
             }
