@@ -4614,6 +4614,8 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 memcpy( token_data.ping_key, relay->control.ping_key, RELAY_PING_KEY_BYTES );
 
+                // todo: remove logs below when finished debugging
+
                 printf( "---------------------------------------------------------------\n" );
 
                 printf( "%x:%d -> %x:%d\n", relay_htonl( token_data.source_address ), relay_htons( token_data.source_port ), relay_htonl( token_data.dest_address ), relay_htons( token_data.dest_port ) );
@@ -4653,12 +4655,16 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                 printf( "ping_key[30] = %d\n", token_data.ping_key[30] );
                 printf( "ping_key[31] = %d\n", token_data.ping_key[31] );
 
-                printf( "---------------------------------------------------------------\n" );
-
-
                 uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
 
                 crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
+
+                for ( int i = 0; i < 32; i++ )
+                {
+                    printf( "ping_token[%d] = %d\n", i, ping_token[i] );
+                }
+
+                printf( "---------------------------------------------------------------\n" );
 
                 uint8_t to_address_data[4];
                 uint8_t relay_public_address_data[4];

@@ -1267,9 +1267,14 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 relay_printf( "ping_key[30] = %d", verify_data.ping_key[30] );
                                 relay_printf( "ping_key[31] = %d", verify_data.ping_key[31] );
 
-                                __u8 hash[32];
-                                bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
+                                for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+                                {
+                                    relay_printf( "ping_token[%d] = %d", i, ping_token[i] );
+                                }
+
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
+                                bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
                                 if ( relay_memcmp( hash, ping_token, RELAY_PING_TOKEN_BYTES ) != 0 )
                                 {
                                     relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
