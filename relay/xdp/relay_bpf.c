@@ -65,6 +65,21 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
+    // be extra safe and let's make sure no xdp programs are running on this interface before we start
+    {
+        const char * command = "sudo xdp-loader unload ens4 --all";
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( strlen( buffer ) > 0 )
+            {
+                printf( "%s", buffer );
+            }
+        }
+        pclose( file );
+    }
+
     // write out source tar.gz for relay_xdp.o
     {
         FILE * file = fopen( "relay_xdp_source.tar.gz", "wb" );

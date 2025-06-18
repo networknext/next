@@ -4614,6 +4614,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 memcpy( token_data.ping_key, relay->control.ping_key, RELAY_PING_KEY_BYTES );
 
+                uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
+
+                crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
+
                 uint8_t to_address_data[4];
                 uint8_t relay_public_address_data[4];
                 uint8_t relay_internal_address_data[4];
