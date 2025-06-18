@@ -525,7 +525,7 @@ int main_update( struct main_t * main )
     printf( "=============================================\n" );
     for ( int i = 0; i < num_relays; i++ )
     {
-        printf( "relay %d: %x:%d [%s]\n", relay_ping_set.address[i], relay_ping_set.port[i], relay_ping_set.internal[i] ? "true" : "false" );
+        printf( "relay %d: %x:%d [%s]\n", i, relay_ping_set.address[i], relay_ping_set.port[i], relay_ping_set.internal[i] ? "true" : "false" );
     }
     printf( "=============================================\n" );   
 
