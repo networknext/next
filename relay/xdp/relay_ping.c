@@ -188,6 +188,14 @@ static void relay_generate_chonkle( uint8_t * output, const uint8_t * magic, con
     output[14] = ( ( data[7] & 0xFE ) >> 1 ) + 17;
 }
 
+void relay_address_data( uint32_t address, uint8_t * output )
+{
+    output[0] = address & 0xFF;
+    output[1] = ( address >> 8  ) & 0xFF;
+    output[2] = ( address >> 16 ) & 0xFF;
+    output[3] = ( address >> 24 ) & 0xFF;
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------------------------
 
 extern bool quit;
@@ -346,13 +354,15 @@ void * ping_thread_function( void * context )
 
                         memcpy( to_address_data, &ping->relay_manager->relay_addresses[i], 4 );
 
+                        relay_address_data( ping->relay_manager->relay_address[i].ip, to_address_data );
+
                         if ( !ping->relay_manager->relay_internal[i] )
                         {
-                            memcpy( from_address_data, &ping->relay_public_address, 4 );
+                            relay_address_data( ping->relay_public_address.ip, from_address_data );
                         }
                         else
                         {
-                            memcpy( from_address_data, &ping->relay_internal_address, 4 );
+                            relay_address_data( ping->relay_internal_address.ip, from_address_data );
                         }
 
                         relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
@@ -362,8 +372,8 @@ void * ping_thread_function( void * context )
                         printf( "--------------------------------\n" );
                         printf( "num_relays = %d\n", ping->relay_manager->num_relays );
                         printf( "internal = %s\n", ping->relay_manager->relay_internal[i] ? "true" : "false" );
-                        printf( "to_address = %d.%d.%d.%d\n", to_address_data[3], to_address_data[2], to_address_data[1], to_address_data[0] );
-                        printf( "from_address = %d.%d.%d.%d\n", from_address_data[3], from_address_data[2], from_address_data[1], from_address_data[0] );
+                        printf( "to_address = %d.%d.%d.%d\n", to_address_data[0], to_address_data[1], to_address_data[2], to_address_data[3] );
+                        printf( "from_address = %d.%d.%d.%d\n", from_address_data[0], from_address_data[1], from_address_data[2], from_address_data[3] );
                         printf( "packet_length = %d\n", packet_length );
                         printf( "magic = [%d,%d,%d,%d,%d,%d,%d,%d]\n", ping->current_magic[0], ping->current_magic[1], ping->current_magic[2], ping->current_magic[3], ping->current_magic[4], ping->current_magic[5], ping->current_magic[6], ping->current_magic[7] );
                         printf( "--------------------------------\n" );
