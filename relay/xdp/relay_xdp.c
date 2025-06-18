@@ -330,7 +330,7 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[6]  = chonkle[3];
     packet_data[7]  = chonkle[4];
     packet_data[8]  = chonkle[5];
-    packet_data[9] = chonkle[6];
+    packet_data[9]  = chonkle[6];
     packet_data[10] = chonkle[7];
     packet_data[11] = chonkle[8];
     packet_data[12] = chonkle[9];
