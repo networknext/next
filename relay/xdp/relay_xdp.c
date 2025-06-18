@@ -1284,8 +1284,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
         
-                                relay_printf( "sent relay pong packet to %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
-
                                 return XDP_TX;
                             }
                         }
