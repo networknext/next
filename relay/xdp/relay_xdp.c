@@ -1189,8 +1189,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 expire_timestamp |= ( ( (__u64)( payload[8 + 6] ) ) << 48 );
                                 expire_timestamp |= ( ( (__u64)( payload[8 + 7] ) ) << 56 );
 
-                                relay_printf( "expire_timestamp = %lld", expire_timestamp );
-
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
                                     relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
@@ -1220,39 +1218,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
                                 __u8 * ping_token = payload + 8 + 8 + 1;
-
-                                relay_printf( "ping_token[0] = %d", ping_token[0] );
-                                relay_printf( "ping_token[1] = %d", ping_token[1] );
-                                relay_printf( "ping_token[2] = %d", ping_token[2] );
-                                relay_printf( "ping_token[3] = %d", ping_token[3] );
-                                relay_printf( "ping_token[4] = %d", ping_token[4] );
-                                relay_printf( "ping_token[5] = %d", ping_token[5] );
-                                relay_printf( "ping_token[6] = %d", ping_token[6] );
-                                relay_printf( "ping_token[7] = %d", ping_token[7] );
-                                relay_printf( "ping_token[8] = %d", ping_token[8] );
-                                relay_printf( "ping_token[9] = %d", ping_token[9] );
-                                relay_printf( "ping_token[10] = %d", ping_token[10] );
-                                relay_printf( "ping_token[11] = %d", ping_token[11] );
-                                relay_printf( "ping_token[12] = %d", ping_token[12] );
-                                relay_printf( "ping_token[13] = %d", ping_token[13] );
-                                relay_printf( "ping_token[14] = %d", ping_token[14] );
-                                relay_printf( "ping_token[15] = %d", ping_token[15] );
-                                relay_printf( "ping_token[16] = %d", ping_token[16] );
-                                relay_printf( "ping_token[17] = %d", ping_token[17] );
-                                relay_printf( "ping_token[18] = %d", ping_token[18] );
-                                relay_printf( "ping_token[19] = %d", ping_token[19] );
-                                relay_printf( "ping_token[20] = %d", ping_token[20] );
-                                relay_printf( "ping_token[21] = %d", ping_token[21] );
-                                relay_printf( "ping_token[22] = %d", ping_token[22] );
-                                relay_printf( "ping_token[23] = %d", ping_token[23] );
-                                relay_printf( "ping_token[24] = %d", ping_token[24] );
-                                relay_printf( "ping_token[25] = %d", ping_token[25] );
-                                relay_printf( "ping_token[26] = %d", ping_token[26] );
-                                relay_printf( "ping_token[27] = %d", ping_token[27] );
-                                relay_printf( "ping_token[28] = %d", ping_token[28] );
-                                relay_printf( "ping_token[29] = %d", ping_token[29] );
-                                relay_printf( "ping_token[30] = %d", ping_token[30] );
-                                relay_printf( "ping_token[31] = %d", ping_token[31] );
 
                                 __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
@@ -1296,7 +1261,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                /*
                                 struct whitelist_key key;
                                 key.address = ip->saddr;
                                 key.port = udp->source;
@@ -1320,10 +1284,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, payload_bytes + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
         
-                                // relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
+                                relay_printf( "sent relay pong packet to %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
 
                                 return XDP_TX;
-                                */
                             }
                         }
 
