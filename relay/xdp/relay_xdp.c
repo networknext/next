@@ -24,10 +24,14 @@
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define bpf_ntohl(x)        __builtin_bswap32(x)
+#define bpf_htonl(x)        __builtin_bswap32(x)
 #define bpf_ntohs(x)        __builtin_bswap16(x)
 #define bpf_htons(x)        __builtin_bswap16(x)
 #elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define bpf_ntohl(x)        (x)
+#define bpf_htonl(x)        (x)
 #define bpf_ntohs(x)        (x)
 #define bpf_htons(x)        (x)
 #else
@@ -631,7 +635,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
+                                relay_printf( "relay ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 /*
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
