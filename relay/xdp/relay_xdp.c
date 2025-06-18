@@ -1204,6 +1204,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 expire_timestamp |= ( ( (__u64)( payload[8 + 6] ) ) << 48 );
                                 expire_timestamp |= ( ( (__u64)( payload[8 + 7] ) ) << 56 );
 
+                                relay_printf( "expire_timestamp = %lld", expire_timestamp );
+
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
                                     relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
@@ -1232,12 +1234,45 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
+                                relay_printf( "ping_key[0] = %d", verify_data.ping_key[0] );
+                                relay_printf( "ping_key[1] = %d", verify_data.ping_key[1] );
+                                relay_printf( "ping_key[2] = %d", verify_data.ping_key[2] );
+                                relay_printf( "ping_key[3] = %d", verify_data.ping_key[3] );
+                                relay_printf( "ping_key[4] = %d", verify_data.ping_key[4] );
+                                relay_printf( "ping_key[5] = %d", verify_data.ping_key[5] );
+                                relay_printf( "ping_key[6] = %d", verify_data.ping_key[6] );
+                                relay_printf( "ping_key[7] = %d", verify_data.ping_key[7] );
+                                relay_printf( "ping_key[8] = %d", verify_data.ping_key[8] );
+                                relay_printf( "ping_key[9] = %d", verify_data.ping_key[9] );
+                                relay_printf( "ping_key[10] = %d", verify_data.ping_key[10] );
+                                relay_printf( "ping_key[11] = %d", verify_data.ping_key[11] );
+                                relay_printf( "ping_key[12] = %d", verify_data.ping_key[12] );
+                                relay_printf( "ping_key[13] = %d", verify_data.ping_key[13] );
+                                relay_printf( "ping_key[14] = %d", verify_data.ping_key[14] );
+                                relay_printf( "ping_key[15] = %d", verify_data.ping_key[15] );
+                                relay_printf( "ping_key[16] = %d", verify_data.ping_key[16] );
+                                relay_printf( "ping_key[17] = %d", verify_data.ping_key[17] );
+                                relay_printf( "ping_key[18] = %d", verify_data.ping_key[18] );
+                                relay_printf( "ping_key[19] = %d", verify_data.ping_key[19] );
+                                relay_printf( "ping_key[20] = %d", verify_data.ping_key[20] );
+                                relay_printf( "ping_key[21] = %d", verify_data.ping_key[21] );
+                                relay_printf( "ping_key[22] = %d", verify_data.ping_key[22] );
+                                relay_printf( "ping_key[23] = %d", verify_data.ping_key[23] );
+                                relay_printf( "ping_key[24] = %d", verify_data.ping_key[24] );
+                                relay_printf( "ping_key[25] = %d", verify_data.ping_key[25] );
+                                relay_printf( "ping_key[26] = %d", verify_data.ping_key[26] );
+                                relay_printf( "ping_key[27] = %d", verify_data.ping_key[27] );
+                                relay_printf( "ping_key[28] = %d", verify_data.ping_key[28] );
+                                relay_printf( "ping_key[29] = %d", verify_data.ping_key[29] );
+                                relay_printf( "ping_key[30] = %d", verify_data.ping_key[30] );
+                                relay_printf( "ping_key[31] = %d", verify_data.ping_key[31] );
+
                                 __u8 hash[32];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
                                 if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
                                 {
-                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d (bussin)", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
