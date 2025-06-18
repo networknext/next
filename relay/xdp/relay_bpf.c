@@ -70,7 +70,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         FILE * file = fopen( "relay_xdp_source.tar.gz", "wb" );
         if ( !file )
         {
-            printf( "\nerror: could not open relay_xdp.o for writing" );
+            printf( "\nerror: could not open relay_xdp_source.tar.gz for writing" );
             return RELAY_ERROR;
         }
 
@@ -81,7 +81,22 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     // unzip source build relay_xdp.o from source with make
     {
-        const char * command = "rm *.c && rm *.h && rm *.o && rm Makefile && tar -zxf relay_xdp_source.tar.gz && make relay_xdp.o";
+        const char * command = "rm -f *.c && rm -f *.h && rm -f *.o && rm -f Makefile && tar -zxf relay_xdp_source.tar.gz && make relay_xdp.o";
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( strlen( buffer ) > 0 )
+            {
+                printf( "%s", buffer );
+            }
+        }
+        pclose( file );
+    }
+
+    // clean up after ourselves
+    {
+        const char * command = "rm -f *.c && rm -f *.h && rm -f *.o && rm -f *.tar.gz";
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
