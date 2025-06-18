@@ -1237,7 +1237,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
                                 if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
                                 {
-                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d (bussin)", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
