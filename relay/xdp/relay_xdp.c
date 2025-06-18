@@ -1219,6 +1219,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
+                                __u8 * ping_token = payload + 8 + 8 + 1;
+
                                 relay_printf( "ping_token[0] = %d", ping_token[0] );
                                 relay_printf( "ping_token[1] = %d", ping_token[1] );
                                 relay_printf( "ping_token[2] = %d", ping_token[2] );
