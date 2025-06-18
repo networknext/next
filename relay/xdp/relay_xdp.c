@@ -631,8 +631,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet" ); // from %x:%d", ip->saddr, udp->source );
+                                relay_printf( "relay ping packet from %x:%d", ip->saddr, udp->source );
 
+                                /*
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
                                 // IMPORTANT: for verifier
@@ -676,6 +677,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+                                */
 
                                 /*
                                 struct ping_token_data verify_data;
@@ -699,6 +701,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 }
                                 */
 
+                                /*
                                 struct whitelist_key key;
                                 key.address = ip->saddr;
                                 key.port = udp->source;
@@ -725,11 +728,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 // relay_printf( "sent relay pong packet to %x:%d", ip->saddr, udp->source );
 
                                 return XDP_TX;
+                                */
                             }
-
-                            default:
-                                return XDP_DROP;
                         }
+
+                        return XDP_DROP;
                     }
                     else
                     {
