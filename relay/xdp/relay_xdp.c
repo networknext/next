@@ -637,7 +637,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             {
                                 relay_printf( "relay ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
-                                /*
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
                                 // IMPORTANT: for verifier
@@ -664,7 +663,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    // relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
+                                    relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -675,15 +674,13 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
                                 if ( relay_map_value == NULL )
                                 {
-                                    // relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
+                                    relay_printf( "unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_UNKNOWN_RELAY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-                                */
 
-                                /*
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
@@ -697,13 +694,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
                                 if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
                                 {
-                                    relay_printf( "did not verify: %x:%d -> %x:%d", ip->saddr, bpf_ntohs( udp->source ), ip->daddr, bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-                                */
 
                                 /*
                                 struct whitelist_key key;
