@@ -223,7 +223,7 @@ void * ping_thread_function( void * context )
 
         if ( packet_bytes == 18 + 8 && packet_data[0] == RELAY_PONG_PACKET )
         {
-            // todo: this should be wrapped with RELAY_DEBUG or similar
+            // todo: remove after debugging
             printf( "userspace received relay pong packet from %d.%d.%d.%d:%d\n",
                 ((uint8_t*)&from_address)[3], 
                 ((uint8_t*)&from_address)[2], 
@@ -367,16 +367,6 @@ void * ping_thread_function( void * context )
 
                         relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
                         relay_generate_chonkle( b, ping->current_magic, from_address_data, to_address_data, packet_length );
-
-                        // todo
-                        printf( "--------------------------------\n" );
-                        printf( "num_relays = %d\n", ping->relay_manager->num_relays );
-                        printf( "internal = %s\n", ping->relay_manager->relay_internal[i] ? "true" : "false" );
-                        printf( "to_address = %d.%d.%d.%d\n", to_address_data[0], to_address_data[1], to_address_data[2], to_address_data[3] );
-                        printf( "from_address = %d.%d.%d.%d\n", from_address_data[0], from_address_data[1], from_address_data[2], from_address_data[3] );
-                        printf( "packet_length = %d\n", packet_length );
-                        printf( "magic = [%d,%d,%d,%d,%d,%d,%d,%d]\n", ping->current_magic[0], ping->current_magic[1], ping->current_magic[2], ping->current_magic[3], ping->current_magic[4], ping->current_magic[5], ping->current_magic[6], ping->current_magic[7] );
-                        printf( "--------------------------------\n" );
 
                         relay_platform_socket_send_packet( ping->socket, ping->relay_manager->relay_addresses[i], ping->relay_manager->relay_ports[i], packet_data, packet_length );
 
