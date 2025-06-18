@@ -118,21 +118,6 @@ int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chach
 #define relay_printf(...) do { } while (0)
 #endif // #if RELAY_DEBUG
 
-static int relay_memcmp( void * a, void * b, int len )
-{
-    unsigned char * p = a;
-    unsigned char * q = b;
-    while ( len > 0 )
-    {
-        if ( *p != *q )
-            return ( *p - *q );
-        len--;
-        p++;
-        q++;
-    }
-    return 0;
-}
-
 static int relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz )
 {
     __u8 * nonce = route_token;
@@ -1163,7 +1148,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( !passed )
                                 {
-                                    relay_printf( "advanced packet filter dropped packet (b)" );
+                                    relay_printf( "advanced packet filter dropped packet (b) -- trust but verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1234,48 +1219,73 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                relay_printf( "ping_key[0] = %d", verify_data.ping_key[0] );
-                                relay_printf( "ping_key[1] = %d", verify_data.ping_key[1] );
-                                relay_printf( "ping_key[2] = %d", verify_data.ping_key[2] );
-                                relay_printf( "ping_key[3] = %d", verify_data.ping_key[3] );
-                                relay_printf( "ping_key[4] = %d", verify_data.ping_key[4] );
-                                relay_printf( "ping_key[5] = %d", verify_data.ping_key[5] );
-                                relay_printf( "ping_key[6] = %d", verify_data.ping_key[6] );
-                                relay_printf( "ping_key[7] = %d", verify_data.ping_key[7] );
-                                relay_printf( "ping_key[8] = %d", verify_data.ping_key[8] );
-                                relay_printf( "ping_key[9] = %d", verify_data.ping_key[9] );
-                                relay_printf( "ping_key[10] = %d", verify_data.ping_key[10] );
-                                relay_printf( "ping_key[11] = %d", verify_data.ping_key[11] );
-                                relay_printf( "ping_key[12] = %d", verify_data.ping_key[12] );
-                                relay_printf( "ping_key[13] = %d", verify_data.ping_key[13] );
-                                relay_printf( "ping_key[14] = %d", verify_data.ping_key[14] );
-                                relay_printf( "ping_key[15] = %d", verify_data.ping_key[15] );
-                                relay_printf( "ping_key[16] = %d", verify_data.ping_key[16] );
-                                relay_printf( "ping_key[17] = %d", verify_data.ping_key[17] );
-                                relay_printf( "ping_key[18] = %d", verify_data.ping_key[18] );
-                                relay_printf( "ping_key[19] = %d", verify_data.ping_key[19] );
-                                relay_printf( "ping_key[20] = %d", verify_data.ping_key[20] );
-                                relay_printf( "ping_key[21] = %d", verify_data.ping_key[21] );
-                                relay_printf( "ping_key[22] = %d", verify_data.ping_key[22] );
-                                relay_printf( "ping_key[23] = %d", verify_data.ping_key[23] );
-                                relay_printf( "ping_key[24] = %d", verify_data.ping_key[24] );
-                                relay_printf( "ping_key[25] = %d", verify_data.ping_key[25] );
-                                relay_printf( "ping_key[26] = %d", verify_data.ping_key[26] );
-                                relay_printf( "ping_key[27] = %d", verify_data.ping_key[27] );
-                                relay_printf( "ping_key[28] = %d", verify_data.ping_key[28] );
-                                relay_printf( "ping_key[29] = %d", verify_data.ping_key[29] );
-                                relay_printf( "ping_key[30] = %d", verify_data.ping_key[30] );
-                                relay_printf( "ping_key[31] = %d", verify_data.ping_key[31] );
-
-                                __u8 * ping_token = packet_data + 8 + 8 + 1;
-                                for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
-                                {
-                                    relay_printf( "ping_token[%d] = %d", i, ping_token[i] );
-                                }
+                                relay_printf( "ping_token[0] = %d", ping_token[0] );
+                                relay_printf( "ping_token[1] = %d", ping_token[1] );
+                                relay_printf( "ping_token[2] = %d", ping_token[2] );
+                                relay_printf( "ping_token[3] = %d", ping_token[3] );
+                                relay_printf( "ping_token[4] = %d", ping_token[4] );
+                                relay_printf( "ping_token[5] = %d", ping_token[5] );
+                                relay_printf( "ping_token[6] = %d", ping_token[6] );
+                                relay_printf( "ping_token[7] = %d", ping_token[7] );
+                                relay_printf( "ping_token[8] = %d", ping_token[8] );
+                                relay_printf( "ping_token[9] = %d", ping_token[9] );
+                                relay_printf( "ping_token[10] = %d", ping_token[10] );
+                                relay_printf( "ping_token[11] = %d", ping_token[11] );
+                                relay_printf( "ping_token[12] = %d", ping_token[12] );
+                                relay_printf( "ping_token[13] = %d", ping_token[13] );
+                                relay_printf( "ping_token[14] = %d", ping_token[14] );
+                                relay_printf( "ping_token[15] = %d", ping_token[15] );
+                                relay_printf( "ping_token[16] = %d", ping_token[16] );
+                                relay_printf( "ping_token[17] = %d", ping_token[17] );
+                                relay_printf( "ping_token[18] = %d", ping_token[18] );
+                                relay_printf( "ping_token[19] = %d", ping_token[19] );
+                                relay_printf( "ping_token[20] = %d", ping_token[20] );
+                                relay_printf( "ping_token[21] = %d", ping_token[21] );
+                                relay_printf( "ping_token[22] = %d", ping_token[22] );
+                                relay_printf( "ping_token[23] = %d", ping_token[23] );
+                                relay_printf( "ping_token[24] = %d", ping_token[24] );
+                                relay_printf( "ping_token[25] = %d", ping_token[25] );
+                                relay_printf( "ping_token[26] = %d", ping_token[26] );
+                                relay_printf( "ping_token[27] = %d", ping_token[27] );
+                                relay_printf( "ping_token[28] = %d", ping_token[28] );
+                                relay_printf( "ping_token[29] = %d", ping_token[29] );
+                                relay_printf( "ping_token[30] = %d", ping_token[30] );
+                                relay_printf( "ping_token[31] = %d", ping_token[31] );
 
                                 __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
-                                if ( relay_memcmp( hash, ping_token, RELAY_PING_TOKEN_BYTES ) != 0 )
+                                if ( hash[0] != ping_token[0] || 
+                                     hash[1] != ping_token[1] || 
+                                     hash[2] != ping_token[2] || 
+                                     hash[3] != ping_token[3] || 
+                                     hash[4] != ping_token[4] || 
+                                     hash[5] != ping_token[5] || 
+                                     hash[6] != ping_token[6] || 
+                                     hash[7] != ping_token[7] || 
+                                     hash[8] != ping_token[8] || 
+                                     hash[9] != ping_token[9] || 
+                                     hash[10] != ping_token[10] || 
+                                     hash[11] != ping_token[11] || 
+                                     hash[12] != ping_token[12] || 
+                                     hash[13] != ping_token[13] || 
+                                     hash[14] != ping_token[14] || 
+                                     hash[15] != ping_token[15] || 
+                                     hash[16] != ping_token[16] || 
+                                     hash[17] != ping_token[17] || 
+                                     hash[18] != ping_token[18] || 
+                                     hash[19] != ping_token[19] || 
+                                     hash[20] != ping_token[20] || 
+                                     hash[21] != ping_token[21] || 
+                                     hash[22] != ping_token[22] || 
+                                     hash[23] != ping_token[23] || 
+                                     hash[24] != ping_token[24] || 
+                                     hash[25] != ping_token[25] || 
+                                     hash[26] != ping_token[26] || 
+                                     hash[27] != ping_token[27] || 
+                                     hash[28] != ping_token[28] || 
+                                     hash[29] != ping_token[29] || 
+                                     hash[30] != ping_token[30] || 
+                                     hash[31] != ping_token[31] )
                                 {
                                     relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
