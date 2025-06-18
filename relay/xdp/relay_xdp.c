@@ -118,6 +118,21 @@ int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chach
 #define relay_printf(...) do { } while (0)
 #endif // #if RELAY_DEBUG
 
+static int relay_memcmp( void * a, void * b, int len )
+{
+    unsigned char * p = a;
+    unsigned char * q = b;
+    while ( len > 0 )
+    {
+        if ( *p != *q )
+            return ( *p - *q );
+        len--;
+        p++;
+        q++;
+    }
+    return 0;
+}
+
 static int relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz )
 {
     __u8 * nonce = route_token;
