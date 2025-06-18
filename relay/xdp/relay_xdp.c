@@ -629,6 +629,534 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             return XDP_DROP;
                         }
 
+                        // Basic packet filter
+
+                        if ( packet_data[0] < 0x01 || packet_data[0] > 0x0E                                                           ||
+                             packet_data[2] != ( 1 | ( ( 255 - packet_data[1] ) ^ 113 ) )                                             ||
+                             packet_data[3] < 0x2A || packet_data[3] > 0x2D                                                           ||
+                             packet_data[4] < 0xC8 || packet_data[4] > 0xE7                                                           ||
+                             packet_data[5] < 0x05 || packet_data[5] > 0x44                                                           ||
+                             packet_data[7] < 0x4E || packet_data[7] > 0x51                                                           ||
+                             packet_data[8] < 0x60 || packet_data[8] > 0xDF                                                           ||
+                             packet_data[9] < 0x64 || packet_data[9] > 0xE3                                                           ||
+                             packet_data[10] != 0x07 && packet_data[10] != 0x4F                                                       ||
+                             packet_data[11] != 0x25 && packet_data[11] != 0x53                                                       ||
+                             packet_data[12] < 0x7C || packet_data[12] > 0x83                                                         ||
+                             packet_data[13] < 0xAF || packet_data[13] > 0xB6                                                         ||
+                             packet_data[14] < 0x21 || packet_data[14] > 0x60                                                         ||
+                             packet_data[15] != 0x61 && packet_data[15] != 0x05 && packet_data[15] != 0x2B && packet_data[15] != 0x0D ||
+                             packet_data[16] < 0xD2 || packet_data[16] > 0xF1                                                         ||
+                             packet_data[17] < 0x11 || packet_data[17] > 0x90 )
+                        {
+                            relay_printf( "basic packet filter dropped packet" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
+
+                        // Advanced packet filter
+
+                        __u32 from = ip->saddr;
+                        __u32 to   = config->relay_public_address;
+
+                        unsigned short sum = 0;
+
+                        sum += ( from       ) & 0xFF;
+                        sum += ( from >> 8  ) & 0xFF;
+                        sum += ( from >> 16 ) & 0xFF;
+                        sum += ( from >> 24 );
+
+                        sum += ( to       ) & 0xFF;
+                        sum += ( to >> 8  ) & 0xFF;
+                        sum += ( to >> 16 ) & 0xFF;
+                        sum += ( to >> 24 );
+
+                        sum += ( packet_bytes >> 8 );
+                        sum += ( packet_bytes      ) & 0xFF;
+
+                        char * sum_data = (char*) &sum;
+
+                        __u8 sum_0 = ( sum      ) & 0xFF;
+                        __u8 sum_1 = ( sum >> 8 );
+
+                        __u8 pittle[2];
+                        pittle[0] = 1 | ( sum_0 ^ sum_1 ^ 193 );
+                        pittle[1] = 1 | ( ( 255 - pittle[0] ) ^ 113 );
+
+                        if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
+                        {
+                            to = config->relay_internal_address;
+
+                            unsigned short sum = 0;
+
+                            sum += ( from       ) & 0xFF;
+                            sum += ( from >> 8  ) & 0xFF;
+                            sum += ( from >> 16 ) & 0xFF;
+                            sum += ( from >> 24 );
+
+                            sum += ( to       ) & 0xFF;
+                            sum += ( to >> 8  ) & 0xFF;
+                            sum += ( to >> 16 ) & 0xFF;
+                            sum += ( to >> 24 );
+
+                            sum += ( packet_bytes >> 8 );
+                            sum += ( packet_bytes      ) & 0xFF;
+
+                            char * sum_data = (char*) &sum;
+
+                            __u8 sum_0 = ( sum      ) & 0xFF;
+                            __u8 sum_1 = ( sum >> 8 );
+
+                            __u8 pittle[2];
+                            pittle[0] = 1 | ( sum_0 ^ sum_1 ^ 193 );
+                            pittle[1] = 1 | ( ( 255 - pittle[0] ) ^ 113 );
+
+                            if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
+                            {
+                                relay_printf( "advanced packet filter dropped packet (a)" );
+                                INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
+                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                return XDP_DROP;
+                            }
+                        }
+
+                        state = (struct relay_state*) bpf_map_lookup_elem( &state_map, &key );
+                        if ( state == NULL )
+                        {
+                            relay_printf( "null relay state" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
+
+                        // current magic
+
+                        int passed = 0;
+                        {
+                            __u8 * magic = state->current_magic;
+
+                            __u64 hash = 0xCBF29CE484222325;
+
+                            hash ^= magic[0];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[1];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[2];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[3];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[4];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[5];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[6];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[7];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes      ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes >> 8 );
+                            hash *= 0x00000100000001B3;
+
+                            __u8 hash_0 = ( hash       ) & 0xFF;
+                            __u8 hash_1 = ( hash >> 8  ) & 0xFF;
+                            __u8 hash_2 = ( hash >> 16 ) & 0xFF;
+                            __u8 hash_3 = ( hash >> 24 ) & 0xFF;
+                            __u8 hash_4 = ( hash >> 32 ) & 0xFF;
+                            __u8 hash_5 = ( hash >> 40 ) & 0xFF;
+                            __u8 hash_6 = ( hash >> 48 ) & 0xFF;
+                            __u8 hash_7 = ( hash >> 56 );
+
+                            __u8 chonkle[15];
+
+                            chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
+                            chonkle[1] = ( hash_3 & 0x1F ) + 200;
+                            chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
+                            chonkle[3] = hash_0;
+                            chonkle[4] = ( hash_2 & 0x03 ) + 78;
+                            chonkle[5] = ( hash_4 & 0x7F ) + 96;
+                            chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
+                            if ( ( hash_7 & 1 ) == 0 ) 
+                            {
+                                chonkle[7] = 79;
+                            } 
+                            else 
+                            {
+                                chonkle[7] = 7;
+                            }
+                            if ( ( hash_4 & 0x80 ) == 0 )
+                            {
+                                chonkle[8] = 37;
+                            } 
+                            else 
+                            {
+                                chonkle[8] = 83;
+                            }
+                            chonkle[9] = ( hash_5 & 0x07 ) + 124;
+                            chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
+                            chonkle[11] = ( hash_6 & 0x3F ) + 33;
+                            __u8 value = ( hash_1 & 0x03 );
+                            if ( value == 0 )
+                            {
+                                chonkle[12] = 97;
+                            } 
+                            else if ( value == 1 )
+                            {
+                                chonkle[12] = 5;
+                            } 
+                            else if ( value == 2 )
+                            {
+                                chonkle[12] = 43;
+                            } 
+                            else 
+                            {
+                                chonkle[12] = 13;
+                            }
+                            chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
+                            chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
+
+                            if ( chonkle[0] == packet_data[3]   &&
+                                 chonkle[1] == packet_data[4]   &&
+                                 chonkle[2] == packet_data[5]   &&
+                                 chonkle[3] == packet_data[6]   &&
+                                 chonkle[4] == packet_data[7]   &&
+                                 chonkle[5] == packet_data[8]   &&
+                                 chonkle[6] == packet_data[9]   &&
+                                 chonkle[7] == packet_data[10]  &&
+                                 chonkle[8] == packet_data[11]  &&
+                                 chonkle[9] == packet_data[12]  &&
+                                 chonkle[10] == packet_data[13] &&
+                                 chonkle[11] == packet_data[14] &&
+                                 chonkle[12] == packet_data[15] &&
+                                 chonkle[13] == packet_data[16] &&
+                                 chonkle[14] == packet_data[17] )
+                            {
+                                passed = 1;
+                            }
+                        }
+
+                        if ( !passed )
+                        {
+                            // previous magic
+
+                            __u8 * magic = state->previous_magic;
+
+                            __u64 hash = 0xCBF29CE484222325;
+
+                            hash ^= magic[0];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[1];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[2];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[3];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[4];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[5];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[6];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[7];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes      ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes >> 8 );
+                            hash *= 0x00000100000001B3;
+
+                            __u8 hash_0 = ( hash       ) & 0xFF;
+                            __u8 hash_1 = ( hash >> 8  ) & 0xFF;
+                            __u8 hash_2 = ( hash >> 16 ) & 0xFF;
+                            __u8 hash_3 = ( hash >> 24 ) & 0xFF;
+                            __u8 hash_4 = ( hash >> 32 ) & 0xFF;
+                            __u8 hash_5 = ( hash >> 40 ) & 0xFF;
+                            __u8 hash_6 = ( hash >> 48 ) & 0xFF;
+                            __u8 hash_7 = ( hash >> 56 );
+
+                            __u8 chonkle[15];
+
+                            chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
+                            chonkle[1] = ( hash_3 & 0x1F ) + 200;
+                            chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
+                            chonkle[3] = hash_0;
+                            chonkle[4] = ( hash_2 & 0x03 ) + 78;
+                            chonkle[5] = ( hash_4 & 0x7F ) + 96;
+                            chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
+                            if ( ( hash_7 & 1 ) == 0 ) 
+                            {
+                                chonkle[7] = 79;
+                            } 
+                            else 
+                            {
+                                chonkle[7] = 7;
+                            }
+                            if ( ( hash_4 & 0x80 ) == 0 )
+                            {
+                                chonkle[8] = 37;
+                            } 
+                            else 
+                            {
+                                chonkle[8] = 83;
+                            }
+                            chonkle[9] = ( hash_5 & 0x07 ) + 124;
+                            chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
+                            chonkle[11] = ( hash_6 & 0x3F ) + 33;
+                            __u8 value = ( hash_1 & 0x03 );
+                            if ( value == 0 )
+                            {
+                                chonkle[12] = 97;
+                            } 
+                            else if ( value == 1 )
+                            {
+                                chonkle[12] = 5;
+                            } 
+                            else if ( value == 2 )
+                            {
+                                chonkle[12] = 43;
+                            } 
+                            else 
+                            {
+                                chonkle[12] = 13;
+                            }
+                            chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
+                            chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
+
+                            if ( chonkle[0] == packet_data[3]   &&
+                                 chonkle[1] == packet_data[4]   &&
+                                 chonkle[2] == packet_data[5]   &&
+                                 chonkle[3] == packet_data[6]   &&
+                                 chonkle[4] == packet_data[7]   &&
+                                 chonkle[5] == packet_data[8]   &&
+                                 chonkle[6] == packet_data[9]   &&
+                                 chonkle[7] == packet_data[10]  &&
+                                 chonkle[8] == packet_data[11]  &&
+                                 chonkle[9] == packet_data[12]  &&
+                                 chonkle[10] == packet_data[13] &&
+                                 chonkle[11] == packet_data[14] &&
+                                 chonkle[12] == packet_data[15] &&
+                                 chonkle[13] == packet_data[16] &&
+                                 chonkle[14] == packet_data[17] )
+                            {
+                                passed = 1;
+                            }
+
+                            if ( !passed )
+                            {
+                                // next magic
+
+                                __u8 * magic = state->previous_magic;
+
+                                __u64 hash = 0xCBF29CE484222325;
+
+                                hash ^= magic[0];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[1];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[2];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[3];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[4];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[5];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[6];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= magic[7];
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( from       ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( from >> 8  ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( from >> 16 ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( from >> 24 );
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( to       ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( to >> 8  ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( to >> 16 ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( to >> 24 );
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( packet_bytes      ) & 0xFF;
+                                hash *= 0x00000100000001B3;
+
+                                hash ^= ( packet_bytes >> 8 );
+                                hash *= 0x00000100000001B3;
+
+                                __u8 hash_0 = ( hash       ) & 0xFF;
+                                __u8 hash_1 = ( hash >> 8  ) & 0xFF;
+                                __u8 hash_2 = ( hash >> 16 ) & 0xFF;
+                                __u8 hash_3 = ( hash >> 24 ) & 0xFF;
+                                __u8 hash_4 = ( hash >> 32 ) & 0xFF;
+                                __u8 hash_5 = ( hash >> 40 ) & 0xFF;
+                                __u8 hash_6 = ( hash >> 48 ) & 0xFF;
+                                __u8 hash_7 = ( hash >> 56 );
+
+                                __u8 chonkle[15];
+
+                                chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
+                                chonkle[1] = ( hash_3 & 0x1F ) + 200;
+                                chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
+                                chonkle[3] = hash_0;
+                                chonkle[4] = ( hash_2 & 0x03 ) + 78;
+                                chonkle[5] = ( hash_4 & 0x7F ) + 96;
+                                chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
+                                if ( ( hash_7 & 1 ) == 0 ) 
+                                {
+                                    chonkle[7] = 79;
+                                } 
+                                else 
+                                {
+                                    chonkle[7] = 7;
+                                }
+                                if ( ( hash_4 & 0x80 ) == 0 )
+                                {
+                                    chonkle[8] = 37;
+                                } 
+                                else 
+                                {
+                                    chonkle[8] = 83;
+                                }
+                                chonkle[9] = ( hash_5 & 0x07 ) + 124;
+                                chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
+                                chonkle[11] = ( hash_6 & 0x3F ) + 33;
+                                __u8 value = ( hash_1 & 0x03 );
+                                if ( value == 0 )
+                                {
+                                    chonkle[12] = 97;
+                                } 
+                                else if ( value == 1 )
+                                {
+                                    chonkle[12] = 5;
+                                } 
+                                else if ( value == 2 )
+                                {
+                                    chonkle[12] = 43;
+                                } 
+                                else 
+                                {
+                                    chonkle[12] = 13;
+                                }
+                                chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
+                                chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
+
+                                if ( chonkle[0] == packet_data[3]   &&
+                                     chonkle[1] == packet_data[4]   &&
+                                     chonkle[2] == packet_data[5]   &&
+                                     chonkle[3] == packet_data[6]   &&
+                                     chonkle[4] == packet_data[7]   &&
+                                     chonkle[5] == packet_data[8]   &&
+                                     chonkle[6] == packet_data[9]   &&
+                                     chonkle[7] == packet_data[10]  &&
+                                     chonkle[8] == packet_data[11]  &&
+                                     chonkle[9] == packet_data[12]  &&
+                                     chonkle[10] == packet_data[13] &&
+                                     chonkle[11] == packet_data[14] &&
+                                     chonkle[12] == packet_data[15] &&
+                                     chonkle[13] == packet_data[16] &&
+                                     chonkle[14] == packet_data[17] )
+                                {
+                                    passed = 1;
+                                }
+
+                                if ( !passed )
+                                {
+                                    relay_printf( "advanced packet filter dropped packet (b)" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                            }
+                        }
+
                         __u8 packet_type = packet_data[0];
 
                         switch ( packet_type )
@@ -674,7 +1202,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
                                 if ( relay_map_value == NULL )
                                 {
-                                    relay_printf( "unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
+                                    relay_printf( "ping from unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_UNKNOWN_RELAY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
