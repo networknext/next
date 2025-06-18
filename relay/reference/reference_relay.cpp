@@ -4614,6 +4614,48 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                 memcpy( token_data.ping_key, relay->control.ping_key, RELAY_PING_KEY_BYTES );
 
+                printf( "---------------------------------------------------------------\n" );
+
+                printf( "%x:%d -> %x:%d\n", relay_htonl( token_data.source_address ), relay_htons( token_data.source_port ), relay_htonl( token_data.dest_address ), relay_htons( token_data.dest_port ) );
+
+                printf( "expire_timestamp = %lld\n", token_data.expire_timestamp );
+
+                printf( "ping_key[0] = %d\n", token_data.ping_key[0] );
+                printf( "ping_key[1] = %d\n", token_data.ping_key[1] );
+                printf( "ping_key[2] = %d\n", token_data.ping_key[2] );
+                printf( "ping_key[3] = %d\n", token_data.ping_key[3] );
+                printf( "ping_key[4] = %d\n", token_data.ping_key[4] );
+                printf( "ping_key[5] = %d\n", token_data.ping_key[5] );
+                printf( "ping_key[6] = %d\n", token_data.ping_key[6] );
+                printf( "ping_key[7] = %d\n", token_data.ping_key[7] );
+                printf( "ping_key[8] = %d\n", token_data.ping_key[8] );
+                printf( "ping_key[9] = %d\n", token_data.ping_key[9] );
+                printf( "ping_key[10] = %d\n", token_data.ping_key[10] );
+                printf( "ping_key[11] = %d\n", token_data.ping_key[11] );
+                printf( "ping_key[12] = %d\n", token_data.ping_key[12] );
+                printf( "ping_key[13] = %d\n", token_data.ping_key[13] );
+                printf( "ping_key[14] = %d\n", token_data.ping_key[14] );
+                printf( "ping_key[15] = %d\n", token_data.ping_key[15] );
+                printf( "ping_key[16] = %d\n", token_data.ping_key[16] );
+                printf( "ping_key[17] = %d\n", token_data.ping_key[17] );
+                printf( "ping_key[18] = %d\n", token_data.ping_key[18] );
+                printf( "ping_key[19] = %d\n", token_data.ping_key[19] );
+                printf( "ping_key[20] = %d\n", token_data.ping_key[20] );
+                printf( "ping_key[21] = %d\n", token_data.ping_key[21] );
+                printf( "ping_key[22] = %d\n", token_data.ping_key[22] );
+                printf( "ping_key[23] = %d\n", token_data.ping_key[23] );
+                printf( "ping_key[24] = %d\n", token_data.ping_key[24] );
+                printf( "ping_key[25] = %d\n", token_data.ping_key[25] );
+                printf( "ping_key[26] = %d\n", token_data.ping_key[26] );
+                printf( "ping_key[27] = %d\n", token_data.ping_key[27] );
+                printf( "ping_key[28] = %d\n", token_data.ping_key[28] );
+                printf( "ping_key[29] = %d\n", token_data.ping_key[29] );
+                printf( "ping_key[30] = %d\n", token_data.ping_key[30] );
+                printf( "ping_key[31] = %d\n", token_data.ping_key[31] );
+
+                printf( "---------------------------------------------------------------\n" );
+
+
                 uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
 
                 crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
