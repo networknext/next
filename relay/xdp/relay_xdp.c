@@ -1299,7 +1299,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         struct whitelist_value * value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
                         if ( value == NULL )
                         {
-                            relay_printf( "not %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
+                            relay_printf( "address %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                             INCREMENT_COUNTER( RELAY_COUNTER_NOT_IN_WHITELIST );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );

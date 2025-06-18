@@ -246,20 +246,6 @@ void * ping_thread_function( void * context )
                 if ( !message )
                     break;
 
-                // todo: remove once debugging finishes up
-                printf( "Relay public address is %d.%d.%d.%d\n", 
-                    ((uint8_t*)&ping->relay_public_address)[3], 
-                    ((uint8_t*)&ping->relay_public_address)[2], 
-                    ((uint8_t*)&ping->relay_public_address)[1], 
-                    ((uint8_t*)&ping->relay_public_address)[0] 
-                );
-                printf( "Relay internal address is %d.%d.%d.%d\n", 
-                    ((uint8_t*)&ping->relay_internal_address)[3], 
-                    ((uint8_t*)&ping->relay_internal_address)[2], 
-                    ((uint8_t*)&ping->relay_internal_address)[1], 
-                    ((uint8_t*)&ping->relay_internal_address)[0] 
-                );
-
                 ping->current_timestamp = message->current_timestamp;
                 ping->has_ping_key = true;
                 memcpy( ping->ping_key, message->ping_key, RELAY_PING_KEY_BYTES );
@@ -379,7 +365,7 @@ void * ping_thread_function( void * context )
                         printf( "to_address = %d.%d.%d.%d\n", to_address_data[3], to_address_data[2], to_address_data[1], to_address_data[0] );
                         printf( "from_address = %d.%d.%d.%d\n", from_address_data[3], from_address_data[2], from_address_data[1], from_address_data[0] );
                         printf( "packet_length = %d\n", packet_length );
-                        printf( "magic = [%d,%d,%d,%d,%d,%d,%d,%d]\n", i, ping->current_magic[0], ping->current_magic[1], ping->current_magic[2], ping->current_magic[3], ping->current_magic[4], ping->current_magic[5], ping->current_magic[6], ping->current_magic[7] );
+                        printf( "magic = [%d,%d,%d,%d,%d,%d,%d,%d]\n", ping->current_magic[0], ping->current_magic[1], ping->current_magic[2], ping->current_magic[3], ping->current_magic[4], ping->current_magic[5], ping->current_magic[6], ping->current_magic[7] );
                         printf( "--------------------------------\n" );
 
                         relay_platform_socket_send_packet( ping->socket, ping->relay_manager->relay_addresses[i], ping->relay_manager->relay_ports[i], packet_data, packet_length );
