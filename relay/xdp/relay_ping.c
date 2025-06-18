@@ -352,8 +352,6 @@ void * ping_thread_function( void * context )
                         uint8_t to_address_data[4];
                         uint8_t from_address_data[4];
 
-                        memcpy( to_address_data, &ping->relay_manager->relay_addresses[i], 4 );
-
                         relay_address_data( ping->relay_manager->relay_addresses[i], to_address_data );
 
                         if ( !ping->relay_manager->relay_internal[i] )

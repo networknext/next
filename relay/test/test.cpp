@@ -6,7 +6,8 @@
 #include <assert.h>
 #include <string.h>
 
-#define RELAY_PING_PACKET 11
+#define RELAY_PING_PACKET          11
+#define RELAY_PING_TOKEN_BYTES     32
 
 inline void relay_write_uint8( uint8_t ** p, uint8_t value )
 {
@@ -267,32 +268,17 @@ void relay_address_data( uint32_t address, uint8_t * output )
     output[3] = ( address >> 24 ) & 0xFF;
 }
 
-void relay_write_ping_packet( uint8_t * data, uint32_t from, uint32_t to, uint64_t sequence, uint8_t * magic )
+void relay_write_ping_packet( uint8_t * packet_data, int & packet_length, uint64_t sequence, uint64_t expire_timestamp, uint32_t from, uint32_t to, uint8_t internal, uint8_t * magic )
 {
-	assert( data );
-}
-
-#if 0 
-
-    // send relay ping packet
-
-    uint64_t sequence = relay_ping_history_ping_sent( ping->relay_manager->relay_ping_history[i], current_time );
-
-    struct ping_token_data token_data;
-
-    token_data.source_address = ping->relay_manager->relay_internal[i] ? ping->relay_internal_address : ping->relay_public_address;
-    token_data.source_port = htons( ping->relay_port );
-    token_data.dest_address = ping->relay_manager->relay_addresses[i];
-    token_data.dest_port = htons( ping->relay_manager->relay_ports[i] );
-    token_data.expire_timestamp = expire_timestamp;
-
-    memcpy( token_data.ping_key, ping->ping_key, RELAY_PING_KEY_BYTES );
+	assert( packet_data );
 
     uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
 
-    crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
+	for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+	{
+		ping_token[i] = (uint8_t) i;
+	}
 
-    uint8_t packet_data[256];
     packet_data[0] = RELAY_PING_PACKET;
     uint8_t * a = packet_data + 1;
     uint8_t * b = packet_data + 3;
@@ -300,31 +286,20 @@ void relay_write_ping_packet( uint8_t * data, uint32_t from, uint32_t to, uint64
 
     relay_write_uint64( &p, sequence );
     relay_write_uint64( &p, expire_timestamp );
-    relay_write_uint8( &p, ping->relay_manager->relay_internal[i] );
+    relay_write_uint8( &p, internal );
     relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
 
-    int packet_length = p - packet_data;
+    packet_length = p - packet_data;
 
     uint8_t to_address_data[4];
     uint8_t from_address_data[4];
 
-    memcpy( to_address_data, &ping->relay_manager->relay_addresses[i], 4 );
-
-    relay_address_data( ping->relay_manager->relay_addresses[i], to_address_data );
-
-    if ( !ping->relay_manager->relay_internal[i] )
-    {
-        relay_address_data( ping->relay_public_address, from_address_data );
-    }
-    else
-    {
-        relay_address_data( ping->relay_internal_address, from_address_data );
-    }
+    relay_address_data( to, to_address_data );
+    relay_address_data( from, from_address_data );
 
     relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
-    relay_generate_chonkle( b, ping->current_magic, from_address_data, to_address_data, packet_length );
-
-#endif // #if 0
+    relay_generate_chonkle( b, magic, from_address_data, to_address_data, packet_length );
+}
 
 // ----------------------------------------------------------------
 
