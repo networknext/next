@@ -1148,7 +1148,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( !passed )
                                 {
-                                    relay_printf( "advanced packet filter dropped packet (b) -- trust but verify" );
+                                    relay_printf( "advanced packet filter dropped packet (b)" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1286,6 +1286,69 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
         
                                 return XDP_TX;
                             }
+
+                            // ...
+                        }
+
+                        // if the packet is not from a whitelisted address, drop it
+
+                        struct whitelist_key key;
+                        key.address = ip->saddr;
+                        key.port = udp->source;
+
+                        struct whitelist_value * value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
+                        if ( value == NULL )
+                        {
+                            relay_printf( "not %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
+                            INCREMENT_COUNTER( RELAY_COUNTER_NOT_IN_WHITELIST );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
+                        else if ( value->expire_timestamp < state->current_timestamp )
+                        {
+                            relay_printf( "whitelist entry expired" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
+
+                        // process packets types that should only be processed after whitelist check
+
+                        switch ( packet_type )
+                        {
+                            case RELAY_PONG_PACKET:
+                            {
+                                relay_printf( "relay pong packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
+
+                                if ( (void*)packet_data + 18 + 1 + 8 + 8 != data_end )
+                                {
+                                    relay_printf( "relay pong packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 relay_map_key = ( ( (__u64)ip->saddr ) << 32 ) | udp->source;
+                                void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
+                                if ( relay_map_value == NULL )
+                                {
+                                    relay_printf( "unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_UNKNOWN_RELAY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                return XDP_PASS;
+                            }
+                            break;
+
+                            // ...
                         }
 
                         return XDP_DROP;
