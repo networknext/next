@@ -521,6 +521,14 @@ int main_update( struct main_t * main )
         relay_ping_set.internal[i] = relay_read_uint8( &q );
     }
 
+    // todo
+    printf( "=============================================\n" );
+    for ( int i = 0; i < num_relays; i++ )
+    {
+        printf( "relay %d: %x:%d [%s]\n", relay_ping_set.address[i], relay_ping_set.port[i], relay_ping_set.internal[i] ? "true" : "false" );
+    }
+    printf( "=============================================\n" );   
+
     char target_version[RELAY_VERSION_LENGTH];
     relay_read_string( &q, target_version, RELAY_VERSION_LENGTH);
 

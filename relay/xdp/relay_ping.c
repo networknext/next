@@ -360,8 +360,12 @@ void * ping_thread_function( void * context )
 
                         // todo
                         printf( "--------------------------------\n" );
-                        printf( "to_address = %d.%d.%d.%d\n", to_address_data[0], to_address_data[1], from_address_data[2], from_address_data[3] );
-                        printf( "from_address = %d.%d.%d.%d\n", from_address_data[0], from_address_data[1], from_address_data[2], from_address_data[3] );
+                        printf( "num_relays = %d\n", ping->relay_manager->num_relays );
+                        printf( "internal = %s\n", ping->relay_manager->relay_internal[i] ? "true" : "false" );
+                        printf( "relay_internal_address = %d.%d.%d.%d\n", ping->relay_internal_address[3], ping->relay_internal_address[2], ping->relay_internal_address[1], ping->relay_internal_address[0] );
+                        printf( "relay_public_address = %d.%d.%d.%d\n", ping->relay_public_address[3], ping->relay_public_address[2], ping->relay_public_address[1], ping->relay_public_address[0] );
+                        printf( "to_address = %d.%d.%d.%d\n", to_address_data[3], to_address_data[2], from_address_data[1], from_address_data[0] );
+                        printf( "from_address = %d.%d.%d.%d\n", from_address_data[3], from_address_data[2], from_address_data[1], from_address_data[0] );
                         printf( "packet_length = %d\n", packet_length );
                         printf( "magic = [%d,%d,%d,%d,%d,%d,%d,%d]\n", i, ping->current_magic[0], ping->current_magic[1], ping->current_magic[2], ping->current_magic[3], ping->current_magic[4], ping->current_magic[5], ping->current_magic[6], ping->current_magic[7] );
                         printf( "--------------------------------\n" );
