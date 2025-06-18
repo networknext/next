@@ -358,11 +358,11 @@ void * ping_thread_function( void * context )
 
                         if ( !ping->relay_manager->relay_internal[i] )
                         {
-                            relay_address_data( ping->relay_public_address[i], from_address_data );
+                            relay_address_data( ping->relay_public_address, from_address_data );
                         }
                         else
                         {
-                            relay_address_data( ping->relay_internal_address[i], from_address_data );
+                            relay_address_data( ping->relay_internal_address, from_address_data );
                         }
 
                         relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
