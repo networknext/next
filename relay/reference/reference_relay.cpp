@@ -4709,7 +4709,19 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
                ) 
            )
         {
-            relay_printf( "advanced packet filter dropped packet" );
+            char address[RELAY_MAX_ADDRESS_STRING_LENGTH];
+            relay_address_to_string( &from, address );
+            relay_printf( "advanced packet filter dropped packet from %s -- packet_bytes = %d, current_magic = [%d,%d,%d,%d,%d,%d,%d,%d]", 
+                address,
+                packet_bytes,
+                current_magic[0], 
+                current_magic[1], 
+                current_magic[2], 
+                current_magic[3], 
+                current_magic[4], 
+                current_magic[5], 
+                current_magic[6], 
+                current_magic[7] );
 
             relay->counters[RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET]++;
 
