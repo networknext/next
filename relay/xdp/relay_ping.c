@@ -354,15 +354,15 @@ void * ping_thread_function( void * context )
 
                         memcpy( to_address_data, &ping->relay_manager->relay_addresses[i], 4 );
 
-                        relay_address_data( ping->relay_manager->relay_address[i].ip, to_address_data );
+                        relay_address_data( ping->relay_manager->relay_address[i], to_address_data );
 
                         if ( !ping->relay_manager->relay_internal[i] )
                         {
-                            relay_address_data( ping->relay_public_address.ip, from_address_data );
+                            relay_address_data( ping->relay_public_address[i], from_address_data );
                         }
                         else
                         {
-                            relay_address_data( ping->relay_internal_address.ip, from_address_data );
+                            relay_address_data( ping->relay_internal_address[i], from_address_data );
                         }
 
                         relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
