@@ -1741,8 +1741,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             }
                             break;
 
-                            #if 0
-
                             case RELAY_ROUTE_RESPONSE_PACKET:
                             {
                                 relay_printf( "route response packet" );
@@ -1751,8 +1749,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's fucking stupid as shit
+                                if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
@@ -1761,7 +1759,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
@@ -1830,8 +1828,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                /*
                                 relay_printf( "verifying header" );
+
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -1846,9 +1844,21 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+                                
                                 __u8 hash[32];
                                 bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+
+                                uint8_t * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
+                                {
                                 {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
@@ -1856,7 +1866,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-                                */ 
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
@@ -1885,6 +1894,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 return XDP_TX;
                             }
                             break;
+
+                            #if 0
 
                             case RELAY_CONTINUE_REQUEST_PACKET:
                             {
