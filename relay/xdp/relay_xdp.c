@@ -1163,7 +1163,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
+                                // todo
+                                // relay_printf( "relay ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
@@ -1263,7 +1264,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify" );
+                                    relay_printf( "relay ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1335,7 +1336,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "ping token expired" );
+                                    relay_printf( "client ping token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1345,7 +1346,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = 0; // IMPORTANT: Some NAT change the client port, so it is set to zero in client ping token
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
@@ -1388,7 +1389,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify" );
+                                    relay_printf( "client ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1461,7 +1462,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "ping token expired" );
+                                    relay_printf( "server ping token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1471,7 +1472,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
@@ -1514,7 +1515,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify" );
+                                    relay_printf( "server ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1579,7 +1580,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PONG_PACKET:
                             {
-                                relay_printf( "relay pong packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
+                                // relay_printf( "relay pong packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
 
