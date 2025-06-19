@@ -55,6 +55,19 @@
 
 #endif // #if RELAY_ENDIAN
 
+inline uint64_t bswap( uint32_t value )
+{
+#ifdef __GNUC__
+    return __builtin_bswap32( value );
+#else // #ifdef __GNUC__
+    uint32_t output;
+    output  = ( value & 0xFF000000 ) >> 24;
+    output |= ( value & 0x00FF0000 ) >> 8;
+    output |= ( value & 0x0000FF00 ) << 8;
+    output |= ( value & 0x000000FF ) << 24;
+#endif // #ifdef __GNUC__
+}
+
 uint16_t relay_ntohs( uint16_t in )
 {
 #if RELAY_BIG_ENDIAN
