@@ -1167,7 +1167,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
-                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "relay ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
@@ -1292,7 +1292,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED );
 
-                                if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "client ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE );
@@ -1408,7 +1408,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED );
 
-                                if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "server ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE );
@@ -1553,7 +1553,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + 8 != data_end )
+                                if ( (void*) packet_data + 18 + 8 != data_end )
                                 {
                                     relay_printf( "relay pong packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
@@ -1577,9 +1577,1100 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             }
                             break;
 
-                            // ...
+                            case RELAY_ROUTE_REQUEST_PACKET:
+                            {
+                                relay_printf( "route request packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED );
+
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES != data_end )
+                                {
+                                    relay_printf( "route request packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                struct decrypt_route_token_data decrypt_data;
+                                memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
+                                {
+                                    relay_printf( "could not decrypt route token" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                struct route_token * token = (struct route_token*) ( packet_data + 18 + 24 );
+
+                                if ( token->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "route token expired" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                struct session_data session;
+
+                                memcpy( session.session_private_key, token->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                session.expire_timestamp = token->expire_timestamp;
+                                session.session_id = token->session_id;
+                                session.envelope_kbps_up = token->envelope_kbps_up;
+                                session.envelope_kbps_down = token->envelope_kbps_down;
+                                session.next_address = token->next_address;
+                                session.prev_address = token->prev_address;
+                                session.next_port = token->next_port;
+                                session.prev_port = token->prev_port;
+                                session.session_version = token->session_version;
+                                session.next_internal = token->next_internal;
+                                session.prev_internal = token->prev_internal;
+
+                                if ( token->prev_port == 0 )
+                                {
+                                    session.first_hop = 1;
+                                    session.prev_port = udp->source;
+                                }
+                                else
+                                {
+                                    session.first_hop = 0;
+                                }
+
+                                session.payload_client_to_server_sequence = 0;
+                                session.payload_server_to_client_sequence = 0;
+                                session.special_client_to_server_sequence = 0;
+                                session.special_server_to_client_sequence = 0;
+
+                                struct session_key key;
+                                key.session_id = token->session_id;
+                                key.session_version = token->session_version;
+                                if ( bpf_map_update_elem( &session_map, &key, &session, BPF_NOEXIST ) == 0 )
+                                {
+                                    relay_printf( "created session 0x%llx:%d", session.session_id, session.session_version );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session.envelope_kbps_up );
+                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session.envelope_kbps_down );
+                                }
+
+                                memcpy( data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+
+                                data += RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES;
+
+                                packet_data = (__u8*) ( data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+
+                                packet_data[0] = RELAY_ROUTE_REQUEST_PACKET;
+
+                                int payload_bytes = data_end - (void*)packet_data;
+
+                                if ( session.next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                relay_printf( "forward to next hop" );
+
+                                int result = relay_redirect_packet( data, payload_bytes, session.next_address, session.next_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                bpf_xdp_adjust_head( ctx, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            #if 0
+
+                            case RELAY_ROUTE_RESPONSE_PACKET:
+                            {
+                                relay_printf( "route response packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                // IMPORTANT: required for verifier
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 server_to_client_sequence = session->special_server_to_client_sequence;
+
+                                if ( packet_sequence <= server_to_client_sequence )
+                                {
+                                    relay_printf( "already received" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */ 
+
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                relay_printf( "forward to previous hop" );
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_CONTINUE_REQUEST_PACKET:
+                            {
+                                relay_printf( "continue request packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED );
+
+                                if ( (void*)packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "continue request packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*) packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES <= data_end ) // IMPORTANT: for the verifier
+                                {
+                                    relay_printf( "decrypting continue token" );
+                                    struct decrypt_continue_token_data decrypt_data;
+                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                    if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
+                                    {
+                                        relay_printf( "could not decrypt continue token" );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                        return XDP_DROP;
+                                    }
+                                }
+
+                                struct continue_token * token = (struct continue_token*) ( packet_data + 18 + 24 );
+
+                                if ( token->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "token expired" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                struct session_key key;
+                                key.session_id = token->session_id;
+                                key.session_version = token->session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 current_expire_timestamp = session->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
+
+                                memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+
+                                data += RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES;
+
+                                packet_data = (__u8*) ( data + sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
+
+                                packet_data[0] = RELAY_CONTINUE_REQUEST_PACKET;
+
+                                int payload_bytes = data_end - (void*)packet_data;
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                relay_printf( "forward to next hop" );
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                bpf_xdp_adjust_head( ctx, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_CONTINUE_RESPONSE_PACKET:
+                            {
+                                relay_printf( "continue response packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                // IMPORTANT: required for verifier
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 server_to_client_sequence = session->special_server_to_client_sequence;
+
+                                if ( packet_sequence <= server_to_client_sequence )
+                                {
+                                    relay_printf( "already received" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */ 
+
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                relay_printf( "forward to previous hop" );
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_CLIENT_TO_SERVER_PACKET:
+                            {
+                                relay_printf( "client to server packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "packet is too small" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                int packet_bytes = data_end - (void*)udp - sizeof(struct udphdr);
+
+                                int payload_bytes = packet_bytes - ( sizeof(struct udphdr) + 18 + RELAY_HEADER_BYTES );
+
+                                if ( payload_bytes > RELAY_MTU )
+                                {
+                                    relay_printf( "packet is too big" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 client_to_server_sequence = session->payload_client_to_server_sequence;
+
+                                if ( packet_sequence <= client_to_server_sequence )
+                                {
+                                    relay_printf( "already received" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                } 
+                                */
+
+                                __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+
+                                relay_printf( "forward to next hop" );
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_SERVER_TO_CLIENT_PACKET:
+                            {
+                                relay_printf( "server to client packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "packet is too small" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                int packet_bytes = data_end - (void*)udp - sizeof(struct udphdr);
+
+                                int payload_bytes = packet_bytes - ( sizeof(struct udphdr) + 18 + RELAY_HEADER_BYTES );
+
+                                if ( payload_bytes > RELAY_MTU )
+                                {
+                                    relay_printf( "packet is too big" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 server_to_client_sequence = session->payload_server_to_client_sequence;
+
+                                if ( packet_sequence <= server_to_client_sequence )
+                                {
+                                    relay_printf( "already received: %lld < %lld" , packet_sequence, server_to_client_sequence );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */ 
+
+                                __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                relay_printf( "forward to previous hop" );
+
+                                if ( session->prev_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_SESSION_PING_PACKET:
+                            {
+                                relay_printf( "session ping packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                // IMPORTANT: required for verifier
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 client_to_server_sequence = session->special_client_to_server_sequence;
+
+                                if ( packet_sequence <= client_to_server_sequence )
+                                {
+                                    relay_printf( "already received" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */ 
+
+                                if ( packet_sequence > client_to_server_sequence )
+                                {
+                                    __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+                                }
+
+                                relay_printf( "forward to next hop" );
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            case RELAY_SESSION_PONG_PACKET:
+                            {
+                                relay_printf( "session pong packet" );
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_RECEIVED );
+
+                                __u8 * header = packet_data + 18;
+
+                                // IMPORTANT: required for verifier
+                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                {
+                                    relay_printf( "wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 session_id;
+                                session_id  = header[8];
+                                session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+
+                                __u8 session_version = header[8+8];
+
+                                struct session_key key;
+                                key.session_id = session_id;
+                                key.session_version = session_version;
+                                struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
+                                if ( session == NULL )
+                                {
+                                    relay_printf( "could not find session" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( session->expire_timestamp < state->current_timestamp )
+                                {
+                                    relay_printf( "session expired" );
+                                    bpf_map_delete_elem( &session_map, &key );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
+                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
+                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                __u64 packet_sequence = 0;
+                                packet_sequence  = header[0];
+                                packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
+                                packet_sequence |= ( ( (__u64)( header[2] ) ) << 16 );
+                                packet_sequence |= ( ( (__u64)( header[3] ) ) << 24 );
+                                packet_sequence |= ( ( (__u64)( header[4] ) ) << 32 );
+                                packet_sequence |= ( ( (__u64)( header[5] ) ) << 40 );
+                                packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
+                                packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
+
+                                __u64 server_to_client_sequence = session->special_server_to_client_sequence;
+
+                                if ( packet_sequence <= server_to_client_sequence )
+                                {
+                                    relay_printf( "already received" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                /*
+                                relay_printf( "verifying header" );
+                                struct header_data verify_data;
+                                memset( &verify_data, 0, sizeof(struct header_data) );
+                                memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
+                                verify_data.packet_type = packet_type;
+                                verify_data.packet_sequence = packet_sequence;
+                                verify_data.session_id  = header[8];
+                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
+                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
+                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
+                                verify_data.session_version = header[8+8];
+                                __u8 hash[32];
+                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                {
+                                    relay_printf( "header did not verify" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+                                */ 
+
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+   
+                                relay_printf( "forward to previous hop" );
+
+                                if ( session->next_internal )
+                                {
+                                    ip->saddr = config->relay_internal_address;
+                                }
+
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                if ( result == XDP_DROP )
+                                {
+                                    INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP );
+                                INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
+                                ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                return XDP_TX;
+                            }
+                            break;
+
+                            #endif // #if 0
                         }
 
+                        // unknown packet type
+
+                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                         return XDP_DROP;
                     }
                     else
