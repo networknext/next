@@ -1324,7 +1324,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + 1 + 8 + 8 != data_end )
+                                if ( (void*)packet_data + 18 + 8 != data_end )
                                 {
                                     relay_printf( "relay pong packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
