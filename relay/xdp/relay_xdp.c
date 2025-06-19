@@ -1412,6 +1412,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 const int payload_bytes = 18 + 8 + 8;
 
+                                ip->daddr = config->relay_public_address;       // IMPORTANT: We must respond from the relay public address or it will get filtered out
+
                                 relay_reflect_packet( data, payload_bytes, state->current_magic );
 
                                 bpf_xdp_adjust_tail( ctx, -( 8 + RELAY_PING_TOKEN_BYTES ) );
@@ -1538,6 +1540,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 packet_data[0] = RELAY_SERVER_PONG_PACKET;
 
                                 const int payload_bytes = 18 + 8;
+
+                                ip->daddr = config->relay_public_address;       // IMPORTANT: We must respond from the relay public address or it will get filtered out
 
                                 relay_reflect_packet( data, payload_bytes, state->current_magic );
 
