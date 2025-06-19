@@ -224,15 +224,6 @@ void * ping_thread_function( void * context )
 
         if ( packet_bytes == 18 + 8 && packet_data[0] == RELAY_PONG_PACKET )
         {
-            // todo: remove after debugging
-            printf( "userspace received relay pong packet from %d.%d.%d.%d:%d\n",
-                ((uint8_t*)&from_address)[3], 
-                ((uint8_t*)&from_address)[2], 
-                ((uint8_t*)&from_address)[1], 
-                ((uint8_t*)&from_address)[0], 
-                from_port
-            );
-
             const uint8_t * p = packet_data + 18;
             uint64_t sequence = relay_read_uint64( &p );
             relay_manager_process_pong( ping->relay_manager, from_address, from_port, sequence );
