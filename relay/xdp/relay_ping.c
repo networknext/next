@@ -266,7 +266,7 @@ void * ping_thread_function( void * context )
                     for ( int i = 0; i < message->new_relays.num_relays; i++ )
                     {
 #ifdef COMPILE_WITH_BPF
-                        __u64 key = ( ( (__u64)htonl(message->new_relays.address[i]) ) << 32 ) | htons(message->new_relays.port[i]);
+                        __u64 key = ( ( (__u64)relay_htonl(message->new_relays.address[i]) ) << 32 ) | relay_htons(message->new_relays.port[i]);
                         __u64 value = 1;
                         if ( bpf_map_update_elem( ping->relay_map_fd, &key, &value, BPF_NOEXIST ) == 0 )
 #endif // #ifdef COMPILE_WITH_BPF
@@ -288,7 +288,7 @@ void * ping_thread_function( void * context )
                     for ( int i = 0; i < message->delete_relays.num_relays; i++ )
                     {
 #ifdef COMPILE_WITH_BPF
-                        __u64 key = ( ( (__u64)htonl(message->delete_relays.address[i]) ) << 32 ) | htons(message->delete_relays.port[i]);
+                        __u64 key = ( ( (__u64)relay_htonl(message->delete_relays.address[i]) ) << 32 ) | relay_htons(message->delete_relays.port[i]);
                         __u64 value = 1;
                         if ( bpf_map_delete_elem( ping->relay_map_fd, &key ) == 0 )
 #endif // #ifdef COMPILE_WITH_BPF
@@ -325,10 +325,10 @@ void * ping_thread_function( void * context )
 
                         struct ping_token_data token_data;
 
-                        token_data.source_address = ping->relay_manager->relay_internal[i] ? ping->relay_internal_address : ping->relay_public_address;
-                        token_data.source_port = htons( ping->relay_port );
+                        token_data.source_address = ping->relay_manager->relay_internal[i] ? relay_htonl( ping->relay_internal_address ) : relay_htonl( ping->relay_public_address );
+                        token_data.source_port = relay_htons( ping->relay_port );
                         token_data.dest_address = ping->relay_manager->relay_addresses[i];
-                        token_data.dest_port = htons( ping->relay_manager->relay_ports[i] );
+                        token_data.dest_port = relay_htons( ping->relay_manager->relay_ports[i] );
                         token_data.expire_timestamp = expire_timestamp;
 
                         memcpy( token_data.ping_key, ping->ping_key, RELAY_PING_KEY_BYTES );
