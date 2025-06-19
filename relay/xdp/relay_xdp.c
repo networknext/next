@@ -1330,12 +1330,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                __u8 hash[32];
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
 
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
 
-                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 if ( hash[0] != ping_token[0] || 
                                      hash[1] != ping_token[1] || 
                                      hash[2] != ping_token[2] || 
@@ -1447,12 +1446,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                               __u8 hash[32];
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
 
                                 __u8 * ping_token = packet_data + 8 + 8 + 1;
 
-                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 if ( hash[0] != ping_token[0] || 
                                      hash[1] != ping_token[1] || 
                                      hash[2] != ping_token[2] || 
