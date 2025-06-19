@@ -648,7 +648,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                              packet_data[16] < 0xD2 || packet_data[16] > 0xF1                                                         ||
                              packet_data[17] < 0x11 || packet_data[17] > 0x90 )
                         {
-                            relay_printf( "basic packet filter dropped packet" );
+                            relay_printf( "basic packet filter dropped packet [%d]", packet_data[0] );
                             INCREMENT_COUNTER( RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -714,7 +714,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
                             {
-                                relay_printf( "advanced packet filter dropped packet (a)" );
+                                relay_printf( "advanced packet filter dropped packet (a) [%d]", packet_data[0] );
                                 INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1148,7 +1148,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( !passed )
                                 {
-                                    relay_printf( "advanced packet filter dropped packet (b)" );
+                                    relay_printf( "advanced packet filter dropped packet (b) [%d]", packet_data[0] );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1299,7 +1299,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             case RELAY_CLIENT_PING_PACKET:
                             {
-                                relay_printf( "client ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
+                                // todo
+                                // relay_printf( "client ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED );
 
@@ -1425,7 +1426,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             case RELAY_SERVER_PING_PACKET:
                             {
-                                relay_printf( "server ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
+                                // todo
+                                // relay_printf( "server ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED );
 
