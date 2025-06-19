@@ -341,18 +341,18 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[17] = chonkle[14];
 }
 
-static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_address, __u16 dest_port, __u8 * magic )
+static int relay_redirect_packet( void * data, int payload_bytes, __u32 source_address, __u32 dest_address, __u16 source_port, __u16 dest_port, __u8 * magic )
 {
     struct ethhdr * eth = data;
     struct iphdr  * ip  = data + sizeof( struct ethhdr );
     struct udphdr * udp = (void*) ip + sizeof( struct iphdr );
 
-    udp->source = udp->dest;
+    udp->source = source_port;
     udp->dest = dest_port;
     udp->check = 0;
     udp->len = bpf_htons( sizeof(struct udphdr) + payload_bytes );
 
-    ip->saddr = ip->daddr;
+    ip->saddr = source_address;
     ip->daddr = dest_address;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
     ip->check = 0;
@@ -1722,14 +1722,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                if ( session.next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 relay_printf( "forward to next hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session.next_address, session.next_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session.next_internal ? config->relay_internal_address : config->relay_public_address, session.next_address, config->relay_port, session.next_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -1877,14 +1872,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to previous hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -1991,14 +1981,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 relay_printf( "forward to next hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2146,14 +2131,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to previous hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2302,12 +2282,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2456,12 +2431,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to previous hop" );
 
-                                if ( session->prev_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2610,14 +2580,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2763,14 +2728,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
    
                                 relay_printf( "forward to previous hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
-
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
