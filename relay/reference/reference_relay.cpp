@@ -4653,9 +4653,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
 
                         relay_platform_socket_send_packet( relay->socket, &to_address, ping_packet, packet_bytes );
             
-                        // todo
-                        printf( "sent relay ping packet (%d bytes)\n", packet_bytes );
-
                         relay->counters[RELAY_COUNTER_PACKETS_SENT]++;
                         relay->counters[RELAY_COUNTER_BYTES_SENT] += packet_bytes;
                         relay->counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT]++;
@@ -4815,11 +4812,10 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
         }
         else if ( packet_id == RELAY_PONG_PACKET )
         {
-            // todo
-// #if RELAY_SPAM
+#if RELAY_SPAM
             char buffer[256];
             relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
-// #endif // #if RELAY_SPAM
+#endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;
 
