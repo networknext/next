@@ -1857,18 +1857,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
-                                verify_data.session_id  = header[8];
-                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
-                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
-                                verify_data.session_version = header[8+8];
+                                verify_data.session_id = session_id;
+                                verify_data.session_version = session_version;
                                 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
@@ -2145,7 +2138,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_version = header[8+8];
 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
@@ -2305,7 +2298,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_version = header[8+8];
 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
@@ -2463,7 +2456,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_version = header[8+8];
 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
@@ -2618,7 +2611,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_version = header[8+8];
 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
@@ -2778,7 +2771,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_version = header[8+8];
 
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
 
                                 __u8 * expected = header + 8 + 8 + 1;
                                 
