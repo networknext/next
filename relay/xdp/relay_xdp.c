@@ -352,7 +352,7 @@ struct redirect_args_t
     __u8 * magic;
 };
 
-static int relay_redirect_packet( redirect_args_t * args )
+static int relay_redirect_packet( struct redirect_args_t * args )
 {
     struct ethhdr * eth = data;
     struct iphdr  * ip  = data + sizeof( struct ethhdr );
@@ -430,28 +430,28 @@ static int relay_redirect_packet( redirect_args_t * args )
 
     __u64 hash = 0xCBF29CE484222325;
 
-    hash ^= magic[0];
+    hash ^= args->magic[0];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[1];
+    hash ^= args->magic[1];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[2];
+    hash ^= args->magic[2];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[3];
+    hash ^= args->magic[3];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[4];
+    hash ^= args->magic[4];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[5];
+    hash ^= args->magic[5];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[6];
+    hash ^= args->magic[6];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[7];
+    hash ^= args->magic[7];
     hash *= 0x00000100000001B3;
 
     hash ^= ( from       ) & 0xFF;
@@ -1735,7 +1735,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session.next_internal ? config->relay_internal_address : config->relay_public_address;
@@ -1894,7 +1894,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2012,7 +2012,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2171,7 +2171,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2329,7 +2329,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2487,7 +2487,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to previous hop" );
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2647,7 +2647,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
@@ -2804,7 +2804,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                redirect_args_t args;
+                                struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
                                 args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
