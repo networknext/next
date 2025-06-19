@@ -361,11 +361,11 @@ static int relay_redirect_packet( redirect_args_t * args )
     udp->source = args->source_port;
     udp->dest = args->dest_port;
     udp->check = 0;
-    udp->len = bpf_htons( sizeof(struct udphdr) + payload_bytes );
+    udp->len = bpf_htons( sizeof(struct udphdr) + args->payload_bytes );
 
     ip->saddr = args->source_address;
     ip->daddr = args->dest_address;
-    ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
+    ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + args->payload_bytes );
     ip->check = 0;
 
     struct whitelist_key key;
@@ -413,8 +413,8 @@ static int relay_redirect_packet( redirect_args_t * args )
     sum += ( to >> 8  ) & 0xFF;
     sum += ( to       ) & 0xFF;
 
-    sum += ( payload_bytes >> 8 );
-    sum += ( payload_bytes      ) & 0xFF;
+    sum += ( args->payload_bytes >> 8 );
+    sum += ( args->payload_bytes      ) & 0xFF;
 
     char * sum_data = (char*) &sum;
 
@@ -478,10 +478,10 @@ static int relay_redirect_packet( redirect_args_t * args )
     hash ^= ( to >> 24 );
     hash *= 0x00000100000001B3;
 
-    hash ^= ( payload_bytes      ) & 0xFF;
+    hash ^= ( args->payload_bytes      ) & 0xFF;
     hash *= 0x00000100000001B3;
 
-    hash ^= ( payload_bytes >> 8 );
+    hash ^= ( args->payload_bytes >> 8 );
     hash *= 0x00000100000001B3;
 
     __u8 hash_0 = ( hash       ) & 0xFF;
