@@ -1848,7 +1848,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 hash[32];
                                 bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
 
-                                uint8_t * expected = header + 8 + 8 + 1;
+                                __u8 * expected = header + 8 + 8 + 1;
                                 
                                 if ( hash[0] != expected[0] || 
                                      hash[1] != expected[1] || 
