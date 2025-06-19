@@ -1641,17 +1641,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED );
 
-                                // IMPORTANT: for the verifier, because it's fucking stupid
                                 if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES > data_end )
-                                {
-                                    relay_printf( "route request packet is the wrong size" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "route request packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE );
@@ -1919,17 +1909,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED );
 
-                                // IMPORTANT: required for verifier because it's fucking stupid as shit
                                 if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
-                                {
-                                    relay_printf( "continue request packet is the wrong size" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "continue request packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );

@@ -93,7 +93,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             }
         }
         pclose( file );
-    }    
+    }
 
     // write out source tar.gz for relay_xdp.o
     {
