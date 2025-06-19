@@ -1752,7 +1752,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 // IMPORTANT: required for verifier because it's fucking stupid as shit
                                 if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "route response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1761,7 +1761,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "route response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2020,8 +2020,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's dumber than shit
+                                if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
@@ -2030,7 +2030,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
                                     relay_printf( "wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
