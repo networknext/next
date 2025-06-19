@@ -4818,7 +4818,7 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC relay_thread_fu
             // todo
 // #if RELAY_SPAM
             char buffer[256];
-            relay_printf( "received relay pong packet from %s [%d bytes]", relay_address_to_string( &from, buffer ) );
+            relay_printf( "received relay pong packet from %s", relay_address_to_string( &from, buffer ) );
 // #endif // #if RELAY_SPAM
 
             relay->counters[RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED]++;

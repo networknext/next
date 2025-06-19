@@ -197,6 +197,39 @@ void relay_address_data( uint32_t address, uint8_t * output )
     output[3] = ( address >> 24 ) & 0xFF;
 }
 
+void relay_write_ping_packet( uint8_t * packet_data, int & packet_length, uint64_t sequence, uint64_t expire_timestamp, uint32_t from, uint32_t to, uint8_t internal, uint8_t * magic )
+{
+    assert( packet_data );
+
+    uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
+
+    for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+    {
+        ping_token[i] = (uint8_t) i;
+    }
+
+    packet_data[0] = RELAY_PING_PACKET;
+    uint8_t * a = packet_data + 1;
+    uint8_t * b = packet_data + 3;
+    uint8_t * p = packet_data + 18;
+
+    relay_write_uint64( &p, sequence );
+    relay_write_uint64( &p, expire_timestamp );
+    relay_write_uint8( &p, internal );
+    relay_write_bytes( &p, ping_token, RELAY_PING_TOKEN_BYTES );
+
+    packet_length = p - packet_data;
+
+    uint8_t to_address_data[4];
+    uint8_t from_address_data[4];
+
+    relay_address_data( to, to_address_data );
+    relay_address_data( from, from_address_data );
+
+    relay_generate_pittle( a, from_address_data, to_address_data, packet_length );
+    relay_generate_chonkle( b, magic, from_address_data, to_address_data, packet_length );
+}
+
 // --------------------------------------------------------------------------------------------------------------------------------------------------
 
 extern bool quit;
@@ -338,7 +371,9 @@ void * ping_thread_function( void * context )
                         crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
 
                         uint8_t packet_data[256];
+
                         packet_data[0] = RELAY_PING_PACKET;
+
                         uint8_t * a = packet_data + 1;
                         uint8_t * b = packet_data + 3;
                         uint8_t * p = packet_data + 18;

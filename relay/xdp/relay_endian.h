@@ -57,36 +57,36 @@
 
 uint16_t relay_ntohs( uint16_t in )
 {
-#ifndef RELAY_BIG_ENDIAN
+#if RELAY_BIG_ENDIAN
     return in;
-#else // RELAY_BIG_ENDIAN
+#else // #if RELAY_BIG_ENDIAN
     return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
-#endif // RELAY_BIG_ENDIAN
+#endif // #if RELAY_BIG_ENDIAN
 }
 
 uint16_t relay_htons( uint16_t in )
 {
-#ifndef RELAY_BIG_ENDIAN
+#if // #if RELAY_BIG_ENDIAN
     return in;
-#else // RELAY_BIG_ENDIAN
+#else // #if RELAY_BIG_ENDIAN
     return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
-#endif // RELAY_BIG_ENDIAN
+#endif // #if RELAY_BIG_ENDIAN
 }
 
 inline uint32_t relay_ntohl( uint32_t in )
 {
-#ifndef RELAY_BIG_ENDIAN
+#if RELAY_BIG_ENDIAN
     return in;
-#else // RELAY_BIG_ENDIAN
+#else // #if RELAY_BIG_ENDIAN
     return bswap( in );
-#endif // RELAY_BIG_ENDIAN
+#endif // #if RELAY_BIG_ENDIAN
 }
 
 inline uint32_t relay_htonl( uint32_t in )
 {
-#ifndef RELAY_BIG_ENDIAN
+#if RELAY_BIG_ENDIAN
     return in;
-#else // RELAY_BIG_ENDIAN
+#else // #if RELAY_BIG_ENDIAN
     return bswap( in );
-#endif // RELAY_BIG_ENDIAN
+#endif // #if RELAY_BIG_ENDIAN
 }
