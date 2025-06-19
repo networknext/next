@@ -321,8 +321,6 @@ void * ping_thread_function( void * context )
                     {
                         // send relay ping packet
 
-                        uint64_t sequence = relay_ping_history_ping_sent( ping->relay_manager->relay_ping_history[i], current_time );
-
                         struct ping_token_data token_data;
 
                         token_data.source_address = ping->relay_manager->relay_internal[i] ? relay_htonl( ping->relay_internal_address ) : relay_htonl( ping->relay_public_address );
@@ -344,6 +342,8 @@ void * ping_thread_function( void * context )
                         uint8_t * a = packet_data + 1;
                         uint8_t * b = packet_data + 3;
                         uint8_t * p = packet_data + 18;
+
+                        uint64_t sequence = relay_ping_history_ping_sent( ping->relay_manager->relay_ping_history[i], current_time );
 
                         relay_write_uint64( &p, sequence );
                         relay_write_uint64( &p, expire_timestamp );

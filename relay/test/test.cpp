@@ -8,6 +8,116 @@
 
 #define RELAY_PING_PACKET          11
 #define RELAY_PING_TOKEN_BYTES     32
+#define RELAY_PING_KEY_BYTES       32
+
+#if !defined ( RELAY_LITTLE_ENDIAN ) && !defined( RELAY_BIG_ENDIAN )
+
+  #ifdef __BYTE_ORDER__
+    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+      #define RELAY_LITTLE_ENDIAN 1
+    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+      #define RELAY_BIG_ENDIAN 1
+    #else
+      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
+    #endif // __BYTE_ORDER__
+
+  // Detect with GLIBC's endian.h
+  #elif defined(__GLIBC__)
+    #include <endian.h>
+    #if (__BYTE_ORDER == __LITTLE_ENDIAN)
+      #define RELAY_LITTLE_ENDIAN 1
+    #elif (__BYTE_ORDER == __BIG_ENDIAN)
+      #define RELAY_BIG_ENDIAN 1
+    #else
+      #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
+    #endif // __BYTE_ORDER
+
+  // Detect with _LITTLE_ENDIAN and _BIG_ENDIAN macro
+  #elif defined(_LITTLE_ENDIAN) && !defined(_BIG_ENDIAN)
+    #define RELAY_LITTLE_ENDIAN 1
+  #elif defined(_BIG_ENDIAN) && !defined(_LITTLE_ENDIAN)
+    #define RELAY_BIG_ENDIAN 1
+
+  // Detect with architecture macros
+  #elif    defined(__sparc)     || defined(__sparc__)                           \
+        || defined(_POWER)      || defined(__powerpc__)                         \
+        || defined(__ppc__)     || defined(__hpux)      || defined(__hppa)      \
+        || defined(_MIPSEB)     || defined(_POWER)      || defined(__s390__)
+    #define RELAY_BIG_ENDIAN 1
+  #elif    defined(__i386__)    || defined(__alpha__)   || defined(__ia64)      \
+        || defined(__ia64__)    || defined(_M_IX86)     || defined(_M_IA64)     \
+        || defined(_M_ALPHA)    || defined(__amd64)     || defined(__amd64__)   \
+        || defined(_M_AMD64)    || defined(__x86_64)    || defined(__x86_64__)  \
+        || defined(_M_X64)      || defined(__bfin__)
+    #define RELAY_LITTLE_ENDIAN 1
+  #elif defined(_MSC_VER) && defined(_M_ARM)
+    #define RELAY_LITTLE_ENDIAN 1
+  #else
+    #error Unknown machine endianess detected. Please define RELAY_LITTLE_ENDIAN or RELAY_BIG_ENDIAN.
+  #endif
+
+#endif
+
+inline uint64_t bswap( uint32_t value )
+{
+#ifdef __GNUC__
+    return __builtin_bswap32( value );
+#else // #ifdef __GNUC__
+    uint32_t output;
+    output  = ( value & 0xFF000000 ) >> 24;
+    output |= ( value & 0x00FF0000 ) >> 8;
+    output |= ( value & 0x0000FF00 ) << 8;
+    output |= ( value & 0x000000FF ) << 24;
+#endif // #ifdef __GNUC__
+}
+
+uint16_t relay_ntohs( uint16_t in )
+{
+#if RELAY_BIG_ENDIAN
+    return in;
+#else // #if RELAY_BIG_ENDIAN
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+#endif // #if RELAY_BIG_ENDIAN
+}
+
+uint16_t relay_htons( uint16_t in )
+{
+#if RELAY_BIG_ENDIAN
+    return in;
+#else // #if RELAY_BIG_ENDIAN
+    return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
+#endif // #if RELAY_BIG_ENDIAN
+}
+
+inline uint32_t relay_ntohl( uint32_t in )
+{
+#if RELAY_BIG_ENDIAN
+    return in;
+#else // #if RELAY_BIG_ENDIAN
+    return bswap( in );
+#endif // #if RELAY_BIG_ENDIAN
+}
+
+inline uint32_t relay_htonl( uint32_t in )
+{
+#if RELAY_BIG_ENDIAN
+    return in;
+#else // #if RELAY_BIG_ENDIAN
+    return bswap( in );
+#endif // #if RELAY_BIG_ENDIAN
+}
+
+#pragma pack(push, 1)
+struct ping_token_data
+{
+    uint8_t ping_key[RELAY_PING_KEY_BYTES];
+    uint64_t expire_timestamp;                         
+    uint32_t source_address;                                                   // big endian
+    uint32_t dest_address;                                                     // big endian
+    uint16_t source_port;                                                      // big endian
+    uint16_t dest_port;                                                        // big endian
+};
+#pragma pack(pop)
 
 inline void relay_write_uint8( uint8_t ** p, uint8_t value )
 {
@@ -434,6 +544,27 @@ bool ref_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, co
     if ( memcmp( b, data + 3, 15 ) != 0 )
         return false;
     return true;
+}
+
+// ----------------------------------------------------------------
+
+void relay_write_ping_token( uint8_t * data, uint32_t source_address, uint16_t source_port, uint32_t dest_address, uint16_t dest_port, uint64_t expire_timestamp, uint8_t * ping_key )
+{
+    struct ping_token_data token_data;
+
+    token_data.source_address = relay_htonl( source_address );
+    token_data.source_port = relay_htonl( source_port );
+    token_data.dest_address = relay_htonl( dest_address );
+    token_data.dest_port = relay_htons( dest_port );
+    token_data.expire_timestamp = expire_timestamp;
+
+    /*
+    memcpy( token_data.ping_key, ping->ping_key, RELAY_PING_KEY_BYTES );
+
+    uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
+    */
+
+    // crypto_hash_sha256( ping_token, (const unsigned char*) &token_data, sizeof(struct ping_token_data) );
 }
 
 // ----------------------------------------------------------------
