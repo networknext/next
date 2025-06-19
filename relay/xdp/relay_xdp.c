@@ -2515,7 +2515,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * header = packet_data + 18;
 
                                 // IMPORTANT: required for verifier because it's thick as a brick
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES + 8 > data_end )
                                 {
                                     relay_printf( "session ping packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
@@ -2524,7 +2524,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES + 8 != data_end )
                                 {
                                     relay_printf( "session ping packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
@@ -2638,7 +2638,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
                                 struct redirect_args_t args;
                                 args.data = data;
@@ -2675,7 +2675,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 * header = packet_data + 18;
 
                                 // IMPORTANT: required for verifier because it's not all there
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                if ( (void*)header + RELAY_HEADER_BYTES + 8 > data_end )
                                 {
                                     relay_printf( "session pong packet is wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
@@ -2684,7 +2684,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*)header + RELAY_HEADER_BYTES + 8 != data_end )
                                 {
                                     relay_printf( "session pong packet is wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
@@ -2795,7 +2795,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
    
                                 relay_printf( "forward to previous hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
                                 struct redirect_args_t args;
                                 args.data = data;
