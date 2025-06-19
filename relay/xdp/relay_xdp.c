@@ -354,8 +354,8 @@ struct redirect_args_t
 
 static int relay_redirect_packet( struct redirect_args_t * args )
 {
-    struct ethhdr * eth = data;
-    struct iphdr  * ip  = data + sizeof( struct ethhdr );
+    struct ethhdr * eth = args->data;
+    struct iphdr  * ip  = args->data + sizeof( struct ethhdr );
     struct udphdr * udp = (void*) ip + sizeof( struct iphdr );
 
     udp->source = args->source_port;
