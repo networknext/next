@@ -325,7 +325,7 @@ void * ping_thread_function( void * context )
 
                         token_data.source_address = ping->relay_manager->relay_internal[i] ? relay_htonl( ping->relay_internal_address ) : relay_htonl( ping->relay_public_address );
                         token_data.source_port = relay_htons( ping->relay_port );
-                        token_data.dest_address = ping->relay_manager->relay_addresses[i];
+                        token_data.dest_address = relay_htonl( ping->relay_manager->relay_addresses[i] );
                         token_data.dest_port = relay_htons( ping->relay_manager->relay_ports[i] );
                         token_data.expire_timestamp = expire_timestamp;
 
