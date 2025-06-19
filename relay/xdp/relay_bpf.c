@@ -80,6 +80,21 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         pclose( file );
     }
 
+    // delete all bpf maps we use so stale data doesn't stick around
+    {
+        const char * command = "rm -f /sys/fs/bpf/config_map && rm -f /sys/fs/bpf/state_map && rm -f /sys/fs/bpf/stats_map && rm -f /sys/fs/bpf/relay_map && rm -f /sys/fs/bpf/session_map";
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( strlen( buffer ) > 0 )
+            {
+                printf( "%s", buffer );
+            }
+        }
+        pclose( file );
+    }    
+
     // write out source tar.gz for relay_xdp.o
     {
         FILE * file = fopen( "relay_xdp_source.tar.gz", "wb" );
