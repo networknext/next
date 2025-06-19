@@ -341,25 +341,36 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[17] = chonkle[14];
 }
 
-static int relay_redirect_packet( void * data, int payload_bytes, __u32 source_address, __u32 dest_address, __u16 source_port, __u16 dest_port, __u8 * magic )
+struct redirect_args_t
+{
+    void * data;
+    int payload_bytes;
+    __u32 source_address;
+    __u32 dest_address;
+    __u16 source_port;
+    __u16 dest_port;
+    __u8 * magic;
+};
+
+static int relay_redirect_packet( redirect_args_t * args )
 {
     struct ethhdr * eth = data;
     struct iphdr  * ip  = data + sizeof( struct ethhdr );
     struct udphdr * udp = (void*) ip + sizeof( struct iphdr );
 
-    udp->source = source_port;
-    udp->dest = dest_port;
+    udp->source = args->source_port;
+    udp->dest = args->dest_port;
     udp->check = 0;
     udp->len = bpf_htons( sizeof(struct udphdr) + payload_bytes );
 
-    ip->saddr = source_address;
-    ip->daddr = dest_address;
+    ip->saddr = args->source_address;
+    ip->daddr = args->dest_address;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
     ip->check = 0;
 
     struct whitelist_key key;
-    key.address = dest_address;
-    key.port = dest_port;
+    key.address = args->dest_address;
+    key.port = args->dest_port;
     
     struct whitelist_value * whitelist_value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
     if ( whitelist_value == NULL )
@@ -1724,7 +1735,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session.next_internal ? config->relay_internal_address : config->relay_public_address, session.next_address, config->relay_port, session.next_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session.next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session.next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session.next_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -1874,7 +1894,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -1983,7 +2012,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2133,7 +2171,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2282,7 +2329,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to next hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2431,7 +2487,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "forward to previous hop" );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2582,7 +2647,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_internal ? config->relay_internal_address : config->relay_public_address, session->next_address, config->relay_port, session->next_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
@@ -2730,7 +2804,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_internal ? config->relay_internal_address : config->relay_public_address, session->prev_address, config->relay_port, session->prev_port, state->current_magic );
+                                redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
