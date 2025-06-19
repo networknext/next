@@ -1859,7 +1859,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                {
                                     relay_printf( "header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
