@@ -66,7 +66,7 @@ uint16_t relay_ntohs( uint16_t in )
 
 uint16_t relay_htons( uint16_t in )
 {
-#if // #if RELAY_BIG_ENDIAN
+#if RELAY_BIG_ENDIAN
     return in;
 #else // #if RELAY_BIG_ENDIAN
     return (uint16_t)( ( ( in << 8 ) & 0xFF00 ) | ( ( in >> 8 ) & 0x00FF ) );
