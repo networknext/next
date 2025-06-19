@@ -1263,7 +1263,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1353,7 +1353,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
 
-                                __u8 * ping_token = packet_data + 8 + 8 + 8;
+                                __u8 * ping_token = payload + 8 + 8 + 8;
 
                                 if ( hash[0] != ping_token[0] || 
                                      hash[1] != ping_token[1] || 
@@ -1388,7 +1388,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1479,7 +1479,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
 
-                                __u8 * ping_token = packet_data + 8 + 8;
+                                __u8 * ping_token = payload + 8 + 8;
 
                                 if ( hash[0] != ping_token[0] || 
                                      hash[1] != ping_token[1] || 
@@ -1514,7 +1514,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "ping token did not verify: %x:%d -> %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ), bpf_ntohl( ip->daddr ), bpf_ntohs( udp->dest ) );
+                                    relay_printf( "ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
