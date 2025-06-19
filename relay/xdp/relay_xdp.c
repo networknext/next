@@ -1894,15 +1894,14 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             }
                             break;
 
-                            #if 0
-
                             case RELAY_CONTINUE_REQUEST_PACKET:
                             {
                                 relay_printf( "continue request packet" );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's fucking stupid as shit
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
                                 {
                                     relay_printf( "continue request packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );
@@ -1911,26 +1910,33 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*) packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES <= data_end ) // IMPORTANT: for the verifier
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES != data_end )
                                 {
-                                    relay_printf( "decrypting continue token" );
-                                    struct decrypt_continue_token_data decrypt_data;
-                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
-                                    if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
-                                    {
-                                        relay_printf( "could not decrypt continue token" );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                        return XDP_DROP;
-                                    }
+                                    relay_printf( "continue request packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                relay_printf( "decrypting continue token" );
+
+                                struct decrypt_continue_token_data decrypt_data;
+                                memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
+                                {
+                                    relay_printf( "could not decrypt continue token" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
                                 }
 
                                 struct continue_token * token = (struct continue_token*) ( packet_data + 18 + 24 );
 
                                 if ( token->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "token expired" );
+                                    relay_printf( "route token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2003,6 +2009,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 return XDP_TX;
                             }
                             break;
+
+                            #if 0
 
                             case RELAY_CONTINUE_RESPONSE_PACKET:
                             {
