@@ -1167,6 +1167,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "relay ping packet has wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
                                 if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "relay ping packet has wrong size" );
@@ -1292,6 +1302,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED );
 
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "client ping packet has wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
                                 if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
                                     relay_printf( "client ping packet has wrong size" );
@@ -1407,6 +1427,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 relay_printf( "server ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED );
+
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "server ping packet has wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
 
                                 if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
@@ -1553,6 +1583,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
 
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + 8 > data_end )
+                                {
+                                    relay_printf( "relay pong packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
                                 if ( (void*) packet_data + 18 + 8 != data_end )
                                 {
                                     relay_printf( "relay pong packet is the wrong size" );
@@ -1582,6 +1622,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 relay_printf( "route request packet" );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED );
+
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES > data_end )
+                                {
+                                    relay_printf( "route request packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
 
                                 if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES != data_end )
                                 {
