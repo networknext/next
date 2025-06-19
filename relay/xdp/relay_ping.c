@@ -14,6 +14,7 @@
 #include "relay_config.h"
 #include "relay_main.h"
 #include "relay_bpf.h"
+#include "relay_endian.h"
 
 #include <stdlib.h>
 #include <sodium.h>
