@@ -73,7 +73,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     bool running_in_aws = false;
     {
-        file = popen( "curl -s \"http://169.254.169.254/meta-data\" --max-time 2 -vs 2>/dev/null", "r" );
+        FILE * file = popen( "curl -s \"http://169.254.169.254/meta-data\" --max-time 2 -vs 2>/dev/null", "r" );
         if ( file )
         {
             char buffer[1024];
