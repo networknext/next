@@ -1242,7 +1242,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
-                                verify_data.dest_address = state->relay_public_address;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
@@ -1286,7 +1286,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     // next try with relay private address
 
-                                    verify_data.dest_address = state->relay_private_address;
+                                    verify_data.dest_address = config->relay_private_address;
                                     bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
 
                                     if ( hash[0] != ping_token[0] || 
