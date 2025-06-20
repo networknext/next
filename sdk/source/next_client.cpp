@@ -564,8 +564,10 @@ int next_client_internal_send_packet_to_server( next_client_internal_t * client,
         return NEXT_ERROR;
     }
 
+#if NEXT_ADVANCED_PACKET_FILTER
     next_assert( next_basic_packet_filter( buffer, sizeof(buffer) ) );
     next_assert( next_advanced_packet_filter( buffer, client->current_magic, from_address_data, to_address_data, packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
 #if NEXT_SPIKE_TRACKING
     double start_time = next_platform_time();
@@ -618,6 +620,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_address_data( from, from_address_data );
         next_address_data( &client->client_external_address, to_address_data );
 
+#if NEXT_ADVANCED_PACKET_FILTER
+
         if ( packet_id != NEXT_UPGRADE_REQUEST_PACKET )
         {
             if ( !next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, to_address_data, packet_bytes ) )
@@ -643,6 +647,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 return;
             }
         }
+
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
     }
 
     // upgrade request packet (not encrypted)
@@ -768,8 +774,10 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_assert( debug_packet_data );
         next_assert( debug_packet_bytes > 0 );
 
+#if NEXT_ADVANCED_PACKET_FILTER
         next_assert( next_basic_packet_filter( debug_packet_data, debug_packet_bytes ) );
         next_assert( next_advanced_packet_filter( debug_packet_data, client->current_magic, from_address_data, to_address_data, debug_packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
 #endif // #if NEXT_ASSERTS
 
@@ -2041,8 +2049,10 @@ void next_client_internal_update_next_pings( next_client_internal_t * client )
 
         next_assert( packet_bytes > 0 );
 
+#if NEXT_ADVANCED_PACKET_FILTER
         next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
         next_assert( next_advanced_packet_filter( packet_data, client->current_magic, from_address_data, to_address_data, packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
 #if NEXT_SPIKE_TRACKING
         double start_time = next_platform_time();
@@ -2878,8 +2888,10 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
 
             next_assert( direct_packet_bytes >= 0 );
 
+#if NEXT_ADVANCED_PACKET_FILTER
             next_assert( next_basic_packet_filter( direct_packet_data, direct_packet_bytes ) );
             next_assert( next_advanced_packet_filter( direct_packet_data, client->current_magic, from_address_data, to_address_data, direct_packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
             (void) direct_packet_data;
             (void) direct_packet_bytes;

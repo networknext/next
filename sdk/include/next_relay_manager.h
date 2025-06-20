@@ -264,9 +264,11 @@ inline void next_relay_manager_send_pings( next_relay_manager_t * manager, next_
 
             next_assert( packet_bytes > 0 );
 
+#if NEXT_ADVANCED_PACKET_FILTER
             next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
             next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_bytes ) );
-
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
+            
 #if NEXT_SPIKE_TRACKING
             double start_time = next_platform_time();
 #endif // #if NEXT_SPIKE_TRACKING

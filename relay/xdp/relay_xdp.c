@@ -1237,10 +1237,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
+                                // first try with relay public address as dest
+
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = state->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
@@ -1282,11 +1284,50 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "relay ping token did not verify" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
+                                    // next try with relay private address
+
+                                    verify_data.dest_address = state->relay_private_address;
+                                    bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
+
+                                    if ( hash[0] != ping_token[0] || 
+                                         hash[1] != ping_token[1] || 
+                                         hash[2] != ping_token[2] || 
+                                         hash[3] != ping_token[3] || 
+                                         hash[4] != ping_token[4] || 
+                                         hash[5] != ping_token[5] || 
+                                         hash[6] != ping_token[6] || 
+                                         hash[7] != ping_token[7] || 
+                                         hash[8] != ping_token[8] || 
+                                         hash[9] != ping_token[9] || 
+                                         hash[10] != ping_token[10] || 
+                                         hash[11] != ping_token[11] || 
+                                         hash[12] != ping_token[12] || 
+                                         hash[13] != ping_token[13] || 
+                                         hash[14] != ping_token[14] || 
+                                         hash[15] != ping_token[15] || 
+                                         hash[16] != ping_token[16] || 
+                                         hash[17] != ping_token[17] || 
+                                         hash[18] != ping_token[18] || 
+                                         hash[19] != ping_token[19] || 
+                                         hash[20] != ping_token[20] || 
+                                         hash[21] != ping_token[21] || 
+                                         hash[22] != ping_token[22] || 
+                                         hash[23] != ping_token[23] || 
+                                         hash[24] != ping_token[24] || 
+                                         hash[25] != ping_token[25] || 
+                                         hash[26] != ping_token[26] || 
+                                         hash[27] != ping_token[27] || 
+                                         hash[28] != ping_token[28] || 
+                                         hash[29] != ping_token[29] || 
+                                         hash[30] != ping_token[30] || 
+                                         hash[31] != ping_token[31] )
+                                    {
+                                        relay_printf( "relay ping token did not verify" );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                        return XDP_DROP;
+                                    }
                                 }
 
                                 struct whitelist_key key;

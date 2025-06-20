@@ -264,8 +264,10 @@ void next_route_manager_begin_next_route( next_route_manager_t * route_manager, 
     const uint8_t * packet_data = route_manager->route_data.pending_route_request_packet_data;
     const int packet_bytes = route_manager->route_data.pending_route_request_packet_bytes;
 
+#if NEXT_ADVANCED_PACKET_FILTER
     next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
     (void) packet_data;
     (void) packet_bytes;
@@ -326,8 +328,10 @@ void next_route_manager_continue_next_route( next_route_manager_t * route_manage
     const uint8_t * packet_data = route_manager->route_data.pending_continue_request_packet_data;
     const int packet_bytes = route_manager->route_data.pending_continue_request_packet_bytes;
 
+#if NEXT_ADVANCED_PACKET_FILTER
     next_assert( next_basic_packet_filter( packet_data, packet_bytes ) );
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
     (void) packet_data;
     (void) packet_bytes;
@@ -397,8 +401,10 @@ bool next_route_manager_prepare_send_packet( next_route_manager_t * route_manage
         return false;
     }
 
+#if NEXT_ADVANCED_PACKET_FILTER
     next_assert( next_basic_packet_filter( packet_data, *packet_bytes ) );
     next_assert( next_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, *packet_bytes ) );
+#endif // #if NEXT_ADVANCED_PACKET_FILTER
 
     next_assert( *packet_bytes < NEXT_MAX_PACKET_BYTES );
 
