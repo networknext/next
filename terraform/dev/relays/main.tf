@@ -169,28 +169,28 @@ locals {
 
     "akamai.newyork" = {
       datacenter_name = "akamai.newyork"
-      type            = "g6-dedicated-2"
+      type            = "g6-dedicated-8"
       image           = "linode/ubuntu22.04"
     },
 
     "akamai.atlanta" = {
       datacenter_name = "akamai.atlanta"
-      type            = "g6-dedicated-2"
+      type            = "g6-dedicated-8"
       image           = "linode/ubuntu22.04"
     },
 
     "akamai.fremont" = {
       datacenter_name = "akamai.fremont"
-      type            = "g6-dedicated-2"
+      type            = "g6-dedicated-8"
       image           = "linode/ubuntu22.04"
     }
     
     "akamai.dallas" = {
       datacenter_name = "akamai.dallas"
-      type            = "g6-dedicated-2"
+      type            = "g6-dedicated-8"
       image           = "linode/ubuntu22.04"
     }
-    
+
   }
 }
 
