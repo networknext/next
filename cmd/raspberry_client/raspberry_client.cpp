@@ -161,7 +161,8 @@ void client_thread_function( void * data )
                 break;
             }
 
-            next_platform_sleep( 1.0f );
+            // todo: make this configurable via env var, and default to 1 second
+            next_platform_sleep( 1.0f / 100.0f );
         }
 
         next_client_destroy( client );
