@@ -26,6 +26,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     }
 
     // find the network interface that matches the relay public address *or* relay private address
+
     const char network_interface_name[1024];
     memset( network_interface_name, 0, sizeof(network_interface_name) );
     {
@@ -45,7 +46,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
                 struct sockaddr_in * sa = (struct sockaddr_in*) iap->ifa_addr;
                 if ( ntohl( sa->sin_addr.s_addr ) == relay_public_address || ntohl( sa->sin_addr.s_addr ) == relay_internal_address )
                 {
-                    strncpy( network_interface_name, sizeof(network_interface_name), iap->ifa_name );
+                    strncpy( network_interface_name, iap->ifa_name, sizeof(network_interface_name) );
                     printf( "found network interface: '%s'\n", network_interface_name );
                     bpf->interface_index = if_nametoindex( iap->ifa_name );
                     if ( !bpf->interface_index ) 
