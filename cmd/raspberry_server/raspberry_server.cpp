@@ -83,7 +83,7 @@ int main()
 {
     printf( "\nRaspberry Server\n\n" );
 
-    // todo: turn back on when finished debugging
+    // todo: make this configurable via env var
     raspberry_fake_latency = false;
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );

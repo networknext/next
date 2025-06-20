@@ -20,6 +20,8 @@
 #include <linux/string.h>
 #include <bpf/bpf_helpers.h>
 
+#define RELAY_ADVANCED_PACKET_FILTER 0
+
 #include "relay_shared.h"
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
@@ -677,8 +679,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             return XDP_DROP;
                         }
 
-                        // todo: disable for now
-                        /*
+#if RELAY_ADVANCED_PACKET_FILTER
+
                         // Advanced packet filter
 
                         __u32 from = ip->saddr;
@@ -1171,8 +1173,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 }
                             }
                         }
-                        */
 
+#endif // #if RELAY_ADVANCED_PACKET_FILTER
+                        
                         __u8 packet_type = packet_data[0];
 
                         switch ( packet_type )
