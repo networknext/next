@@ -254,7 +254,7 @@ promotions:
   - name: "Upload Relay"
     pipeline_file: upload-relay.yml
     auto_promote:
-      when: "tag =~ 'relay'"
+      when: "result = 'passed' and tag =~ 'relay'"
 
   - name: "Update Golang Cache"
     pipeline_file: update-golang-cache.yml
