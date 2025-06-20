@@ -71,7 +71,7 @@ int main( int argc, char *argv[] )
 {
     relay_platform_init();
 
-    printf( "Network Next Relay (release)" );
+    printf( "Network Next Relay (release)\n" );
 
     signal( SIGINT,  interrupt_handler );
     signal( SIGTERM, clean_shutdown_handler );
