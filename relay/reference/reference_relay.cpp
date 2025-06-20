@@ -3866,6 +3866,15 @@ void clean_shutdown_handler( int signal )
 
 int main_update( main_t * main )
 {
+    // this is the debug relay. please do not use it in production!
+
+    relay_version[0] = 'd';
+    relay_version[1] = 'e';
+    relay_version[2] = 'b';
+    relay_version[3] = 'u';
+    relay_version[4] = 'g';
+    relay_version[5] = '\0';
+
     // pump relay stats messages
 
     relay_stats_message_t relay_thread_stats[RELAY_MAX_THREADS];
@@ -3996,7 +4005,7 @@ int main_update( main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string(&p, relay_version, RELAY_VERSION_LENGTH );
+    relay_write_string( &p, relay_version, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
