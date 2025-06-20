@@ -370,17 +370,13 @@ The name is equivalent to the name of the relay binary in google cloud storage.
 
 For example:
 
-`next load relay-debug google.london.1`
+`next load debug google.london.1`
 
-Would load the debug relay onto the relay 'london.google.1'
+Loads the debug relay binary onto the relay 'london.google.1'
 
 `next load relay-release`
 
-Would load the xdp relay release build onto _all_ relays.
-
-If the version is different from the current relay version on a relay, that relay is cleanly stopped (giving time for sessions to move to another relay), before the new relay binary is loaded and restarted.
-
-If the version is the same as the current relay version installed on the machine, no action is taken.
+Loads the release relay binary onto _all_ relays.
 
 ## next upgrade <relay_pattern>
 
