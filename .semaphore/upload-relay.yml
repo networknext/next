@@ -36,7 +36,9 @@ blocks:
         - name: "Relay (release)"
           commands:
             - artifact pull workflow relay-release
+            - artifact pull workflow relay_module.tar.gz
             - chmod +x relay-release
             - export VERSION=`./relay-release version`
             - mv relay-release $VERSION
             - gsutil cp $VERSION $RELAY_BUCKET
+            - gsutil cp relay_module.tar.gz $RELAY_BUCKET
