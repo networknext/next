@@ -54,7 +54,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    /*
     "google.iowa.1.b" = {
       datacenter_name = "google.iowa.1"
       type            = "c3-highcpu-4"
@@ -63,10 +62,9 @@ locals {
 
     "google.iowa.1.c" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-    */
 
     "google.iowa.2" = {
       datacenter_name = "google.iowa.2"
@@ -74,55 +72,53 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    /*
     "google.iowa.3" = {
       datacenter_name = "google.iowa.3"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.6" = {
       datacenter_name = "google.iowa.6"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.ohio.1" = {
       datacenter_name = "google.ohio.1"
-      type            = "n2-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.ohio.2" = {
       datacenter_name = "google.ohio.2"
-      type            = "n2-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.ohio.3" = {
       datacenter_name = "google.ohio.3"
-      type            = "n2-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.virginia.1" = {
       datacenter_name = "google.virginia.1"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.virginia.2" = {
       datacenter_name = "google.virginia.2"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.virginia.3" = {
       datacenter_name = "google.virginia.3"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-    */
 
   }
 }
