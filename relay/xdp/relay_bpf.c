@@ -26,6 +26,8 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     }
 
     // find the network interface that matches the relay public address *or* relay private address
+    const char network_interface_name[1024];
+    memset( network_interface_name, 0, sizeof(network_interface_name) );
     {
         bool found = false;
 
@@ -43,7 +45,8 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
                 struct sockaddr_in * sa = (struct sockaddr_in*) iap->ifa_addr;
                 if ( ntohl( sa->sin_addr.s_addr ) == relay_public_address || ntohl( sa->sin_addr.s_addr ) == relay_internal_address )
                 {
-                    printf( "found network interface: '%s'\n", iap->ifa_name );
+                    strncpy( network_interface_name, sizeof(network_interface_name), iap->ifa_name );
+                    printf( "found network interface: '%s'\n", network_interface_name );
                     bpf->interface_index = if_nametoindex( iap->ifa_name );
                     if ( !bpf->interface_index ) 
                     {
@@ -65,9 +68,26 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
+    // we want an MTU of 1500. otherwise on AWS we can't attach the XDP program
+    {
+        char command[2048];
+        snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", network_interface_name );
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+        {
+            if ( strlen( buffer ) > 0 )
+            {
+                printf( "%s", buffer );
+            }
+        }
+        pclose( file );
+    }
+
     // be extra safe and let's make sure no xdp programs are running on this interface before we start
     {
-        const char * command = "sudo xdp-loader unload ens4 --all";
+        char command[2048];
+        snprintf( command, sizeof(command), "xdp-loader unload %d --all", network_interface_name );
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
