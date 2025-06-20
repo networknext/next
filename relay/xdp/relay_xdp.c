@@ -1284,9 +1284,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[30] != ping_token[30] || 
                                      hash[31] != ping_token[31] )
                                 {
-                                    // next try with relay private address
+                                    // next try with relay internal address
 
-                                    verify_data.dest_address = config->relay_private_address;
+                                    verify_data.dest_address = config->relay_internal_address;
                                     bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
 
                                     if ( hash[0] != ping_token[0] || 
