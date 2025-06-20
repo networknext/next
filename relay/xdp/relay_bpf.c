@@ -27,7 +27,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     // find the network interface that matches the relay public address *or* relay private address
 
-    const char network_interface_name[1024];
+    char network_interface_name[1024];
     memset( network_interface_name, 0, sizeof(network_interface_name) );
     {
         bool found = false;
