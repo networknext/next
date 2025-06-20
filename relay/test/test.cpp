@@ -611,7 +611,7 @@ int main( int argc, char *argv[] )
     network_interface_name[3] = '\0';
 
     char command[2048];
-    snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", network_interface_name );
+    snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
 
 	return 0;
 }
