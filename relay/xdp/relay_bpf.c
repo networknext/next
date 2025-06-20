@@ -69,8 +69,34 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
-    // we want an MTU of 1500. otherwise on AWS we can't attach the XDP program
+    // are we in AWS?
+
+    bool running_in_aws = false;
     {
+        file = popen( "curl -s \"http://169.254.169.254/meta-data\" --max-time 2 -vs 2>/dev/null", "r" );
+        if ( file )
+        {
+            char buffer[1024];
+            while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+            {
+                if ( strstr( buffer, "ami-id" ) == 0 )
+                {
+                    printf( "Detected that we are running in AWS\n" );
+                    running_in_aws = true;
+                    break;
+                }
+            }
+            pclose( file );
+        }
+    }
+
+    curl http://169.254.169.254/latest/meta-data/
+
+    // we need to set an MTU of 1500 in AWS, otherwise we can't attach the XDP program
+
+    if ( running_in_aws )
+    {
+        printf( "Setting MTU 1500\n" );
         char command[2048];
         snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
         FILE * file = popen( command, "r" );
@@ -85,19 +111,26 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         pclose( file );
     }
 
+    // we need to only use half the network queues available on the NIC
+
+    if ( running_in_aws )
+    {
+        printf( "AWS workaround for NIC queues\n" );
+        char command[2048];
+        snprintf( command, sizeof(command), "sudo ethtool -L %s combined 1", (const char*) &network_interface_name[0] );        // todo: do we need to generalize this to get queue # and halve it?
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
+        pclose( file );
+    }
+
     // be extra safe and let's make sure no xdp programs are running on this interface before we start
     {
         char command[2048];
         snprintf( command, sizeof(command), "xdp-loader unload %s --all", network_interface_name );
         FILE * file = popen( command, "r" );
         char buffer[1024];
-        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-        {
-            if ( strlen( buffer ) > 0 )
-            {
-                printf( "%s", buffer );
-            }
-        }
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
         pclose( file );
     }
 
@@ -106,13 +139,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         const char * command = "rm -f /sys/fs/bpf/config_map && rm -f /sys/fs/bpf/state_map && rm -f /sys/fs/bpf/stats_map && rm -f /sys/fs/bpf/relay_map && rm -f /sys/fs/bpf/session_map";
         FILE * file = popen( command, "r" );
         char buffer[1024];
-        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-        {
-            if ( strlen( buffer ) > 0 )
-            {
-                printf( "%s", buffer );
-            }
-        }
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
         pclose( file );
     }
 
@@ -135,13 +162,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         const char * command = "rm -f Makefile && rm -f *.c && rm -f *.h && rm -f *.o && rm -f Makefile && tar -zxf relay_xdp_source.tar.gz && make relay_xdp.o";
         FILE * file = popen( command, "r" );
         char buffer[1024];
-        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-        {
-            if ( strlen( buffer ) > 0 )
-            {
-                printf( "%s", buffer );
-            }
-        }
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
         pclose( file );
     }
 
@@ -150,13 +171,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         const char * command = "rm -f Makefile && rm -f *.c && rm -f *.h && rm -f *.tar.gz";
         FILE * file = popen( command, "r" );
         char buffer[1024];
-        while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-        {
-            if ( strlen( buffer ) > 0 )
-            {
-                printf( "%s", buffer );
-            }
-        }
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
         pclose( file );
     }
 
