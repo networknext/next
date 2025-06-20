@@ -604,5 +604,14 @@ int main( int argc, char *argv[] )
 		exit( 1 );
 	}
 
+    char network_interface_name[1024];
+    network_interface_name[0] = 'a';
+    network_interface_name[1] = 's';
+    network_interface_name[2] = 's';
+    network_interface_name[3] = '\0';
+
+    char command[2048];
+    snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", network_interface_name );
+
 	return 0;
 }
