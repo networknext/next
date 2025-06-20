@@ -5,7 +5,6 @@
 */
 
 #include "relay.h"
-#include "relay_version.h"
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -3731,17 +3730,6 @@ bool operator < ( const session_key_t & a, const session_key_t & b )
     return a.session_id < b.session_id || ( a.session_id == b.session_id && a.session_version < b.session_version );
 }
 
-struct upgrade_t 
-{
-    relay_platform_thread_t * thread;
-    relay_platform_mutex_t * mutex;
-    const char * relay_upgrade_url;
-    char current_version[1024];
-    char target_version[1024];
-    bool upgrading;
-    double last_check_time;
-};
-
 struct main_t
 {
     CURL * curl;
@@ -3770,7 +3758,6 @@ struct main_t
     relay_platform_mutex_t * ping_stats_mutex;
     relay_stats_message_t relay_stats;
     ping_stats_t ping_stats;
-    upgrade_t upgrade;
 #if RELAY_TEST
     bool disable_destroy;
 #endif // #if RELAY_TEST
@@ -3871,118 +3858,6 @@ void clean_shutdown_handler( int signal )
     (void) signal;
     relay_clean_shutdown = true;
     quit = true;
-}
-
-// ========================================================================================================================================
-
-void * upgrade_thread_function( void * data )
-{
-    upgrade_t * upgrade = (upgrade_t*) data;
-
-    printf( "Relay upgrading from %s -> %s\n", upgrade->current_version, upgrade->target_version );
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    char command[4096];
-    memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "rm -f %s", upgrade->target_version );
-    int result = system( command );
-    (void) result;
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "wget %s/%s", upgrade->relay_upgrade_url, upgrade->target_version );
-    if ( system( command ) != 0 )
-    {
-        printf( "error: failed to download relay version %s\n", upgrade->target_version );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    printf( "successfully downloaded relay-%s\n", upgrade->target_version );
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "chmod +x %s", upgrade->target_version );
-    if ( system( command ) != 0 ) 
-    {
-        printf( "error: failed to chmod +x %s\n", upgrade->target_version );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    printf( "chmod +x %s succeeded\n", upgrade->target_version );
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "./%s version", upgrade->target_version );
-    FILE * file = popen( command, "r" );
-    char buffer[1024];
-    if ( fgets( buffer, sizeof(buffer), file ) == NULL || strstr( buffer, upgrade->target_version ) == NULL )
-    {
-        pclose( file );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-    pclose( file );
-
-    printf( "relay binary is good\n" );
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    result = system( "rm -f relay 2>/dev/null" );
-    (void) result;
-
-    if ( quit )
-    {
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    memset( command, 0, sizeof(command) );
-    snprintf( command, sizeof(command) - 1, "mv %s relay", upgrade->target_version );
-    if ( system( command ) != 0 )
-    {
-        printf( "error: could not install new relay binary\n" );
-        relay_platform_mutex_acquire( upgrade->mutex );
-        upgrade->upgrading = false;
-        relay_platform_mutex_release( upgrade->mutex );
-        RELAY_PLATFORM_THREAD_RETURN();
-    }
-
-    printf( "new relay binary is installed\n" );
-
-    relay_platform_mutex_acquire( upgrade->mutex );
-    upgrade->upgrading = false;
-    relay_platform_mutex_release( upgrade->mutex );
-
-    quit = true;
-    relay_clean_shutdown = true;
-
-    RELAY_PLATFORM_THREAD_RETURN();
 }
 
 // ========================================================================================================================
@@ -4386,30 +4261,6 @@ int main_update( main_t * main )
             }
         }
         relay_platform_mutex_release( main->session_map_mutex );
-    }
-
-    // automatic version updates
-
-    if ( main->upgrade.relay_upgrade_url && target_version[0] != '\0' && strcmp( relay_version, target_version ) != 0 ) 
-    {
-        relay_platform_mutex_acquire( main->upgrade.mutex );
-        const bool upgrading = main->upgrade.upgrading;
-        relay_platform_mutex_release( main->upgrade.mutex );
-        
-        if ( !upgrading && main->upgrade.last_check_time + 60.0 < current_time )
-        {
-            main->upgrade.last_check_time = current_time;
-            
-            strncpy( main->upgrade.current_version, relay_version, sizeof(main->upgrade.current_version) - 1 );
-            strncpy( main->upgrade.target_version, target_version, sizeof(main->upgrade.target_version) - 1 );
-
-            main->upgrade.thread = relay_platform_thread_create( upgrade_thread_function, &main->upgrade );
-            if ( !main->upgrade.thread )
-            {
-                printf( "warning: could not create upgrade thread\n" );
-                main->upgrade.upgrading = false;
-            }
-        }
     }
 
     return RELAY_OK;
@@ -5965,28 +5816,11 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 // ========================================================================================================================================
 
-int main( int argc, const char ** argv )
+int main()
 {
     uint64_t start_time = time( NULL );
 
-    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-debug-%s", RELAY_VERSION );
-
-    if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) {
-        printf( "%s\n", relay_version );
-        fflush( stdout );
-        exit(0);
-    }
-
-    printf( "Network Next Relay (%s)\n", relay_version );
-
-    // -----------------------------------------------------------------------------------------------------------------------------
-
-    const char * relay_upgrade_url = relay_platform_getenv( "RELAY_UPGRADE_URL" );
-
-    if ( relay_upgrade_url )
-    {
-        printf( "Relay upgrade url is '%s'\n", relay_upgrade_url );
-    }
+    printf( "Network Next Relay (debug)\n" );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -6541,8 +6375,6 @@ int main( int argc, const char ** argv )
     main.ping_stats_mutex = ping_stats_mutex;
     main.relay_stats_queue = relay_stats_queue;
     main.relay_stats_mutex = relay_stats_mutex;
-    main.upgrade.mutex = relay_platform_mutex_create();
-    main.upgrade.relay_upgrade_url = relay_upgrade_url;
 #if RELAY_TEST
     main.disable_destroy = disable_destroy;
 #endif // #if RELAY_TEST
@@ -6626,23 +6458,11 @@ int main( int argc, const char ** argv )
         printf( "===========================================================================\n\n" );
     }
 
+#endif // #if RELAY_TEST
+
     // =============================================================
 
     printf( "Cleaning up\n" );
-
-    printf( "Waiting for upgrade thread\n" );
-
-    if ( main.upgrade.thread )
-    {
-        relay_platform_thread_join( main.upgrade.thread );
-        relay_platform_thread_destroy( main.upgrade.thread );
-    }
-
-    printf( "Cleaning up upgrade data\n" );
-
-    relay_platform_mutex_destroy( main.upgrade.mutex );
-
-#endif // #if RELAY_TEST
 
     printf( "Waiting for ping thread\n" );
 

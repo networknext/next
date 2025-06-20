@@ -19,7 +19,6 @@
 */
 
 #include "relay.h"
-#include "relay_version.h"
 #include "relay_platform.h"
 #include "relay_main.h"
 #include "relay_ping.h"
