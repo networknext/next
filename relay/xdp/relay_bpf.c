@@ -79,7 +79,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             char buffer[1024];
             while ( fgets( buffer, sizeof(buffer), file ) != NULL )
             {
-                if ( strstr( buffer, "ami-id" ) == 0 )
+                if ( strstr( buffer, "ami-id" ) != NULL )
                 {
                     printf( "Detected that we are running in AWS\n" );
                     running_in_aws = true;
