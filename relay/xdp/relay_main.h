@@ -38,7 +38,6 @@ struct main_t
     struct relay_queue_t * stats_queue;
     struct relay_platform_mutex_t * stats_mutex;
     struct relay_ping_stats_t ping_stats;
-    char relay_version[RELAY_VERSION_LENGTH];
     uint64_t last_stats_packets_sent;
     uint64_t last_stats_packets_received;
     uint64_t last_stats_bytes_sent;
@@ -52,7 +51,7 @@ struct main_t
 struct config_t;
 struct bpf_t;
 
-int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf, const char * relay_version );
+int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf );
 
 int main_run( struct main_t * main );
 

@@ -17,7 +17,7 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
-int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf, const char * relay_version )
+int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf )
 {
     // initialize curl so we can talk with the relay backend
 
@@ -76,7 +76,6 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->state_fd = bpf->state_fd;
     main->session_map_fd = bpf->session_map_fd;
 #endif // #idef COMPILE_WITH_BPF
-    memcpy( main->relay_version, relay_version, RELAY_VERSION_LENGTH );
 
 #ifdef COMPILE_WITH_BPF
     
@@ -399,7 +398,7 @@ int main_update( struct main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, main->relay_version, RELAY_VERSION_LENGTH );
+    relay_write_string( &p, "relay-release", RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )

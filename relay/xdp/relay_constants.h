@@ -174,4 +174,6 @@
 
 #define RELAY_NUM_COUNTERS                                                                     150
 
+#define RELAY_VERSION_LENGTH                                                                    32
+
 #endif // #ifndef RELAY_CONSTANTS_H

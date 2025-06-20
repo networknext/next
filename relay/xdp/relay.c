@@ -69,20 +69,9 @@ static void cleanup()
 
 int main( int argc, char *argv[] )
 {
-    char relay_version[RELAY_VERSION_LENGTH];
-    snprintf( relay_version, RELAY_VERSION_LENGTH, "relay-release-%s", RELAY_VERSION );
-    if ( argc == 2 && strcmp(argv[1], "version" ) == 0 ) 
-    {
-        printf( "%s\n", relay_version );
-        fflush( stdout );
-        exit(0);
-    }
-
     relay_platform_init();
 
-    printf( "[network next relay]\n" );
-
-    printf( "Relay version is %s\n", relay_version );
+    printf( "Network Next Relay (release)" );
 
     signal( SIGINT,  interrupt_handler );
     signal( SIGTERM, clean_shutdown_handler );
@@ -116,7 +105,7 @@ int main( int argc, char *argv[] )
 
     // regular relay
 
-    if ( main_init( &main_data, &config, &bpf, relay_version ) != RELAY_OK )
+    if ( main_init( &main_data, &config, &bpf ) != RELAY_OK )
     {
         cleanup();
         return 1;
