@@ -1772,7 +1772,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- //session.next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session.next_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session.next_port;
@@ -1924,7 +1924,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
@@ -2032,7 +2032,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
@@ -2191,7 +2191,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
@@ -2349,7 +2349,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
@@ -2507,7 +2507,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
@@ -2667,7 +2667,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->next_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
@@ -2824,7 +2824,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
-                                args.source_address = config->relay_internal_address; // todo -- session->prev_internal ? config->relay_internal_address : config->relay_public_address;
+                                args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
