@@ -72,7 +72,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     // we want an MTU of 1500. otherwise on AWS we can't attach the XDP program
     {
         char command[2048];
-        snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", network_interface_name );
+        snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
