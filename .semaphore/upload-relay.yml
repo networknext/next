@@ -38,5 +38,5 @@ blocks:
             - artifact pull workflow relay_module.tar.gz
             - chmod +x relay-release
             - mv relay-release ${SEMAPHORE_GIT_TAG_NAME}-release
-            - gsutil cp relay-release $RELAY_BUCKET
+            - gsutil cp ${SEMAPHORE_GIT_TAG_NAME}-release $RELAY_BUCKET
             - gsutil cp relay_module.tar.gz $RELAY_BUCKET
