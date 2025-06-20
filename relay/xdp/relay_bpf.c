@@ -90,8 +90,6 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         }
     }
 
-    curl http://169.254.169.254/latest/meta-data/
-
     // we need to set an MTU of 1500 in AWS, otherwise we can't attach the XDP program
 
     if ( running_in_aws )
