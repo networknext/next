@@ -96,7 +96,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     {
         printf( "Setting MTU 1500\n" );
         char command[2048];
-        snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
+        snprintf( command, sizeof(command), "ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
@@ -114,12 +114,43 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     if ( running_in_aws )
     {
         printf( "AWS workaround for NIC queues\n" );
-        char command[2048];
-        snprintf( command, sizeof(command), "sudo ethtool -L %s combined 1", (const char*) &network_interface_name[0] );        // todo: do we need to generalize this to get queue # and halve it?
-        FILE * file = popen( command, "r" );
-        char buffer[1024];
-        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
-        pclose( file );
+
+        // first we need to find how many combined queues we have
+
+        int max_queues = 2;
+        {
+            char command[2048];
+            snprintf( command, sizeof(command), "ethtool -l ens5 | grep -m 1 Combined |  perl -ne '/Combined:\\s*(\\d+)/ and print \"$1\\n\";'", (const char*) &network_interface_name[0] );
+            FILE * file = popen( command, "r" );
+            char buffer[1024];
+            while ( fgets( buffer, sizeof(buffer), file ) != NULL )
+            {
+                if ( strlen( buffer ) > 0 )
+                {
+                    int result = atoi( buffer );
+                    if ( result > 0 )
+                    {
+                        max_queues = result;
+                        printf( "Maximum NIC combined queues is %d", max_queues );
+                    }
+                    break;
+                }
+            }
+            pclose( file );
+        }
+
+        int num_queues = max_queues / 2;
+
+        // now reduce to use only half max queues
+        {
+            printf( "Setting NIC combined queues to %d", num_queues );
+            char command[2048];
+            snprintf( command, sizeof(command), "ethtool -L %s combined %d", (const char*) &network_interface_name[0], num_queues );
+            FILE * file = popen( command, "r" );
+            char buffer[1024];
+            while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
+            pclose( file );
+        }
     }
 
     // be extra safe and let's make sure no xdp programs are running on this interface before we start
