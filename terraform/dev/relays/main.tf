@@ -54,7 +54,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    /*
     "google.iowa.1.b" = {
       datacenter_name = "google.iowa.1"
       type            = "c3-highcpu-4"
@@ -120,7 +119,6 @@ locals {
       type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-    */
 
   }
 }
