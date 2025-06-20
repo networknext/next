@@ -666,6 +666,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             return XDP_DROP;
                         }
 
+                        // todo: disable for now
+                        /*
                         // Advanced packet filter
 
                         __u32 from = ip->saddr;
@@ -1167,6 +1169,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 }
                             }
                         }
+                        */
 
                         __u8 packet_type = packet_data[0];
 
