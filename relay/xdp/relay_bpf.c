@@ -73,7 +73,11 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     bool running_in_aws = false;
     {
-        FILE * file = popen( "curl -s \"http://169.254.169.254/latest/meta-data\" --max-time 2 -vs 2>/dev/null", "r" );
+        printf( "Checking if we are running in AWS...\n" );
+        char command_line[2048];
+        strncpy( command_line, "curl -s \"http://169.254.169.254/latest/meta-data\" --max-time 2 -vs 2>/dev/null", sizeof(command_line) );
+        printf( "command line: '%s'\n", command_line );
+        FILE * file = popen( command_line, "r" );
         if ( file )
         {
             char buffer[1024];
@@ -88,6 +92,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             }
             pclose( file );
         }
+        fflush( stdout );
     }
 
     // we need to set an MTU of 1500 in AWS, otherwise we can't attach the XDP program
@@ -107,6 +112,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             }
         }
         pclose( file );
+        fflush( stdout );
     }
 
     // we need to only use half the network queues available on the NIC
@@ -114,6 +120,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     if ( running_in_aws )
     {
         printf( "AWS workaround for NIC queues\n" );
+        fflush( stdout );
 
         // first we need to find how many combined queues we have
 
@@ -131,25 +138,27 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
                     if ( result > 0 )
                     {
                         max_queues = result;
-                        printf( "Maximum NIC combined queues is %d", max_queues );
+                        printf( "Maximum NIC combined queues is %d\n", max_queues );
                     }
                     break;
                 }
             }
             pclose( file );
+            fflush( stdout );
         }
 
         int num_queues = max_queues / 2;
 
         // now reduce to use only half max queues
         {
-            printf( "Setting NIC combined queues to %d", num_queues );
+            printf( "Setting NIC combined queues to %d\n", num_queues );
             char command[2048];
             snprintf( command, sizeof(command), "ethtool -L %s combined %d", (const char*) &network_interface_name[0], num_queues );
             FILE * file = popen( command, "r" );
             char buffer[1024];
             while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
             pclose( file );
+            fflush( stdout );
         }
     }
 
@@ -208,6 +217,8 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     printf( "loading relay_xdp...\n" );
 
+    fflush( stdout );
+
     bpf->program = xdp_program__open_file( "relay_xdp.o", "relay_xdp", NULL );
     if ( libxdp_get_error( bpf->program ) ) 
     {
@@ -217,7 +228,11 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     printf( "relay_xdp loaded successfully.\n" );
 
+    fflush( stdout );
+
     printf( "attaching relay_xdp to network interface\n" );
+
+    fflush( stdout );
 
     int ret = xdp_program__attach( bpf->program, bpf->interface_index, XDP_MODE_NATIVE, 0 );
     if ( ret == 0 )

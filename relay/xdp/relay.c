@@ -73,9 +73,15 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
+    fflush( stdout );
+
     signal( SIGINT,  interrupt_handler );
     signal( SIGTERM, clean_shutdown_handler );
     signal( SIGHUP,  clean_shutdown_handler );
+
+    printf( "Reading config\n" );
+
+    fflush( stdout );
 
     if ( read_config( &config ) != RELAY_OK )
     {
@@ -83,15 +89,27 @@ int main( int argc, char *argv[] )
         return 1;
     }
 
+    fflush( stdout );
+
+    printf( "Initializing BPF\n" );
+
+    fflush( stdout );
+
     if ( bpf_init( &bpf, config.relay_public_address, config.relay_internal_address ) != RELAY_OK )
     {
         cleanup();
         return 1;
     }
 
+    fflush( stdout );
+
 #if RELAY_DEBUG
 
     // debug relay
+
+    printf( "Starting debug relay\n" );
+
+    fflush( stdout );
 
     if ( debug_init( &debug, &config, &bpf ) != RELAY_OK )
     {
@@ -99,11 +117,15 @@ int main( int argc, char *argv[] )
         return 1;
     }
 
+    fflush( stdout );
+
     int result = debug_run( &debug );
 
 #else // #if RELAY_DEBUG
 
-    // regular relay
+    printf( "Starting relay\n" );
+
+    fflush( stdout );
 
     if ( main_init( &main_data, &config, &bpf ) != RELAY_OK )
     {
