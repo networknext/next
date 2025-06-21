@@ -377,7 +377,6 @@ static int relay_redirect_packet( struct redirect_args_t * args )
     struct whitelist_value * whitelist_value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
     if ( whitelist_value == NULL )
     {
-        relay_printf( "redirect address not in whitelist" );
         return XDP_DROP;
     }
 
@@ -1767,8 +1766,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                relay_printf( "forward to next hop" );
-
                                 struct redirect_args_t args;
                                 args.data = data;
                                 args.payload_bytes = payload_bytes;
@@ -1778,9 +1775,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.dest_port = session.next_port;
                                 args.magic = state->current_magic;
 
+                                relay_printf( "route request forward to next hop: %x:%d -> %x.%d", args.source_address, args.source_port, args.dest_address, args.dest_port );
+
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1933,6 +1933,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2041,6 +2042,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2200,6 +2202,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2358,6 +2361,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2516,6 +2520,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2676,6 +2681,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2833,6 +2839,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );

@@ -25,7 +25,7 @@ echo linux kernel version is $major.$minor
 if [[ $major -lt 6 ]]; then
   echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
   sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
-  sudo reboot  
+  sudo reboot
 fi
 
 # install linux headers needed for xdp/ebpf
