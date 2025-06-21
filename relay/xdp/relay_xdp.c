@@ -1697,7 +1697,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
                                 if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
                                 {
-                                    relay_printf( "could not decrypt route token" );
+                                    relay_printf( "route request could not decrypt route token" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1780,7 +1780,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "route request redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
