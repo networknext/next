@@ -54,6 +54,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.iowa.1.b" = {
       datacenter_name = "google.iowa.1"
       type            = "c3-highcpu-4"
@@ -119,6 +120,7 @@ locals {
       type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
   }
 }
@@ -173,6 +175,7 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
+    /*
     "akamai.atlanta" = {
       datacenter_name = "akamai.atlanta"
       type            = "g6-dedicated-4"
@@ -190,6 +193,7 @@ locals {
       type            = "g6-dedicated-4"
       image           = "linode/ubuntu22.04"
     }
+    */
 
   }
 }

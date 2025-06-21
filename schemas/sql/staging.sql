@@ -26,8 +26,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.000',
-	-47.00,
-	56.00,
+	-83.00,
+	-123.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -38,8 +38,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.001',
-	-21.00,
-	93.00,
+	9.00,
+	51.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -50,8 +50,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.002',
-	-6.00,
-	-139.00,
+	72.00,
+	-177.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -62,8 +62,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.003',
-	53.00,
-	-62.00,
+	-18.00,
+	142.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -74,8 +74,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.004',
-	-29.00,
-	118.00,
+	71.00,
+	-133.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -86,8 +86,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.005',
-	-4.00,
-	118.00,
+	-44.00,
+	99.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -98,8 +98,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.006',
-	-75.00,
-	-141.00,
+	53.00,
+	-29.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -110,8 +110,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.007',
-	89.00,
-	-158.00,
+	-87.00,
+	156.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -122,8 +122,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.008',
-	44.00,
-	173.00,
+	-83.00,
+	-72.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -134,8 +134,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.009',
-	-24.00,
-	-170.00,
+	-19.00,
+	62.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -146,8 +146,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.010',
-	-20.00,
-	-81.00,
+	-21.00,
+	-76.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -158,8 +158,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.011',
-	-23.00,
-	58.00,
+	49.00,
+	175.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -170,8 +170,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.012',
-	-15.00,
-	7.00,
+	58.00,
+	-22.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -182,8 +182,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.013',
-	3.00,
-	-131.00,
+	-80.00,
+	-125.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -194,8 +194,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.014',
-	65.00,
-	-93.00,
+	48.00,
+	148.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -206,8 +206,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.015',
-	52.00,
-	-55.00,
+	34.00,
+	65.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -218,8 +218,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.016',
-	-29.00,
-	-121.00,
+	-27.00,
+	-126.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -230,8 +230,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.017',
-	-72.00,
-	-97.00,
+	-18.00,
+	166.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -242,8 +242,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.018',
-	-8.00,
-	-24.00,
+	70.00,
+	-134.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -254,8 +254,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.019',
-	-48.00,
-	69.00,
+	-1.00,
+	-89.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -266,115 +266,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.020',
-	-44.00,
-	-57.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.021',
-	90.00,
-	47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.022',
-	-89.00,
-	23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.023',
-	-89.00,
-	93.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.024',
-	65.00,
-	37.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.025',
-	35.00,
-	-139.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.026',
-	-89.00,
-	103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.027',
-	-39.00,
-	80.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.028',
-	24.00,
-	-118.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.029',
-	-10.00,
+	-23.00,
 	81.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -385,9 +277,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.030',
-	64.00,
-	127.00,
+	'test.021',
+	-83.00,
+	-51.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -397,9 +289,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.031',
-	-41.00,
-	122.00,
+	'test.022',
+	-88.00,
+	-58.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -409,9 +301,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.032',
-	64.00,
-	149.00,
+	'test.023',
+	52.00,
+	147.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -421,9 +313,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.033',
-	-61.00,
-	-12.00,
+	'test.024',
+	-48.00,
+	-175.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -433,9 +325,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.034',
-	-84.00,
-	25.00,
+	'test.025',
+	38.00,
+	-94.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -445,9 +337,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.035',
-	10.00,
-	-20.00,
+	'test.026',
+	68.00,
+	77.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -457,9 +349,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.036',
-	-61.00,
-	3.00,
+	'test.027',
+	68.00,
+	45.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -469,9 +361,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.037',
-	-61.00,
-	130.00,
+	'test.028',
+	83.00,
+	-25.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -481,20 +373,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.038',
-	-74.00,
-	27.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.039',
-	-39.00,
+	'test.029',
+	-50.00,
 	-95.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -505,9 +385,129 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.030',
+	-81.00,
+	109.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.031',
+	-62.00,
+	-32.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.032',
+	-57.00,
+	-67.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.033',
+	2.00,
+	176.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.034',
+	-69.00,
+	174.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.035',
+	90.00,
+	-81.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.036',
+	28.00,
+	-5.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.037',
+	47.00,
+	-67.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.038',
+	-56.00,
+	91.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.039',
+	13.00,
+	-35.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.040',
-	-38.00,
-	107.00,
+	-57.00,
+	31.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -518,8 +518,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.041',
-	-33.00,
-	-23.00,
+	-40.00,
+	-154.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -530,8 +530,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.042',
-	79.00,
-	87.00,
+	-60.00,
+	-34.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -542,8 +542,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.043',
-	-73.00,
-	-64.00,
+	-65.00,
+	-40.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -554,8 +554,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.044',
-	-13.00,
-	-143.00,
+	36.00,
+	-168.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -566,8 +566,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.045',
-	71.00,
-	-84.00,
+	56.00,
+	14.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -578,8 +578,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.046',
-	-36.00,
-	160.00,
+	-11.00,
+	87.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -590,8 +590,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.047',
-	44.00,
-	98.00,
+	-69.00,
+	173.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -602,8 +602,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.048',
-	46.00,
-	-7.00,
+	12.00,
+	-52.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -614,8 +614,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.049',
-	86.00,
-	134.00,
+	50.00,
+	-71.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -626,8 +626,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.050',
-	89.00,
-	164.00,
+	79.00,
+	162.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -638,8 +638,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.051',
-	25.00,
-	-121.00,
+	59.00,
+	74.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -650,8 +650,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.052',
-	-78.00,
-	155.00,
+	79.00,
+	-156.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -662,8 +662,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.053',
-	-87.00,
-	-14.00,
+	-21.00,
+	6.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -674,8 +674,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.054',
-	-14.00,
-	18.00,
+	-37.00,
+	-146.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -686,8 +686,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.055',
-	-18.00,
-	-157.00,
+	-36.00,
+	-100.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -698,8 +698,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.056',
-	-51.00,
-	20.00,
+	-7.00,
+	-92.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -710,8 +710,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.057',
-	-70.00,
-	3.00,
+	72.00,
+	-88.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -722,8 +722,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.058',
-	83.00,
-	118.00,
+	-46.00,
+	-108.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -735,7 +735,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.059',
 	75.00,
-	107.00,
+	-7.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -746,8 +746,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.060',
-	-83.00,
-	-57.00,
+	48.00,
+	46.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -758,8 +758,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.061',
-	90.00,
-	-70.00,
+	-2.00,
+	-111.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -770,8 +770,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.062',
-	61.00,
-	-28.00,
+	-63.00,
+	148.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -782,8 +782,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.063',
-	-2.00,
-	-27.00,
+	30.00,
+	25.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -794,8 +794,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.064',
-	81.00,
-	-144.00,
+	57.00,
+	38.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -806,8 +806,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.065',
-	-64.00,
-	-136.00,
+	-8.00,
+	-131.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -818,8 +818,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.066',
-	-26.00,
-	-169.00,
+	-21.00,
+	-15.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -830,8 +830,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.067',
-	-60.00,
-	36.00,
+	-86.00,
+	-58.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -842,8 +842,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.068',
-	-58.00,
-	3.00,
+	4.00,
+	-152.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -854,8 +854,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.069',
-	14.00,
-	-162.00,
+	-51.00,
+	66.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -866,8 +866,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.070',
-	85.00,
-	-122.00,
+	65.00,
+	-72.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -878,8 +878,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.071',
-	-24.00,
-	123.00,
+	62.00,
+	133.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -890,8 +890,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.072',
-	51.00,
-	174.00,
+	5.00,
+	95.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -902,8 +902,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.073',
-	-9.00,
-	-98.00,
+	30.00,
+	-51.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -914,8 +914,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.074',
-	36.00,
-	-112.00,
+	42.00,
+	-179.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -926,8 +926,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.075',
-	53.00,
-	-117.00,
+	13.00,
+	-178.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -938,8 +938,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.076',
-	-46.00,
-	-10.00,
+	42.00,
+	164.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -950,8 +950,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.077',
-	12.00,
-	-63.00,
+	65.00,
+	159.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -962,8 +962,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.078',
-	28.00,
-	-125.00,
+	39.00,
+	40.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -974,8 +974,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.079',
-	-33.00,
-	-124.00,
+	25.00,
+	-78.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -986,8 +986,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.080',
-	71.00,
-	59.00,
+	87.00,
+	103.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -998,67 +998,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.081',
-	-50.00,
-	-144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.082',
-	-26.00,
-	143.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.083',
-	-58.00,
-	-92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.084',
-	-30.00,
-	21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.085',
-	10.00,
-	-151.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.086',
-	-70.00,
+	-43.00,
 	-77.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -1069,224 +1009,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.087',
-	-42.00,
-	28.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.088',
-	-80.00,
-	21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.089',
-	-3.00,
-	-46.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.090',
-	20.00,
-	146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.091',
-	46.00,
-	-32.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.092',
-	-43.00,
-	102.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.093',
-	-63.00,
-	21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.094',
-	9.00,
-	-128.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.095',
-	-76.00,
-	160.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.096',
-	-22.00,
-	118.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.097',
-	81.00,
-	-147.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.098',
-	-58.00,
-	160.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.099',
-	1.00,
-	-24.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.100',
-	25.00,
-	146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.101',
-	52.00,
-	-70.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.102',
-	17.00,
-	-177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.103',
-	89.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.104',
-	87.00,
-	114.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.105',
-	38.00,
+	'test.082',
+	-39.00,
 	-10.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -1297,9 +1021,285 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.106',
+	'test.083',
 	29.00,
-	-164.00,
+	-180.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.084',
+	-5.00,
+	123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.085',
+	84.00,
+	153.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.086',
+	85.00,
+	-31.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.087',
+	-29.00,
+	45.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.088',
+	48.00,
+	96.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.089',
+	13.00,
+	65.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.090',
+	-39.00,
+	134.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.091',
+	13.00,
+	-2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.092',
+	-36.00,
+	-16.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.093',
+	-53.00,
+	-68.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.094',
+	80.00,
+	-87.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.095',
+	-47.00,
+	-177.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.096',
+	-11.00,
+	177.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.097',
+	34.00,
+	84.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.098',
+	49.00,
+	-128.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.099',
+	-85.00,
+	108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.100',
+	-9.00,
+	-110.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.101',
+	23.00,
+	49.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.102',
+	-60.00,
+	1.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.103',
+	-35.00,
+	132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.104',
+	-10.00,
+	-71.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.105',
+	-53.00,
+	119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.106',
+	-62.00,
+	49.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -1311,7 +1311,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.107',
 	-5.00,
-	-146.00,
+	52.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -1322,8 +1322,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.108',
-	5.00,
-	107.00,
+	2.00,
+	131.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -1334,979 +1334,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.109',
-	44.00,
-	-96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.110',
-	-10.00,
-	151.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.111',
-	-65.00,
-	110.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.112',
-	85.00,
-	2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.113',
-	17.00,
-	99.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.114',
-	42.00,
-	-12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.115',
-	48.00,
-	54.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.116',
-	88.00,
-	-131.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.117',
-	-74.00,
-	16.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.118',
-	72.00,
-	-63.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.119',
-	-33.00,
-	127.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.120',
-	53.00,
-	120.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.121',
-	-79.00,
-	-56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.122',
-	-79.00,
-	-127.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.123',
-	90.00,
-	103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.124',
-	-56.00,
-	-76.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.125',
-	53.00,
-	148.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.126',
-	-29.00,
-	-130.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.127',
-	4.00,
-	60.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.128',
-	2.00,
-	-174.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.129',
-	25.00,
-	-109.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.130',
-	-9.00,
-	40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.131',
-	27.00,
-	-31.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.132',
-	15.00,
-	-7.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.133',
-	-18.00,
-	36.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.134',
-	27.00,
-	71.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.135',
-	47.00,
-	-130.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.136',
-	-39.00,
-	1.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.137',
-	79.00,
-	-58.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.138',
-	84.00,
-	-66.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.139',
-	45.00,
-	116.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.140',
-	-61.00,
-	129.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.141',
-	56.00,
-	-51.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.142',
-	70.00,
-	-163.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.143',
-	-61.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.144',
-	-55.00,
-	98.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.145',
-	19.00,
-	97.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.146',
-	84.00,
-	155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.147',
-	-76.00,
-	-56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.148',
-	66.00,
-	150.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.149',
-	-14.00,
-	105.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.150',
-	3.00,
-	160.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.151',
-	4.00,
-	81.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.152',
-	-79.00,
-	-157.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.153',
-	9.00,
-	-79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.154',
-	-63.00,
-	149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.155',
-	67.00,
-	-106.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.156',
-	62.00,
-	139.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.157',
-	-76.00,
-	-155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.158',
-	-7.00,
-	-134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.159',
-	46.00,
-	-16.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.160',
-	-38.00,
-	95.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.161',
-	67.00,
-	-134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.162',
-	-21.00,
-	-33.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.163',
-	37.00,
-	28.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.164',
-	38.00,
-	3.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.165',
-	87.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.166',
-	-68.00,
-	-5.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.167',
-	45.00,
-	11.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.168',
-	-2.00,
-	-92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.169',
-	-85.00,
-	-103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.170',
-	-5.00,
-	-77.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.171',
-	6.00,
-	17.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.172',
-	-62.00,
-	30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.173',
-	60.00,
-	106.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.174',
-	-88.00,
-	94.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.175',
-	85.00,
-	58.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.176',
-	-62.00,
-	-17.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.177',
-	-77.00,
-	82.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.178',
-	68.00,
-	-171.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.179',
-	67.00,
-	-97.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.180',
-	-42.00,
-	-70.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.181',
-	-70.00,
-	-24.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.182',
-	-41.00,
-	-103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.183',
-	-22.00,
-	-40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.184',
-	18.00,
-	-28.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.185',
-	90.00,
-	-162.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.186',
-	53.00,
-	-104.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.187',
-	-39.00,
-	-71.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.188',
-	-86.00,
-	41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.189',
-	4.00,
-	-6.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.190',
-	-32.00,
+	13.00,
 	-98.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -2317,56 +1345,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.191',
-	-31.00,
-	47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.192',
-	70.00,
-	-12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.193',
-	-47.00,
-	-102.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.194',
-	-59.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.195',
-	-49.00,
+	'test.110',
+	-39.00,
 	-129.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -2377,92 +1357,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.196',
-	35.00,
-	-23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.197',
-	63.00,
-	62.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.198',
-	-64.00,
-	-2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.199',
-	80.00,
-	98.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.200',
-	16.00,
-	112.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.201',
-	-14.00,
-	1.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.202',
-	57.00,
-	133.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.203',
-	-33.00,
+	'test.111',
+	25.00,
 	-180.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -2473,9 +1369,21 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.204',
-	-73.00,
+	'test.112',
+	-43.00,
+	107.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.113',
 	-40.00,
+	11.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2485,153 +1393,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.205',
-	90.00,
-	-108.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.206',
-	-45.00,
-	49.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.207',
-	46.00,
-	-158.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.208',
-	-50.00,
-	50.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.209',
-	-26.00,
-	-83.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.210',
-	68.00,
-	-45.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.211',
-	38.00,
-	77.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.212',
-	-47.00,
-	70.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.213',
-	41.00,
-	151.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.214',
-	-34.00,
-	-132.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.215',
-	70.00,
-	-146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.216',
-	86.00,
-	-6.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.217',
+	'test.114',
 	73.00,
-	60.00,
+	-95.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2641,9 +1405,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.218',
-	-44.00,
-	151.00,
+	'test.115',
+	-7.00,
+	81.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2653,9 +1417,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.219',
-	3.00,
-	65.00,
+	'test.116',
+	17.00,
+	23.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2665,9 +1429,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.220',
-	26.00,
-	-93.00,
+	'test.117',
+	6.00,
+	147.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2677,9 +1441,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.221',
-	3.00,
-	132.00,
+	'test.118',
+	33.00,
+	-9.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2689,20 +1453,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.222',
-	74.00,
-	15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.223',
-	-89.00,
+	'test.119',
+	-54.00,
 	71.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -2713,9 +1465,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.224',
-	-37.00,
-	94.00,
+	'test.120',
+	27.00,
+	-150.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2725,9 +1477,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.225',
-	-82.00,
-	-2.00,
+	'test.121',
+	60.00,
+	82.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2737,8 +1489,188 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.226',
-	-12.00,
+	'test.122',
+	31.00,
+	-67.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.123',
+	-14.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.124',
+	-14.00,
+	-4.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.125',
+	-86.00,
+	-125.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.126',
+	83.00,
+	77.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.127',
+	-26.00,
+	34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.128',
+	82.00,
+	39.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.129',
+	34.00,
+	-119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.130',
+	-48.00,
+	56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.131',
+	55.00,
+	68.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.132',
+	-14.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.133',
+	-63.00,
+	-20.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.134',
+	-38.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.135',
+	83.00,
+	-132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.136',
+	58.00,
+	166.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.137',
+	-54.00,
 	174.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -2749,9 +1681,1077 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.227',
+	'test.138',
+	10.00,
+	109.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.139',
+	-23.00,
 	50.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.140',
+	18.00,
+	-1.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.141',
+	50.00,
+	98.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.142',
+	90.00,
+	-91.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.143',
+	83.00,
+	85.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.144',
+	-20.00,
+	-75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.145',
+	4.00,
+	105.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.146',
+	-13.00,
+	-117.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.147',
+	-60.00,
+	123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.148',
+	-60.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.149',
+	20.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.150',
+	78.00,
+	-76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.151',
+	35.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.152',
+	9.00,
+	155.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.153',
+	-37.00,
+	122.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.154',
+	56.00,
+	22.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.155',
+	-63.00,
+	82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.156',
+	68.00,
+	-90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.157',
+	-27.00,
+	-151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.158',
+	32.00,
+	-95.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.159',
+	-80.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.160',
+	78.00,
+	21.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.161',
+	-20.00,
+	52.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.162',
+	-79.00,
+	83.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.163',
+	75.00,
+	-165.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.164',
+	-84.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.165',
+	27.00,
+	-18.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.166',
+	78.00,
+	81.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.167',
+	-62.00,
+	-26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.168',
+	-44.00,
+	-153.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.169',
+	-30.00,
+	-143.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.170',
+	63.00,
+	-90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.171',
+	-2.00,
+	145.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.172',
+	-82.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.173',
+	10.00,
+	-137.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.174',
+	-26.00,
+	145.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.175',
+	-27.00,
+	-180.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.176',
+	22.00,
+	2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.177',
+	28.00,
+	-60.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.178',
 	67.00,
+	102.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.179',
+	-51.00,
+	-77.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.180',
+	68.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.181',
+	85.00,
+	-65.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.182',
+	-45.00,
+	-18.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.183',
+	-90.00,
+	-8.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.184',
+	41.00,
+	-30.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.185',
+	-36.00,
+	93.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.186',
+	16.00,
+	-164.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.187',
+	-86.00,
+	-31.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.188',
+	-48.00,
+	37.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.189',
+	84.00,
+	-177.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.190',
+	22.00,
+	-147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.191',
+	-72.00,
+	-94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.192',
+	29.00,
+	131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.193',
+	51.00,
+	71.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.194',
+	0.00,
+	7.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.195',
+	76.00,
+	170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.196',
+	2.00,
+	-54.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.197',
+	-53.00,
+	142.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.198',
+	4.00,
+	-144.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.199',
+	71.00,
+	153.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.200',
+	-15.00,
+	-98.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.201',
+	71.00,
+	105.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.202',
+	-17.00,
+	-175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.203',
+	-60.00,
+	169.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.204',
+	18.00,
+	119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.205',
+	-64.00,
+	100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.206',
+	-76.00,
+	-125.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.207',
+	-66.00,
+	46.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.208',
+	-46.00,
+	-155.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.209',
+	64.00,
+	-69.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.210',
+	-41.00,
+	116.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.211',
+	71.00,
+	-126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.212',
+	-73.00,
+	-119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.213',
+	-27.00,
+	135.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.214',
+	19.00,
+	42.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.215',
+	63.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.216',
+	3.00,
+	156.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.217',
+	55.00,
+	-117.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.218',
+	-75.00,
+	2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.219',
+	-24.00,
+	-149.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.220',
+	-50.00,
+	110.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.221',
+	-52.00,
+	18.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.222',
+	72.00,
+	-102.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.223',
+	-27.00,
+	-133.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.224',
+	74.00,
+	-111.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.225',
+	27.00,
+	69.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.226',
+	30.00,
+	2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.227',
+	3.00,
+	-25.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2762,8 +2762,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.228',
-	70.00,
-	176.00,
+	22.00,
+	53.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2774,8 +2774,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.229',
-	81.00,
-	-92.00,
+	72.00,
+	23.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2786,8 +2786,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.230',
-	2.00,
-	-154.00,
+	58.00,
+	-137.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2798,8 +2798,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.231',
-	-80.00,
-	-129.00,
+	-37.00,
+	-82.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2810,8 +2810,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.232',
-	70.00,
-	-131.00,
+	5.00,
+	-52.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2822,8 +2822,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.233',
-	-29.00,
-	61.00,
+	-37.00,
+	-96.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2834,8 +2834,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.234',
-	-67.00,
-	24.00,
+	26.00,
+	41.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2847,7 +2847,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.235',
 	31.00,
-	63.00,
+	8.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2858,8 +2858,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.236',
-	-20.00,
-	116.00,
+	-52.00,
+	-139.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2870,8 +2870,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.237',
-	-6.00,
-	90.00,
+	-67.00,
+	49.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2882,8 +2882,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.238',
-	10.00,
-	108.00,
+	-22.00,
+	179.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2894,8 +2894,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.239',
-	-78.00,
-	115.00,
+	-90.00,
+	-145.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -2906,343 +2906,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.240',
-	-13.00,
-	-56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.241',
-	77.00,
-	-106.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.242',
-	-65.00,
-	-61.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.243',
-	-64.00,
-	-110.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.244',
-	-86.00,
-	-82.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.245',
-	-69.00,
-	117.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.246',
-	-19.00,
-	112.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.247',
-	-55.00,
-	21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.248',
-	39.00,
-	87.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.249',
-	87.00,
-	-131.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.250',
-	35.00,
-	-157.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.251',
-	24.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.252',
-	82.00,
-	20.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.253',
-	-20.00,
-	-2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.254',
-	90.00,
-	27.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.255',
-	60.00,
-	-79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.256',
-	15.00,
-	26.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.257',
-	29.00,
-	175.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.258',
-	67.00,
-	-58.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.259',
-	46.00,
-	31.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.260',
-	72.00,
-	30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.261',
-	-85.00,
-	155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.262',
-	69.00,
-	-10.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.263',
-	-75.00,
-	41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.264',
-	-52.00,
-	149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.265',
-	76.00,
-	29.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.266',
-	26.00,
-	-94.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.267',
-	3.00,
-	-45.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.268',
-	81.00,
+	-42.00,
 	11.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -3253,116 +2917,44 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.269',
-	71.00,
+	'test.241',
+	41.00,
+	-2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.242',
+	-62.00,
+	-28.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.243',
+	-15.00,
+	144.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.244',
 	84.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.270',
-	33.00,
-	-119.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.271',
-	-11.00,
-	-149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.272',
-	-67.00,
-	102.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.273',
-	8.00,
-	162.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.274',
-	66.00,
-	107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.275',
-	-13.00,
-	134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.276',
-	-64.00,
-	-108.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.277',
-	39.00,
-	72.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.278',
-	46.00,
 	142.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -3373,9 +2965,417 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.245',
+	37.00,
+	73.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.246',
+	38.00,
+	75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.247',
+	22.00,
+	82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.248',
+	86.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.249',
+	74.00,
+	-71.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.250',
+	-33.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.251',
+	2.00,
+	-16.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.252',
+	-31.00,
+	-99.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.253',
+	22.00,
+	-176.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.254',
+	43.00,
+	123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.255',
+	47.00,
+	164.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.256',
+	45.00,
+	61.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.257',
+	75.00,
+	-44.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.258',
+	62.00,
+	-139.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.259',
+	-60.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.260',
+	81.00,
+	-25.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.261',
+	-3.00,
+	-30.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.262',
+	28.00,
+	63.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.263',
+	-72.00,
+	133.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.264',
+	-54.00,
+	-144.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.265',
+	-36.00,
+	-90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.266',
+	2.00,
+	-9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.267',
+	-70.00,
+	-170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.268',
+	33.00,
+	-100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.269',
+	0.00,
+	171.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.270',
+	-13.00,
+	146.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.271',
+	33.00,
+	-33.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.272',
+	-1.00,
+	126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.273',
+	-17.00,
+	-87.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.274',
+	-42.00,
+	87.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.275',
+	87.00,
+	-3.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.276',
+	-19.00,
+	-104.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.277',
+	37.00,
+	39.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.278',
+	-3.00,
+	44.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.279',
-	35.00,
-	107.00,
+	-82.00,
+	-4.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3386,8 +3386,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.280',
-	29.00,
-	-114.00,
+	-24.00,
+	-164.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3398,8 +3398,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.281',
-	-41.00,
-	-3.00,
+	66.00,
+	-90.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3410,8 +3410,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.282',
-	-90.00,
-	-56.00,
+	-5.00,
+	19.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3422,8 +3422,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.283',
-	-74.00,
-	103.00,
+	57.00,
+	-17.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3434,8 +3434,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.284',
-	37.00,
-	-68.00,
+	62.00,
+	-38.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3446,8 +3446,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.285',
-	-23.00,
-	24.00,
+	-28.00,
+	-27.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3458,8 +3458,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.286',
-	-3.00,
-	-121.00,
+	18.00,
+	-145.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3470,8 +3470,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.287',
-	38.00,
-	-31.00,
+	51.00,
+	73.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3482,8 +3482,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.288',
-	-83.00,
-	-122.00,
+	36.00,
+	-114.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3494,8 +3494,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.289',
-	60.00,
-	-173.00,
+	-46.00,
+	-116.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3506,8 +3506,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.290',
-	71.00,
-	165.00,
+	-14.00,
+	60.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3518,8 +3518,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.291',
-	47.00,
-	132.00,
+	-29.00,
+	53.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3530,8 +3530,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.292',
-	86.00,
-	-115.00,
+	55.00,
+	10.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3542,8 +3542,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.293',
-	13.00,
-	-131.00,
+	84.00,
+	-35.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3554,8 +3554,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.294',
-	87.00,
-	-105.00,
+	-30.00,
+	-134.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3566,8 +3566,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.295',
-	79.00,
-	121.00,
+	86.00,
+	-167.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3578,8 +3578,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.296',
-	-83.00,
-	122.00,
+	30.00,
+	-58.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3590,8 +3590,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.297',
-	-5.00,
-	-118.00,
+	56.00,
+	-145.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3602,8 +3602,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.298',
-	46.00,
-	72.00,
+	-52.00,
+	-13.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3614,8 +3614,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.299',
-	-4.00,
-	43.00,
+	-26.00,
+	14.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3626,8 +3626,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.300',
-	-36.00,
-	-22.00,
+	-6.00,
+	-83.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3638,8 +3638,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.301',
-	-75.00,
-	173.00,
+	54.00,
+	-143.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3650,8 +3650,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.302',
-	47.00,
-	85.00,
+	-52.00,
+	89.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3662,8 +3662,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.303',
-	-62.00,
-	-113.00,
+	46.00,
+	-136.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3674,8 +3674,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.304',
-	-16.00,
-	-32.00,
+	-60.00,
+	56.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3686,6 +3686,42 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.305',
+	-23.00,
+	-17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.306',
+	-29.00,
+	-48.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.307',
+	24.00,
+	-41.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.308',
 	-17.00,
 	-93.00,
 	(select seller_id from sellers where seller_code = 'test')
@@ -3697,45 +3733,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.306',
-	67.00,
-	70.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.307',
-	2.00,
-	48.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.308',
-	-76.00,
-	111.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
 	'test.309',
-	-79.00,
-	-128.00,
+	-66.00,
+	128.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3746,8 +3746,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.310',
-	-19.00,
-	17.00,
+	-84.00,
+	-63.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3758,8 +3758,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.311',
-	-72.00,
-	152.00,
+	-74.00,
+	-80.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3770,8 +3770,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.312',
-	-7.00,
-	-132.00,
+	24.00,
+	-61.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3782,8 +3782,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.313',
-	38.00,
-	-102.00,
+	37.00,
+	94.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3794,31 +3794,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.314',
-	-84.00,
-	-86.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.315',
-	-24.00,
-	48.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.316',
-	-74.00,
+	42.00,
 	86.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -3829,9 +3805,33 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.315',
+	81.00,
+	-172.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.316',
+	71.00,
+	-179.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.317',
-	10.00,
-	-37.00,
+	-54.00,
+	-169.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3842,8 +3842,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.318',
-	43.00,
-	68.00,
+	-20.00,
+	53.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3854,8 +3854,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.319',
-	59.00,
 	48.00,
+	15.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3866,8 +3866,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.320',
-	-20.00,
-	-177.00,
+	-74.00,
+	127.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3878,8 +3878,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.321',
-	-31.00,
-	138.00,
+	-9.00,
+	30.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3890,8 +3890,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.322',
-	60.00,
-	6.00,
+	45.00,
+	-172.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3902,43 +3902,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.323',
-	-48.00,
-	166.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.324',
-	-14.00,
-	34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.325',
-	38.00,
-	-40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.326',
-	81.00,
+	57.00,
 	-159.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -3949,9 +3913,45 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.324',
+	31.00,
+	-172.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.325',
+	41.00,
+	76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.326',
+	-24.00,
+	-4.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.327',
-	59.00,
-	32.00,
+	-42.00,
+	-108.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3962,8 +3962,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.328',
-	18.00,
-	92.00,
+	-11.00,
+	-23.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3974,8 +3974,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.329',
-	-19.00,
-	-15.00,
+	-28.00,
+	-33.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3986,8 +3986,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.330',
-	29.00,
-	71.00,
+	-6.00,
+	-172.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -3998,8 +3998,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.331',
-	31.00,
-	12.00,
+	-81.00,
+	-151.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4010,8 +4010,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.332',
-	48.00,
-	-31.00,
+	59.00,
+	163.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4022,8 +4022,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.333',
-	-72.00,
-	-156.00,
+	-85.00,
+	66.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4034,8 +4034,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.334',
-	76.00,
-	-81.00,
+	-76.00,
+	-174.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4046,8 +4046,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.335',
-	49.00,
-	92.00,
+	-65.00,
+	-129.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4058,8 +4058,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.336',
-	-53.00,
-	-74.00,
+	-41.00,
+	174.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4070,8 +4070,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.337',
-	-66.00,
-	62.00,
+	29.00,
+	-63.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4082,8 +4082,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.338',
-	-72.00,
-	-117.00,
+	-12.00,
+	55.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4094,7 +4094,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.339',
-	64.00,
+	40.00,
 	125.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -4106,8 +4106,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.340',
-	7.00,
-	3.00,
+	-13.00,
+	-178.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4118,8 +4118,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.341',
-	78.00,
-	116.00,
+	46.00,
+	34.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4130,8 +4130,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.342',
-	-50.00,
-	-109.00,
+	40.00,
+	-35.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4142,8 +4142,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.343',
-	83.00,
-	-174.00,
+	-22.00,
+	-156.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4154,8 +4154,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.344',
-	-11.00,
-	131.00,
+	38.00,
+	138.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4166,8 +4166,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.345',
-	-26.00,
-	-139.00,
+	64.00,
+	-172.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4178,8 +4178,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.346',
-	-83.00,
-	-168.00,
+	24.00,
+	-93.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4190,8 +4190,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.347',
-	-20.00,
-	153.00,
+	-67.00,
+	69.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4202,8 +4202,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.348',
-	-21.00,
-	-138.00,
+	23.00,
+	146.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4214,223 +4214,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.349',
-	23.00,
-	17.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.350',
-	50.00,
-	120.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.351',
-	-84.00,
-	-86.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.352',
-	-5.00,
-	128.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.353',
-	-15.00,
-	80.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.354',
-	-7.00,
-	8.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.355',
-	45.00,
-	-12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.356',
-	-80.00,
-	-105.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.357',
-	-58.00,
-	49.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.358',
-	-90.00,
-	-47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.359',
-	-38.00,
-	58.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.360',
-	-32.00,
-	41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.361',
-	72.00,
-	-34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.362',
-	10.00,
-	-179.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.363',
-	19.00,
-	-25.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.364',
-	17.00,
-	39.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.365',
-	-51.00,
-	108.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.366',
-	31.00,
-	103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.367',
-	69.00,
+	20.00,
 	-108.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -4441,9 +4225,225 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.350',
+	-65.00,
+	98.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.351',
+	-79.00,
+	161.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.352',
+	20.00,
+	7.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.353',
+	-13.00,
+	-49.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.354',
+	-39.00,
+	62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.355',
+	40.00,
+	-108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.356',
+	82.00,
+	17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.357',
+	-79.00,
+	75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.358',
+	-15.00,
+	19.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.359',
+	83.00,
+	-166.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.360',
+	-15.00,
+	-97.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.361',
+	-49.00,
+	-179.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.362',
+	-22.00,
+	0.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.363',
+	55.00,
+	-66.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.364',
+	42.00,
+	62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.365',
+	57.00,
+	138.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.366',
+	-50.00,
+	-23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.367',
+	-79.00,
+	14.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.368',
-	5.00,
-	109.00,
+	-42.00,
+	0.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4454,8 +4454,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.369',
-	-76.00,
-	-10.00,
+	28.00,
+	-119.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4466,8 +4466,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.370',
-	-15.00,
-	58.00,
+	29.00,
+	-50.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4478,8 +4478,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.371',
-	-76.00,
-	-94.00,
+	-57.00,
+	159.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4490,8 +4490,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.372',
-	31.00,
-	-84.00,
+	70.00,
+	10.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4502,8 +4502,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.373',
-	3.00,
-	-69.00,
+	-35.00,
+	4.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4514,8 +4514,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.374',
-	74.00,
-	105.00,
+	49.00,
+	130.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4526,8 +4526,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.375',
-	-18.00,
-	-22.00,
+	6.00,
+	-12.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4538,8 +4538,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.376',
-	21.00,
-	39.00,
+	62.00,
+	-38.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4550,8 +4550,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.377',
-	-21.00,
-	60.00,
+	-37.00,
+	113.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4562,8 +4562,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.378',
-	-73.00,
-	58.00,
+	-50.00,
+	-173.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4574,8 +4574,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.379',
-	61.00,
-	-33.00,
+	-18.00,
+	75.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4586,8 +4586,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.380',
-	88.00,
-	-85.00,
+	49.00,
+	97.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4598,8 +4598,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.381',
-	-90.00,
-	82.00,
+	-36.00,
+	14.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4610,8 +4610,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.382',
-	-56.00,
-	160.00,
+	-10.00,
+	-51.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4622,7 +4622,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.383',
-	-80.00,
+	-23.00,
 	166.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -4634,8 +4634,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.384',
-	90.00,
-	-11.00,
+	-79.00,
+	14.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4646,8 +4646,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.385',
-	54.00,
-	127.00,
+	-11.00,
+	63.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4658,8 +4658,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.386',
-	-59.00,
-	-17.00,
+	-38.00,
+	-10.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4670,8 +4670,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.387',
-	16.00,
-	96.00,
+	-73.00,
+	12.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4682,8 +4682,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.388',
-	57.00,
-	170.00,
+	77.00,
+	-173.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4694,8 +4694,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.389',
-	30.00,
-	-58.00,
+	83.00,
+	-19.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -4706,787 +4706,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.390',
-	-77.00,
-	-142.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.391',
-	-75.00,
-	60.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.392',
-	42.00,
-	174.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.393',
-	-49.00,
-	131.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.394',
-	13.00,
-	-30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.395',
-	50.00,
-	-177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.396',
-	-38.00,
-	-6.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.397',
-	61.00,
-	147.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.398',
-	61.00,
-	44.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.399',
-	-37.00,
-	15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.400',
-	-75.00,
-	175.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.401',
-	-65.00,
-	-104.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.402',
-	62.00,
-	94.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.403',
-	42.00,
-	179.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.404',
-	-10.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.405',
-	-8.00,
-	-23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.406',
-	-38.00,
-	-121.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.407',
-	37.00,
-	62.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.408',
-	22.00,
-	-49.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.409',
-	60.00,
-	-38.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.410',
-	-54.00,
-	-79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.411',
-	-35.00,
-	-159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.412',
-	-11.00,
-	-174.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.413',
-	16.00,
-	146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.414',
-	-90.00,
-	-171.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.415',
-	-8.00,
-	-87.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.416',
-	35.00,
-	-155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.417',
-	38.00,
-	-88.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.418',
-	35.00,
-	-133.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.419',
-	82.00,
-	128.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.420',
-	-67.00,
-	-114.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.421',
-	-67.00,
-	-154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.422',
-	43.00,
-	107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.423',
-	-71.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.424',
-	46.00,
-	91.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.425',
-	-26.00,
-	-42.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.426',
-	-19.00,
-	-108.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.427',
-	-58.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.428',
-	34.00,
-	-161.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.429',
-	-13.00,
-	23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.430',
-	71.00,
-	14.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.431',
-	-62.00,
-	36.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.432',
-	-42.00,
-	19.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.433',
-	-90.00,
-	84.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.434',
-	-19.00,
-	81.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.435',
-	-66.00,
-	-121.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.436',
-	-14.00,
-	-140.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.437',
-	21.00,
-	92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.438',
-	23.00,
-	-8.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.439',
-	-25.00,
-	75.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.440',
-	-22.00,
-	-39.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.441',
-	84.00,
-	-4.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.442',
-	47.00,
-	-30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.443',
-	-41.00,
-	150.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.444',
-	-68.00,
-	64.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.445',
-	-2.00,
-	155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.446',
-	-19.00,
-	-73.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.447',
-	-9.00,
-	-13.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.448',
-	4.00,
-	-130.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.449',
-	-53.00,
-	180.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.450',
-	33.00,
-	163.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.451',
-	71.00,
-	77.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.452',
-	86.00,
-	-74.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.453',
-	-7.00,
-	-148.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.454',
-	52.00,
-	21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.455',
-	-23.00,
+	3.00,
 	165.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -5497,9 +4717,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.456',
-	-75.00,
-	169.00,
+	'test.391',
+	55.00,
+	161.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -5509,9 +4729,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.457',
-	34.00,
-	-31.00,
+	'test.392',
+	69.00,
+	-122.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -5521,69 +4741,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.458',
-	-26.00,
-	117.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.459',
-	-73.00,
-	99.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.460',
-	13.00,
-	-26.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.461',
-	-63.00,
-	79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.462',
-	68.00,
-	126.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.463',
+	'test.393',
+	61.00,
 	-83.00,
-	-1.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -5593,9 +4753,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.464',
-	1.00,
-	151.00,
+	'test.394',
+	52.00,
+	156.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -5605,9 +4765,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.465',
-	74.00,
-	45.00,
+	'test.395',
+	47.00,
+	54.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -5617,393 +4777,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.466',
-	81.00,
-	-100.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.467',
-	57.00,
-	155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.468',
-	73.00,
-	-61.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.469',
-	-34.00,
-	42.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.470',
-	38.00,
-	-75.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.471',
-	63.00,
-	-32.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.472',
-	-89.00,
-	134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.473',
-	79.00,
-	144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.474',
-	-38.00,
-	-46.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.475',
-	72.00,
-	136.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.476',
-	-76.00,
-	37.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.477',
-	-21.00,
-	-23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.478',
-	23.00,
-	-44.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.479',
-	-39.00,
-	-179.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.480',
-	25.00,
-	-43.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.481',
-	46.00,
-	124.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.482',
-	-68.00,
-	-180.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.483',
-	9.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.484',
-	70.00,
-	43.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.485',
-	-51.00,
-	-64.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.486',
-	-20.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.487',
-	-45.00,
-	-130.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.488',
-	-29.00,
-	-15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.489',
-	-81.00,
-	-112.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.490',
-	-7.00,
-	113.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.491',
-	-83.00,
-	-41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.492',
-	-87.00,
-	163.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.493',
-	-85.00,
-	-96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.494',
-	57.00,
-	29.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.495',
-	-65.00,
-	30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.496',
-	-64.00,
-	-69.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.497',
-	3.00,
-	-51.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.498',
+	'test.396',
 	-49.00,
-	-20.00,
+	-128.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6013,9 +4789,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.499',
-	86.00,
-	-57.00,
+	'test.397',
+	83.00,
+	177.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6025,9 +4801,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.500',
-	28.00,
-	93.00,
+	'test.398',
+	-38.00,
+	100.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6037,9 +4813,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.501',
-	25.00,
-	123.00,
+	'test.399',
+	68.00,
+	173.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6049,9 +4825,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.502',
-	79.00,
-	22.00,
+	'test.400',
+	47.00,
+	-136.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6061,56 +4837,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.503',
-	14.00,
-	-85.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.504',
-	-21.00,
-	25.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.505',
-	21.00,
-	-126.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.506',
-	-20.00,
-	-46.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.507',
-	-22.00,
+	'test.401',
+	51.00,
 	-175.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -6121,9 +4849,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.508',
-	10.00,
-	11.00,
+	'test.402',
+	64.00,
+	57.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6133,9 +4861,165 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.509',
+	'test.403',
+	-45.00,
+	-22.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.404',
+	-61.00,
+	-53.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.405',
+	-28.00,
+	7.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.406',
+	-86.00,
+	-122.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.407',
+	70.00,
+	-48.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.408',
+	81.00,
+	-104.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.409',
+	51.00,
+	128.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.410',
+	-64.00,
+	75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.411',
+	-41.00,
+	-149.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.412',
+	-86.00,
+	-161.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.413',
+	-58.00,
+	77.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.414',
+	63.00,
+	-57.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.415',
+	54.00,
+	56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.416',
 	-88.00,
-	-13.00,
+	-24.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6145,9 +5029,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.510',
-	85.00,
-	22.00,
+	'test.417',
+	59.00,
+	61.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6157,8 +5041,308 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.511',
-	-67.00,
+	'test.418',
+	-88.00,
+	38.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.419',
+	79.00,
+	33.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.420',
+	20.00,
+	-12.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.421',
+	-69.00,
+	-58.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.422',
+	60.00,
+	-169.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.423',
+	-50.00,
+	180.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.424',
+	40.00,
+	-126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.425',
+	40.00,
+	149.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.426',
+	-53.00,
+	-23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.427',
+	79.00,
+	-82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.428',
+	-47.00,
+	133.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.429',
+	54.00,
+	-148.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.430',
+	-48.00,
+	70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.431',
+	-28.00,
+	173.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.432',
+	53.00,
+	118.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.433',
+	41.00,
+	-133.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.434',
+	-1.00,
+	-90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.435',
+	-31.00,
+	-70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.436',
+	21.00,
+	-175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.437',
+	-21.00,
+	66.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.438',
+	9.00,
+	-10.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.439',
+	51.00,
+	0.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.440',
+	-6.00,
+	64.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.441',
+	-87.00,
+	165.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.442',
+	-42.00,
+	106.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.443',
+	-32.00,
 	62.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -6169,9 +5353,825 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.512',
-	-14.00,
+	'test.444',
+	42.00,
+	-25.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.445',
+	69.00,
+	-59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.446',
+	-52.00,
+	165.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.447',
+	-3.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.448',
+	-83.00,
+	151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.449',
+	-24.00,
+	35.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.450',
+	2.00,
+	-50.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.451',
+	63.00,
+	-67.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.452',
+	14.00,
+	15.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.453',
+	-46.00,
+	6.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.454',
+	-22.00,
+	19.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.455',
+	-40.00,
+	13.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.456',
+	-27.00,
+	-77.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.457',
+	35.00,
+	9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.458',
+	-41.00,
+	-68.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.459',
+	0.00,
+	-124.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.460',
+	-53.00,
+	-78.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.461',
+	77.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.462',
+	-4.00,
+	-107.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.463',
+	0.00,
+	139.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.464',
+	-21.00,
+	136.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.465',
+	-76.00,
+	124.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.466',
+	-66.00,
+	153.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.467',
+	-74.00,
+	-4.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.468',
+	-39.00,
+	147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.469',
+	-45.00,
+	39.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.470',
+	80.00,
+	-171.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.471',
+	-74.00,
+	35.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.472',
+	80.00,
+	26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.473',
+	32.00,
+	-5.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.474',
+	90.00,
+	-118.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.475',
+	15.00,
+	106.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.476',
+	-59.00,
+	34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.477',
+	10.00,
+	100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.478',
+	-81.00,
+	166.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.479',
+	3.00,
+	-52.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.480',
+	-6.00,
+	-117.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.481',
+	-67.00,
+	-59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.482',
+	-43.00,
+	-80.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.483',
+	61.00,
+	101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.484',
+	-34.00,
+	-127.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.485',
+	64.00,
+	-5.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.486',
+	4.00,
+	-146.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.487',
+	-69.00,
+	158.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.488',
 	1.00,
+	44.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.489',
+	88.00,
+	24.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.490',
+	-3.00,
+	26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.491',
+	-15.00,
+	179.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.492',
+	10.00,
+	-164.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.493',
+	-36.00,
+	131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.494',
+	31.00,
+	-125.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.495',
+	14.00,
+	134.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.496',
+	-63.00,
+	114.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.497',
+	-43.00,
+	-169.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.498',
+	-28.00,
+	-120.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.499',
+	-86.00,
+	108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.500',
+	-35.00,
+	56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.501',
+	76.00,
+	80.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.502',
+	49.00,
+	56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.503',
+	69.00,
+	131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.504',
+	70.00,
+	-142.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.505',
+	15.00,
+	97.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.506',
+	9.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.507',
+	77.00,
+	113.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.508',
+	-10.00,
+	-148.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.509',
+	50.00,
+	-176.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.510',
+	-61.00,
+	163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.511',
+	77.00,
+	-14.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.512',
+	62.00,
+	87.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6182,8 +6182,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.513',
-	-31.00,
-	-130.00,
+	57.00,
+	-125.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6195,7 +6195,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.514',
 	-67.00,
-	-18.00,
+	-17.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6206,8 +6206,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.515',
-	48.00,
-	37.00,
+	-22.00,
+	-33.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6218,8 +6218,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.516',
-	-79.00,
-	119.00,
+	-30.00,
+	-70.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6230,8 +6230,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.517',
-	78.00,
-	37.00,
+	-69.00,
+	158.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6242,8 +6242,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.518',
-	18.00,
-	172.00,
+	-42.00,
+	129.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6254,8 +6254,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.519',
-	-6.00,
-	-30.00,
+	47.00,
+	-87.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6266,8 +6266,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.520',
-	-11.00,
-	61.00,
+	-31.00,
+	88.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6278,8 +6278,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.521',
-	-28.00,
-	99.00,
+	-39.00,
+	-107.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6290,259 +6290,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.522',
-	41.00,
-	-136.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.523',
-	2.00,
-	-159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.524',
-	29.00,
-	137.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.525',
-	49.00,
-	40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.526',
-	81.00,
-	118.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.527',
-	27.00,
-	112.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.528',
-	-83.00,
-	-24.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.529',
-	-19.00,
-	-63.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.530',
-	-55.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.531',
-	-68.00,
-	149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.532',
-	-11.00,
-	170.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.533',
-	-71.00,
-	-80.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.534',
-	74.00,
-	161.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.535',
-	-55.00,
-	170.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.536',
-	5.00,
-	72.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.537',
-	-89.00,
-	-30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.538',
-	8.00,
-	-25.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.539',
-	7.00,
-	-40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.540',
-	50.00,
-	-155.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.541',
-	77.00,
-	-156.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.542',
-	-78.00,
-	-47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.543',
-	35.00,
+	57.00,
 	141.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -6553,9 +6301,261 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.523',
+	74.00,
+	-157.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.524',
+	14.00,
+	-68.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.525',
+	76.00,
+	76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.526',
+	-50.00,
+	145.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.527',
+	21.00,
+	-31.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.528',
+	72.00,
+	-14.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.529',
+	63.00,
+	50.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.530',
+	88.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.531',
+	40.00,
+	-90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.532',
+	-50.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.533',
+	-10.00,
+	-72.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.534',
+	20.00,
+	-4.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.535',
+	-84.00,
+	74.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.536',
+	20.00,
+	97.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.537',
+	-52.00,
+	163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.538',
+	-73.00,
+	-40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.539',
+	-46.00,
+	14.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.540',
+	40.00,
+	-2.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.541',
+	35.00,
+	-9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.542',
+	-73.00,
+	-102.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.543',
+	-90.00,
+	-37.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.544',
-	58.00,
-	-176.00,
+	-50.00,
+	-175.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6566,8 +6566,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.545',
-	-41.00,
-	103.00,
+	-43.00,
+	-2.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6578,8 +6578,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.546',
-	-32.00,
-	-98.00,
+	-89.00,
+	-127.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6590,8 +6590,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.547',
-	71.00,
-	-62.00,
+	52.00,
+	-116.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6603,7 +6603,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.548',
 	-34.00,
-	166.00,
+	-166.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6614,8 +6614,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.549',
-	89.00,
-	8.00,
+	-45.00,
+	-103.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6626,8 +6626,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.550',
-	57.00,
-	64.00,
+	8.00,
+	-11.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -6638,403 +6638,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.551',
-	10.00,
-	-110.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.552',
-	-59.00,
-	137.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.553',
-	-26.00,
-	73.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.554',
-	-29.00,
-	-102.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.555',
-	70.00,
-	39.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.556',
-	-37.00,
-	120.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.557',
-	87.00,
-	-12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.558',
-	-70.00,
-	107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.559',
-	-22.00,
-	-27.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.560',
-	53.00,
-	148.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.561',
-	-14.00,
-	122.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.562',
-	19.00,
-	-84.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.563',
-	-71.00,
-	-154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.564',
-	83.00,
-	114.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.565',
-	-54.00,
-	-69.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.566',
-	12.00,
-	-1.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.567',
-	-30.00,
-	149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.568',
-	71.00,
-	50.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.569',
-	-86.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.570',
-	73.00,
-	146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.571',
-	-85.00,
-	138.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.572',
-	26.00,
-	-104.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.573',
-	30.00,
-	60.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.574',
-	60.00,
-	-122.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.575',
-	50.00,
-	-96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.576',
-	90.00,
-	1.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.577',
-	25.00,
-	-40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.578',
-	1.00,
-	46.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.579',
-	-74.00,
-	-21.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.580',
-	-13.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.581',
-	-19.00,
-	140.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.582',
-	21.00,
-	42.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.583',
-	-88.00,
-	-134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.584',
-	-39.00,
+	86.00,
 	110.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -7045,9 +6649,405 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.552',
+	-69.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.553',
+	53.00,
+	-58.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.554',
+	-36.00,
+	-134.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.555',
+	86.00,
+	94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.556',
+	-60.00,
+	86.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.557',
+	-64.00,
+	-180.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.558',
+	68.00,
+	-107.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.559',
+	14.00,
+	143.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.560',
+	26.00,
+	124.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.561',
+	-62.00,
+	-156.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.562',
+	-32.00,
+	12.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.563',
+	-15.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.564',
+	47.00,
+	-126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.565',
+	69.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.566',
+	-87.00,
+	151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.567',
+	-60.00,
+	-127.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.568',
+	63.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.569',
+	-10.00,
+	-167.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.570',
+	-76.00,
+	-175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.571',
+	60.00,
+	-111.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.572',
+	-63.00,
+	-94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.573',
+	-35.00,
+	-175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.574',
+	-66.00,
+	-84.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.575',
+	66.00,
+	-29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.576',
+	-83.00,
+	123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.577',
+	-61.00,
+	132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.578',
+	30.00,
+	-110.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.579',
+	-54.00,
+	118.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.580',
+	-14.00,
+	-15.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.581',
+	-41.00,
+	-111.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.582',
+	32.00,
+	58.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.583',
+	30.00,
+	-40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.584',
+	56.00,
+	-83.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.585',
-	-5.00,
-	61.00,
+	41.00,
+	-43.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7058,8 +7058,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.586',
-	-53.00,
-	158.00,
+	-60.00,
+	-33.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7070,8 +7070,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.587',
-	56.00,
-	-151.00,
+	-66.00,
+	68.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7082,8 +7082,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.588',
-	11.00,
-	53.00,
+	4.00,
+	4.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7094,247 +7094,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.589',
-	22.00,
-	-137.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.590',
-	-27.00,
-	0.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.591',
-	-67.00,
-	137.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.592',
-	11.00,
-	119.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.593',
-	23.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.594',
-	-24.00,
-	-67.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.595',
-	54.00,
-	29.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.596',
-	-74.00,
-	74.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.597',
-	14.00,
-	73.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.598',
-	61.00,
-	-96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.599',
-	-45.00,
-	-31.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.600',
-	41.00,
-	-52.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.601',
-	-90.00,
-	54.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.602',
-	6.00,
-	100.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.603',
-	42.00,
-	30.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.604',
-	-53.00,
-	177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.605',
-	3.00,
-	-22.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.606',
-	32.00,
-	-95.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.607',
-	-87.00,
-	95.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.608',
-	66.00,
-	34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.609',
-	65.00,
+	72.00,
 	145.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -7345,9 +7105,249 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.590',
+	-86.00,
+	-168.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.591',
+	-25.00,
+	7.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.592',
+	-14.00,
+	-89.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.593',
+	-3.00,
+	-27.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.594',
+	-39.00,
+	70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.595',
+	-86.00,
+	-122.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.596',
+	42.00,
+	-130.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.597',
+	65.00,
+	45.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.598',
+	65.00,
+	-24.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.599',
+	-85.00,
+	-88.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.600',
+	28.00,
+	-38.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.601',
+	60.00,
+	137.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.602',
+	-24.00,
+	-8.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.603',
+	-22.00,
+	-140.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.604',
+	80.00,
+	81.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.605',
+	58.00,
+	126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.606',
+	-19.00,
+	-87.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.607',
+	85.00,
+	26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.608',
+	-17.00,
+	-114.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.609',
+	-84.00,
+	22.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.610',
-	89.00,
-	24.00,
+	23.00,
+	-39.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7358,6 +7358,354 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.611',
+	36.00,
+	22.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.612',
+	-60.00,
+	62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.613',
+	-57.00,
+	175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.614',
+	10.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.615',
+	6.00,
+	-107.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.616',
+	68.00,
+	10.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.617',
+	10.00,
+	-3.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.618',
+	48.00,
+	27.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.619',
+	-49.00,
+	-35.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.620',
+	-6.00,
+	41.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.621',
+	51.00,
+	-25.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.622',
+	-19.00,
+	-76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.623',
+	23.00,
+	-54.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.624',
+	-79.00,
+	49.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.625',
+	23.00,
+	-170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.626',
+	-15.00,
+	-169.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.627',
+	84.00,
+	160.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.628',
+	-53.00,
+	-23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.629',
+	-16.00,
+	-148.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.630',
+	44.00,
+	-163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.631',
+	53.00,
+	-63.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.632',
+	10.00,
+	36.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.633',
+	85.00,
+	-100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.634',
+	-8.00,
+	-85.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.635',
+	36.00,
+	89.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.636',
+	-39.00,
+	114.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.637',
+	61.00,
+	-70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.638',
+	74.00,
+	40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.639',
+	-48.00,
+	-52.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.640',
 	-25.00,
 	143.00,
 	(select seller_id from sellers where seller_code = 'test')
@@ -7369,357 +7717,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.612',
-	11.00,
-	-180.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.613',
-	16.00,
-	-166.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.614',
-	41.00,
-	-149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.615',
-	9.00,
-	29.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.616',
-	-84.00,
-	-15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.617',
-	45.00,
-	53.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.618',
-	-42.00,
-	4.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.619',
-	-45.00,
-	19.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.620',
-	40.00,
-	125.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.621',
-	-19.00,
-	147.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.622',
-	-46.00,
-	-68.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.623',
-	-56.00,
-	-37.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.624',
-	72.00,
-	-135.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.625',
-	-4.00,
-	85.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.626',
-	-80.00,
-	-2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.627',
-	3.00,
-	-79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.628',
-	-4.00,
-	-126.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.629',
-	-9.00,
-	82.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.630',
-	51.00,
-	-9.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.631',
-	81.00,
-	97.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.632',
-	-58.00,
-	33.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.633',
-	-45.00,
-	95.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.634',
-	-71.00,
-	-144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.635',
-	37.00,
-	-35.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.636',
-	75.00,
-	61.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.637',
-	-77.00,
-	-9.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.638',
-	84.00,
-	6.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.639',
-	-35.00,
-	43.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.640',
-	75.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
 	'test.641',
-	11.00,
-	-155.00,
+	66.00,
+	-152.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7730,8 +7730,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.642',
-	-59.00,
-	-89.00,
+	52.00,
+	11.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7742,8 +7742,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.643',
-	-42.00,
-	168.00,
+	38.00,
+	114.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7754,8 +7754,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.644',
-	-3.00,
-	-156.00,
+	81.00,
+	-12.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7766,19 +7766,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.645',
-	-32.00,
-	117.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.646',
-	80.00,
+	3.00,
 	102.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -7789,9 +7777,21 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.646',
+	-27.00,
+	-101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.647',
-	-63.00,
-	-67.00,
+	68.00,
+	104.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7803,7 +7803,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.648',
 	31.00,
-	-106.00,
+	4.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7814,8 +7814,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.649',
-	-26.00,
-	33.00,
+	13.00,
+	-31.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -7826,427 +7826,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.650',
-	82.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.651',
-	34.00,
-	64.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.652',
-	15.00,
-	-115.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.653',
-	77.00,
-	-143.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.654',
-	54.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.655',
-	-16.00,
-	84.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.656',
-	64.00,
-	96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.657',
-	67.00,
-	-52.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.658',
-	6.00,
-	-158.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.659',
-	26.00,
-	115.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.660',
-	7.00,
-	-170.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.661',
-	75.00,
-	-107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.662',
-	10.00,
-	113.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.663',
-	36.00,
-	99.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.664',
-	81.00,
-	125.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.665',
-	59.00,
-	-130.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.666',
-	-24.00,
-	145.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.667',
-	83.00,
-	159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.668',
-	-12.00,
-	124.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.669',
-	-33.00,
-	-62.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.670',
-	55.00,
-	52.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.671',
-	-44.00,
-	-177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.672',
-	45.00,
-	20.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.673',
-	19.00,
-	-147.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.674',
-	-85.00,
-	129.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.675',
-	88.00,
-	105.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.676',
-	-74.00,
-	-41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.677',
-	71.00,
-	41.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.678',
-	-21.00,
-	-121.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.679',
-	-57.00,
-	34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.680',
-	-37.00,
-	-124.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.681',
-	-53.00,
-	-177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.682',
-	10.00,
-	7.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.683',
-	-67.00,
-	65.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.684',
-	68.00,
-	78.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.685',
-	21.00,
+	-78.00,
 	44.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -8257,9 +7837,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.686',
-	-76.00,
-	124.00,
+	'test.651',
+	-75.00,
+	-60.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -8269,21 +7849,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.687',
-	88.00,
-	111.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.688',
-	-62.00,
+	'test.652',
 	-54.00,
+	-127.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -8293,8 +7861,32 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.689',
-	-37.00,
+	'test.653',
+	-17.00,
+	82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.654',
+	-55.00,
+	-75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.655',
+	-15.00,
 	-135.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -8305,776 +7897,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.690',
-	59.00,
-	49.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.691',
-	-28.00,
-	-116.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.692',
-	61.00,
-	154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.693',
-	79.00,
-	156.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.694',
-	75.00,
-	-108.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.695',
-	6.00,
-	-100.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.696',
-	-85.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.697',
-	49.00,
-	167.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.698',
-	35.00,
-	-151.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.699',
-	28.00,
-	-56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.700',
-	-60.00,
-	107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.701',
-	27.00,
-	135.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.702',
-	-74.00,
-	-94.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.703',
-	-12.00,
-	-175.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.704',
-	-37.00,
-	-173.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.705',
-	-10.00,
-	-167.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.706',
-	-73.00,
-	72.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.707',
-	75.00,
-	149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.708',
-	16.00,
-	23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.709',
-	76.00,
-	2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.710',
-	58.00,
-	37.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.711',
-	87.00,
-	61.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.712',
-	-2.00,
-	144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.713',
-	-79.00,
-	-6.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.714',
-	78.00,
-	158.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.715',
-	8.00,
-	178.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.716',
-	-56.00,
-	-154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.717',
-	76.00,
-	100.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.718',
-	18.00,
-	152.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.719',
-	-33.00,
-	-107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.720',
-	18.00,
-	57.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.721',
-	49.00,
-	-136.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.722',
-	-86.00,
-	-5.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.723',
-	-29.00,
-	119.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.724',
-	56.00,
-	-137.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.725',
-	-30.00,
-	-152.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.726',
-	-71.00,
-	-11.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.727',
-	-4.00,
-	180.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.728',
-	59.00,
-	-84.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.729',
-	81.00,
-	-140.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.730',
-	-4.00,
-	-129.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.731',
-	12.00,
-	-31.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.732',
-	50.00,
-	169.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.733',
-	-36.00,
-	34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.734',
-	-39.00,
-	-69.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.735',
-	33.00,
-	-154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.736',
-	37.00,
-	74.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.737',
-	-2.00,
-	-122.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.738',
-	34.00,
-	-159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.739',
-	-35.00,
-	105.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.740',
-	86.00,
-	177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.741',
-	-20.00,
-	66.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.742',
-	33.00,
-	55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.743',
-	42.00,
-	-87.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.744',
-	-53.00,
-	-77.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.745',
-	1.00,
-	-122.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.746',
-	-40.00,
-	56.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.747',
-	29.00,
-	-54.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.748',
-	-80.00,
-	12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.749',
-	-17.00,
-	101.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.750',
-	-73.00,
-	0.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.751',
-	82.00,
-	-31.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.752',
-	-40.00,
-	-63.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.753',
-	-37.00,
-	141.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.754',
-	73.00,
+	'test.656',
+	-43.00,
 	-165.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9085,9 +7909,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.755',
-	-30.00,
-	-146.00,
+	'test.657',
+	-21.00,
+	-102.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9097,9 +7921,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.756',
-	69.00,
-	-94.00,
+	'test.658',
+	-23.00,
+	-166.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9109,9 +7933,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.757',
-	-10.00,
-	102.00,
+	'test.659',
+	1.00,
+	159.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9121,68 +7945,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.758',
-	15.00,
-	33.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.759',
-	-56.00,
-	-76.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.760',
-	67.00,
-	26.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.761',
-	-53.00,
-	100.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.762',
-	-24.00,
-	38.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.763',
-	13.00,
+	'test.660',
+	28.00,
 	-88.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9193,9 +7957,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.764',
-	-13.00,
-	-21.00,
+	'test.661',
+	-82.00,
+	-132.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9205,9 +7969,33 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.765',
+	'test.662',
+	17.00,
+	-122.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.663',
+	24.00,
+	-34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.664',
 	69.00,
-	-20.00,
+	-50.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9217,9 +8005,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.766',
-	49.00,
-	8.00,
+	'test.665',
+	58.00,
+	47.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9229,105 +8017,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.767',
-	-26.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.768',
-	-79.00,
-	154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.769',
-	-55.00,
-	-162.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.770',
-	31.00,
-	-7.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.771',
-	20.00,
-	-27.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.772',
-	-67.00,
-	160.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.773',
-	-87.00,
-	40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.774',
-	13.00,
-	-47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.775',
-	9.00,
+	'test.666',
 	34.00,
+	-15.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9337,32 +8029,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.776',
-	-66.00,
-	-138.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.777',
-	-1.00,
-	-149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.778',
-	3.00,
+	'test.667',
+	74.00,
 	119.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9373,9 +8041,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.779',
-	0.00,
-	80.00,
+	'test.668',
+	45.00,
+	-54.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9385,9 +8053,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.780',
-	-16.00,
-	-4.00,
+	'test.669',
+	86.00,
+	-13.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9397,9 +8065,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.781',
-	-58.00,
-	107.00,
+	'test.670',
+	49.00,
+	178.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9409,9 +8077,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.782',
-	32.00,
-	-1.00,
+	'test.671',
+	-20.00,
+	60.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9421,8 +8089,44 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.783',
-	29.00,
+	'test.672',
+	71.00,
+	124.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.673',
+	22.00,
+	52.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.674',
+	-65.00,
+	73.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.675',
+	78.00,
 	-159.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9433,128 +8137,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.784',
-	50.00,
-	-28.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.785',
-	7.00,
-	-67.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.786',
-	59.00,
-	63.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.787',
-	3.00,
-	-51.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.788',
-	79.00,
-	-54.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.789',
-	20.00,
-	24.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.790',
-	-73.00,
-	32.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.791',
-	15.00,
-	36.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.792',
-	19.00,
-	-44.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.793',
-	-19.00,
-	12.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.794',
-	17.00,
+	'test.676',
+	-21.00,
 	92.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9565,9 +8149,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.795',
-	50.00,
-	146.00,
+	'test.677',
+	36.00,
+	126.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9577,9 +8161,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.796',
-	-70.00,
-	-41.00,
+	'test.678',
+	47.00,
+	8.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9589,9 +8173,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.797',
-	62.00,
-	77.00,
+	'test.679',
+	19.00,
+	38.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9601,9 +8185,93 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.798',
+	'test.680',
+	-40.00,
+	132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.681',
+	5.00,
+	91.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.682',
+	-59.00,
+	-148.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.683',
+	-37.00,
+	53.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.684',
+	-77.00,
+	-9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.685',
+	72.00,
+	-131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.686',
+	-1.00,
+	-24.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.687',
 	48.00,
-	157.00,
+	75.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9613,9 +8281,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.799',
-	55.00,
-	78.00,
+	'test.688',
+	-46.00,
+	-114.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9625,9 +8293,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.800',
-	-54.00,
-	154.00,
+	'test.689',
+	-29.00,
+	-178.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9637,9 +8305,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.801',
-	-71.00,
-	166.00,
+	'test.690',
+	-47.00,
+	-70.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9649,9 +8317,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.802',
-	-42.00,
-	179.00,
+	'test.691',
+	-40.00,
+	168.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9661,9 +8329,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.803',
-	-53.00,
-	169.00,
+	'test.692',
+	29.00,
+	-49.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9673,19 +8341,7 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.804',
-	-28.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.805',
+	'test.693',
 	-46.00,
 	-97.00,
 	(select seller_id from sellers where seller_code = 'test')
@@ -9697,81 +8353,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.806',
-	-5.00,
-	-89.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.807',
-	-85.00,
-	143.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.808',
-	-25.00,
-	-152.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.809',
-	80.00,
-	26.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.810',
-	-6.00,
-	49.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.811',
-	-46.00,
-	116.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.812',
+	'test.694',
+	37.00,
 	31.00,
-	85.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -9781,8 +8365,44 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.813',
-	-87.00,
+	'test.695',
+	-71.00,
+	115.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.696',
+	-13.00,
+	44.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.697',
+	49.00,
+	-108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.698',
+	88.00,
 	176.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -9793,272 +8413,632 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.814',
-	-71.00,
-	-20.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.815',
-	-58.00,
-	93.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.816',
-	-37.00,
-	111.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.817',
-	16.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.818',
-	77.00,
-	-16.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.819',
-	89.00,
-	102.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.820',
-	18.00,
-	-15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.821',
-	61.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.822',
-	48.00,
-	-138.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.823',
-	-6.00,
-	-148.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.824',
-	-72.00,
-	153.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.825',
-	84.00,
-	83.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.826',
-	-33.00,
-	-111.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.827',
-	-35.00,
-	-159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.828',
-	-33.00,
-	79.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.829',
-	-31.00,
-	167.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.830',
-	-10.00,
-	-172.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.831',
-	5.00,
-	-80.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.832',
-	-28.00,
-	131.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.833',
-	33.00,
-	-29.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.834',
-	60.00,
-	173.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.835',
-	-49.00,
-	42.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.836',
+	'test.699',
+	62.00,
 	80.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.700',
+	35.00,
+	-28.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.701',
+	9.00,
+	49.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.702',
+	20.00,
+	-38.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.703',
+	-85.00,
+	135.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.704',
+	-27.00,
+	175.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.705',
+	-24.00,
+	148.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.706',
+	1.00,
+	-3.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.707',
+	-7.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.708',
+	-2.00,
+	120.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.709',
+	-35.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.710',
+	-25.00,
+	-34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.711',
+	-31.00,
+	38.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.712',
+	28.00,
+	163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.713',
+	-25.00,
+	127.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.714',
+	-33.00,
+	82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.715',
+	12.00,
+	9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.716',
+	7.00,
+	151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.717',
+	-6.00,
+	-100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.718',
+	-35.00,
+	52.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.719',
+	85.00,
+	125.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.720',
+	57.00,
+	-91.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.721',
+	-27.00,
+	17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.722',
+	-2.00,
+	36.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.723',
+	-61.00,
+	130.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.724',
+	22.00,
+	90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.725',
+	21.00,
+	88.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.726',
+	19.00,
+	59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.727',
+	-20.00,
+	-163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.728',
+	12.00,
+	119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.729',
+	58.00,
+	-128.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.730',
+	-11.00,
+	9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.731',
+	-59.00,
+	-152.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.732',
+	-42.00,
+	-170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.733',
+	-66.00,
+	-88.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.734',
+	33.00,
+	-73.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.735',
+	-17.00,
+	-109.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.736',
+	-58.00,
+	-139.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.737',
+	-19.00,
+	85.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.738',
+	-59.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.739',
+	-82.00,
+	81.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.740',
+	71.00,
+	-123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.741',
+	44.00,
+	-84.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.742',
+	-87.00,
+	108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.743',
+	-54.00,
+	37.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.744',
+	33.00,
+	26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.745',
+	60.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.746',
+	-60.00,
+	-142.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.747',
+	7.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.748',
+	-86.00,
+	-112.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.749',
+	-20.00,
+	140.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.750',
+	-73.00,
+	-143.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.751',
+	83.00,
 	34.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -10069,9 +9049,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.837',
-	-64.00,
-	29.00,
+	'test.752',
+	-47.00,
+	-70.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10081,7 +9061,547 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.838',
+	'test.753',
+	-21.00,
+	94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.754',
+	-67.00,
+	-70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.755',
+	-68.00,
+	-28.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.756',
+	80.00,
+	-100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.757',
+	-28.00,
+	-102.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.758',
+	-13.00,
+	-79.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.759',
+	90.00,
+	-111.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.760',
+	-35.00,
+	-44.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.761',
+	-76.00,
+	34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.762',
+	31.00,
+	-1.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.763',
+	-67.00,
+	-164.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.764',
+	78.00,
+	-100.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.765',
+	71.00,
+	23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.766',
+	-49.00,
+	31.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.767',
+	35.00,
+	-94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.768',
+	43.00,
+	25.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.769',
+	-39.00,
+	-40.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.770',
+	87.00,
+	147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.771',
+	79.00,
+	15.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.772',
+	-7.00,
+	79.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.773',
+	-88.00,
+	76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.774',
+	62.00,
+	-101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.775',
+	46.00,
+	-53.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.776',
+	87.00,
+	-23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.777',
+	37.00,
+	28.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.778',
+	45.00,
+	154.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.779',
+	-56.00,
+	15.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.780',
+	29.00,
+	-135.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.781',
+	-30.00,
+	43.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.782',
+	-24.00,
+	62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.783',
+	-87.00,
+	-18.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.784',
+	-21.00,
+	101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.785',
+	-20.00,
+	59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.786',
+	41.00,
+	-151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.787',
+	71.00,
+	21.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.788',
+	-24.00,
+	125.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.789',
+	-84.00,
+	58.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.790',
+	23.00,
+	-151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.791',
+	26.00,
+	27.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.792',
+	60.00,
+	163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.793',
+	31.00,
+	90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.794',
+	32.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.795',
+	36.00,
+	19.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.796',
+	-88.00,
+	-92.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.797',
+	-86.00,
+	-97.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.798',
 	-66.00,
 	50.00,
 	(select seller_id from sellers where seller_code = 'test')
@@ -10093,357 +9613,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.839',
-	6.00,
-	90.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.840',
-	71.00,
-	-179.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.841',
-	-75.00,
-	104.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.842',
-	8.00,
-	-115.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.843',
-	-67.00,
-	142.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.844',
-	54.00,
-	-149.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.845',
-	66.00,
-	-92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.846',
-	-18.00,
-	-17.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.847',
-	-21.00,
-	-150.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.848',
-	-83.00,
-	111.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.849',
-	56.00,
-	-177.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.850',
-	56.00,
-	-106.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.851',
-	-86.00,
-	-71.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.852',
-	-35.00,
-	160.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.853',
-	80.00,
-	-144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.854',
-	55.00,
-	-103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.855',
-	19.00,
-	164.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.856',
-	21.00,
-	40.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.857',
-	64.00,
-	110.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.858',
-	16.00,
-	-64.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.859',
-	-43.00,
-	152.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.860',
-	66.00,
-	117.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.861',
-	-51.00,
-	129.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.862',
-	-65.00,
-	-107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.863',
-	85.00,
-	43.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.864',
-	-37.00,
-	96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.865',
-	31.00,
-	-109.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.866',
-	71.00,
-	170.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.867',
-	-53.00,
-	47.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.868',
-	-19.00,
+	'test.799',
 	34.00,
+	-88.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10453,9 +9625,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.869',
-	-69.00,
-	-98.00,
+	'test.800',
+	1.00,
+	52.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10465,9 +9637,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.870',
-	45.00,
-	-169.00,
+	'test.801',
+	-32.00,
+	-129.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10477,44 +9649,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.871',
-	-15.00,
-	145.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.872',
-	25.00,
-	19.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.873',
-	-3.00,
-	-39.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.874',
-	54.00,
+	'test.802',
+	17.00,
 	-9.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -10525,9 +9661,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.875',
-	-24.00,
-	-14.00,
+	'test.803',
+	33.00,
+	-43.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10537,9 +9673,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.876',
-	-46.00,
-	-91.00,
+	'test.804',
+	44.00,
+	-66.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10549,129 +9685,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.877',
-	31.00,
-	156.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.878',
-	7.00,
-	-173.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.879',
-	-69.00,
-	-37.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.880',
-	-76.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.881',
-	2.00,
-	-161.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.882',
-	-19.00,
-	92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.883',
-	-54.00,
-	50.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.884',
-	-85.00,
-	-2.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.885',
-	37.00,
-	18.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.886',
-	76.00,
-	-166.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.887',
+	'test.805',
+	-82.00,
 	19.00,
-	106.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10681,9 +9697,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.888',
-	-86.00,
-	-74.00,
+	'test.806',
+	69.00,
+	94.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10693,9 +9709,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.889',
-	-72.00,
-	-122.00,
+	'test.807',
+	40.00,
+	54.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10705,9 +9721,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.890',
-	-30.00,
-	-123.00,
+	'test.808',
+	-75.00,
+	4.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10717,9 +9733,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.891',
-	77.00,
-	-35.00,
+	'test.809',
+	71.00,
+	167.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10729,9 +9745,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.892',
-	-24.00,
-	-168.00,
+	'test.810',
+	-20.00,
+	137.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10741,9 +9757,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.893',
-	49.00,
-	29.00,
+	'test.811',
+	-21.00,
+	-21.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10753,8 +9769,68 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.894',
-	-11.00,
+	'test.812',
+	85.00,
+	95.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.813',
+	55.00,
+	160.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.814',
+	-52.00,
+	-145.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.815',
+	6.00,
+	17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.816',
+	37.00,
+	89.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.817',
+	-38.00,
 	-101.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -10765,9 +9841,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.895',
-	-15.00,
-	-38.00,
+	'test.818',
+	-81.00,
+	72.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10777,8 +9853,764 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.896',
-	-80.00,
+	'test.819',
+	-88.00,
+	94.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.820',
+	66.00,
+	-30.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.821',
+	-6.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.822',
+	23.00,
+	-67.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.823',
+	11.00,
+	-26.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.824',
+	60.00,
+	48.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.825',
+	-27.00,
+	-132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.826',
+	-14.00,
+	34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.827',
+	68.00,
+	-24.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.828',
+	11.00,
+	146.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.829',
+	-27.00,
+	-99.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.830',
+	20.00,
+	-56.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.831',
+	85.00,
+	-29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.832',
+	-35.00,
+	-145.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.833',
+	-13.00,
+	57.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.834',
+	47.00,
+	-147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.835',
+	10.00,
+	-70.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.836',
+	42.00,
+	-170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.837',
+	25.00,
+	62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.838',
+	-82.00,
+	-114.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.839',
+	-65.00,
+	-47.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.840',
+	-16.00,
+	19.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.841',
+	6.00,
+	176.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.842',
+	-42.00,
+	-21.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.843',
+	17.00,
+	64.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.844',
+	-51.00,
+	147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.845',
+	-79.00,
+	-104.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.846',
+	90.00,
+	95.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.847',
+	8.00,
+	-95.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.848',
+	-87.00,
+	-20.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.849',
+	12.00,
+	-99.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.850',
+	14.00,
+	-104.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.851',
+	51.00,
+	130.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.852',
+	10.00,
+	-29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.853',
+	-47.00,
+	63.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.854',
+	-2.00,
+	139.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.855',
+	-15.00,
+	-150.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.856',
+	-26.00,
+	-101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.857',
+	24.00,
+	23.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.858',
+	84.00,
+	-130.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.859',
+	21.00,
+	-163.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.860',
+	-77.00,
+	9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.861',
+	-76.00,
+	-39.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.862',
+	17.00,
+	142.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.863',
+	-85.00,
+	-161.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.864',
+	33.00,
+	32.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.865',
+	88.00,
+	73.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.866',
+	34.00,
+	-62.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.867',
+	-3.00,
+	49.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.868',
+	-33.00,
+	-105.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.869',
+	-42.00,
+	96.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.870',
+	-18.00,
+	-147.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.871',
+	-78.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.872',
+	-72.00,
+	105.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.873',
+	82.00,
+	-59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.874',
+	84.00,
+	17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.875',
+	85.00,
+	-108.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.876',
+	-61.00,
+	3.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.877',
+	35.00,
+	-68.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.878',
+	-40.00,
+	-106.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.879',
+	-66.00,
+	-4.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.880',
+	82.00,
+	-34.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.881',
+	10.00,
+	-63.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.882',
+	11.00,
 	87.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -10789,9 +10621,177 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.883',
+	-37.00,
+	89.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.884',
+	-33.00,
+	90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.885',
+	-84.00,
+	64.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.886',
+	71.00,
+	-43.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.887',
+	2.00,
+	37.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.888',
+	51.00,
+	98.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.889',
+	6.00,
+	64.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.890',
+	9.00,
+	-172.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.891',
+	63.00,
+	-105.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.892',
+	53.00,
+	-82.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.893',
+	-78.00,
+	-118.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.894',
+	-68.00,
+	-131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.895',
+	4.00,
+	53.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.896',
+	-23.00,
+	29.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.897',
-	39.00,
-	44.00,
+	14.00,
+	55.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10802,8 +10802,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.898',
-	-51.00,
-	148.00,
+	26.00,
+	-40.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10814,19 +10814,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.899',
-	90.00,
-	-162.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.900',
-	-24.00,
+	-66.00,
 	-123.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -10837,9 +10825,21 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.900',
+	-4.00,
+	-141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.901',
-	-23.00,
-	-74.00,
+	-77.00,
+	-117.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10850,8 +10850,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.902',
-	-23.00,
-	-107.00,
+	-76.00,
+	7.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10862,8 +10862,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.903',
-	-11.00,
-	-77.00,
+	-58.00,
+	150.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10874,8 +10874,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.904',
-	6.00,
-	28.00,
+	-45.00,
+	-119.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10886,8 +10886,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.905',
-	-21.00,
-	-13.00,
+	62.00,
+	-114.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10899,7 +10899,7 @@ INSERT INTO datacenters(
 VALUES(
 	'test.906',
 	6.00,
-	28.00,
+	37.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10910,8 +10910,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.907',
-	52.00,
-	7.00,
+	71.00,
+	-128.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10922,8 +10922,8 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.908',
-	4.00,
-	-153.00,
+	81.00,
+	-99.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -10934,223 +10934,7 @@ INSERT INTO datacenters(
 	seller_id)
 VALUES(
 	'test.909',
-	-71.00,
-	-32.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.910',
-	-9.00,
-	-18.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.911',
-	70.00,
-	-82.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.912',
-	60.00,
-	87.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.913',
-	-79.00,
-	148.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.914',
-	31.00,
-	145.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.915',
-	-77.00,
-	129.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.916',
-	84.00,
-	-151.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.917',
-	7.00,
-	120.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.918',
-	63.00,
-	93.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.919',
-	-56.00,
-	-106.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.920',
-	-72.00,
-	-134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.921',
-	42.00,
-	48.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.922',
-	89.00,
-	91.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.923',
-	-4.00,
-	103.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.924',
-	-11.00,
-	-43.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.925',
-	34.00,
-	13.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.926',
-	-57.00,
-	59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.927',
-	-6.00,
+	75.00,
 	95.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -11161,9 +10945,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.928',
-	8.00,
-	-20.00,
+	'test.910',
+	-41.00,
+	-11.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11173,21 +10957,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.929',
-	-2.00,
-	80.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.930',
+	'test.911',
 	3.00,
-	-95.00,
+	-177.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11197,296 +10969,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.931',
-	37.00,
-	-71.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.932',
-	64.00,
-	-93.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.933',
-	83.00,
-	42.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.934',
-	8.00,
-	154.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.935',
-	-30.00,
-	97.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.936',
-	21.00,
-	-55.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.937',
-	-63.00,
-	-15.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.938',
-	77.00,
-	90.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.939',
-	2.00,
-	70.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.940',
-	-44.00,
-	-136.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.941',
-	-23.00,
-	58.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.942',
-	-56.00,
-	-124.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.943',
-	32.00,
-	-115.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.944',
-	-34.00,
-	-59.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.945',
-	-16.00,
-	-140.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.946',
-	24.00,
-	99.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.947',
-	22.00,
-	-167.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.948',
-	-24.00,
-	-107.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.949',
-	0.00,
-	92.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.950',
-	37.00,
-	141.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.951',
-	71.00,
-	109.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.952',
-	28.00,
-	-123.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.953',
-	18.00,
-	163.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.954',
-	68.00,
-	-156.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.955',
-	-53.00,
+	'test.912',
+	-45.00,
 	29.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -11497,9 +10981,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.956',
-	-69.00,
-	-132.00,
+	'test.913',
+	51.00,
+	-130.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11509,213 +10993,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.957',
-	-20.00,
-	5.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.958',
-	-10.00,
-	-22.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.959',
-	35.00,
-	104.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.960',
-	-57.00,
-	-22.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.961',
-	44.00,
-	144.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.962',
-	16.00,
-	34.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.963',
-	31.00,
-	146.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.964',
-	41.00,
-	96.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.965',
-	-44.00,
-	23.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.966',
-	-15.00,
-	138.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.967',
-	74.00,
-	82.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.968',
-	53.00,
-	-157.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.969',
-	11.00,
-	114.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.970',
-	-42.00,
-	-133.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.971',
-	84.00,
-	-166.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.972',
-	-67.00,
-	-133.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.973',
-	2.00,
-	-121.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.974',
+	'test.914',
 	61.00,
-	-41.00,
+	-19.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11725,9 +11005,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.975',
-	-11.00,
-	-60.00,
+	'test.915',
+	-46.00,
+	-105.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11737,9 +11017,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.976',
-	-79.00,
-	53.00,
+	'test.916',
+	49.00,
+	-34.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11749,68 +11029,8 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.977',
-	-53.00,
-	-134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.978',
-	0.00,
-	132.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.979',
-	60.00,
-	-159.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.980',
-	-54.00,
-	113.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.981',
-	-82.00,
-	-13.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.982',
-	-31.00,
+	'test.917',
+	-18.00,
 	165.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -11821,9 +11041,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.983',
-	0.00,
-	-54.00,
+	'test.918',
+	48.00,
+	156.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11833,9 +11053,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.984',
-	-61.00,
-	-28.00,
+	'test.919',
+	-5.00,
+	110.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11845,68 +11065,164 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.985',
-	-38.00,
-	-74.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.986',
-	45.00,
-	134.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.987',
+	'test.920',
 	87.00,
-	-176.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.988',
-	40.00,
-	-119.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.989',
-	-54.00,
-	-120.00,
-	(select seller_id from sellers where seller_code = 'test')
-);
-
-INSERT INTO datacenters(
-	datacenter_name, 
-	latitude, 
-	longitude, 
-	seller_id)
-VALUES(
-	'test.990',
 	37.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.921',
+	2.00,
+	75.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.922',
+	34.00,
+	-24.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.923',
+	67.00,
+	-133.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.924',
+	13.00,
+	77.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.925',
+	-72.00,
+	-8.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.926',
+	-80.00,
+	115.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.927',
+	-56.00,
+	127.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.928',
+	33.00,
+	41.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.929',
+	78.00,
+	-65.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.930',
+	31.00,
+	-71.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.931',
+	6.00,
+	-54.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.932',
+	-58.00,
+	106.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.933',
+	29.00,
 	-112.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -11917,9 +11233,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.991',
-	23.00,
-	20.00,
+	'test.934',
+	-22.00,
+	85.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11929,9 +11245,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.992',
-	-27.00,
-	-5.00,
+	'test.935',
+	55.00,
+	-172.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11941,9 +11257,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.993',
-	33.00,
-	118.00,
+	'test.936',
+	73.00,
+	-83.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11953,9 +11269,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.994',
-	52.00,
-	151.00,
+	'test.937',
+	28.00,
+	-40.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11965,9 +11281,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.995',
-	-48.00,
-	10.00,
+	'test.938',
+	4.00,
+	-39.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11977,9 +11293,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.996',
-	25.00,
-	3.00,
+	'test.939',
+	47.00,
+	-29.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -11989,9 +11305,9 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.997',
-	-42.00,
-	-79.00,
+	'test.940',
+	80.00,
+	8.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
@@ -12001,8 +11317,356 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
-	'test.998',
+	'test.941',
+	-86.00,
+	-140.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.942',
+	62.00,
+	-76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.943',
+	69.00,
+	-61.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.944',
+	-71.00,
+	-119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.945',
+	53.00,
+	144.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.946',
+	-24.00,
+	164.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.947',
+	17.00,
+	134.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.948',
+	29.00,
+	-15.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.949',
+	85.00,
+	-10.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.950',
+	-87.00,
+	-119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.951',
+	39.00,
+	-156.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.952',
 	75.00,
+	-73.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.953',
+	32.00,
+	-42.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.954',
+	-49.00,
+	-162.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.955',
+	29.00,
+	-130.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.956',
+	39.00,
+	-76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.957',
+	18.00,
+	-66.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.958',
+	61.00,
+	-38.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.959',
+	66.00,
+	123.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.960',
+	41.00,
+	-76.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.961',
+	89.00,
+	14.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.962',
+	-62.00,
+	131.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.963',
+	-9.00,
+	-165.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.964',
+	85.00,
+	97.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.965',
+	74.00,
+	109.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.966',
+	-3.00,
+	114.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.967',
+	-70.00,
+	-93.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.968',
+	75.00,
+	-111.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.969',
+	-62.00,
+	-59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.970',
+	33.00,
 	175.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
@@ -12013,9 +11677,345 @@ INSERT INTO datacenters(
 	longitude, 
 	seller_id)
 VALUES(
+	'test.971',
+	-40.00,
+	-17.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.972',
+	-30.00,
+	45.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.973',
+	59.00,
+	20.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.974',
+	77.00,
+	18.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.975',
+	-7.00,
+	-3.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.976',
+	51.00,
+	126.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.977',
+	90.00,
+	-170.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.978',
+	24.00,
+	-132.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.979',
+	-51.00,
+	79.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.980',
+	43.00,
+	-69.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.981',
+	69.00,
+	-89.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.982',
+	23.00,
+	90.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.983',
+	83.00,
+	-119.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.984',
+	-41.00,
+	103.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.985',
+	46.00,
+	9.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.986',
+	15.00,
+	-156.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.987',
+	49.00,
+	71.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.988',
+	-71.00,
+	6.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.989',
+	-66.00,
+	-115.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.990',
+	83.00,
+	-151.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.991',
+	-53.00,
+	101.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.992',
+	70.00,
+	113.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.993',
+	-18.00,
+	93.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.994',
+	-27.00,
+	25.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.995',
+	20.00,
+	33.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.996',
+	-47.00,
+	-59.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.997',
+	5.00,
+	179.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
+	'test.998',
+	39.00,
+	141.00,
+	(select seller_id from sellers where seller_code = 'test')
+);
+
+INSERT INTO datacenters(
+	datacenter_name, 
+	latitude, 
+	longitude, 
+	seller_id)
+VALUES(
 	'test.999',
-	4.00,
-	109.00,
+	-19.00,
+	-19.00,
 	(select seller_id from sellers where seller_code = 'test')
 );
 
