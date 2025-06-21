@@ -245,7 +245,7 @@ struct session_stats
 struct session_stats main_update_timeouts( struct main_t * main )
 {
     struct session_stats stats;
-    memset( &stats, 0, sizeof(session_stats) );
+    memset( &stats, 0, sizeof(struct session_stats) );
 
     // timeout old sessions in session map
     {

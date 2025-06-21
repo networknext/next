@@ -127,7 +127,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
         int max_queues = 2;
         {
             char command[2048];
-            snprintf( command, sizeof(command), "ethtool -l ens5 | grep -m 1 Combined |  perl -ne '/Combined:\\s*(\\d+)/ and print \"$1\\n\";'", (const char*) &network_interface_name[0] );
+            snprintf( command, sizeof(command), "ethtool -l %s | grep -m 1 Combined |  perl -ne '/Combined:\\s*(\\d+)/ and print \"$1\\n\";'", (const char*) &network_interface_name[0] );
             FILE * file = popen( command, "r" );
             char buffer[1024];
             while ( fgets( buffer, sizeof(buffer), file ) != NULL )
