@@ -52,79 +52,79 @@ locals {
 
     "google.iowa.1.a" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.b" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.c" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.d" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.e" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.f" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.g" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.h" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.i" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.1.j" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.2" = {
       datacenter_name = "google.iowa.2"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.3" = {
       datacenter_name = "google.iowa.3"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.6" = {
       datacenter_name = "google.iowa.6"
-      type            = "n1-standard-8"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
