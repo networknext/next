@@ -52,6 +52,8 @@ int read_config( struct config_t * config )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+    config->relay_internal_address = config->relay_public_address;
+
     char * relay_internal_address_env = getenv( "RELAY_INTERNAL_ADDRESS" );
     if ( relay_internal_address_env )
     {

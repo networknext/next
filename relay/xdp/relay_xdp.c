@@ -1708,7 +1708,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( token->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "route token expired" );
+                                    relay_printf( "route request route token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1842,7 +1842,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "route response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1851,7 +1851,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "route response packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -1877,14 +1877,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "route response packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                relay_printf( "verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -1908,7 +1906,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "route response packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1917,7 +1915,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "route response packet forward to previous hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
@@ -1933,7 +1931,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "route response packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1980,7 +1978,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( token->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "route token expired" );
+                                    relay_printf( "continue request packet continue token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1993,7 +1991,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "continue request packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2002,7 +2000,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "continue request packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2028,7 +2026,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                relay_printf( "forward to next hop" );
+                                relay_printf( "continue request packet forward to next hop" );
 
                                 struct redirect_args_t args;
                                 args.data = data;
@@ -2042,7 +2040,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "continue request packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2070,7 +2068,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 // IMPORTANT: required for verifier because it's dumber than shit
                                 if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "relay continue response packet is the wrong size" );
+                                    relay_printf( "continue response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2079,7 +2077,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
-                                    relay_printf( "relay continue response packet is the wrong size" );
+                                    relay_printf( "continue response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2104,7 +2102,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "continue response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2113,7 +2111,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "continue response packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2139,14 +2137,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "continue response packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                relay_printf( "verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2177,7 +2173,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "continue response packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2186,7 +2182,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "continue response packet forward to previous hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
@@ -2202,7 +2198,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "continue response packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2265,7 +2261,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "client to server packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2274,7 +2270,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "client to server packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2300,14 +2296,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= client_to_server_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "client to server packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                relay_printf( "verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2338,7 +2332,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "client to server packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2347,7 +2341,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
-                                relay_printf( "forward to next hop" );
+                                relay_printf( "client to server packet forward to next hop" );
 
                                 struct redirect_args_t args;
                                 args.data = data;
@@ -2361,7 +2355,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "client to server packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2424,7 +2418,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "server to client packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2433,7 +2427,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "server to client packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2459,14 +2453,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received: %lld < %lld" , packet_sequence, server_to_client_sequence );
+                                    relay_printf( "server to client packet already received: %lld < %lld" , packet_sequence, server_to_client_sequence );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                relay_printf( "verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2497,7 +2489,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "server to client packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2506,7 +2498,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "server to client packet forward to previous hop" );
 
                                 struct redirect_args_t args;
                                 args.data = data;
@@ -2520,7 +2512,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "server to client packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2580,7 +2572,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "session ping packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2589,7 +2581,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "session ping packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2615,14 +2607,12 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= client_to_server_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "session ping packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                relay_printf( "verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2653,7 +2643,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "session ping packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2665,7 +2655,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
                                 }
 
-                                relay_printf( "forward to next hop" );
+                                relay_printf( "session ping packet forward to next hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
@@ -2681,7 +2671,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "session ping packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2741,7 +2731,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "session pong packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2750,7 +2740,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( session->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "session expired" );
+                                    relay_printf( "session pong packet session expired" );
                                     bpf_map_delete_elem( &session_map, &key );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
@@ -2776,14 +2766,14 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "session pong packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
+                                relay_printf( "session pong packet verifying header" );
 
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
@@ -2814,7 +2804,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                      hash[6] != expected[6] || 
                                      hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "session pong packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2823,7 +2813,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
    
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "session pong packet forward to previous hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
@@ -2839,7 +2829,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
-                                    relay_printf( "redirect address is not in whitelist" );
+                                    relay_printf( "session pong packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
