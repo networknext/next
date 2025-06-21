@@ -1751,9 +1751,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 if ( bpf_map_update_elem( &session_map, &key, &session, BPF_NOEXIST ) == 0 )
                                 {
                                     relay_printf( "created session 0x%llx:%d", session.session_id, session.session_version );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session.envelope_kbps_up );
-                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session.envelope_kbps_down );
                                 }
 
                                 memcpy( data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
@@ -1844,20 +1841,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "route response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "route response packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -1998,20 +1981,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "continue request packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
                                 __u64 current_expire_timestamp = session->expire_timestamp;
 
                                 __sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
@@ -2104,20 +2073,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "continue response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "continue response packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2268,20 +2223,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "client to server packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
                                 __u64 packet_sequence = 0;
                                 packet_sequence  = header[0];
                                 packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
@@ -2420,20 +2361,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "server to client packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "server to client packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2579,20 +2506,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session ping packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
                                 __u64 packet_sequence = 0;
                                 packet_sequence  = header[0];
                                 packet_sequence |= ( ( (__u64)( header[1] ) ) << 8  );
@@ -2733,20 +2646,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 {
                                     relay_printf( "session pong packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session pong packet session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;

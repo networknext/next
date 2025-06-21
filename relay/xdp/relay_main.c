@@ -235,8 +235,66 @@ void clamp( int * value, int min, int max )
     }
 }
 
+struct session_stats
+{
+    uint64_t session_count;
+    uint64_t envelope_kbps_up;
+    uint64_t envelope_kbps_down;
+};
+
+struct session_stats main_update_timeouts( struct main_t * main )
+{
+    struct session_stats stats;
+    memset( &stats, 0, sizeof(session_stats) );
+
+    // timeout old sessions in session map
+    {
+        struct session_key current_key;
+        struct session_key next_key;
+
+        int next_key_result = bpf_map_get_next_key( main->session_map_fd, NULL, &next_key );
+
+        uint64_t current_timestamp = main->current_timestamp;
+
+        while ( next_key_result )
+        {
+            memcpy( &current_key, &next_key, sizeof(struct session_key) );
+
+            struct session_data current_value;
+
+            bool timed_out = false;
+            if ( bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value ) == 0 )
+            {
+                stats.session_count++;
+                stats.envelope_kbps_up += current_value.envelope_kbps_up;
+                stats.envelope_kbps_down += current_value.envelope_kbps_down;
+
+                timed_out = current_value.expire_timestamp <= current_timestamp;
+            }
+
+            next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );
+
+            if ( timed_out )
+            {
+                bpf_map_delete_elem( main->session_map_fd, &current_key );
+            }
+        }
+    }
+
+    // timeout old entries in whitelist map
+    {
+        // ...
+    }
+
+    return stats;
+}
+
 int main_update( struct main_t * main )
 {
+    // update timeouts
+
+    struct session_stats stats = main_update_timeouts( main );
+
     // get counters from xdp
 
     uint64_t counters[RELAY_NUM_COUNTERS];
@@ -262,6 +320,10 @@ int main_update( struct main_t * main )
             counters[j] += values[i].counters[j];
         }
     }
+
+    counters[RELAY_COUNTER_SESSIONS] = stats.session_count;
+    counters[RELAY_COUNTER_ENVELOPE_KBPS_UP] = stats.envelope_kbps_up;
+    counters[RELAY_COUNTER_ENVELOPE_KBPS_DOWN] = stats.envelope_kbps_down;
 
 #endif // #ifdef COMPILE_WIH_BPF
 
