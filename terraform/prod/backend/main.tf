@@ -1090,7 +1090,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 32
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 256
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1111,7 +1111,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=1
     NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
-    RASPBERRY_NUM_CLIENTS=100
+    RASPBERRY_NUM_CLIENTS=10
     NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     EOF
@@ -1130,7 +1130,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.production.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 100
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1000
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1142,7 +1142,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-server-${var.tag}"
+  name         = "test-s1erver-${var.tag}"
   machine_type = "n1-standard-2"
   zone         = var.test_server_zone
   tags         = ["allow-ssh", "allow-udp-all"]
