@@ -271,6 +271,8 @@ void * ping_thread_function( void * context )
                         }
                     }
                     printf( "-------------------------------------------------------\n" );
+
+                    fflush( stdout );
                 }
 
                 if ( message->delete_relays.num_relays > 0 )
@@ -293,6 +295,8 @@ void * ping_thread_function( void * context )
                         }
                     }
                     printf( "-------------------------------------------------------\n" );
+
+                    fflush( stdout );
                 }
 
                 relay_manager_update( ping->relay_manager, &message->new_relays, &message->delete_relays );

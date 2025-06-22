@@ -1627,7 +1627,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         }
                         else if ( value->expire_timestamp < state->current_timestamp )
                         {
-                            relay_printf( "whitelist entry expired" );
+                            relay_printf( "whitelist entry expired: %lld < %lld" , value->expire_timestamp, state->current_timestamp );
                             INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1896,7 +1896,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                session->special_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "route response packet forward to previous hop" );
 
@@ -1984,6 +1986,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 __u64 current_expire_timestamp = session->expire_timestamp;
 
                                 //__sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
+
                                 session->expire_timestamp = token->expire_timestamp;
 
                                 memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
@@ -2136,7 +2139,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                session->special_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "continue response packet forward to previous hop" );
 
@@ -2281,7 +2286,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 } 
 
-                                __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+                                // __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+
+                                session->payload_client_to_server_sequence = packet_sequence;
 
                                 relay_printf( "client to server packet forward to next hop" );
 
@@ -2424,7 +2431,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+                                // __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                session->payload_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "server to client packet forward to previous hop" );
 
@@ -2566,7 +2575,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence > client_to_server_sequence )
                                 {
-                                    __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+                                    // __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
+
+                                    session->special_client_to_server_sequence = packet_sequence;
                                 }
 
                                 relay_printf( "session ping packet forward to next hop" );
@@ -2711,7 +2722,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
+                                session->special_server_to_client_sequence = packet_sequence;
    
                                 relay_printf( "session pong packet forward to previous hop" );
 
