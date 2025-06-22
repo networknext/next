@@ -265,8 +265,9 @@ struct session_stats main_update_timeouts( struct main_t * main )
             bool timed_out = false;
             uint64_t session_id = 0;
             uint8_t session_version = 0;
-            struct session_value * current_value = bpf_map_lookup_elem( main->stats_fd, &current_key );
-            if ( current_value )
+            struct session_value current_value;
+            int result = bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value );
+            if ( result == 0 )
             {
                 stats.envelope_kbps_up += current_value->envelope_kbps_up;
                 stats.envelope_kbps_down += current_value->envelope_kbps_down;
