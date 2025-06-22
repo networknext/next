@@ -97,6 +97,7 @@ struct whitelist_value {
     __u64 expire_timestamp;
     __u8 source_address[6];
     __u8 dest_address[6];
+    __u8 is_server;                                                         // IMPORTANT: if this whitelist entry is from a server, we must hold on to it much longer before timing it out (>10 minutes)
 };
 
 #pragma pack(push, 1)

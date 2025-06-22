@@ -169,7 +169,7 @@ void client_thread_function( void * data )
                 break;
             }
 
-            // todo: make this configurable via env var, and default to 1 second
+            // todo: make this configurable via env var, and default to 100 fps. docker can reduce it to 1sec if it wants
             next_platform_sleep( 1.0f / 100.0f );
         }
 
