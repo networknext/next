@@ -263,7 +263,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
             struct session_data current_value;
 
             bool timed_out = false;
-            if ( bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value ) == 0 )
+            if ( bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value ) )
             {
                 stats.session_count++;
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
