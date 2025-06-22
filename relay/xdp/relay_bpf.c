@@ -92,6 +92,10 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             }
             pclose( file );
         }
+        if ( !running_in_aws )
+        {
+            printf( "We are not running in AWS\n" );
+        }
         fflush( stdout );
     }
 
@@ -147,19 +151,20 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
             fflush( stdout );
         }
 
+        // now reduce to use only half max queues
+
         int num_queues = max_queues / 2;
 
-        // now reduce to use only half max queues
-        {
-            printf( "Setting NIC combined queues to %d\n", num_queues );
-            char command[2048];
-            snprintf( command, sizeof(command), "ethtool -L %s combined %d", (const char*) &network_interface_name[0], num_queues );
-            FILE * file = popen( command, "r" );
-            char buffer[1024];
-            while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
-            pclose( file );
-            fflush( stdout );
-        }
+        printf( "Setting NIC combined queues to %d\n", num_queues );
+
+        char command[2048];
+        snprintf( command, sizeof(command), "ethtool -L %s combined %d", (const char*) &network_interface_name[0], num_queues );
+        FILE * file = popen( command, "r" );
+        char buffer[1024];
+        while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
+        pclose( file );
+
+        fflush( stdout );
     }
 
     // be extra safe and let's make sure no xdp programs are running on this interface before we start
