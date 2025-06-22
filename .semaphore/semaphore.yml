@@ -101,6 +101,7 @@ blocks:
             - cd relay/xdp && make -j build
             - mv relay relay-release
             - artifact push workflow relay-release --force
+            - make relay_xdp.o
             - popd
             - cd relay/module && tar -zcvf relay_module.tar.gz *
             - artifact push workflow ./relay_module.tar.gz --force
