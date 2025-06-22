@@ -256,7 +256,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
 
         uint64_t current_timestamp = main->current_timestamp;
 
-        while ( next_key_result )
+        while ( next_key_result == 0 )
         {
             memcpy( &current_key, &next_key, sizeof(struct session_key) );
 
