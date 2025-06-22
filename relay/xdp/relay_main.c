@@ -76,7 +76,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->stats_fd = bpf->stats_fd;
     main->state_fd = bpf->state_fd;
     main->session_map_fd = bpf->session_map_fd;
-    main->whitelist_map_d = bpf->whitelist_map_fd;
+    main->whitelist_map_fd = bpf->whitelist_map_fd;
 #endif // #idef COMPILE_WITH_BPF
 
 #ifdef COMPILE_WITH_BPF
