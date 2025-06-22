@@ -88,13 +88,11 @@ struct {
     __uint( pinning, LIBBPF_PIN_BY_NAME );
 } whitelist_map SEC(".maps");
 
-#define INCREMENT_COUNTER(counter_index) __sync_fetch_and_add( &stats->counters[counter_index], 1 )
+#define INCREMENT_COUNTER(counter_index) stats->counters[counter_index]++
 
-#define DECREMENT_COUNTER(counter_index) __sync_fetch_and_sub( &stats->counters[counter_index], 1 )
+#define DECREMENT_COUNTER(counter_index) stats->counters[counter_index]--
 
-#define ADD_COUNTER(counter_index, value) __sync_fetch_and_add( &stats->counters[counter_index], ( value) )
-
-#define SUB_COUNTER(counter_index, value) __sync_fetch_and_sub( &stats->counters[counter_index], ( value) )
+#define ADD_COUNTER(counter_index, value) stats->counters[counter_index] += value
 
 #define XCHACHA20POLY1305_NONCE_SIZE 24
 
@@ -1896,8 +1894,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
-
                                 session->special_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "route response packet forward to previous hop" );
@@ -1982,10 +1978,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                __u64 current_expire_timestamp = session->expire_timestamp;
-
-                                //__sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
 
                                 session->expire_timestamp = token->expire_timestamp;
 
@@ -2139,8 +2131,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
-
                                 session->special_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "continue response packet forward to previous hop" );
@@ -2286,8 +2276,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 } 
 
-                                // __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
-
                                 session->payload_client_to_server_sequence = packet_sequence;
 
                                 relay_printf( "client to server packet forward to next hop" );
@@ -2431,8 +2419,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                // __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
-
                                 session->payload_server_to_client_sequence = packet_sequence;
 
                                 relay_printf( "server to client packet forward to previous hop" );
@@ -2575,8 +2561,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence > client_to_server_sequence )
                                 {
-                                    // __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
-
                                     session->special_client_to_server_sequence = packet_sequence;
                                 }
 
@@ -2721,8 +2705,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
-
-                                // __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
                                 session->special_server_to_client_sequence = packet_sequence;
    
