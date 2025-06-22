@@ -1625,7 +1625,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         }
                         else if ( whitelist->expire_timestamp < state->current_timestamp )
                         {
-                            relay_printf( "whitelist entry expired: %lld < %lld" , value->expire_timestamp, state->current_timestamp );
+                            relay_printf( "whitelist entry expired: %lld < %lld" , whitelist->expire_timestamp, state->current_timestamp );
                             INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
