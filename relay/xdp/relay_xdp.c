@@ -1623,9 +1623,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
                         }
-
-                        // todo: what the fuck is going on here?!
-                        /*
                         else if ( whitelist->expire_timestamp < state->current_timestamp )
                         {
                             relay_printf( "whitelist entry expired: %lld < %lld" , value->expire_timestamp, state->current_timestamp );
@@ -1634,9 +1631,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
                         }
-                        */
-
-                        // todo: nothing here is updating the value->expire_timestamp to current time. that's the bug...
 
                         // process packets types that should only be processed after whitelist check
 
@@ -1677,6 +1671,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_PASS;
                             }
@@ -1793,6 +1789,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_TX;
                             }
@@ -1929,6 +1927,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
+                                whitelist->expire_timestamp = state->current_timestamp
+
                                 return XDP_TX;
                             }
                             break;
@@ -2023,6 +2023,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_TX;
                             }
@@ -2165,6 +2167,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_TX;
                             }
@@ -2309,6 +2313,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
+                                whitelist->expire_timestamp = state->current_timestamp
+
                                 return XDP_TX;
                             }
                             break;
@@ -2451,6 +2457,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_TX;
                             }
@@ -2597,6 +2605,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
+                                whitelist->expire_timestamp = state->current_timestamp
+
                                 return XDP_TX;
                             }
                             break;
@@ -2740,6 +2750,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                whitelist->expire_timestamp = state->current_timestamp
 
                                 return XDP_TX;
                             }
