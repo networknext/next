@@ -258,18 +258,21 @@ struct session_stats main_update_timeouts( struct main_t * main )
 
         while ( next_key_result == 0 )
         {
+            stats.session_count++;
+
             memcpy( &current_key, &next_key, sizeof(struct session_key) );
 
-            struct session_data current_value;
-
             bool timed_out = false;
-            if ( bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value ) )
+            uint64_t session_id = 0;
+            uint8_t session_version = 0;
+            struct session_value * current_value = bpf_map_lookup_elem( main->stats_fd, &current_key );
+            if ( current_value )
             {
-                stats.session_count++;
-                stats.envelope_kbps_up += current_value.envelope_kbps_up;
-                stats.envelope_kbps_down += current_value.envelope_kbps_down;
-
-                timed_out = current_value.expire_timestamp <= current_timestamp;
+                stats.envelope_kbps_up += current_value->envelope_kbps_up;
+                stats.envelope_kbps_down += current_value->envelope_kbps_down;
+                timed_out = current_value->expire_timestamp <= current_timestamp;
+                session_id = current_value->session_id;
+                session_version = current_value->session_version;
             }
 
             next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );
@@ -277,6 +280,10 @@ struct session_stats main_update_timeouts( struct main_t * main )
             if ( timed_out )
             {
                 bpf_map_delete_elem( main->session_map_fd, &current_key );
+
+                // todo
+                printf( "timed out session: %" PRIx64 ".%d\n", session_id, session_version );
+                fflush( stdout );
             }
         }
     }
