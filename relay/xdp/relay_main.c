@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include <inttypes.h>
 
 int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf )
 {
@@ -265,7 +266,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
             bool timed_out = false;
             uint64_t session_id = 0;
             uint8_t session_version = 0;
-            struct session_value current_value;
+            struct session_data current_value;
             int result = bpf_map_lookup_elem( main->stats_fd, &current_key, &current_value );
             if ( result == 0 )
             {

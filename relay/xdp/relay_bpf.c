@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "relay_xdp_source.h"
 
