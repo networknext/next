@@ -271,7 +271,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
                 stats.session_count++;
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
                 stats.envelope_kbps_down += current_value.envelope_kbps_down;
-                timed_out = current_value.expire_timestamp <= current_timestamp;
+                timed_out = current_value.expire_timestamp < current_timestamp;
                 session_id = current_value.session_id;
                 session_version = current_value.session_version;
             }
