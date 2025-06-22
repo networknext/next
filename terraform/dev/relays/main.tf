@@ -72,7 +72,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    /*
     "google.iowa.3" = {
       datacenter_name = "google.iowa.3"
       type            = "c3-highcpu-4"
