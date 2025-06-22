@@ -180,7 +180,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
 
     // delete all bpf maps we use so stale data doesn't stick around
     {
-        const char * command = "rm -f /sys/fs/bpf/config_map && rm -f /sys/fs/bpf/state_map && rm -f /sys/fs/bpf/stats_map && rm -f /sys/fs/bpf/relay_map && rm -f /sys/fs/bpf/session_map";
+        const char * command = "rm -f /sys/fs/bpf/config_map && rm -f /sys/fs/bpf/state_map && rm -f /sys/fs/bpf/stats_map && rm -f /sys/fs/bpf/relay_map && rm -f /sys/fs/bpf/session_map && rm -rf /sys/fs/bpf/whitelist_map";
         FILE * file = popen( command, "r" );
         char buffer[1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL ) {}
@@ -294,6 +294,13 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     if ( bpf->session_map_fd <= 0 )
     {
         printf( "\nerror: could not get session map: %s\n\n", strerror(errno) );
+        return RELAY_ERROR;
+    }
+
+    bpf->whitelist_map_fd = bpf_obj_get( "/sys/fs/bpf/whitelist_map" );
+    if ( bpf->whitelist_map_fd <= 0 )
+    {
+        printf( "\nerror: could not get whitelist map: %s\n\n", strerror(errno) );
         return RELAY_ERROR;
     }
 
