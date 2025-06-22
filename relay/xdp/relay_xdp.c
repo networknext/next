@@ -1332,7 +1332,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + WHITELIST_REGULARTIMEOUT;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_REGULAR_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
                                 value.is_server = 0;
