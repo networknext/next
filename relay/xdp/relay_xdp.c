@@ -1614,8 +1614,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         key.address = ip->saddr;
                         key.port = udp->source;
 
-                        struct whitelist_value * value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
-                        if ( value == NULL )
+                        struct whitelist_value * whitelist = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
+                        if ( whitelist == NULL )
                         {
                             relay_printf( "address %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                             INCREMENT_COUNTER( RELAY_COUNTER_NOT_IN_WHITELIST );
@@ -1626,7 +1626,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                         // todo: what the fuck is going on here?!
                         /*
-                        else if ( value->expire_timestamp < state->current_timestamp )
+                        else if ( whitelist->expire_timestamp < state->current_timestamp )
                         {
                             relay_printf( "whitelist entry expired: %lld < %lld" , value->expire_timestamp, state->current_timestamp );
                             INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
@@ -1635,6 +1635,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             return XDP_DROP;
                         }
                         */
+
+                        // todo: nothing here is updating the value->expire_timestamp to current time. that's the bug...
 
                         // process packets types that should only be processed after whitelist check
 

@@ -156,6 +156,13 @@ void client_thread_function( void * data )
 
             next_client_update( client );
 
+            // todo: speed up iteration
+            if ( next_client_fallback_to_direct( client ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "client fell back to direct. reconnecting..." );
+                break;
+            }
+
             if ( next_platform_time() > connect_time + GameLength )
             {
                 next_printf( NEXT_LOG_LEVEL_INFO, "game has finished. reconnecting..." );
