@@ -272,14 +272,14 @@ struct session_stats main_update_timeouts( struct main_t * main )
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
                 stats.envelope_kbps_down += current_value.envelope_kbps_down;
                 timed_out = current_value.expire_timestamp < current_timestamp;
+                session_id = current_value.session_id;
+                session_version = current_value.session_version;
                 if ( timed_out )
                 {
                     // todo
                     printf( "timed out session: %" PRIx64 ".%d (%" PRId64 " < %" PRId64 ")\n", session_id, session_version, current_value.expire_timestamp, current_timestamp );
                     fflush( stdout );
                 }
-                session_id = current_value.session_id;
-                session_version = current_value.session_version;
             }
 
             next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );

@@ -1983,7 +1983,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 current_expire_timestamp = session->expire_timestamp;
 
-                                __sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
+                                //__sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
+                                session->expire_timestamp = token->expire_timestamp;
 
                                 memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
 
