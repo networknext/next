@@ -12,7 +12,9 @@ const (
 	MaxRelays        = 1000
 	NumRelayCounters = 150
 	RelayTimeout     = 10
-	RelayHistorySize = 300
+
+	// todo: speed up iteration time
+	RelayHistorySize = 1 // 300
 
 	MaxRouteRelays  = 5
 	MaxClientRelays = 16

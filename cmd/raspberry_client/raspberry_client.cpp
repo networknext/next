@@ -68,7 +68,8 @@ void client_thread_function( void * data )
 
     const int MaxServers = 256;
 
-    next_platform_sleep( rand() % GameLength );
+    // todo: speed up iteration time
+    //next_platform_sleep( rand() % GameLength );
 
     while ( !quit )
     {
@@ -154,6 +155,13 @@ void client_thread_function( void * data )
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 
             next_client_update( client );
+
+            // todo: speed up iteration time
+            if ( next_client_fallback_to_direct( client ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "client fell back to direct. reconnecting..." );
+                break;
+            }
 
             if ( next_platform_time() > connect_time + GameLength )
             {
