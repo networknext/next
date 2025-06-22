@@ -1623,6 +1623,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
                         }
+
+                        // todo: what the fuck is going on here?!
+                        /*
                         else if ( value->expire_timestamp < state->current_timestamp )
                         {
                             relay_printf( "whitelist entry expired: %lld < %lld" , value->expire_timestamp, state->current_timestamp );
@@ -1631,6 +1634,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
                         }
+                        */
 
                         // process packets types that should only be processed after whitelist check
 
