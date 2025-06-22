@@ -68,7 +68,8 @@ void client_thread_function( void * data )
 
     const int MaxServers = 256;
 
-    next_platform_sleep( rand() % GameLength );
+    // todo: disable to speed up iteration
+    // next_platform_sleep( rand() % GameLength );
 
     while ( !quit )
     {
@@ -123,7 +124,7 @@ void client_thread_function( void * data )
         if ( num_servers == 0 )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "no servers found" );
-            next_platform_sleep( 10.0 );
+            next_platform_sleep( 1.0 );
             continue;
         }
 
