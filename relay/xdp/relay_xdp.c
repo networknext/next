@@ -1672,7 +1672,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_PASS;
                             }
@@ -1790,7 +1790,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -1927,7 +1927,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2024,7 +2024,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2168,7 +2168,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2313,7 +2313,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2458,7 +2458,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2605,7 +2605,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -2751,7 +2751,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp
+                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }

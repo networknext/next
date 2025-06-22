@@ -262,8 +262,6 @@ struct session_stats main_update_timeouts( struct main_t * main )
             memcpy( &current_key, &next_key, sizeof(struct session_key) );
 
             bool timed_out = false;
-            uint64_t session_id = 0;
-            uint8_t session_version = 0;
             struct session_data current_value;
             int result = bpf_map_lookup_elem( main->session_map_fd, &current_key, &current_value );
             if ( result == 0 )
@@ -272,14 +270,6 @@ struct session_stats main_update_timeouts( struct main_t * main )
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
                 stats.envelope_kbps_down += current_value.envelope_kbps_down;
                 timed_out = current_value.expire_timestamp < current_timestamp;
-                session_id = current_value.session_id;
-                session_version = current_value.session_version;
-                if ( timed_out )
-                {
-                    // todo
-                    printf( "timed out session: %" PRIx64 ".%d (%" PRId64 " < %" PRId64 ")\n", session_id, session_version, current_value.expire_timestamp, current_timestamp );
-                    fflush( stdout );
-                }
             }
 
             next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );
@@ -293,7 +283,32 @@ struct session_stats main_update_timeouts( struct main_t * main )
 
     // timeout old entries in whitelist map
     {
-        // ...
+        struct whitelist_key current_key;
+        struct whitelist_key next_key;
+
+        int next_key_result = bpf_map_get_next_key( main->whitelist_map_fd, NULL, &next_key );
+
+        uint64_t current_timestamp = main->current_timestamp;
+
+        while ( next_key_result == 0 )
+        {
+            memcpy( &current_key, &next_key, sizeof(struct whitelist_key) );
+
+            bool timed_out = false;
+            struct whitelist_value current_value;
+            int result = bpf_map_lookup_elem( main->whitelist_map_fd, &current_key, &current_value );
+            if ( result == 0 )
+            {
+                timed_out = current_value.expire_timestamp < current_timestamp;
+            }
+
+            next_key_result = bpf_map_get_next_key( main->whitelist_map_fd, &current_key, &next_key );
+
+            if ( timed_out )
+            {
+                bpf_map_delete_elem( main->whitelist_map_fd, &current_key );
+            }
+        }
     }
 
     return stats;
