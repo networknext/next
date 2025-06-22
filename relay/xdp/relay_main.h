@@ -31,6 +31,7 @@ struct main_t
     int state_fd;
     int config_fd;
     int session_map_fd;
+    int whitelist_map_fd;
     struct relay_set relay_ping_set;
     struct relay_hash relay_ping_hash;
     struct relay_queue_t * control_queue;
