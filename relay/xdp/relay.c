@@ -51,7 +51,8 @@ void interrupt_handler( int signal )
 void clean_shutdown_handler( int signal )
 {
     (void) signal;
-    relay_clean_shutdown = true;
+    // todo: temporary. speed up iteration
+//    relay_clean_shutdown = true;
     quit = true;
 }
 
