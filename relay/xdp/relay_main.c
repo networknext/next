@@ -259,8 +259,6 @@ struct session_stats main_update_timeouts( struct main_t * main )
 
         while ( next_key_result == 0 )
         {
-            stats.session_count++;
-
             memcpy( &current_key, &next_key, sizeof(struct session_key) );
 
             bool timed_out = false;
@@ -270,6 +268,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
             int result = bpf_map_lookup_elem( main->session_map_fd, &current_key, &current_value );
             if ( result == 0 )
             {
+                stats.session_count++;
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
                 stats.envelope_kbps_down += current_value.envelope_kbps_down;
                 timed_out = current_value.expire_timestamp <= current_timestamp;
@@ -565,6 +564,8 @@ int main_update( struct main_t * main )
         fflush( stdout );
         main->initialized = true;
     }
+
+    main->current_timestamp = backend_timestamp;
 
     int num_relays = relay_read_uint32( &q );
 
