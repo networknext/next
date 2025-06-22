@@ -14,7 +14,7 @@ RELAY_INTERNAL_ADDRESS = 192.168.1.40:40000
 KERNEL = $(shell uname -r)
 
 .PHONY: build
-build: *.c *.h relay_xdp_source.h relay_xdp.o
+build: *.c *.h relay_xdp_source.h
 	gcc -DCOMPILE_WITH_BPF=1 -O2 -g relay.c relay_platform.c relay_base64.c relay_ping_history.c relay_manager.c relay_main.c relay_ping.c relay_bpf.c relay_config.c -o relay -lxdp -lsodium -lcurl /usr/src/linux-headers-$(KERNEL)/tools/bpf/resolve_btfids/libbpf/libbpf.a -lz -lelf
 
 .PHONY: build-debug
@@ -48,7 +48,7 @@ debug: build-debug
 	sudo RELAY_NAME=debug RELAY_PUBLIC_ADDRESS=$(RELAY_PUBLIC_ADDRESS) RELAY_INTERNAL_ADDRESS=$(RELAY_INTERNAL_ADDRESS) RELAY_PUBLIC_KEY=XBIAwHE0CppjvPMmtX3TT3QnvmhMbU0KxDpsaFBo+nE= RELAY_PRIVATE_KEY=qlUNbQoc3amdkfNrLflO0Z9/2XJai6zV880AS9cInDc= RELAY_PING_KEY=ANXbw47AaWuu7sidkuw0Cq5cIXU4e8xoqJbSsFC+MT0= RELAY_BACKEND_PUBLIC_KEY=osFv1SPtMkhezNPuLbNbjp/F8ks5I1Y1QVqD0yLd+0o= ./relay
 
 relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h
-	clang -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
+	clang -DRELAY_DEBUG=1 -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
 
 relay_xdp_source.h: Makefile relay_xdp.c relay_shared.h relay_constants.h
 	mkdir -p relay_xdp_source

@@ -271,6 +271,12 @@ struct session_stats main_update_timeouts( struct main_t * main )
                 stats.envelope_kbps_up += current_value.envelope_kbps_up;
                 stats.envelope_kbps_down += current_value.envelope_kbps_down;
                 timed_out = current_value.expire_timestamp < current_timestamp;
+
+                // todo
+                if ( timed_out )
+                {
+                    printf( "timed out session %" PRIx64 ".%d (%" PRId64 " < %" PRId64 ")\n", current_value.session_id, current_value.session_version, current_value.expire_timestamp, current_timestamp );
+                }
             }
 
             next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );
@@ -301,6 +307,12 @@ struct session_stats main_update_timeouts( struct main_t * main )
             if ( result == 0 )
             {
                 timed_out = current_value.expire_timestamp < current_timestamp;
+
+                // todo
+                if ( timed_out )
+                {
+                    printf( "timed out whitelist entry\n" );
+                }
             }
 
             next_key_result = bpf_map_get_next_key( main->whitelist_map_fd, &current_key, &next_key );

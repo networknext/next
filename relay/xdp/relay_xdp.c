@@ -1332,7 +1332,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1457,7 +1457,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1583,7 +1583,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1619,14 +1619,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             relay_printf( "address %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                             INCREMENT_COUNTER( RELAY_COUNTER_NOT_IN_WHITELIST );
-                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                            return XDP_DROP;
-                        }
-                        else if ( whitelist->expire_timestamp < state->current_timestamp )
-                        {
-                            relay_printf( "whitelist entry expired: %lld < %lld" , whitelist->expire_timestamp, state->current_timestamp );
-                            INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
