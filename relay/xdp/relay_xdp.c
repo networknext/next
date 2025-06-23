@@ -1664,10 +1664,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_PASS;
@@ -1786,10 +1787,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -1927,10 +1929,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2030,10 +2033,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2180,10 +2184,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2329,10 +2334,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    // todo: atomic
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2478,9 +2484,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2625,9 +2633,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
@@ -2774,9 +2784,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
-                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, packet_sequence, state->current_timestamp + WHITELIST_TIMEOUT );
                                 }
 
                                 return XDP_TX;
