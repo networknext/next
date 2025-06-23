@@ -2302,8 +2302,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 } 
 
-                                __u64 client_to_server_sequence = session->payload_client_to_server_sequence;
-
                                 __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
                                 relay_printf( "client to server packet forward to next hop" );
