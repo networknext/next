@@ -230,17 +230,9 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_server_ready_autodetect_cloud
 
-        - name: "test_server_ready_autodetect_multiplay_fail"
-          commands:
-            - cd ./dist && ./func_test_sdk test_server_ready_autodetect_multiplay_fail
-
         - name: "test_server_ready_disable_autodetect_cloud"
           commands:
             - cd ./dist && ./func_test_sdk test_server_ready_disable_autodetect_cloud
-
-        - name: "test_server_ready_disable_autodetect_multiplay"
-          commands:
-            - cd ./dist && ./func_test_sdk test_server_ready_disable_autodetect_multiplay
 
         - name: "test_server_ready_resolve_hostname_timeout"
           commands:

@@ -9,7 +9,6 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -2504,7 +2503,6 @@ func test_server_ready_autodetect_cloud() {
 	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
 	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
 	server_check(server_stdout, backend_stdout, serverInitSuccessful)
@@ -2513,58 +2511,7 @@ func test_server_ready_autodetect_cloud() {
 	server_check(server_stdout, backend_stdout, serverAutodetecting)
 	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
 	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, serverMultiplayAutodetect)
 	server_check(server_stdout, backend_stdout, serverAutodetectFailed)
-
-}
-
-func test_server_ready_autodetect_multiplay_fail() {
-
-	fmt.Printf("test_server_ready_autodetect_multiplay_fail\n")
-
-	os.Remove("whois.txt")
-
-	serverConfig := &ServerConfig{}
-	serverConfig.datacenter = "multiplay.newyork"
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("DEFAULT")
-
-	time.Sleep(time.Second * 15)
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
-	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
-	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'multiplay.newyork'")
-	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
-	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: could not autodetect multiplay datacenter :(")
-	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'multiplay.newyork' [c38c805d821cd0d3]")
-
-	serverCachedWhois := true
-	if _, err := os.Stat("whois.txt"); errors.Is(err, os.ErrNotExist) {
-		serverCachedWhois = false
-	}
-
-	os.Remove("whois.txt")
-
-	server_check(server_stdout, backend_stdout, serverInitSuccessful)
-	server_check(server_stdout, backend_stdout, serverReady)
-	server_check(server_stdout, backend_stdout, serverDatacenter)
-	server_check(server_stdout, backend_stdout, serverAutodetecting)
-	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
-	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, serverMultiplayAutodetect)
-	server_check(server_stdout, backend_stdout, serverAutodetectFailed)
-	server_check(server_stdout, backend_stdout, serverCachedWhois)
 
 }
 
@@ -2595,7 +2542,6 @@ func test_server_ready_disable_autodetect_cloud() {
 	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
 	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
 	server_check(server_stdout, backend_stdout, serverInitSuccessful)
@@ -2604,48 +2550,6 @@ func test_server_ready_disable_autodetect_cloud() {
 	server_check(server_stdout, backend_stdout, !serverAutodetecting)
 	server_check(server_stdout, backend_stdout, !serverGoogleAutodetect)
 	server_check(server_stdout, backend_stdout, !serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, !serverMultiplayAutodetect)
-	server_check(server_stdout, backend_stdout, !serverAutodetectFailed)
-
-}
-
-func test_server_ready_disable_autodetect_multiplay() {
-
-	fmt.Printf("test_server_ready_disable_autodetect_multiplay\n")
-
-	serverConfig := &ServerConfig{}
-	serverConfig.datacenter = "multiplay.newyork"
-	serverConfig.disable_autodetect = true
-	serverConfig.buyer_private_key = TestBuyerPrivateKey
-
-	server_cmd, server_stdout := server(serverConfig)
-
-	backend_cmd, backend_stdout := backend("DEFAULT")
-
-	time.Sleep(time.Second * 15)
-
-	server_cmd.Process.Signal(os.Interrupt)
-	backend_cmd.Process.Signal(os.Interrupt)
-
-	server_cmd.Wait()
-	backend_cmd.Wait()
-
-	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
-	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
-	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'multiplay.newyork'")
-	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
-	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
-	serverMultiplayAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in multiplay")
-	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
-
-	server_check(server_stdout, backend_stdout, serverInitSuccessful)
-	server_check(server_stdout, backend_stdout, serverReady)
-	server_check(server_stdout, backend_stdout, serverDatacenter)
-	server_check(server_stdout, backend_stdout, !serverAutodetecting)
-	server_check(server_stdout, backend_stdout, !serverGoogleAutodetect)
-	server_check(server_stdout, backend_stdout, !serverAmazonAutodetect)
-	server_check(server_stdout, backend_stdout, !serverMultiplayAutodetect)
 	server_check(server_stdout, backend_stdout, !serverAutodetectFailed)
 
 }
@@ -3148,9 +3052,7 @@ func main() {
 		test_server_ready_success,
 		test_server_ready_fallback_to_direct,
 		test_server_ready_autodetect_cloud,
-		test_server_ready_autodetect_multiplay_fail,
 		test_server_ready_disable_autodetect_cloud,
-		test_server_ready_disable_autodetect_multiplay,
 		test_server_ready_resolve_hostname_timeout,
 		test_server_ready_autodetect_timeout,
 		test_client_connect_before_ready,

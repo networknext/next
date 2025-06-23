@@ -555,7 +555,7 @@ next_server_ready
 
 Wait until this function returns true, before sending clients to connect to your server.
 
-This function return true once server has finished DNS resolve of the Network Next backend IP address, and has completed autodetection of the datacenter when the server is hosted in Google Cloud or AWS, or managed by Multiplay.
+This function return true once server has finished DNS resolve of the Network Next backend IP address, and has completed autodetection of the datacenter when the server is hosted in Google Cloud or AWS.
 
 .. code-block:: c++
 
