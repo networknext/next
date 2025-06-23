@@ -1583,7 +1583,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = 0xFFFFFFFFFFFFFFFFULL;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1666,10 +1666,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_PASS;
                             }
@@ -1789,10 +1786,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -1931,10 +1925,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2035,10 +2026,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2186,10 +2174,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2336,10 +2321,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2486,10 +2468,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2635,10 +2614,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2786,10 +2762,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
 
-                                if ( whitelist_expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
-                                {
-                                    __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
-                                }
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
