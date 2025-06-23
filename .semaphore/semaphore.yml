@@ -9,7 +9,7 @@ fail_fast:
 agent:
   machine:
     type: f1-standard-4
-    os_image: ubuntu2404
+    os_image: ubuntu2204
 
 blocks:
 
@@ -26,9 +26,8 @@ blocks:
             - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/relay-debug ./dist/relay-release ./dist/libnext.so
+            - make -j ./dist/relay-debug ./dist/libnext.so
             - artifact push workflow ./dist/relay-debug --force
-            - artifact push workflow ./dist/relay-release --force
             - artifact push workflow ./dist/libnext.so --force
             - artifact push workflow deploy/bootstrap.sh --force
             - artifact push workflow config/google.txt --force
@@ -75,6 +74,36 @@ blocks:
             - mkdir dist
             - make dist/test
             - cd dist && ./test
+
+  - name: "Relay"
+    dependencies: []
+    task:
+      jobs:
+        - name: "XDP"
+          commands:
+            - checkout
+            - uname -r
+            - sudo DEBIAN_FRONTEND=noninteractive apt update -y
+            - sudo DEBIAN_FRONTEND=noninteractive apt install -y build-essential libsodium-dev libcurl4-openssl-dev clang linux-headers-generic linux-headers-`uname -r` linux-tools-`uname -r` libc6-dev-i386 gcc-12 dwarves libelf-dev pkg-config m4 libpcap-dev net-tools
+            - sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
+            - wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
+            - tar -zxf xdp-tools-1.4.2.tar.gz
+            - pushd .
+            - cd xdp-tools-1.4.2
+            - ./configure
+            - make -j && sudo make install
+            - cd lib/libbpf/src
+            - make -j && sudo make install
+            - sudo ldconfig
+            - popd
+            - pushd .
+            - cd relay/xdp && make -j build
+            - mv relay relay-release
+            - artifact push workflow relay-release --force
+            - make relay_xdp.o
+            - popd
+            - cd relay/module && tar -zcvf relay_module.tar.gz *
+            - artifact push workflow ./relay_module.tar.gz --force
 
   - name: "Portal"
     dependencies: []
@@ -223,6 +252,8 @@ promotions:
 
   - name: "Upload Relay"
     pipeline_file: upload-relay.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'relay'"
 
   - name: "Update Golang Cache"
     pipeline_file: update-golang-cache.yml

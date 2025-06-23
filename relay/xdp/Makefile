@@ -1,16 +1,13 @@
 
 # hulk test
-INTERFACE=enp4s0
 RELAY_PUBLIC_ADDRESS = 192.168.1.40:40000
 RELAY_INTERNAL_ADDRESS = 192.168.1.40:40000
 
 # google cloud test
-#INTERFACE=ens3
 #RELAY_PUBLIC_ADDRESS = 34.136.112.3:40000
 #RELAY_INTERNAL_ADDRESS = 10.128.0.15:40000
 
 # loopback
-#INTERFACE=lo
 #RELAY_PUBLIC_ADDRESS = 127.0.0.1:40000
 #RELAY_INTERNAL_ADDRESS = 127.0.0.1:40000
 
@@ -50,8 +47,8 @@ debug: build-debug
 	sudo rm -f /sys/fs/bpf/whitelist_map
 	sudo RELAY_NAME=debug RELAY_PUBLIC_ADDRESS=$(RELAY_PUBLIC_ADDRESS) RELAY_INTERNAL_ADDRESS=$(RELAY_INTERNAL_ADDRESS) RELAY_PUBLIC_KEY=XBIAwHE0CppjvPMmtX3TT3QnvmhMbU0KxDpsaFBo+nE= RELAY_PRIVATE_KEY=qlUNbQoc3amdkfNrLflO0Z9/2XJai6zV880AS9cInDc= RELAY_PING_KEY=ANXbw47AaWuu7sidkuw0Cq5cIXU4e8xoqJbSsFC+MT0= RELAY_BACKEND_PUBLIC_KEY=osFv1SPtMkhezNPuLbNbjp/F8ks5I1Y1QVqD0yLd+0o= ./relay
 
-relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h relay_xdp_source.h
-	clang -DRELAY_DEBUG=1 -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
+relay_xdp.o: relay_xdp.c relay_shared.h relay_constants.h
+	clang -O2 -g -Ilibbpf/src -target bpf -c relay_xdp.c -o relay_xdp.o
 
 relay_xdp_source.h: Makefile relay_xdp.c relay_shared.h relay_constants.h
 	mkdir -p relay_xdp_source

@@ -304,6 +304,9 @@ resource "google_redis_cluster" "portal" {
   depends_on = [
     google_network_connectivity_service_connection_policy.default
   ]
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "google_network_connectivity_service_connection_policy" "default" {

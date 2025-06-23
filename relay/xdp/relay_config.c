@@ -74,6 +74,11 @@ int read_config( struct config_t * config )
         config->relay_internal_address = config->relay_public_address;
     }
 
+    if ( config->relay_internal_address == 0 )
+    {
+        config->relay_internal_address = config->relay_public_address;
+    }
+
     // -----------------------------------------------------------------------------------------------------------------------------
 
     const char * relay_public_key_env = getenv( "RELAY_PUBLIC_KEY" );

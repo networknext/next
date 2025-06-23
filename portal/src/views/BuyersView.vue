@@ -15,7 +15,7 @@
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-            <td> {{ item["Accelerated Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
+            <td> {{ item["Accelerated Percent"] }} </td>
           </tr>
         </tbody>
       </table>
@@ -42,7 +42,7 @@
             <td> {{ item["Debug"] }} </td>
             <td> {{ item["Public Key"] }} </td>
             <td> {{ item["Server Count"] }} </td>
-            <td> {{ item["Accelerated Sessions"] }} / {{ item["Total Sessions"] }} ({{ item["Accelerated Percent"] }}%) </td>
+            <td> {{ item["Accelerated Percent"] }}% </td>
           </tr>
         </tbody>
       </table>

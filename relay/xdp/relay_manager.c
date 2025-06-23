@@ -84,7 +84,7 @@ void relay_manager_update( struct relay_manager_t * manager, struct relay_set * 
         relay_ids[num_relays] = new_relays->id[i];
         relay_addresses[num_relays] = new_relays->address[i];
         relay_ports[num_relays] = new_relays->port[i];
-        relay_internal[num_relays] = manager->relay_internal[i];
+        relay_internal[num_relays] = new_relays->internal[i];
         relay_ping_history[num_relays] = (struct relay_ping_history_t*) malloc( MAX_RELAYS * sizeof(struct relay_ping_history_t) );
         num_relays++;
     }

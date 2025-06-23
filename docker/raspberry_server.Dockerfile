@@ -13,4 +13,6 @@ RUN mv /app/libnext.so /usr/local/lib && ldconfig
 
 EXPOSE 40000/udp
 
+ENV RASPBERRY_FAKE_LATENCY 1
+
 CMD [ "/app/raspberry_server" ]

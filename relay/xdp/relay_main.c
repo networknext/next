@@ -16,8 +16,9 @@
 #include <errno.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
+#include <inttypes.h>
 
-int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf, const char * relay_version )
+int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf )
 {
     // initialize curl so we can talk with the relay backend
 
@@ -75,8 +76,8 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     main->stats_fd = bpf->stats_fd;
     main->state_fd = bpf->state_fd;
     main->session_map_fd = bpf->session_map_fd;
+    main->whitelist_map_fd = bpf->whitelist_map_fd;
 #endif // #idef COMPILE_WITH_BPF
-    memcpy( main->relay_version, relay_version, RELAY_VERSION_LENGTH );
 
 #ifdef COMPILE_WITH_BPF
     
@@ -236,8 +237,90 @@ void clamp( int * value, int min, int max )
     }
 }
 
+struct session_stats
+{
+    uint64_t session_count;
+    uint64_t envelope_kbps_up;
+    uint64_t envelope_kbps_down;
+};
+
+struct session_stats main_update_timeouts( struct main_t * main )
+{
+    struct session_stats stats;
+    memset( &stats, 0, sizeof(struct session_stats) );
+
+    // timeout old sessions in session map
+    {
+        struct session_key current_key;
+        struct session_key next_key;
+
+        int next_key_result = bpf_map_get_next_key( main->session_map_fd, NULL, &next_key );
+
+        uint64_t current_timestamp = main->current_timestamp;
+
+        while ( next_key_result == 0 )
+        {
+            memcpy( &current_key, &next_key, sizeof(struct session_key) );
+
+            bool timed_out = false;
+            struct session_data current_value;
+            int result = bpf_map_lookup_elem( main->session_map_fd, &current_key, &current_value );
+            if ( result == 0 )
+            {
+                stats.session_count++;
+                stats.envelope_kbps_up += current_value.envelope_kbps_up;
+                stats.envelope_kbps_down += current_value.envelope_kbps_down;
+                timed_out = current_value.expire_timestamp < current_timestamp;
+            }
+
+            next_key_result = bpf_map_get_next_key( main->session_map_fd, &current_key, &next_key );
+
+            if ( timed_out )
+            {
+                bpf_map_delete_elem( main->session_map_fd, &current_key );
+            }
+        }
+    }
+
+    // timeout old entries in whitelist map
+    {
+        struct whitelist_key current_key;
+        struct whitelist_key next_key;
+
+        int next_key_result = bpf_map_get_next_key( main->whitelist_map_fd, NULL, &next_key );
+
+        uint64_t current_timestamp = main->current_timestamp;
+
+        while ( next_key_result == 0 )
+        {
+            memcpy( &current_key, &next_key, sizeof(struct whitelist_key) );
+
+            bool timed_out = false;
+            struct whitelist_value current_value;
+            int result = bpf_map_lookup_elem( main->whitelist_map_fd, &current_key, &current_value );
+            if ( result == 0 )
+            {
+                timed_out = current_value.expire_timestamp < current_timestamp;
+            }
+
+            next_key_result = bpf_map_get_next_key( main->whitelist_map_fd, &current_key, &next_key );
+
+            if ( timed_out )
+            {
+                bpf_map_delete_elem( main->whitelist_map_fd, &current_key );
+            }
+        }
+    }
+
+    return stats;
+}
+
 int main_update( struct main_t * main )
 {
+    // update timeouts
+
+    struct session_stats stats = main_update_timeouts( main );
+
     // get counters from xdp
 
     uint64_t counters[RELAY_NUM_COUNTERS];
@@ -263,6 +346,10 @@ int main_update( struct main_t * main )
             counters[j] += values[i].counters[j];
         }
     }
+
+    counters[RELAY_COUNTER_SESSIONS] = stats.session_count;
+    counters[RELAY_COUNTER_ENVELOPE_KBPS_UP] = stats.envelope_kbps_up;
+    counters[RELAY_COUNTER_ENVELOPE_KBPS_DOWN] = stats.envelope_kbps_down;
 
 #endif // #ifdef COMPILE_WIH_BPF
 
@@ -399,7 +486,7 @@ int main_update( struct main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, main->relay_version, RELAY_VERSION_LENGTH );
+    relay_write_string( &p, "release", RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
@@ -495,6 +582,8 @@ int main_update( struct main_t * main )
         fflush( stdout );
         main->initialized = true;
     }
+
+    main->current_timestamp = backend_timestamp;
 
     int num_relays = relay_read_uint32( &q );
 

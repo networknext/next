@@ -43,24 +43,3 @@ sudo ldconfig
 cd /
 
 sudo touch /etc/init_relay_completed
-
-# IMPORTANT: if we are not running a 6.5 kernel, upgrade the kernel. we need ubuntu 22.04 LTS with linux kernel 6.5 for xdp relay to work
-
-version_below_6_5(){
-  major=$(uname -r | awk -F '.' '{print $1}')
-  minor=$(uname -r | awk -F '.' '{print $2}')
-  echo linux kernel version is $major.$minor
-  if [ $major -le 6 ] ; then
-    return 1
-  elif [ $major -eq 6 && $minor -lt 5 ] ; then
-    return 1
-  else
-    return 0
-  fi
-}
-
-if version_below_6_5; then
-  echo "upgrading linux kernel to 6.5... please run setup again on this relay after it reboots"
-  sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-generic-hwe-22.04 -y
-  sudo reboot  
-fi

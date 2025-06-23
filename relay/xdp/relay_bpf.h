@@ -23,6 +23,7 @@ struct bpf_t
     int stats_fd;
     int relay_map_fd;
     int session_map_fd;
+    int whitelist_map_fd;
 #endif // #ifdef COMPILE_WITH_BPF
 };
 

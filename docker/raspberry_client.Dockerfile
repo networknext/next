@@ -11,4 +11,6 @@ RUN g++ -o libnext.so -Isdk/include sdk/source/*.cpp -shared  -fPIC -lsodium -lc
 RUN g++ -o raspberry_client -Isdk/include cmd/raspberry_client/raspberry_client.cpp libnext.so -lcurl -lpthread -lm -DNEXT_DEVELOPMENT=1
 RUN mv /app/libnext.so /usr/local/lib && ldconfig
 
+ENV RASPBERRY_LOW_BANDWIDTH 1
+
 CMD [ "/app/raspberry_client" ]

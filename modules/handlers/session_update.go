@@ -290,7 +290,7 @@ func SessionUpdate_NewSession(state *SessionUpdateState) {
 
 	state.Output = state.Input
 	state.Output.SliceNumber += 1
-	state.Output.ExpireTimestamp = state.Input.ExpireTimestamp + packets.SDK_SliceSeconds*2 + 1
+	state.Output.ExpireTimestamp = state.Input.ExpireTimestamp + packets.SDK_SliceSeconds*2 + 5
 }
 
 func SessionUpdate_ExistingSession(state *SessionUpdateState) {

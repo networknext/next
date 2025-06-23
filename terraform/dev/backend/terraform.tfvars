@@ -18,6 +18,8 @@ cloudflare_domain           = "virtualgo.net"
 test_buyer_public_key       = "OPsJ/biQrnQEgoJr2oo9zeJG9vVkOUpWklw2+O2nfyy1BljyFxrU8Q=="
 test_buyer_private_key      = "OPsJ/biQrnQWRDrCHrOYPpYR/aRkRJA3IhJKx1ZZu95p59UokTB6/gSCgmvaij3N4kb29WQ5SlaSXDb47ad/LLUGWPIXGtTx"
 
+raspberry_region            = "us-central1"
+raspberry_zones             = ["us-central1-a"]
 raspberry_buyer_public_key  = "YJHQ5FGeoveQMdSzLRmbOKFRVY6QeMyUX1c4kRA72anucqnPRBr8IA=="
 raspberry_buyer_private_key = "YJHQ5FGeovcEX0r2r9P1LH+8tnnA3oQ7RSV6f/r0ihkbC2MOLVVbsJAx1LMtGZs4oVFVjpB4zJRfVziREDvZqe5yqc9EGvwg"
 
@@ -29,8 +31,8 @@ server_backend_public_key   = "9ShrWyUWRm+twHzd5xJuO3kpH1j9hGuxK2MlfI44x38="
 
 test_server_region          = "us-central1"
 test_server_zone            = "us-central1-a"
-test_server_tag             = "007" # increment this each time you want to deploy the test server
+test_server_tag             = "001" # increment this each time you want to deploy the test server
 
 disable_backend             = false
 disable_raspberry           = false
-disable_ip2location         = false
+disable_ip2location         = true

@@ -174,4 +174,8 @@
 
 #define RELAY_NUM_COUNTERS                                                                     150
 
+#define RELAY_VERSION_LENGTH                                                                    32
+
+#define WHITELIST_TIMEOUT                                                                     1000
+
 #endif // #ifndef RELAY_CONSTANTS_H

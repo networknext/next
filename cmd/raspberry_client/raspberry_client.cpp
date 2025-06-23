@@ -22,7 +22,11 @@
 #include <sys/syscall.h>
 #endif
 
+#define MAX_CLIENTS 1000
+
 static volatile int quit = 0;
+
+static bool raspberry_low_bandwidth;
 
 char raspberry_backend_url[1024];
 
@@ -38,10 +42,11 @@ void client_packet_received( next_client_t * client, void * context, const next_
 
 uint64_t raspberry_user_id()
 {
+    srand( time( NULL ) );
+
     uint64_t user_id = 0;
 
     char data[8];
-    srand(time(NULL));
     for ( int i = 0; i < 8; i++ )
     {
         data[i] = rand() % 256;
@@ -51,16 +56,15 @@ uint64_t raspberry_user_id()
     return user_id;
 }
 
+struct client_data_t
+{
+    uint64_t user_id;
+    int thread_index;
+};
+
 void client_thread_function( void * data )
 {
-    (void) data;
-
-    uint64_t user_id = raspberry_user_id();
-
-    if ( user_id != 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
-    }
+    client_data_t * client_data = (client_data_t*) data;
 
     const int GameLength = 360;
 
@@ -85,7 +89,7 @@ void client_thread_function( void * data )
             exit(1);
         }
 
-        char buffer[1024];
+        char buffer[10*1024];
         while ( fgets( buffer, sizeof(buffer), file ) != NULL )
         {
             if ( num_servers >= MaxServers )
@@ -121,7 +125,7 @@ void client_thread_function( void * data )
         if ( num_servers == 0 )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "no servers found" );
-            next_platform_sleep( 10.0 );
+            next_platform_sleep( 1.0 );
             continue;
         }
 
@@ -143,7 +147,7 @@ void client_thread_function( void * data )
         next_client_open_session( client, connect_address );
 
         uint8_t packet_data[256];
-        memcpy( packet_data, &user_id, 8 );
+        memcpy( packet_data, &client_data->user_id, 8 );
 
         double connect_time = next_platform_time();
 
@@ -159,7 +163,14 @@ void client_thread_function( void * data )
                 break;
             }
 
-            next_platform_sleep( 1.0f );
+            if ( !raspberry_low_bandwidth )
+            {
+                next_platform_sleep( 1.0f / 100.0f );
+            }
+            else
+            {
+                next_platform_sleep( 1.0f );
+            }
         }
 
         next_client_destroy( client );
@@ -168,9 +179,26 @@ void client_thread_function( void * data )
 
 void run_clients( int num_clients )
 {
+    if ( num_clients > MAX_CLIENTS )
+    {
+        num_clients = MAX_CLIENTS;
+    }
+
+    uint64_t user_id = raspberry_user_id();
+
+    if ( user_id != 0 )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "user id is: %" PRIu64, user_id );
+    }
+
+    client_data_t client_data[MAX_CLIENTS];
+
     for ( int i = 0; i < num_clients; i++ )
     {
-        next_platform_thread_t * thread = next_platform_thread_create( NULL, client_thread_function, NULL );
+        client_data[i].thread_index = i;
+        client_data[i].user_id = user_id;
+
+        next_platform_thread_t * thread = next_platform_thread_create( NULL, client_thread_function, &client_data[i] );
         next_assert( thread );
         (void) thread;
     }
@@ -185,11 +213,11 @@ int main()
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_config_t config;
-    next_default_config(&config);
+    next_default_config( &config );
 #ifdef _WIN32
-    strncpy_s(config.buyer_public_key, "YJHQ5FGeoveQMdSzLRmbOKFRVY6QeMyUX1c4kRA72anucqnPRBr8IA==", 256);
+    strncpy_s( config.buyer_public_key, "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q==", 256 );
 #else
-    strncpy(config.buyer_public_key, "YJHQ5FGeoveQMdSzLRmbOKFRVY6QeMyUX1c4kRA72anucqnPRBr8IA==", 256);
+    strncpy( config.buyer_public_key, "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q==", 256 );
 #endif
     config.buyer_public_key[255] = 0;
 
@@ -210,6 +238,13 @@ int main()
     }
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "raspberry backend url: %s", raspberry_backend_url );
+
+    raspberry_low_bandwidth = next_platform_getenv( "RASPBERRY_LOW_BANDWIDTH" ) != NULL;
+
+    if ( raspberry_low_bandwidth )
+    {
+        printf( "low bandwidth mode\n" );
+    }
 
     printf( "simulating %d clients\n", num_clients );
 

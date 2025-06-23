@@ -142,6 +142,8 @@ void next_address_data( const next_address_t * address, uint8_t * address_data )
     address_data[3] = address->data.ipv4[3];
 }
 
+#if NEXT_ADVANCED_PACKET_FILTER
+
 bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, const uint8_t * from_address, const uint8_t * to_address, uint16_t packet_length )
 {
     if ( data[0] == 0 ) // IMPORTANT: for passthrough packet type
@@ -165,3 +167,5 @@ bool next_advanced_packet_filter( const uint8_t * data, const uint8_t * magic, c
 
     return true;
 }
+
+#endif // #if NEXT_ADVANCED_PACKET_FILTER

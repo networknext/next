@@ -3,7 +3,6 @@
 */
 
 #include "relay_constants.h"
-#include "relay_version.h"
 
 #include <stdint.h>
 #include <stddef.h>

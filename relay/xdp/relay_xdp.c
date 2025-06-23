@@ -20,14 +20,20 @@
 #include <linux/string.h>
 #include <bpf/bpf_helpers.h>
 
+#define RELAY_ADVANCED_PACKET_FILTER 0
+
 #include "relay_shared.h"
 
 #if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define bpf_ntohl(x)        __builtin_bswap32(x)
+#define bpf_htonl(x)        __builtin_bswap32(x)
 #define bpf_ntohs(x)        __builtin_bswap16(x)
 #define bpf_htons(x)        __builtin_bswap16(x)
 #elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
     __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define bpf_ntohl(x)        (x)
+#define bpf_htonl(x)        (x)
 #define bpf_ntohs(x)        (x)
 #define bpf_htons(x)        (x)
 #else
@@ -82,13 +88,11 @@ struct {
     __uint( pinning, LIBBPF_PIN_BY_NAME );
 } whitelist_map SEC(".maps");
 
-#define INCREMENT_COUNTER(counter_index) __sync_fetch_and_add( &stats->counters[counter_index], 1 )
+#define INCREMENT_COUNTER(counter_index)  __sync_fetch_and_add( &stats->counters[counter_index], 1 )
 
-#define DECREMENT_COUNTER(counter_index) __sync_fetch_and_sub( &stats->counters[counter_index], 1 )
+#define DECREMENT_COUNTER(counter_index)  __sync_fetch_and_sub( &stats->counters[counter_index], 1 )
 
 #define ADD_COUNTER(counter_index, value) __sync_fetch_and_add( &stats->counters[counter_index], ( value) )
-
-#define SUB_COUNTER(counter_index, value) __sync_fetch_and_sub( &stats->counters[counter_index], ( value) )
 
 #define XCHACHA20POLY1305_NONCE_SIZE 24
 
@@ -114,21 +118,6 @@ int bpf_relay_xchacha20poly1305_decrypt( void * data, int data__sz, struct chach
 #define relay_printf(...) do { } while (0)
 #endif // #if RELAY_DEBUG
 
-static int relay_memcmp( void * a, void * b, int len )
-{
-    unsigned char * p = a;
-    unsigned char * q = b;
-    while ( len > 0 )
-    {
-        if ( *p != *q )
-            return ( *p - *q );
-        len--;
-        p++;
-        q++;
-    }
-    return 0;
-}
-
 static int relay_decrypt_route_token( struct decrypt_route_token_data * data, void * route_token, int route_token__sz )
 {
     __u8 * nonce = route_token;
@@ -151,7 +140,7 @@ static int relay_decrypt_continue_token( struct decrypt_continue_token_data * da
     if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24, &crypto_data ) )
         return 0;
     return 1;
-}
+ }
 
 static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
 {
@@ -169,7 +158,6 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     ip->saddr = ip->daddr;
     ip->daddr = b;
     ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= htons( IP_DF );
     ip->check = 0;
 
     char c[ETH_ALEN];
@@ -342,7 +330,7 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[6]  = chonkle[3];
     packet_data[7]  = chonkle[4];
     packet_data[8]  = chonkle[5];
-    packet_data[9] = chonkle[6];
+    packet_data[9]  = chonkle[6];
     packet_data[10] = chonkle[7];
     packet_data[11] = chonkle[8];
     packet_data[12] = chonkle[9];
@@ -353,31 +341,40 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     packet_data[17] = chonkle[14];
 }
 
-static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_address, __u16 dest_port, __u8 * magic )
+struct redirect_args_t
 {
-    struct ethhdr * eth = data;
-    struct iphdr  * ip  = data + sizeof( struct ethhdr );
+    void * data;
+    int payload_bytes;
+    __u32 source_address;
+    __u32 dest_address;
+    __u16 source_port;
+    __u16 dest_port;
+    __u8 * magic;
+};
+
+static int relay_redirect_packet( struct redirect_args_t * args )
+{
+    struct ethhdr * eth = args->data;
+    struct iphdr  * ip  = args->data + sizeof( struct ethhdr );
     struct udphdr * udp = (void*) ip + sizeof( struct iphdr );
 
-    udp->source = udp->dest;
-    udp->dest = dest_port;
+    udp->source = args->source_port;
+    udp->dest = args->dest_port;
     udp->check = 0;
-    udp->len = bpf_htons( sizeof(struct udphdr) + payload_bytes );
+    udp->len = bpf_htons( sizeof(struct udphdr) + args->payload_bytes );
 
-    ip->saddr = ip->daddr;
-    ip->daddr = dest_address;
-    ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + payload_bytes );
-    ip->frag_off |= htons( IP_DF );
+    ip->saddr = args->source_address;
+    ip->daddr = args->dest_address;
+    ip->tot_len = bpf_htons( sizeof(struct iphdr) + sizeof(struct udphdr) + args->payload_bytes );
     ip->check = 0;
 
     struct whitelist_key key;
-    key.address = dest_address;
-    key.port = dest_port;
+    key.address = args->dest_address;
+    key.port = args->dest_port;
     
     struct whitelist_value * whitelist_value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
     if ( whitelist_value == NULL )
     {
-        relay_printf( "redirect address not in whitelist" );
         return XDP_DROP;
     }
 
@@ -415,8 +412,8 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
     sum += ( to >> 8  ) & 0xFF;
     sum += ( to       ) & 0xFF;
 
-    sum += ( payload_bytes >> 8 );
-    sum += ( payload_bytes      ) & 0xFF;
+    sum += ( args->payload_bytes >> 8 );
+    sum += ( args->payload_bytes      ) & 0xFF;
 
     char * sum_data = (char*) &sum;
 
@@ -432,28 +429,28 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
 
     __u64 hash = 0xCBF29CE484222325;
 
-    hash ^= magic[0];
+    hash ^= args->magic[0];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[1];
+    hash ^= args->magic[1];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[2];
+    hash ^= args->magic[2];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[3];
+    hash ^= args->magic[3];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[4];
+    hash ^= args->magic[4];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[5];
+    hash ^= args->magic[5];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[6];
+    hash ^= args->magic[6];
     hash *= 0x00000100000001B3;
 
-    hash ^= magic[7];
+    hash ^= args->magic[7];
     hash *= 0x00000100000001B3;
 
     hash ^= ( from       ) & 0xFF;
@@ -480,10 +477,10 @@ static int relay_redirect_packet( void * data, int payload_bytes, __u32 dest_add
     hash ^= ( to >> 24 );
     hash *= 0x00000100000001B3;
 
-    hash ^= ( payload_bytes      ) & 0xFF;
+    hash ^= ( args->payload_bytes      ) & 0xFF;
     hash *= 0x00000100000001B3;
 
-    hash ^= ( payload_bytes >> 8 );
+    hash ^= ( args->payload_bytes >> 8 );
     hash *= 0x00000100000001B3;
 
     __u8 hash_0 = ( hash       ) & 0xFF;
@@ -587,7 +584,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
             if ( (void*)ip + sizeof(struct iphdr) > data_end )
             {
-                relay_printf( "dropped ipv4 packet because it's smaller than ipv4 header" );
+                relay_printf( "smaller than ipv4 header" );
                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                 return XDP_DROP;
@@ -602,7 +599,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                 if ( ip->ihl != 5 )
                 {
-                    relay_printf( "dropped udp packet because ip header is not 20 bytes" );
+                    relay_printf( "ip header is not 20 bytes" );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROP_LARGE_IP_HEADER );
                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -617,72 +614,102 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                     {
                         struct relay_state * state;
                         __u8 * packet_data = (unsigned char*) (void*)udp + sizeof(struct udphdr);
+
+                        // Drop packets that are too small to be valid
+
+                        if ( (void*)packet_data + 18 > data_end )
                         {
-                            // Drop packets that are too small to be valid
+                            relay_printf( "packet is too small" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_SMALL );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
 
-                            if ( (void*)packet_data + 18 > data_end )
-                            {
-                                relay_printf( "packet is too small" );
-                                INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_SMALL );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
-                            }
+                        // Drop packets that are too large to be valid
 
-                            // Drop packets that are too large to be valid
+                        int packet_bytes = data_end - (void*)udp - sizeof(struct udphdr);
 
-                            int packet_bytes = data_end - (void*)udp - sizeof(struct udphdr);
+                        if ( packet_bytes > 1400 )
+                        {
+                            relay_printf( "packet is too large" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_LARGE );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
 
-                            if ( packet_bytes > 1400 )
-                            {
-                                relay_printf( "packet is too large" );
-                                INCREMENT_COUNTER( RELAY_COUNTER_PACKET_TOO_LARGE );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
-                            }
+                        // Basic packet filter
 
-                            // Drop UDP packet if it is a fragment
+                        if ( packet_data[0] < 0x01 || packet_data[0] > 0x0E                                                           ||
+                             packet_data[2] != ( 1 | ( ( 255 - packet_data[1] ) ^ 113 ) )                                             ||
+                             packet_data[3] < 0x2A || packet_data[3] > 0x2D                                                           ||
+                             packet_data[4] < 0xC8 || packet_data[4] > 0xE7                                                           ||
+                             packet_data[5] < 0x05 || packet_data[5] > 0x44                                                           ||
+                             packet_data[7] < 0x4E || packet_data[7] > 0x51                                                           ||
+                             packet_data[8] < 0x60 || packet_data[8] > 0xDF                                                           ||
+                             packet_data[9] < 0x64 || packet_data[9] > 0xE3                                                           ||
+                             packet_data[10] != 0x07 && packet_data[10] != 0x4F                                                       ||
+                             packet_data[11] != 0x25 && packet_data[11] != 0x53                                                       ||
+                             packet_data[12] < 0x7C || packet_data[12] > 0x83                                                         ||
+                             packet_data[13] < 0xAF || packet_data[13] > 0xB6                                                         ||
+                             packet_data[14] < 0x21 || packet_data[14] > 0x60                                                         ||
+                             packet_data[15] != 0x61 && packet_data[15] != 0x05 && packet_data[15] != 0x2B && packet_data[15] != 0x0D ||
+                             packet_data[16] < 0xD2 || packet_data[16] > 0xF1                                                         ||
+                             packet_data[17] < 0x11 || packet_data[17] > 0x90 )
+                        {
+                            relay_printf( "basic packet filter dropped packet [%d]", packet_data[0] );
+                            INCREMENT_COUNTER( RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
 
-                            if ( ( ip->frag_off & ~0x2000 ) != 0 )
-                            {
-                                relay_printf( "dropped udp fragment" );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROP_FRAGMENT );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
-                            }
+                        // Get relay state
 
-                            // Basic packet filter
+                        state = (struct relay_state*) bpf_map_lookup_elem( &state_map, &key );
+                        if ( state == NULL )
+                        {
+                            relay_printf( "null relay state" );
+                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                            return XDP_DROP;
+                        }
 
-                            if ( packet_data[0] < 0x01 || packet_data[0] > 0x0E                                                           ||
-                                 packet_data[2] != ( 1 | ( ( 255 - packet_data[1] ) ^ 113 ) )                                             ||
-                                 packet_data[3] < 0x2A || packet_data[3] > 0x2D                                                           ||
-                                 packet_data[4] < 0xC8 || packet_data[4] > 0xE7                                                           ||
-                                 packet_data[5] < 0x05 || packet_data[5] > 0x44                                                           ||
-                                 packet_data[7] < 0x4E || packet_data[7] > 0x51                                                           ||
-                                 packet_data[8] < 0x60 || packet_data[8] > 0xDF                                                           ||
-                                 packet_data[9] < 0x64 || packet_data[9] > 0xE3                                                           ||
-                                 packet_data[10] != 0x07 && packet_data[10] != 0x4F                                                       ||
-                                 packet_data[11] != 0x25 && packet_data[11] != 0x53                                                       ||
-                                 packet_data[12] < 0x7C || packet_data[12] > 0x83                                                         ||
-                                 packet_data[13] < 0xAF || packet_data[13] > 0xB6                                                         ||
-                                 packet_data[14] < 0x21 || packet_data[14] > 0x60                                                         ||
-                                 packet_data[15] != 0x61 && packet_data[15] != 0x05 && packet_data[15] != 0x2B && packet_data[15] != 0x0D ||
-                                 packet_data[16] < 0xD2 || packet_data[16] > 0xF1                                                         ||
-                                 packet_data[17] < 0x11 || packet_data[17] > 0x90 )
-                            {
-                                relay_printf( "basic packet filter dropped packet" );
-                                INCREMENT_COUNTER( RELAY_COUNTER_BASIC_PACKET_FILTER_DROPPED_PACKET );
-                                INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                return XDP_DROP;
-                            }
+#if RELAY_ADVANCED_PACKET_FILTER
 
-                            // Advanced packet filter
+                        // Advanced packet filter
 
-                            __u32 from = ip->saddr;
-                            __u32 to   = config->relay_public_address;
+                        __u32 from = ip->saddr;
+                        __u32 to   = config->relay_public_address;
+
+                        unsigned short sum = 0;
+
+                        sum += ( from       ) & 0xFF;
+                        sum += ( from >> 8  ) & 0xFF;
+                        sum += ( from >> 16 ) & 0xFF;
+                        sum += ( from >> 24 );
+
+                        sum += ( to       ) & 0xFF;
+                        sum += ( to >> 8  ) & 0xFF;
+                        sum += ( to >> 16 ) & 0xFF;
+                        sum += ( to >> 24 );
+
+                        sum += ( packet_bytes >> 8 );
+                        sum += ( packet_bytes      ) & 0xFF;
+
+                        char * sum_data = (char*) &sum;
+
+                        __u8 sum_0 = ( sum      ) & 0xFF;
+                        __u8 sum_1 = ( sum >> 8 );
+
+                        __u8 pittle[2];
+                        pittle[0] = 1 | ( sum_0 ^ sum_1 ^ 193 );
+                        pittle[1] = 1 | ( ( 255 - pittle[0] ) ^ 113 );
+
+                        if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
+                        {
+                            to = config->relay_internal_address;
 
                             unsigned short sum = 0;
 
@@ -710,193 +737,294 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
                             {
-                                to = config->relay_internal_address;
-
-                                unsigned short sum = 0;
-
-                                sum += ( from       ) & 0xFF;
-                                sum += ( from >> 8  ) & 0xFF;
-                                sum += ( from >> 16 ) & 0xFF;
-                                sum += ( from >> 24 );
-
-                                sum += ( to       ) & 0xFF;
-                                sum += ( to >> 8  ) & 0xFF;
-                                sum += ( to >> 16 ) & 0xFF;
-                                sum += ( to >> 24 );
-
-                                sum += ( packet_bytes >> 8 );
-                                sum += ( packet_bytes      ) & 0xFF;
-
-                                char * sum_data = (char*) &sum;
-
-                                __u8 sum_0 = ( sum      ) & 0xFF;
-                                __u8 sum_1 = ( sum >> 8 );
-
-                                __u8 pittle[2];
-                                pittle[0] = 1 | ( sum_0 ^ sum_1 ^ 193 );
-                                pittle[1] = 1 | ( ( 255 - pittle[0] ) ^ 113 );
-
-                                if ( pittle[0] != packet_data[1] || pittle[1] != packet_data[2] )
-                                {
-                                    relay_printf( "advanced packet filter dropped packet (a)" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-                            }
-
-                            state = (struct relay_state*) bpf_map_lookup_elem( &state_map, &key );
-                            if ( state == NULL )
-                            {
-                                relay_printf( "null state" );
+                                relay_printf( "advanced packet filter dropped packet (a) [%d]", packet_data[0] );
+                                INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
                                 INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                 ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                 return XDP_DROP;
                             }
+                        }
 
-                            // current magic
+                        // current magic
 
-                            int passed = 0;
+                        int passed = 0;
+                        {
+                            __u8 * magic = state->current_magic;
+
+                            __u64 hash = 0xCBF29CE484222325;
+
+                            hash ^= magic[0];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[1];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[2];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[3];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[4];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[5];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[6];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= magic[7];
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( from >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( to >> 24 );
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes      ) & 0xFF;
+                            hash *= 0x00000100000001B3;
+
+                            hash ^= ( packet_bytes >> 8 );
+                            hash *= 0x00000100000001B3;
+
+                            __u8 hash_0 = ( hash       ) & 0xFF;
+                            __u8 hash_1 = ( hash >> 8  ) & 0xFF;
+                            __u8 hash_2 = ( hash >> 16 ) & 0xFF;
+                            __u8 hash_3 = ( hash >> 24 ) & 0xFF;
+                            __u8 hash_4 = ( hash >> 32 ) & 0xFF;
+                            __u8 hash_5 = ( hash >> 40 ) & 0xFF;
+                            __u8 hash_6 = ( hash >> 48 ) & 0xFF;
+                            __u8 hash_7 = ( hash >> 56 );
+
+                            __u8 chonkle[15];
+
+                            chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
+                            chonkle[1] = ( hash_3 & 0x1F ) + 200;
+                            chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
+                            chonkle[3] = hash_0;
+                            chonkle[4] = ( hash_2 & 0x03 ) + 78;
+                            chonkle[5] = ( hash_4 & 0x7F ) + 96;
+                            chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
+                            if ( ( hash_7 & 1 ) == 0 ) 
                             {
-                                __u8 * magic = state->current_magic;
+                                chonkle[7] = 79;
+                            } 
+                            else 
+                            {
+                                chonkle[7] = 7;
+                            }
+                            if ( ( hash_4 & 0x80 ) == 0 )
+                            {
+                                chonkle[8] = 37;
+                            } 
+                            else 
+                            {
+                                chonkle[8] = 83;
+                            }
+                            chonkle[9] = ( hash_5 & 0x07 ) + 124;
+                            chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
+                            chonkle[11] = ( hash_6 & 0x3F ) + 33;
+                            __u8 value = ( hash_1 & 0x03 );
+                            if ( value == 0 )
+                            {
+                                chonkle[12] = 97;
+                            } 
+                            else if ( value == 1 )
+                            {
+                                chonkle[12] = 5;
+                            } 
+                            else if ( value == 2 )
+                            {
+                                chonkle[12] = 43;
+                            } 
+                            else 
+                            {
+                                chonkle[12] = 13;
+                            }
+                            chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
+                            chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
 
-                                __u64 hash = 0xCBF29CE484222325;
+                            if ( chonkle[0] == packet_data[3]   &&
+                                 chonkle[1] == packet_data[4]   &&
+                                 chonkle[2] == packet_data[5]   &&
+                                 chonkle[3] == packet_data[6]   &&
+                                 chonkle[4] == packet_data[7]   &&
+                                 chonkle[5] == packet_data[8]   &&
+                                 chonkle[6] == packet_data[9]   &&
+                                 chonkle[7] == packet_data[10]  &&
+                                 chonkle[8] == packet_data[11]  &&
+                                 chonkle[9] == packet_data[12]  &&
+                                 chonkle[10] == packet_data[13] &&
+                                 chonkle[11] == packet_data[14] &&
+                                 chonkle[12] == packet_data[15] &&
+                                 chonkle[13] == packet_data[16] &&
+                                 chonkle[14] == packet_data[17] )
+                            {
+                                passed = 1;
+                            }
+                        }
 
-                                hash ^= magic[0];
-                                hash *= 0x00000100000001B3;
+                        if ( !passed )
+                        {
+                            // previous magic
 
-                                hash ^= magic[1];
-                                hash *= 0x00000100000001B3;
+                            __u8 * magic = state->previous_magic;
 
-                                hash ^= magic[2];
-                                hash *= 0x00000100000001B3;
+                            __u64 hash = 0xCBF29CE484222325;
 
-                                hash ^= magic[3];
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[0];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= magic[4];
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[1];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= magic[5];
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[2];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= magic[6];
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[3];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= magic[7];
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[4];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( from       ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[5];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( from >> 8  ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[6];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( from >> 16 ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= magic[7];
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( from >> 24 );
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( from       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( to       ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( from >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( to >> 8  ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( from >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( to >> 16 ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( from >> 24 );
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( to >> 24 );
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( to       ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( packet_bytes      ) & 0xFF;
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( to >> 8  ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                hash ^= ( packet_bytes >> 8 );
-                                hash *= 0x00000100000001B3;
+                            hash ^= ( to >> 16 ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                __u8 hash_0 = ( hash       ) & 0xFF;
-                                __u8 hash_1 = ( hash >> 8  ) & 0xFF;
-                                __u8 hash_2 = ( hash >> 16 ) & 0xFF;
-                                __u8 hash_3 = ( hash >> 24 ) & 0xFF;
-                                __u8 hash_4 = ( hash >> 32 ) & 0xFF;
-                                __u8 hash_5 = ( hash >> 40 ) & 0xFF;
-                                __u8 hash_6 = ( hash >> 48 ) & 0xFF;
-                                __u8 hash_7 = ( hash >> 56 );
+                            hash ^= ( to >> 24 );
+                            hash *= 0x00000100000001B3;
 
-                                __u8 chonkle[15];
+                            hash ^= ( packet_bytes      ) & 0xFF;
+                            hash *= 0x00000100000001B3;
 
-                                chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
-                                chonkle[1] = ( hash_3 & 0x1F ) + 200;
-                                chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
-                                chonkle[3] = hash_0;
-                                chonkle[4] = ( hash_2 & 0x03 ) + 78;
-                                chonkle[5] = ( hash_4 & 0x7F ) + 96;
-                                chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
-                                if ( ( hash_7 & 1 ) == 0 ) 
-                                {
-                                    chonkle[7] = 79;
-                                } 
-                                else 
-                                {
-                                    chonkle[7] = 7;
-                                }
-                                if ( ( hash_4 & 0x80 ) == 0 )
-                                {
-                                    chonkle[8] = 37;
-                                } 
-                                else 
-                                {
-                                    chonkle[8] = 83;
-                                }
-                                chonkle[9] = ( hash_5 & 0x07 ) + 124;
-                                chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
-                                chonkle[11] = ( hash_6 & 0x3F ) + 33;
-                                __u8 value = ( hash_1 & 0x03 );
-                                if ( value == 0 )
-                                {
-                                    chonkle[12] = 97;
-                                } 
-                                else if ( value == 1 )
-                                {
-                                    chonkle[12] = 5;
-                                } 
-                                else if ( value == 2 )
-                                {
-                                    chonkle[12] = 43;
-                                } 
-                                else 
-                                {
-                                    chonkle[12] = 13;
-                                }
-                                chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
-                                chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
+                            hash ^= ( packet_bytes >> 8 );
+                            hash *= 0x00000100000001B3;
 
-                                if ( chonkle[0] == packet_data[3]   &&
-                                     chonkle[1] == packet_data[4]   &&
-                                     chonkle[2] == packet_data[5]   &&
-                                     chonkle[3] == packet_data[6]   &&
-                                     chonkle[4] == packet_data[7]   &&
-                                     chonkle[5] == packet_data[8]   &&
-                                     chonkle[6] == packet_data[9]   &&
-                                     chonkle[7] == packet_data[10]  &&
-                                     chonkle[8] == packet_data[11]  &&
-                                     chonkle[9] == packet_data[12]  &&
-                                     chonkle[10] == packet_data[13] &&
-                                     chonkle[11] == packet_data[14] &&
-                                     chonkle[12] == packet_data[15] &&
-                                     chonkle[13] == packet_data[16] &&
-                                     chonkle[14] == packet_data[17] )
-                                {
-                                    passed = 1;
-                                }
+                            __u8 hash_0 = ( hash       ) & 0xFF;
+                            __u8 hash_1 = ( hash >> 8  ) & 0xFF;
+                            __u8 hash_2 = ( hash >> 16 ) & 0xFF;
+                            __u8 hash_3 = ( hash >> 24 ) & 0xFF;
+                            __u8 hash_4 = ( hash >> 32 ) & 0xFF;
+                            __u8 hash_5 = ( hash >> 40 ) & 0xFF;
+                            __u8 hash_6 = ( hash >> 48 ) & 0xFF;
+                            __u8 hash_7 = ( hash >> 56 );
+
+                            __u8 chonkle[15];
+
+                            chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
+                            chonkle[1] = ( hash_3 & 0x1F ) + 200;
+                            chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
+                            chonkle[3] = hash_0;
+                            chonkle[4] = ( hash_2 & 0x03 ) + 78;
+                            chonkle[5] = ( hash_4 & 0x7F ) + 96;
+                            chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
+                            if ( ( hash_7 & 1 ) == 0 ) 
+                            {
+                                chonkle[7] = 79;
+                            } 
+                            else 
+                            {
+                                chonkle[7] = 7;
+                            }
+                            if ( ( hash_4 & 0x80 ) == 0 )
+                            {
+                                chonkle[8] = 37;
+                            } 
+                            else 
+                            {
+                                chonkle[8] = 83;
+                            }
+                            chonkle[9] = ( hash_5 & 0x07 ) + 124;
+                            chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
+                            chonkle[11] = ( hash_6 & 0x3F ) + 33;
+                            __u8 value = ( hash_1 & 0x03 );
+                            if ( value == 0 )
+                            {
+                                chonkle[12] = 97;
+                            } 
+                            else if ( value == 1 )
+                            {
+                                chonkle[12] = 5;
+                            } 
+                            else if ( value == 2 )
+                            {
+                                chonkle[12] = 43;
+                            } 
+                            else 
+                            {
+                                chonkle[12] = 13;
+                            }
+                            chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
+                            chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
+
+                            if ( chonkle[0] == packet_data[3]   &&
+                                 chonkle[1] == packet_data[4]   &&
+                                 chonkle[2] == packet_data[5]   &&
+                                 chonkle[3] == packet_data[6]   &&
+                                 chonkle[4] == packet_data[7]   &&
+                                 chonkle[5] == packet_data[8]   &&
+                                 chonkle[6] == packet_data[9]   &&
+                                 chonkle[7] == packet_data[10]  &&
+                                 chonkle[8] == packet_data[11]  &&
+                                 chonkle[9] == packet_data[12]  &&
+                                 chonkle[10] == packet_data[13] &&
+                                 chonkle[11] == packet_data[14] &&
+                                 chonkle[12] == packet_data[15] &&
+                                 chonkle[13] == packet_data[16] &&
+                                 chonkle[14] == packet_data[17] )
+                            {
+                                passed = 1;
                             }
 
                             if ( !passed )
                             {
-                                // previous magic
+                                // next magic
 
                                 __u8 * magic = state->previous_magic;
 
@@ -1034,170 +1162,31 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( !passed )
                                 {
-                                    // next magic
-
-                                    __u8 * magic = state->previous_magic;
-
-                                    __u64 hash = 0xCBF29CE484222325;
-
-                                    hash ^= magic[0];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[1];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[2];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[3];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[4];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[5];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[6];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= magic[7];
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( from       ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( from >> 8  ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( from >> 16 ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( from >> 24 );
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( to       ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( to >> 8  ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( to >> 16 ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( to >> 24 );
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( packet_bytes      ) & 0xFF;
-                                    hash *= 0x00000100000001B3;
-
-                                    hash ^= ( packet_bytes >> 8 );
-                                    hash *= 0x00000100000001B3;
-
-                                    __u8 hash_0 = ( hash       ) & 0xFF;
-                                    __u8 hash_1 = ( hash >> 8  ) & 0xFF;
-                                    __u8 hash_2 = ( hash >> 16 ) & 0xFF;
-                                    __u8 hash_3 = ( hash >> 24 ) & 0xFF;
-                                    __u8 hash_4 = ( hash >> 32 ) & 0xFF;
-                                    __u8 hash_5 = ( hash >> 40 ) & 0xFF;
-                                    __u8 hash_6 = ( hash >> 48 ) & 0xFF;
-                                    __u8 hash_7 = ( hash >> 56 );
-
-                                    __u8 chonkle[15];
-
-                                    chonkle[0] = ( ( hash_6 & 0xC0 ) >> 6 ) + 42;
-                                    chonkle[1] = ( hash_3 & 0x1F ) + 200;
-                                    chonkle[2] = ( ( hash_2 & 0xFC ) >> 2 ) + 5;
-                                    chonkle[3] = hash_0;
-                                    chonkle[4] = ( hash_2 & 0x03 ) + 78;
-                                    chonkle[5] = ( hash_4 & 0x7F ) + 96;
-                                    chonkle[6] = ( ( hash_1 & 0xFC ) >> 2 ) + 100;
-                                    if ( ( hash_7 & 1 ) == 0 ) 
-                                    {
-                                        chonkle[7] = 79;
-                                    } 
-                                    else 
-                                    {
-                                        chonkle[7] = 7;
-                                    }
-                                    if ( ( hash_4 & 0x80 ) == 0 )
-                                    {
-                                        chonkle[8] = 37;
-                                    } 
-                                    else 
-                                    {
-                                        chonkle[8] = 83;
-                                    }
-                                    chonkle[9] = ( hash_5 & 0x07 ) + 124;
-                                    chonkle[10] = ( ( hash_1 & 0xE0 ) >> 5 ) + 175;
-                                    chonkle[11] = ( hash_6 & 0x3F ) + 33;
-                                    __u8 value = ( hash_1 & 0x03 );
-                                    if ( value == 0 )
-                                    {
-                                        chonkle[12] = 97;
-                                    } 
-                                    else if ( value == 1 )
-                                    {
-                                        chonkle[12] = 5;
-                                    } 
-                                    else if ( value == 2 )
-                                    {
-                                        chonkle[12] = 43;
-                                    } 
-                                    else 
-                                    {
-                                        chonkle[12] = 13;
-                                    }
-                                    chonkle[13] = ( ( hash_5 & 0xF8 ) >> 3 ) + 210;
-                                    chonkle[14] = ( ( hash_7 & 0xFE ) >> 1 ) + 17;
-
-                                    if ( chonkle[0] == packet_data[3]   &&
-                                         chonkle[1] == packet_data[4]   &&
-                                         chonkle[2] == packet_data[5]   &&
-                                         chonkle[3] == packet_data[6]   &&
-                                         chonkle[4] == packet_data[7]   &&
-                                         chonkle[5] == packet_data[8]   &&
-                                         chonkle[6] == packet_data[9]   &&
-                                         chonkle[7] == packet_data[10]  &&
-                                         chonkle[8] == packet_data[11]  &&
-                                         chonkle[9] == packet_data[12]  &&
-                                         chonkle[10] == packet_data[13] &&
-                                         chonkle[11] == packet_data[14] &&
-                                         chonkle[12] == packet_data[15] &&
-                                         chonkle[13] == packet_data[16] &&
-                                         chonkle[14] == packet_data[17] )
-                                    {
-                                        passed = 1;
-                                    }
-
-                                    if ( !passed )
-                                    {
-                                        relay_printf( "advanced packet filter dropped packet (b)" );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                        return XDP_DROP;
-                                    }
+                                    relay_printf( "advanced packet filter dropped packet (b) [%d]", packet_data[0] );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ADVANCED_PACKET_FILTER_DROPPED_PACKET );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
                                 }
                             }
                         }
 
-                        // process packet types before whitelist check, these packet types can add the source address to the whitelist
-
+#endif // #if RELAY_ADVANCED_PACKET_FILTER
+                        
                         __u8 packet_type = packet_data[0];
 
                         switch ( packet_type )
                         {
                             case RELAY_PING_PACKET:
                             {
-                                relay_printf( "relay ping packet" );
+                                relay_printf( "relay ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_RECEIVED );
 
-                                // IMPORTANT: for verifier
+                                // IMPORTANT: for the verifier, because it's fucking stupid
                                 if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "relay ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1206,7 +1195,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*) packet_data + 18 + 8 + 8 + 1 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "relay ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1227,7 +1216,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "expired: %lld < %lld", expire_timestamp, state->current_timestamp );
+                                    relay_printf( "ping token expired: %lld < %lld", expire_timestamp, state->current_timestamp );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1238,31 +1227,104 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
                                 if ( relay_map_value == NULL )
                                 {
-                                    relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
+                                    relay_printf( "ping from unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_UNKNOWN_RELAY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
+                                // first try with relay public address as dest
+
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                __u8 hash[32];
-                                bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
-                                __u8 * ping_token = packet_data + 8 + 8 + 1;
-                                if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
+                                __u8 * ping_token = payload + 8 + 8 + 1;
+
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
+                                bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
+                                if ( hash[0] != ping_token[0] || 
+                                     hash[1] != ping_token[1] || 
+                                     hash[2] != ping_token[2] || 
+                                     hash[3] != ping_token[3] || 
+                                     hash[4] != ping_token[4] || 
+                                     hash[5] != ping_token[5] || 
+                                     hash[6] != ping_token[6] || 
+                                     hash[7] != ping_token[7] || 
+                                     hash[8] != ping_token[8] || 
+                                     hash[9] != ping_token[9] || 
+                                     hash[10] != ping_token[10] || 
+                                     hash[11] != ping_token[11] || 
+                                     hash[12] != ping_token[12] || 
+                                     hash[13] != ping_token[13] || 
+                                     hash[14] != ping_token[14] || 
+                                     hash[15] != ping_token[15] || 
+                                     hash[16] != ping_token[16] || 
+                                     hash[17] != ping_token[17] || 
+                                     hash[18] != ping_token[18] || 
+                                     hash[19] != ping_token[19] || 
+                                     hash[20] != ping_token[20] || 
+                                     hash[21] != ping_token[21] || 
+                                     hash[22] != ping_token[22] || 
+                                     hash[23] != ping_token[23] || 
+                                     hash[24] != ping_token[24] || 
+                                     hash[25] != ping_token[25] || 
+                                     hash[26] != ping_token[26] || 
+                                     hash[27] != ping_token[27] || 
+                                     hash[28] != ping_token[28] || 
+                                     hash[29] != ping_token[29] || 
+                                     hash[30] != ping_token[30] || 
+                                     hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "did not verify" );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
+                                    // next try with relay internal address
+
+                                    verify_data.dest_address = config->relay_internal_address;
+                                    bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, RELAY_PING_TOKEN_BYTES );
+
+                                    if ( hash[0] != ping_token[0] || 
+                                         hash[1] != ping_token[1] || 
+                                         hash[2] != ping_token[2] || 
+                                         hash[3] != ping_token[3] || 
+                                         hash[4] != ping_token[4] || 
+                                         hash[5] != ping_token[5] || 
+                                         hash[6] != ping_token[6] || 
+                                         hash[7] != ping_token[7] || 
+                                         hash[8] != ping_token[8] || 
+                                         hash[9] != ping_token[9] || 
+                                         hash[10] != ping_token[10] || 
+                                         hash[11] != ping_token[11] || 
+                                         hash[12] != ping_token[12] || 
+                                         hash[13] != ping_token[13] || 
+                                         hash[14] != ping_token[14] || 
+                                         hash[15] != ping_token[15] || 
+                                         hash[16] != ping_token[16] || 
+                                         hash[17] != ping_token[17] || 
+                                         hash[18] != ping_token[18] || 
+                                         hash[19] != ping_token[19] || 
+                                         hash[20] != ping_token[20] || 
+                                         hash[21] != ping_token[21] || 
+                                         hash[22] != ping_token[22] || 
+                                         hash[23] != ping_token[23] || 
+                                         hash[24] != ping_token[24] || 
+                                         hash[25] != ping_token[25] || 
+                                         hash[26] != ping_token[26] || 
+                                         hash[27] != ping_token[27] || 
+                                         hash[28] != ping_token[28] || 
+                                         hash[29] != ping_token[29] || 
+                                         hash[30] != ping_token[30] || 
+                                         hash[31] != ping_token[31] )
+                                    {
+                                        relay_printf( "relay ping token did not verify" );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PING_PACKET_DID_NOT_VERIFY );
+                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                        return XDP_DROP;
+                                    }
                                 }
 
                                 struct whitelist_key key;
@@ -1270,7 +1332,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1290,18 +1352,17 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
         
                                 return XDP_TX;
                             }
-                            break;
 
                             case RELAY_CLIENT_PING_PACKET:
                             {
-                                relay_printf( "client ping packet" );
+                                relay_printf( "client ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_RECEIVED );
 
-                                // IMPORTANT: for verifier
+                                // IMPORTANT: for the verifier, because it's fucking stupid
                                 if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "client ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1310,7 +1371,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*) packet_data + 18 + 8 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "client ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1331,7 +1392,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "expired" );
+                                    relay_printf( "client ping token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1341,17 +1402,50 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = 0; // IMPORTANT: Some NAT change the client port, so it is set to zero in client ping token
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                                __u8 hash[32];
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
-                                __u8 * ping_token = packet_data + 8 + 8 + 1;
-                                if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
+
+                                __u8 * ping_token = payload + 8 + 8 + 8;
+
+                                if ( hash[0] != ping_token[0] || 
+                                     hash[1] != ping_token[1] || 
+                                     hash[2] != ping_token[2] || 
+                                     hash[3] != ping_token[3] || 
+                                     hash[4] != ping_token[4] || 
+                                     hash[5] != ping_token[5] || 
+                                     hash[6] != ping_token[6] || 
+                                     hash[7] != ping_token[7] || 
+                                     hash[8] != ping_token[8] || 
+                                     hash[9] != ping_token[9] || 
+                                     hash[10] != ping_token[10] || 
+                                     hash[11] != ping_token[11] || 
+                                     hash[12] != ping_token[12] || 
+                                     hash[13] != ping_token[13] || 
+                                     hash[14] != ping_token[14] || 
+                                     hash[15] != ping_token[15] || 
+                                     hash[16] != ping_token[16] || 
+                                     hash[17] != ping_token[17] || 
+                                     hash[18] != ping_token[18] || 
+                                     hash[19] != ping_token[19] || 
+                                     hash[20] != ping_token[20] || 
+                                     hash[21] != ping_token[21] || 
+                                     hash[22] != ping_token[22] || 
+                                     hash[23] != ping_token[23] || 
+                                     hash[24] != ping_token[24] || 
+                                     hash[25] != ping_token[25] || 
+                                     hash[26] != ping_token[26] || 
+                                     hash[27] != ping_token[27] || 
+                                     hash[28] != ping_token[28] || 
+                                     hash[29] != ping_token[29] || 
+                                     hash[30] != ping_token[30] || 
+                                     hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "did not verify" );
+                                    relay_printf( "client ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1363,7 +1457,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1387,14 +1481,14 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                             case RELAY_SERVER_PING_PACKET:
                             {
-                                relay_printf( "server ping packet" );
+                                relay_printf( "server ping packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_RECEIVED );
 
-                                // IMPORTANT: for verifier
+                                // IMPORTANT: for the verifier, because it's fucking stupid
                                 if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "server ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1403,7 +1497,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*) packet_data + 18 + 8 + 8 + RELAY_PING_TOKEN_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "server ping packet has wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1424,7 +1518,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "expired" );
+                                    relay_printf( "server ping token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1434,17 +1528,50 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct ping_token_data verify_data;
                                 verify_data.source_address = ip->saddr;
                                 verify_data.source_port = udp->source;
-                                verify_data.dest_address = ip->daddr;
+                                verify_data.dest_address = config->relay_public_address;
                                 verify_data.dest_port = udp->dest;
                                 verify_data.expire_timestamp = expire_timestamp;
                                 memcpy( verify_data.ping_key, state->ping_key, RELAY_PING_KEY_BYTES );
 
-                               __u8 hash[32];
+                                __u8 hash[RELAY_PING_TOKEN_BYTES];
                                 bpf_relay_sha256( &verify_data, sizeof(struct ping_token_data), hash, 32 );
-                                __u8 * ping_token = packet_data + 8 + 8 + 1;
-                                if ( relay_memcmp( hash, ping_token, 32 ) != 0 )
+
+                                __u8 * ping_token = payload + 8 + 8;
+
+                                if ( hash[0] != ping_token[0] || 
+                                     hash[1] != ping_token[1] || 
+                                     hash[2] != ping_token[2] || 
+                                     hash[3] != ping_token[3] || 
+                                     hash[4] != ping_token[4] || 
+                                     hash[5] != ping_token[5] || 
+                                     hash[6] != ping_token[6] || 
+                                     hash[7] != ping_token[7] || 
+                                     hash[8] != ping_token[8] || 
+                                     hash[9] != ping_token[9] || 
+                                     hash[10] != ping_token[10] || 
+                                     hash[11] != ping_token[11] || 
+                                     hash[12] != ping_token[12] || 
+                                     hash[13] != ping_token[13] || 
+                                     hash[14] != ping_token[14] || 
+                                     hash[15] != ping_token[15] || 
+                                     hash[16] != ping_token[16] || 
+                                     hash[17] != ping_token[17] || 
+                                     hash[18] != ping_token[18] || 
+                                     hash[19] != ping_token[19] || 
+                                     hash[20] != ping_token[20] || 
+                                     hash[21] != ping_token[21] || 
+                                     hash[22] != ping_token[22] || 
+                                     hash[23] != ping_token[23] || 
+                                     hash[24] != ping_token[24] || 
+                                     hash[25] != ping_token[25] || 
+                                     hash[26] != ping_token[26] || 
+                                     hash[27] != ping_token[27] || 
+                                     hash[28] != ping_token[28] || 
+                                     hash[29] != ping_token[29] || 
+                                     hash[30] != ping_token[30] || 
+                                     hash[31] != ping_token[31] )
                                 {
-                                    relay_printf( "did not verify" );
+                                    relay_printf( "server ping token did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_PING_PACKET_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1456,7 +1583,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 key.port = udp->source;
                                 
                                 struct whitelist_value value;
-                                value.expire_timestamp = state->current_timestamp + 30;
+                                value.expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 memcpy( value.source_address, eth->h_source, 6 );
                                 memcpy( value.dest_address, eth->h_dest, 6 );
 
@@ -1465,6 +1592,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 packet_data[0] = RELAY_SERVER_PONG_PACKET;
 
                                 const int payload_bytes = 18 + 8;
+
+                                ip->daddr = config->relay_public_address;       // IMPORTANT: We must respond from the relay public address or it will get filtered out
 
                                 relay_reflect_packet( data, payload_bytes, state->current_magic );
 
@@ -1485,19 +1614,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         key.address = ip->saddr;
                         key.port = udp->source;
 
-                        struct whitelist_value * value = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
-                        if ( value == NULL )
+                        struct whitelist_value * whitelist = (struct whitelist_value*) bpf_map_lookup_elem( &whitelist_map, &key );
+                        if ( whitelist == NULL )
                         {
-                            relay_printf( "not in whitelist" );
+                            relay_printf( "address %x:%d is not in whitelist", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                             INCREMENT_COUNTER( RELAY_COUNTER_NOT_IN_WHITELIST );
-                            INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                            ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                            return XDP_DROP;
-                        }
-                        else if ( value->expire_timestamp < state->current_timestamp )
-                        {
-                            relay_printf( "whitelist entry expired" );
-                            INCREMENT_COUNTER( RELAY_COUNTER_WHITELIST_ENTRY_EXPIRED );
                             INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                             ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                             return XDP_DROP;
@@ -1509,12 +1630,23 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                         {
                             case RELAY_PONG_PACKET:
                             {
-                                relay_printf( "relay pong packet" );
+                                relay_printf( "relay pong packet from %x:%d to %x:%d", bpf_htonl( ip->saddr ), bpf_htons( udp->source ), bpf_htonl( ip->daddr ), bpf_htons( udp->dest ) );
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + 1 + 8 + 8 != data_end )
+                                // IMPORTANT: for the verifier, because it's fucking stupid
+                                if ( (void*) packet_data + 18 + 8 > data_end )
                                 {
+                                    relay_printf( "relay pong packet is the wrong size" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
+                                }
+
+                                if ( (void*) packet_data + 18 + 8 != data_end )
+                                {
+                                    relay_printf( "relay pong packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1525,12 +1657,16 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 void * relay_map_value = bpf_map_lookup_elem( &relay_map, &relay_map_key );
                                 if ( relay_map_value == NULL )
                                 {
-                                    relay_printf( "unknown relay %x:%d", ip->saddr, bpf_ntohs( udp->source ) );
+                                    relay_printf( "unknown relay %x:%d", bpf_ntohl( ip->saddr ), bpf_ntohs( udp->source ) );
                                     INCREMENT_COUNTER( RELAY_COUNTER_RELAY_PONG_PACKET_UNKNOWN_RELAY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_PASS;
                             }
@@ -1542,7 +1678,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES > data_end )
                                 {
                                     relay_printf( "route request packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_WRONG_SIZE );
@@ -1551,26 +1687,22 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*) packet_data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES <= data_end ) // IMPORTANT: for the verifier
+                                struct decrypt_route_token_data decrypt_data;
+                                memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
                                 {
-                                    relay_printf( "decrypting route token" );
-                                    struct decrypt_route_token_data decrypt_data;
-                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
-                                    if ( relay_decrypt_route_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES ) == 0 )
-                                    {
-                                        relay_printf( "could not decrypt route token" );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                        return XDP_DROP;
-                                    }
+                                    relay_printf( "route request could not decrypt route token" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_COULD_NOT_DECRYPT_ROUTE_TOKEN );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
                                 }
 
                                 struct route_token * token = (struct route_token*) ( packet_data + 18 + 24 );
 
                                 if ( token->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "token expired" );
+                                    relay_printf( "route request route token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_TOKEN_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1613,9 +1745,6 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 if ( bpf_map_update_elem( &session_map, &key, &session, BPF_NOEXIST ) == 0 )
                                 {
                                     relay_printf( "created session 0x%llx:%d", session.session_id, session.session_version );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session.envelope_kbps_up );
-                                    ADD_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session.envelope_kbps_down );
                                 }
 
                                 memcpy( data + RELAY_ENCRYPTED_ROUTE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
@@ -1628,16 +1757,21 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                if ( session.next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session.next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session.next_port;
+                                args.magic = state->current_magic;
 
-                                relay_printf( "forward to next hop" );
+                                relay_printf( "route request forward to next hop: %x:%d -> %x.%d", args.source_address, args.source_port, args.dest_address, args.dest_port );
 
-                                int result = relay_redirect_packet( data, payload_bytes, session.next_address, session.next_port, state->current_magic );
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "route request redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1649,6 +1783,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -1662,19 +1800,19 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's fucking stupid as shit
+                                if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "route response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "route response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1699,22 +1837,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "route response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -1734,53 +1858,61 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "route response packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
                                 verify_data.packet_type = packet_type;
                                 verify_data.packet_sequence = packet_sequence;
-                                verify_data.session_id  = header[8];
-                                verify_data.session_id |= ( ( (__u64)( header[8+1] ) ) << 8  );
-                                verify_data.session_id |= ( ( (__u64)( header[8+2] ) ) << 16 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+3] ) ) << 24 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+4] ) ) << 32 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+5] ) ) << 40 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
-                                verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
-                                verify_data.session_version = header[8+8];
+                                verify_data.session_id = session_id;
+                                verify_data.session_version = session_version;
+                                
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "route response packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
-                                relay_printf( "forward to previous hop" );
-
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                relay_printf( "route response packet forward to previous hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "route response packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1790,6 +1922,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -1801,7 +1937,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_RECEIVED );
 
-                                if ( (void*)packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
+                                if ( (void*) packet_data + 18 + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES > data_end )
                                 {
                                     relay_printf( "continue request packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_WRONG_SIZE );
@@ -1810,26 +1946,24 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*) packet_data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES <= data_end ) // IMPORTANT: for the verifier
+                                relay_printf( "decrypting continue token" );
+
+                                struct decrypt_continue_token_data decrypt_data;
+                                memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
+                                if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
                                 {
-                                    relay_printf( "decrypting continue token" );
-                                    struct decrypt_continue_token_data decrypt_data;
-                                    memcpy( decrypt_data.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
-                                    if ( relay_decrypt_continue_token( &decrypt_data, packet_data + 18, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES ) == 0 )
-                                    {
-                                        relay_printf( "could not decrypt continue token" );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
-                                        INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                        ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                        return XDP_DROP;
-                                    }
+                                    relay_printf( "could not decrypt continue token" );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_DECRYPT_CONTINUE_TOKEN );
+                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
+                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
+                                    return XDP_DROP;
                                 }
 
                                 struct continue_token * token = (struct continue_token*) ( packet_data + 18 + 24 );
 
                                 if ( token->expire_timestamp < state->current_timestamp )
                                 {
-                                    relay_printf( "token expired" );
+                                    relay_printf( "continue request packet continue token expired" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_TOKEN_EXPIRED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1842,22 +1976,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "continue request packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -1877,16 +1997,21 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 int payload_bytes = data_end - (void*)packet_data;
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                relay_printf( "continue request packet forward to next hop" );
 
-                                relay_printf( "forward to next hop" );
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "continue request packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1898,6 +2023,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_REQUEST_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -1911,19 +2040,19 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's dumber than shit
+                                if ( (void*) header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "continue response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "continue response packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -1948,22 +2077,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "continue response packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -1981,16 +2096,17 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u64 server_to_client_sequence = session->special_server_to_client_sequence;
 
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
+
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "continue response packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2005,31 +2121,47 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "continue response packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
-
-                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
-
-                                relay_printf( "forward to previous hop" );
-
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
                                 }
+
+                                session->special_server_to_client_sequence = packet_sequence;
+
+                                relay_printf( "continue response packet forward to previous hop" );
 
                                 int payload_bytes = 18 + RELAY_HEADER_BYTES;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "continue response packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2039,6 +2171,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_CONTINUE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2054,7 +2190,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*)header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "packet is too small" );
+                                    relay_printf( "client to server packet is too small" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_SMALL );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2067,7 +2203,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( payload_bytes > RELAY_MTU )
                                 {
-                                    relay_printf( "packet is too big" );
+                                    relay_printf( "client to server packet is too big" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_TOO_BIG );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2092,22 +2228,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "client to server packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2123,18 +2245,17 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 packet_sequence |= ( ( (__u64)( header[6] ) ) << 48 );
                                 packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
 
-                                uint64_t client_to_server_sequence = session->payload_client_to_server_sequence;
+                                __u64 client_to_server_sequence = session->payload_client_to_server_sequence;
 
                                 if ( packet_sequence <= client_to_server_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "client to server packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2149,11 +2270,22 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "client to server packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2162,16 +2294,21 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
-                                relay_printf( "forward to next hop" );
+                                relay_printf( "client to server packet forward to next hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "client to server packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2181,6 +2318,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_CLIENT_TO_SERVER_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2196,7 +2337,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( (void*)header + RELAY_HEADER_BYTES > data_end )
                                 {
-                                    relay_printf( "packet is too small" );
+                                    relay_printf( "server to client packet is too small" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_SMALL );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2209,7 +2350,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( payload_bytes > RELAY_MTU )
                                 {
-                                    relay_printf( "packet is too big" );
+                                    relay_printf( "server to client packet is too big" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_TOO_BIG );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2234,22 +2375,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "server to client packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2269,14 +2396,13 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received: %lld < %lld" , packet_sequence, server_to_client_sequence );
+                                    relay_printf( "server to client packet already received: %lld < %lld" , packet_sequence, server_to_client_sequence );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2291,29 +2417,45 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "server to client packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
 
                                 __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "server to client packet forward to previous hop" );
 
-                                if ( session->prev_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "server to client packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2323,6 +2465,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_SERVER_TO_CLIENT_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2336,19 +2482,19 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's thick as a brick
+                                if ( (void*) header + RELAY_HEADER_BYTES + 8 > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "session ping packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*) header + RELAY_HEADER_BYTES + 8 != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "session ping packet is the wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2373,22 +2519,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "session ping packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2408,14 +2540,13 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= client_to_server_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "session ping packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2430,34 +2561,47 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "session ping packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
-
-                                if ( packet_sequence > client_to_server_sequence )
-                                {
-                                    __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
                                 }
 
-                                relay_printf( "forward to next hop" );
+                                __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                relay_printf( "session ping packet forward to next hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->next_address, session->next_port, state->current_magic );
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->next_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->next_port;
+                                args.magic = state->current_magic;
+
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "session ping packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2467,6 +2611,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PING_PACKET_FORWARD_TO_NEXT_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }
@@ -2480,19 +2628,19 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 __u8 * header = packet_data + 18;
 
-                                // IMPORTANT: required for verifier
-                                if ( (void*)header + RELAY_HEADER_BYTES > data_end )
+                                // IMPORTANT: required for verifier because it's not all there
+                                if ( (void*)header + RELAY_HEADER_BYTES + 8 > data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "session pong packet is wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                if ( (void*)header + RELAY_HEADER_BYTES != data_end )
+                                if ( (void*)header + RELAY_HEADER_BYTES + 8 != data_end )
                                 {
-                                    relay_printf( "wrong size" );
+                                    relay_printf( "session pong packet is wrong size" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_WRONG_SIZE );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2517,22 +2665,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 struct session_data * session = (struct session_data*) bpf_map_lookup_elem( &session_map, &key );
                                 if ( session == NULL )
                                 {
-                                    relay_printf( "could not find session" );
+                                    relay_printf( "session pong packet could not find session" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_COULD_NOT_FIND_SESSION );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
-                                    ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
-                                    return XDP_DROP;
-                                }
-
-                                if ( session->expire_timestamp < state->current_timestamp )
-                                {
-                                    relay_printf( "session expired" );
-                                    bpf_map_delete_elem( &session_map, &key );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_SESSION_EXPIRED );
-                                    INCREMENT_COUNTER( RELAY_COUNTER_SESSION_DESTROYED );
-                                    DECREMENT_COUNTER( RELAY_COUNTER_SESSIONS );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_UP, session->envelope_kbps_up );
-                                    SUB_COUNTER( RELAY_COUNTER_ENVELOPE_KBPS_DOWN, session->envelope_kbps_down );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
@@ -2552,14 +2686,15 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
-                                    relay_printf( "already received" );
+                                    relay_printf( "session pong packet already received" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_ALREADY_RECEIVED );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
                                 }
 
-                                relay_printf( "verifying header" );
+                                relay_printf( "session pong packet verifying header" );
+
                                 struct header_data verify_data;
                                 memset( &verify_data, 0, sizeof(struct header_data) );
                                 memcpy( verify_data.session_private_key, session->session_private_key, RELAY_SESSION_PRIVATE_KEY_BYTES );
@@ -2574,31 +2709,47 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 verify_data.session_id |= ( ( (__u64)( header[8+6] ) ) << 48 );
                                 verify_data.session_id |= ( ( (__u64)( header[8+7] ) ) << 56 );
                                 verify_data.session_version = header[8+8];
+
                                 __u8 hash[32];
-                                bpf_relay_sha256( data, sizeof(struct header_data), hash, 32 );
-                                if ( relay_memcmp( hash, header + 8 + 8 + 1, 8 ) != 0 )
+                                bpf_relay_sha256( &verify_data, sizeof(struct header_data), hash, 32 );
+
+                                __u8 * expected = header + 8 + 8 + 1;
+                                
+                                if ( hash[0] != expected[0] || 
+                                     hash[1] != expected[1] || 
+                                     hash[2] != expected[2] || 
+                                     hash[3] != expected[3] || 
+                                     hash[4] != expected[4] || 
+                                     hash[5] != expected[5] || 
+                                     hash[6] != expected[6] || 
+                                     hash[7] != expected[7] )
                                 {
-                                    relay_printf( "header did not verify" );
+                                    relay_printf( "session pong packet header did not verify" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_HEADER_DID_NOT_VERIFY );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
                                     return XDP_DROP;
-                                } 
+                                }
 
                                 __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
    
-                                relay_printf( "forward to previous hop" );
+                                relay_printf( "session pong packet forward to previous hop" );
 
-                                if ( session->next_internal )
-                                {
-                                    ip->saddr = config->relay_internal_address;
-                                }
+                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
+                                struct redirect_args_t args;
+                                args.data = data;
+                                args.payload_bytes = payload_bytes;
+                                args.source_address = config->relay_internal_address;
+                                args.dest_address = session->prev_address;
+                                args.source_port = config->relay_port;
+                                args.dest_port = session->prev_port;
+                                args.magic = state->current_magic;
 
-                                int result = relay_redirect_packet( data, payload_bytes, session->prev_address, session->prev_port, state->current_magic );
+                                int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
                                 {
+                                    relay_printf( "session pong packet redirect address is not in whitelist" );
                                     INCREMENT_COUNTER( RELAY_COUNTER_REDIRECT_NOT_IN_WHITELIST );
                                     INCREMENT_COUNTER( RELAY_COUNTER_DROPPED_PACKETS );
                                     ADD_COUNTER( RELAY_COUNTER_DROPPED_BYTES, data_end - data );
@@ -2608,6 +2759,10 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_SESSION_PONG_PACKET_FORWARD_TO_PREVIOUS_HOP );
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
+
+                                __u64 whitelist_expire_timestamp = whitelist->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &whitelist->expire_timestamp, whitelist_expire_timestamp, state->current_timestamp + WHITELIST_TIMEOUT );
 
                                 return XDP_TX;
                             }

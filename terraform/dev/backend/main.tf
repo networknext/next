@@ -28,6 +28,8 @@ variable "server_backend_public_key" { type = string }
 variable "test_buyer_public_key" { type = string }
 variable "test_buyer_private_key" { type = string }
 
+variable "raspberry_region" { type = string }
+variable "raspberry_zones" { type = list(string) }
 variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_buyer_private_key" { type = string }
 
@@ -542,7 +544,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "f1-micro"
+  machine_type               = "n1-standard-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -875,7 +877,7 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-http", "allow-udp-40000"]
-  target_size                = var.disable_backend ? 0 : 1
+  target_size                = var.disable_backend ? 0 : 2
   initial_delay              = 180
 
   depends_on = [
@@ -918,7 +920,7 @@ module "raspberry_backend" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "f1-micro"
+  machine_type             = "n1-standard-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -960,6 +962,7 @@ module "raspberry_server" {
     NEXT_DATACENTER=cloud
     NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
+    RASPBERRY_FAKE_LATENCY=1
     EOF
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     ldconfig
@@ -968,15 +971,15 @@ module "raspberry_server" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "f1-micro"
+  machine_type       = "n1-standard-2"
   project            = local.google_project_id
-  region             = var.google_region
-  zones              = var.google_zones
+  region             = var.raspberry_region
+  zones              = var.raspberry_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 8
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 16
 
   depends_on = [
     module.server_backend,
@@ -1003,7 +1006,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=4
     NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
-    RASPBERRY_NUM_CLIENTS=256
+    RASPBERRY_NUM_CLIENTS=10
     EOF
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     ldconfig
@@ -1014,13 +1017,13 @@ module "raspberry_client" {
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
-  region             = var.google_region
-  zones              = var.google_zones
+  region             = var.raspberry_region
+  zones              = var.raspberry_zones
   default_network    = google_compute_network.development.id
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 4
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 100
 
   depends_on = [
     module.server_backend,
@@ -1052,7 +1055,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "f1-micro"
+  machine_type       = "n1-standard-2"
   project            = local.google_project_id
   region             = var.google_region
   zones              = var.google_zones

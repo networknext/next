@@ -50,83 +50,81 @@ locals {
 
     # IOWA
 
-    "google.iowa.1" = {
+    "google.iowa.1.a" = {
       datacenter_name = "google.iowa.1"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.b" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.c" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.d" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.e" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.f" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.g" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.h" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.i" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1.j" = {
+      datacenter_name = "google.iowa.1"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.2" = {
       datacenter_name = "google.iowa.2"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.3" = {
       datacenter_name = "google.iowa.3"
-      type            = "n1-standard-2"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.iowa.6" = {
       datacenter_name = "google.iowa.6"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # OREGON
-
-    "google.oregon.1" = {
-      datacenter_name = "google.oregon.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # LOS ANGELES
-
-    "google.losangeles.1" = {
-      datacenter_name = "google.losangeles.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SALT LAKE CITY
-
-    "google.saltlakecity.1" = {
-      datacenter_name = "google.saltlakecity.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # SOUTH CAROLINA
-
-    "google.southcarolina.2" = {
-      datacenter_name = "google.southcarolina.2"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # VIRGINIA
-
-    "google.virginia.1" = {
-      datacenter_name = "google.virginia.1"
-      type            = "n1-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # DALLAS
-
-    "google.dallas.1" = {
-      datacenter_name = "google.dallas.1"
-      type            = "n2-standard-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    # OHIO
-
-    "google.ohio.1" = {
-      datacenter_name = "google.ohio.1"
-      type            = "n2-standard-2"
+      type            = "c3-highcpu-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
@@ -195,7 +193,7 @@ locals {
       type            = "g6-dedicated-2"
       image           = "linode/ubuntu22.04"
     }
-
+    
   }
 }
 

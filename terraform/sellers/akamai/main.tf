@@ -54,6 +54,9 @@ resource "linode_stackscript" "setup_relay" {
   description = "Set up relay"
   script = file("../../../scripts/init_relay.sh")
   images = ["linode/ubuntu22.04"]
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 resource "linode_instance" "relay" {
