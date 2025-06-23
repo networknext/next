@@ -68,7 +68,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "sloclap_network_next_terraform"
+    bucket  = "next_network_next_terraform"
     prefix  = "dev"
   }
 }
