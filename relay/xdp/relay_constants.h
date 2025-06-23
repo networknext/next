@@ -176,8 +176,6 @@
 
 #define RELAY_VERSION_LENGTH                                                                    32
 
-#define WHITELIST_REGULAR_TIMEOUT                                                               30
-
-#define WHITELIST_SERVER_TIMEOUT                                                              1000
+#define WHITELIST_TIMEOUT                                                                       30
 
 #endif // #ifndef RELAY_CONSTANTS_H
