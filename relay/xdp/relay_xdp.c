@@ -88,11 +88,11 @@ struct {
     __uint( pinning, LIBBPF_PIN_BY_NAME );
 } whitelist_map SEC(".maps");
 
-#define INCREMENT_COUNTER(counter_index) stats->counters[counter_index]++
+#define INCREMENT_COUNTER(counter_index)  __sync_fetch_and_add( &stats->counters[counter_index], 1 )
 
-#define DECREMENT_COUNTER(counter_index) stats->counters[counter_index]--
+#define DECREMENT_COUNTER(counter_index)  __sync_fetch_and_sub( &stats->counters[counter_index], 1 )
 
-#define ADD_COUNTER(counter_index, value) stats->counters[counter_index] += value
+#define ADD_COUNTER(counter_index, value) __sync_fetch_and_add( &stats->counters[counter_index], ( value) )
 
 #define XCHACHA20POLY1305_NONCE_SIZE 24
 
@@ -140,7 +140,7 @@ static int relay_decrypt_continue_token( struct decrypt_continue_token_data * da
     if ( !bpf_relay_xchacha20poly1305_decrypt( encrypted, RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES - 24, &crypto_data ) )
         return 0;
     return 1;
-}
+ }
 
 static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
 {
@@ -1664,7 +1664,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                {
+                                    // todo: atomic
+                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                }
 
                                 return XDP_PASS;
                             }
@@ -1782,7 +1786,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                {
+                                    // todo: atomic
+                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                }
 
                                 return XDP_TX;
                             }
@@ -1890,7 +1898,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                session->special_server_to_client_sequence = packet_sequence;
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
                                 relay_printf( "route response packet forward to previous hop" );
 
@@ -1919,7 +1927,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                // todo: whitelist atomic
+                                expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
 
                                 return XDP_TX;
                             }
@@ -1977,7 +1986,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                session->expire_timestamp = token->expire_timestamp;
+                                __u64 current_expire_timestamp = session->expire_timestamp;
+
+                                __sync_bool_compare_and_swap( &session->expire_timestamp, current_expire_timestamp, token->expire_timestamp );
 
                                 memmove( data + RELAY_ENCRYPTED_CONTINUE_TOKEN_BYTES, data, sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) );
 
@@ -2016,7 +2027,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                {
+                                    // todo: atomic
+                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                }
 
                                 return XDP_TX;
                             }
@@ -2085,6 +2100,8 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 packet_sequence |= ( ( (__u64)( header[7] ) ) << 56 );
 
                                 __u64 server_to_client_sequence = session->special_server_to_client_sequence;
+
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
                                 if ( packet_sequence <= server_to_client_sequence )
                                 {
@@ -2162,6 +2179,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
+                                    // todo: atomic
                                     whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 }
 
@@ -2281,7 +2299,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 } 
 
-                                session->payload_client_to_server_sequence = packet_sequence;
+                                uint64_t client_to_server_sequence = session->payload_client_to_server_sequence;
+
+                                __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
                                 relay_printf( "client to server packet forward to next hop" );
 
@@ -2310,6 +2330,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
                                 {
+                                    // todo: atomic
                                     whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
                                 }
 
@@ -2429,7 +2450,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                session->payload_server_to_client_sequence = packet_sequence;
+                                __sync_bool_compare_and_swap( &session->payload_server_to_client_sequence, server_to_client_sequence, packet_sequence );
 
                                 relay_printf( "server to client packet forward to previous hop" );
 
@@ -2574,10 +2595,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                if ( packet_sequence > client_to_server_sequence )
-                                {
-                                    session->special_client_to_server_sequence = packet_sequence;
-                                }
+                                __sync_bool_compare_and_swap( &session->special_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
                                 relay_printf( "session ping packet forward to next hop" );
 
@@ -2726,7 +2744,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 }
 
-                                session->special_server_to_client_sequence = packet_sequence;
+                                __sync_bool_compare_and_swap( &session->special_server_to_client_sequence, server_to_client_sequence, packet_sequence );
    
                                 relay_printf( "session pong packet forward to previous hop" );
 

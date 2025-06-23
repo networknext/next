@@ -283,6 +283,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
     }
 
     // timeout old entries in whitelist map
+    /*
     {
         struct whitelist_key current_key;
         struct whitelist_key next_key;
@@ -311,6 +312,7 @@ struct session_stats main_update_timeouts( struct main_t * main )
             }
         }
     }
+    */
 
     return stats;
 }
