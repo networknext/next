@@ -83,12 +83,18 @@ int main()
 {
     printf( "\nRaspberry Server\n\n" );
 
-    // todo: make this configurable via env var
-    raspberry_fake_latency = false;
+    raspberry_fake_latency = 
 
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
     next_init( NULL, NULL );
+
+    raspberry_fake_latency = next_platform_getenv( "RASPBERRY_FAKE_LATENCY" ) != NULL;
+
+    if ( raspberry_fake_latency )
+    {
+        printf( "fake latency mode\n" );
+    }
 
     char raspberry_backend_url[1024];
     next_copy_string( raspberry_backend_url, "http://127.0.0.1:40100", sizeof( raspberry_backend_url ) );

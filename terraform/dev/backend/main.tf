@@ -962,6 +962,7 @@ module "raspberry_server" {
     NEXT_DATACENTER=cloud
     NEXT_BUYER_PRIVATE_KEY=${var.raspberry_buyer_private_key}
     RASPBERRY_BACKEND_URL="https://raspberry-dev.${var.cloudflare_domain}"
+    RASPBERRY_FAKE_LATENCY=1
     EOF
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     ldconfig

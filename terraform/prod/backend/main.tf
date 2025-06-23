@@ -1074,6 +1074,7 @@ module "raspberry_server" {
     NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
+    RASPBERRY_FAKE_LATENCY=1
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig

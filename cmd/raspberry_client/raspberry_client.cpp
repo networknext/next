@@ -26,6 +26,8 @@
 
 static volatile int quit = 0;
 
+static bool raspberry_low_bandwidth;
+
 char raspberry_backend_url[1024];
 
 void interrupt_handler( int signal )
@@ -161,8 +163,14 @@ void client_thread_function( void * data )
                 break;
             }
 
-            // todo: make this configurable via env var, and default to 100 fps. docker can reduce it to 1sec if it wants
-            next_platform_sleep( 1.0f / 100.0f );
+            if ( !raspberry_low_bandwidth )
+            {
+                next_platform_sleep( 1.0f / 100.0f );
+            }
+            else
+            {
+                next_platform_sleep( 1.0f );
+            }
         }
 
         next_client_destroy( client );
@@ -230,6 +238,13 @@ int main()
     }
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "raspberry backend url: %s", raspberry_backend_url );
+
+    raspberry_low_bandwidth = next_platform_getenv( "RASPBERRY_LOW_BANDWIDTH" ) != NULL;
+
+    if ( raspberry_low_bandwidth )
+    {
+        printf( "low bandwidth mode\n" );
+    }
 
     printf( "simulating %d clients\n", num_clients );
 
