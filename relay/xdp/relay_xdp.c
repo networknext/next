@@ -1927,8 +1927,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 INCREMENT_COUNTER( RELAY_COUNTER_PACKETS_SENT );
                                 ADD_COUNTER( RELAY_COUNTER_BYTES_SENT, data_end - data );
 
-                                // todo: whitelist atomic
-                                expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                if ( whitelist->expire_timestamp != 0xFFFFFFFFFFFFFFFFULL )
+                                {
+                                    // todo: atomic
+                                    whitelist->expire_timestamp = state->current_timestamp + WHITELIST_TIMEOUT;
+                                }
 
                                 return XDP_TX;
                             }
@@ -2299,7 +2302,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                     return XDP_DROP;
                                 } 
 
-                                uint64_t client_to_server_sequence = session->payload_client_to_server_sequence;
+                                __u64 client_to_server_sequence = session->payload_client_to_server_sequence;
 
                                 __sync_bool_compare_and_swap( &session->payload_client_to_server_sequence, client_to_server_sequence, packet_sequence );
 
