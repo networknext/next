@@ -1198,7 +1198,7 @@ module "relay_amazon_saopaulo_1" {
 	  name              = "amazon.saopaulo.1"
 	  zone              = local.datacenter_map["amazon.saopaulo.1"].zone
 	  region            = local.datacenter_map["amazon.saopaulo.1"].region
-	  type              = "m5a.xlarge"
+	  type              = "m5a.2xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	  security_group_id = module.region_sa_east_1.security_group_id
 	  vpn_address       = var.vpn_address
@@ -1211,7 +1211,7 @@ module "relay_amazon_saopaulo_1" {
 	  name              = "amazon.saopaulo.2"
 	  zone              = local.datacenter_map["amazon.saopaulo.2"].zone
 	  region            = local.datacenter_map["amazon.saopaulo.2"].region
-	  type              = "m5a.xlarge"
+	  type              = "m5a.2xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	  security_group_id = module.region_sa_east_1.security_group_id
 	  vpn_address       = var.vpn_address
@@ -1224,7 +1224,7 @@ module "relay_amazon_saopaulo_1" {
 	  name              = "amazon.saopaulo.3"
 	  zone              = local.datacenter_map["amazon.saopaulo.3"].zone
 	  region            = local.datacenter_map["amazon.saopaulo.3"].region
-	  type              = "m5a.xlarge"
+	  type              = "m5a.2xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	  security_group_id = module.region_sa_east_1.security_group_id
 	  vpn_address       = var.vpn_address

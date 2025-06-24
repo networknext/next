@@ -114,13 +114,11 @@ locals {
 
   akamai_relays = {
 
-  /*
     "akamai.saopaulo" = {
       datacenter_name = "akamai.saopaulo"
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
-  */
     
   }
 }

@@ -13,19 +13,17 @@ relay_backend_url           = "relay.virtualgo.net"
 raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
 
 raspberry_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
 ]
 
 test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
 
 test_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
 ]
 
 sellers = {
@@ -44,4 +42,5 @@ sellers = {
 	"Zenlayer" = "zenlayer"
 	"Latitude" = "latitude"
 	"Equinix" = "equinix"
+	"Unity" = "unity"
 }
