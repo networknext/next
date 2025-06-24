@@ -1036,8 +1036,8 @@ module "raspberry_backend" {
   extra                    = var.extra
   machine_type             = "n1-standard-2"
   project                  = local.google_project_id
-  region                   = var.google_region
-  zones                    = var.google_zones
+  region                   = var.raspberry_region
+  zones                    = var.raspberry_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
