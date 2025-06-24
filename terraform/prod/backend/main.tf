@@ -927,6 +927,7 @@ module "server_backend" {
   min_size                   = var.disable_backend ? 0 : 3
   max_size                   = var.disable_backend ? 0 : 64
   target_cpu                 = 30
+  tier_1                     = false
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
