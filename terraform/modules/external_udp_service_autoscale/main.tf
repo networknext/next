@@ -37,6 +37,10 @@ variable "initial_delay" {
   type = number
   default = 60
 }
+variable "tier_1" {
+  type = bool
+  default = false
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -85,7 +89,7 @@ resource "google_compute_instance_template" "service" {
   }
 
   network_performance_config {
-    total_egress_bandwidth_tier = "TIER_1"
+    total_egress_bandwidth_tier = var.tier_1 ? "TIER_1" : "DEFAULT"
   }
 
   tags = var.tags
