@@ -140,6 +140,27 @@ module "zenlayer_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+locals {
+
+  unity_relays = {
+
+    /*
+    "unity.saopaulo.1" = {
+      datacenter_name = "unity.saopaulo"
+      public_address  = "..."
+    },
+    */
+
+  }
+}
+
+module "unity_relays" {
+  relays = local.unity_relays
+  source = "../../sellers/unity"
+}
+
+# ----------------------------------------------------------------------------------------
+
 
 
 
