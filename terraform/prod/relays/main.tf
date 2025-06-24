@@ -144,12 +144,10 @@ locals {
 
   unity_relays = {
 
-    /*
-    "unity.saopaulo.1" = {
-      datacenter_name = "unity.saopaulo"
-      public_address  = "..."
+    "unity.saopaulo.2" = {
+      datacenter_name = "unity.saopaulo.2"
+      public_address  = "189.1.173.223"
     },
-    */
 
   }
 }

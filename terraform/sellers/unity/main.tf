@@ -12,10 +12,26 @@ locals {
 
   datacenter_map = {
 
-    "unity.saopaulo" = {
+    "unity.saopaulo.1" = {
       latitude    = -23.5558
       longitude   = -46.6396
-      native_name = ""
+      native_name = "i3d.saopaulo"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "unity.saopaulo.2" = {
+      latitude    = -23.5558
+      longitude   = -46.6396
+      native_name = "latitude.saopaulo"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "unity.saopaulo.3" = {
+      latitude    = -23.5558
+      longitude   = -46.6396
+      native_name = "gcore.saopaulo"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },
