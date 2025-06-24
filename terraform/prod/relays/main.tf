@@ -38,10 +38,6 @@ provider "networknext" {
 
 # ----------------------------------------------------------------------------------------
 
-# =============
-# GOOGLE RELAYS
-# =============
-
 locals {
 
   google_credentials = "~/secrets/terraform-prod-relays.json"
@@ -81,10 +77,6 @@ module "google_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# =============
-# AMAZON RELAYS
-# =============
-
 locals {
   amazon_config      = ["~/.aws/config"]
   amazon_credentials = ["~/.aws/credentials"]
@@ -106,10 +98,6 @@ module "amazon_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# =============
-# AKAMAI RELAYS
-# =============
-
 locals {
 
   akamai_relays = {
@@ -130,6 +118,53 @@ module "akamai_relays" {
   vpn_address         = var.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+
+  zenlayer_relays = {
+
+    "zenlayer.saopaulo" = {
+      datacenter_name = "zenlayer.saopaulo"
+      public_address  = "128.14.222.42"
+    },
+
+  }
+}
+
+module "zenlayer_relays" {
+  relays = local.zenlayer_relays
+  source = "../../sellers/zenlayer"
+}
+
+# ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ----------------------------------------------------------------------------------------
 
@@ -354,31 +389,6 @@ locals {
 module "velia_relays" {
   relays = local.velia_relays
   source = "../../sellers/velia"
-}
-
-# ----------------------------------------------------------------------------------------
-
-# ===============
-# ZENLAYER RELAYS
-# ===============
-
-locals {
-
-  zenlayer_relays = {
-
-    /*
-    "zenlayer.singapore" = {
-      datacenter_name = "zenlayer.singapore"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "zenlayer_relays" {
-  relays = local.zenlayer_relays
-  source = "../../sellers/zenlayer"
 }
 
 # ----------------------------------------------------------------------------------------
