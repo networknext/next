@@ -159,48 +159,15 @@ module "unity_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ----------------------------------------------------------------------------------------
-
-# =================
-# DATAPACKET RELAYS
-# =================
-
 locals {
 
   datapacket_relays = {
 
-    /*
-    "datapacket.losangeles" = {
-      datacenter_name = "datapacket.losangeles"
-      public_address  = "185.152.67.2"
+    "datapacket.saopaulo" = {
+      datacenter_name = "datapacket.saopaulo"
+      ssh_address = "79.127.137.166"
+      public_address = "79.127.137.166"
     },
-    */
 
   }
 }
@@ -209,6 +176,34 @@ module "datapacket_relays" {
   relays = local.datapacket_relays
   source = "../../sellers/datapacket"
 }
+
+# ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ----------------------------------------------------------------------------------------
 
