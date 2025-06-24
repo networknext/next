@@ -468,6 +468,7 @@ locals {
       keys(module.zenlayer_relays.relays),
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
+      keys(module.unity_relays.relays),
     )
   )
 
@@ -487,6 +488,7 @@ locals {
     module.zenlayer_relays.relays,
     module.latitude_relays.relays,
     module.equinix_relays.relays,
+    module.unity_relays.relays,
   )
 
   datacenters = merge(
@@ -505,6 +507,7 @@ locals {
     module.zenlayer_relays.datacenters,
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
+    module.unity_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
