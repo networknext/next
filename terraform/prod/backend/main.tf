@@ -607,7 +607,7 @@ module "magic_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                   = 3
+  min_size                   = 1
   max_size                   = 16
   target_cpu                 = 60
 }
@@ -656,7 +656,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = 3
+  min_size                 = 1
   max_size                 = 64
   target_cpu               = 60
   domain                   = "relay.${var.cloudflare_domain}"
