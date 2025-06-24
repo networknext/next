@@ -700,7 +700,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-44"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -712,7 +712,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 420
   target_size                = var.disable_backend ? 0 : 3
-  tier_1                     = true
+  tier_1                     = false
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
@@ -904,7 +904,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-44"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones

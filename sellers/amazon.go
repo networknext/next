@@ -26,12 +26,9 @@ var devRelayMap = map[string][]string{
 // PROD RELAYS
 
 var prodRelayMap = map[string][]string{
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.1": {"amazon.virginia.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.2": {"amazon.virginia.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.3": {"amazon.virginia.3", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
