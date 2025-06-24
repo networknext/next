@@ -648,7 +648,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-highcpu-4"
+  machine_type             = "c4-highcpu-4"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -694,8 +694,8 @@ module "relay_backend" {
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=360s
-    MAX_JITTER=3
-    MAX_PACKET_LOSS=0.0
+    MAX_JITTER=1
+    MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
@@ -709,7 +709,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-4"
+  machine_type               = "c4-highcpu-4"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -720,7 +720,7 @@ module "relay_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 420
-  target_size                = var.disable_backend ? 0 : 1
+  target_size                = var.disable_backend ? 0 : 2
   tier_1                     = false
 
   depends_on = [
@@ -818,7 +818,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-4"
+  machine_type               = "c4-highmem-4"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -853,7 +853,7 @@ module "server_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-4"
+  machine_type               = "c4-highmem-4"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -913,7 +913,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c4-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
