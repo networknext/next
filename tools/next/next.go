@@ -1477,10 +1477,6 @@ func config(env Environment, regexes []string) {
 		replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
 
-	// generate example dir
-
-	generateExampleDir()
-
 	// update scripts
 
 	fmt.Printf("\n------------------------------------------\n         updating scripts\n------------------------------------------\n\n")
