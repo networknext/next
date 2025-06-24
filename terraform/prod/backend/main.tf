@@ -145,7 +145,7 @@ resource "google_compute_subnetwork" "production" {
 resource "google_compute_subnetwork" "raspberry" {
   name                     = "raspberry"
   project                  = local.google_project_id
-  ip_cidr_range            = "10.2.0.0/16"
+  ip_cidr_range            = "10.3.0.0/16"
   region                   = var.raspberry_region
   network                  = google_compute_network.production.id
   private_ip_google_access = true
