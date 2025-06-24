@@ -142,6 +142,15 @@ resource "google_compute_subnetwork" "production" {
   private_ip_google_access = true
 }
 
+resource "google_compute_subnetwork" "raspberry" {
+  name                     = "raspberry"
+  project                  = local.google_project_id
+  ip_cidr_range            = "10.2.0.0/16"
+  region                   = var.raspberry_region
+  network                  = google_compute_network.production.id
+  private_ip_google_access = true
+}
+
 resource "google_compute_subnetwork" "test" {
   name                     = "test"
   project                  = local.google_project_id
@@ -1088,7 +1097,7 @@ module "raspberry_server" {
   region             = var.raspberry_region
   zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
-  default_subnetwork = google_compute_subnetwork.production.id
+  default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
   target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 256
@@ -1128,7 +1137,7 @@ module "raspberry_client" {
   region             = var.raspberry_region
   zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
-  default_subnetwork = google_compute_subnetwork.production.id
+  default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
   target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1000
