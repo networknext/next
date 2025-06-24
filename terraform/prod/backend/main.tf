@@ -331,7 +331,7 @@ resource "google_redis_cluster" "portal" {
   psc_configs {
     network = google_compute_network.production.id
   }
-  region = "us-central1"
+  region = var.google_region
   replica_count = 1
   transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
   authorization_mode = "AUTH_MODE_DISABLED"
@@ -346,7 +346,7 @@ resource "google_redis_cluster" "portal" {
 resource "google_network_connectivity_service_connection_policy" "default" {
   provider = google-beta
   name = "redis"
-  location = "us-central1"
+  location = var.google_region
   service_class = "gcp-memorystore-redis"
   description   = "redis cluster service connection policy"
   network = google_compute_network.production.id
@@ -363,7 +363,7 @@ resource "google_redis_instance" "redis_relay_backend" {
   name                    = "redis-relay-backend"
   tier                    = "STANDARD_HA"
   memory_size_gb          = 10
-  region                  = "us-central1"
+  region                  = var.google_region
   redis_version           = "REDIS_7_0"
   redis_configs           = { "maxmemory-gb" = "5" }
   authorized_network      = google_compute_network.production.id
@@ -373,7 +373,7 @@ resource "google_redis_instance" "redis_raspberry" {
   name               = "redis-raspberry"
   tier               = "STANDARD_HA"
   memory_size_gb     = 2
-  region             = "us-central1"
+  region             = var.google_region
   redis_version      = "REDIS_7_0"
   redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.production.id
@@ -524,7 +524,7 @@ resource "google_service_networking_connection" "postgres" {
 resource "google_sql_database_instance" "postgres" {
   name = "postgres"
   database_version = "POSTGRES_14"
-  region = "${var.google_region}"
+  region = var.google_region
   depends_on = [google_service_networking_connection.postgres]
   settings {
     tier = "db-custom-1-3840"
@@ -1036,8 +1036,8 @@ module "raspberry_backend" {
   extra                    = var.extra
   machine_type             = "n1-standard-2"
   project                  = local.google_project_id
-  region                   = var.raspberry_region
-  zones                    = var.raspberry_zones
+  region                   = var.google_region
+  zones                    = var.google_zones
   default_network          = google_compute_network.production.id
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account

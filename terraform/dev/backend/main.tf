@@ -300,7 +300,7 @@ resource "google_redis_instance" "redis_portal" {
   name               = "redis-portal"
   tier               = "BASIC"
   memory_size_gb     = 1
-  region             = "us-central1"
+  region             = var.google_region
   redis_version      = "REDIS_6_X"
   redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
@@ -310,7 +310,7 @@ resource "google_redis_instance" "redis_raspberry" {
   name               = "redis-raspberry"
   tier               = "BASIC"
   memory_size_gb     = 1
-  region             = "us-central1"
+  region             = var.google_region
   redis_version      = "REDIS_6_X"
   redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network = google_compute_network.development.id
@@ -320,7 +320,7 @@ resource "google_redis_instance" "redis_relay_backend" {
   name               = "redis-relay-backend"
   tier               = "BASIC"
   memory_size_gb     = 1
-  region             = "us-central1"
+  region             = var.google_region
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
 }
@@ -329,7 +329,7 @@ resource "google_redis_instance" "redis_server_backend" {
   name               = "redis-server-backend"
   tier               = "BASIC"
   memory_size_gb     = 1
-  region             = "us-central1"
+  region             = var.google_region
   redis_version      = "REDIS_6_X"
   authorized_network = google_compute_network.development.id
 }
