@@ -31,9 +31,9 @@ sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt autoremove -y
 # install libxdp and libbpf from source. this is neccessary for the xdp relay to work
 
 cd ~
-wget https://github.com/xdp-project/xdp-tools/releases/download/v1.4.2/xdp-tools-1.4.2.tar.gz
-tar -zxf xdp-tools-1.4.2.tar.gz
-cd xdp-tools-1.4.2
+wget https://github.com/xdp-project/xdp-tools/releases/download/v1.5.5/xdp-tools-1.5.5.tar.gz
+tar -zxf xdp-tools-1.5.5.tar.gz
+cd xdp-tools-1.5.5
 ./configure
 make -j && sudo make install
 

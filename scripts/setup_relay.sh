@@ -28,10 +28,6 @@ if [[ $major -lt 6 ]]; then
   sudo reboot
 fi
 
-# install linux headers needed for xdp/ebpf
-
-sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
-
 # make the relay prompt cool
 
 echo making the relay prompt cool
@@ -69,6 +65,14 @@ RELAY_PRIVATE_KEY=$RELAY_PRIVATE_KEY
 RELAY_BACKEND_URL=$RELAY_BACKEND_URL
 RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
+
+# gotta do this on AWS or sometimes the relay_module doesn't have BTF
+
+curl -s -m 1 http://169.254.169.254/latest/meta-data/ami-id > /dev/null
+if [ $? -eq 0 ]; then
+  echo "AWS magic!"
+  sudo apt install linux-modules-extra-aws
+fi
 
 # setup linux tools, headers and vmlinux BTF file needed for bpf. this requires 6.5+ linux kernel to work
 
