@@ -924,7 +924,7 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = var.disable_backend ? 0 : 1
+  min_size                   = var.disable_backend ? 0 : 2
   max_size                   = var.disable_backend ? 0 : 64
   target_cpu                 = 30
   tier_1                     = false
@@ -1101,7 +1101,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 256
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 16
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1141,7 +1141,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1000
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 100
 }
 
 # ----------------------------------------------------------------------------------------
