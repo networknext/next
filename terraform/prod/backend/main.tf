@@ -316,7 +316,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-2"
+  machine_type             = "c4-standard-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zone                     = var.google_zone
@@ -588,7 +588,7 @@ module "relay_gateway" {
     cat <<EOF > /app/app.env
     ENV=prod
     GOOGLE_PROJECT_ID=${local.google_project_id}
-    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
@@ -618,7 +618,7 @@ module "relay_gateway" {
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
   depends_on = [
-    google_redis_instance.redis_relay_backend
+    google_redis_instance.redis
   ]
 }
 
@@ -644,7 +644,7 @@ module "relay_backend" {
     ENV=prod
     ENABLE_RELAY_HISTORY=true
     GOOGLE_PROJECT_ID=${local.google_project_id}
-    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
@@ -681,7 +681,7 @@ module "relay_backend" {
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
     google_pubsub_subscription.pubsub_subscription,
-    google_redis_instance.redis_relay_backend,
+    google_redis_instance.redis,
     module.redis_time_series
   ]
 }
@@ -709,7 +709,7 @@ module "api" {
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -857,7 +857,7 @@ module "server_backend" {
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=false
@@ -992,7 +992,7 @@ module "raspberry_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
