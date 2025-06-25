@@ -612,7 +612,6 @@ resource "networknext_route_shader" raspberry {
   force_next = true
   route_select_threshold = 300
   route_switch_threshold = 300
-  selection_percentage = 10
 }
 
 resource "networknext_buyer" raspberry {
