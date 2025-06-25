@@ -1121,7 +1121,7 @@ module "raspberry_client" {
     NEXT_LOG_LEVEL=1
     NEXT_BUYER_PUBLIC_KEY=${var.raspberry_buyer_public_key}
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
-    RASPBERRY_NUM_CLIENTS=10
+    RASPBERRY_NUM_CLIENTS=20
     NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     EOF
@@ -1140,7 +1140,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 2000
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1000
 }
 
 # ----------------------------------------------------------------------------------------
