@@ -43,11 +43,11 @@ resource "aws_instance" "relay" {
   tags = {
     Name = "prod-${var.name}"
   }
+  user_data = file("../../../scripts/init_relay.sh")
   lifecycle {
     create_before_destroy = true
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
-  user_data = file("../../../scripts/init_relay.sh")
 }
 
 # --------------------------------------------------------------------------

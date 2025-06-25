@@ -102,11 +102,12 @@ resource "google_compute_instance" "relay" {
   metadata = {
     ssh-keys = "ubuntu:${file(var.ssh_public_key_file)}"
   }
-  lifecycle {
-    create_before_destroy = true
-  }
   metadata_startup_script = file("../../../scripts/init_relay.sh")
   allow_stopping_for_update = true
+  lifecycle {
+    create_before_destroy = true
+    ignore_changes = [metadata_startup_script]
+  }
 }
 
 # ----------------------------------------------------------------------------------------
