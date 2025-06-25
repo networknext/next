@@ -316,7 +316,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-2"
+  machine_type             = "n1-highmem-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zone                     = var.google_zone
