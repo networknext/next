@@ -343,18 +343,8 @@ resource "google_redis_instance" "redis" {
   authorized_network      = google_compute_network.production.id
 }
 
-output "redis_portal_address" {
+output "redis_address" {
   description = "The IP address of the portal redis instance"
-  value       = google_redis_instance.redis.host
-}
-
-output "redis_raspberry_address" {
-  description = "The IP address of the raspberry redis instance"
-  value       = google_redis_instance.redis.host
-}
-
-output "redis_relay_backend_address" {
-  description = "The IP address of the relay backend redis instance"
   value       = google_redis_instance.redis.host
 }
 
@@ -654,7 +644,7 @@ module "relay_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_HOSTNAME="${local.redis_portal_address}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
@@ -855,7 +845,7 @@ module "server_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_ADDRESS="${local.redis_portal_address}"
+    REDIS_PORTAL_ADDRESS="${google_redis_instance.redis.host}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
