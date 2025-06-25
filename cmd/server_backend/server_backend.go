@@ -494,11 +494,11 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsClientRelayPingMessageChannel = analyticsClientRelayPingMessageChannel
 	handler.AnalyticsServerRelayPingMessageChannel = analyticsServerRelayPingMessageChannel
 
-	handler.LocateIP = locateIP_Local
+	handler.LocateIP = locateIP_Real
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
-	} else if service.Env != "local" && service.Env != "docker" {
-		handler.LocateIP = locateIP_Real
+	} else if service.Env == "local" && service.Env == "docker" {
+		handler.LocateIP = locateIP_Local
 	}
 
 	handlers.SDK_PacketHandler(&handler, conn, from, packetData)
@@ -572,7 +572,11 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 
 func locateIP_Real(ip net.IP) (float32, float32) {
 	// production
+	// todo: force saopaulo
+	return -23.533773, -46.625290
+	/*
 	return service.GetLocation(ip)
+	*/
 }
 
 // ------------------------------------------------------------------------------------
