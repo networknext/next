@@ -34,5 +34,5 @@ test_server_zone            = "southamerica-east1-a"
 test_server_tag             = "001" # increment this each time you want to deploy the test server
 
 disable_backend             = false
-disable_raspberry           = true
+disable_raspberry           = false
 disable_ip2location         = true
