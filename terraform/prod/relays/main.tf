@@ -46,19 +46,19 @@ locals {
 
     "google.saopaulo.1" = {
       datacenter_name = "google.saopaulo.1"
-      type            = "c2-standard-4"
+      type            = "c2-standard-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.saopaulo.2" = {
       datacenter_name = "google.saopaulo.2"
-      type            = "c2-standard-4"
+      type            = "c2-standard-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.saopaulo.3" = {
       datacenter_name = "google.saopaulo.3"
-      type            = "c2-standard-4"
+      type            = "c2-standard-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
