@@ -44,6 +44,7 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
+  /*
     "google.saopaulo.1.a" = {
       datacenter_name = "google.saopaulo.1"
       type            = "c2-standard-4"
@@ -73,6 +74,7 @@ locals {
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+  */
 
   }
 }
@@ -114,11 +116,13 @@ locals {
 
   akamai_relays = {
 
+  /*
     "akamai.saopaulo" = {
       datacenter_name = "akamai.saopaulo"
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
+  */
     
   }
 }
