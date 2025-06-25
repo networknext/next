@@ -15,6 +15,8 @@ variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_datacenters" { type = list(string) }
 variable "test_buyer_public_key" { type = string }
 variable "test_datacenters" { type = list(string) }
+variable "rematch_buyer_public_key" { type = string }
+variable "rematch_datacenters" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -633,7 +635,7 @@ resource "networknext_route_shader" raspberry {
 resource "networknext_buyer" raspberry {
   name = "Raspberry"
   code = "raspberry"
-  debug = true
+  debug = false
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
   public_key_base64 = var.raspberry_buyer_public_key
@@ -666,7 +668,7 @@ resource "networknext_route_shader" test {
 resource "networknext_buyer" test {
   name = "Test"
   code = "test"
-  debug = true
+  debug = false
   live = true
   route_shader_id = networknext_route_shader.test.id
   public_key_base64 = var.test_buyer_public_key
@@ -675,6 +677,39 @@ resource "networknext_buyer" test {
 resource "networknext_buyer_datacenter_settings" test {
   for_each = toset(var.test_datacenters)
   buyer_id = networknext_buyer.test.id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
+  enable_acceleration = true
+}
+
+# =============
+# REMATCH BUYER
+# =============
+
+resource "networknext_route_shader" rematch {
+  name = "rematch"
+  force_next = true
+  latency_reduction_threshold = 20
+  acceptable_latency = 50
+  acceptable_packet_loss_instant = 1.0
+  acceptable_packet_loss_sustained = 0.1
+  bandwidth_envelope_up_kbps = 1024
+  bandwidth_envelope_down_kbps = 1024
+  route_select_threshold = 5
+  route_switch_threshold = 10
+}
+
+resource "networknext_buyer" rematch {
+  name = "REMATCH"
+  code = "rematch"
+  debug = false
+  live = true
+  route_shader_id = networknext_route_shader.rematch.id
+  public_key_base64 = var.rematch_buyer_public_key
+}
+
+resource "networknext_buyer_datacenter_settings" rematch {
+  for_each = toset(var.rematch_datacenters)
+  buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }

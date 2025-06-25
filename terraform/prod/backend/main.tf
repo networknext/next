@@ -333,74 +333,29 @@ output "redis_time_series_address" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_cluster" "portal" {
-  provider       = google-beta
-  name           = "portal"
-  shard_count    = 10
-  psc_configs {
-    network = google_compute_network.production.id
-  }
-  region = var.google_region
-  replica_count = 1
-  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
-  authorization_mode = "AUTH_MODE_DISABLED"
-  depends_on = [
-    google_network_connectivity_service_connection_policy.default
-  ]
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "google_network_connectivity_service_connection_policy" "default" {
-  provider = google-beta
-  name = "redis"
-  location = var.google_region
-  service_class = "gcp-memorystore-redis"
-  description   = "redis cluster service connection policy"
-  network = google_compute_network.production.id
-  psc_config {
-    subnetworks = [google_compute_subnetwork.production.id]
-  }
-}
-
-locals {
-  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
-}
-
-resource "google_redis_instance" "redis_relay_backend" {
-  name                    = "redis-relay-backend"
+resource "google_redis_instance" "redis" {
+  name                    = "redis"
   tier                    = "STANDARD_HA"
   memory_size_gb          = 10
   region                  = var.google_region
   redis_version           = "REDIS_7_0"
-  redis_configs           = { "maxmemory-gb" = "5" }
+  redis_configs           = { "maxmemory-gb" = "5", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
-}
-
-resource "google_redis_instance" "redis_raspberry" {
-  name               = "redis-raspberry"
-  tier               = "STANDARD_HA"
-  memory_size_gb     = 2
-  region             = var.google_region
-  redis_version      = "REDIS_7_0"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.production.id
 }
 
 output "redis_portal_address" {
   description = "The IP address of the portal redis instance"
-  value       = local.redis_portal_address
-}
-
-output "redis_relay_backend_address" {
-  description = "The IP address of the relay backend redis instance"
-  value       = google_redis_instance.redis_relay_backend.host
+  value       = google_redis_instance.redis.host
 }
 
 output "redis_raspberry_address" {
   description = "The IP address of the raspberry redis instance"
-  value       = google_redis_instance.redis_raspberry.host
+  value       = google_redis_instance.redis.host
+}
+
+output "redis_relay_backend_address" {
+  description = "The IP address of the relay backend redis instance"
+  value       = google_redis_instance.redis.host
 }
 
 # ----------------------------------------------------------------------------------------
