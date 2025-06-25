@@ -5,6 +5,7 @@ obj-m += relay_module.o
 
 module: relay_module.c
 	@echo building relay module
+	sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 	rm -f *.o
 	rm -f *.ko
 	make -C /lib/modules/$(KERNEL)/build M=$(shell pwd) modules
