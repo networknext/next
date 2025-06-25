@@ -654,7 +654,7 @@ module "relay_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_PORTAL_HOSTNAME="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
@@ -708,7 +708,7 @@ module "api" {
     ENV=prod
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
@@ -844,7 +844,6 @@ module "server_backend" {
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
@@ -856,7 +855,7 @@ module "server_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_PORTAL_ADDRESS="${local.redis_portal_address}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
@@ -887,7 +886,7 @@ module "server_backend" {
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
     google_pubsub_subscription.pubsub_subscription,
-    google_redis_cluster.portal
+    google_redis_instance.redis
   ]
 }
 
