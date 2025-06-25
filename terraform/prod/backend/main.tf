@@ -338,7 +338,7 @@ resource "google_redis_instance" "redis" {
   tier                    = "STANDARD_HA"
   memory_size_gb          = 10
   region                  = var.google_region
-  redis_version           = "REDIS_7_0"
+  redis_version           = "REDIS_7_2"
   redis_configs           = { "maxmemory-gb" = "5", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
 }
@@ -845,7 +845,7 @@ module "server_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_ADDRESS="${google_redis_instance.redis.host}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
