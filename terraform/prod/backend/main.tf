@@ -644,7 +644,7 @@ module "relay_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
@@ -693,7 +693,7 @@ module "api" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
     ENABLE_REDIS_TIME_SERIES=true
@@ -709,8 +709,8 @@ module "api" {
     API_PRIVATE_KEY=${local.api_private_key}
     ALLOWED_ORIGIN="*"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                      = var.tag
@@ -728,6 +728,14 @@ module "api" {
   target_cpu               = 60
   domain                   = "api.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
+
+  depends_on = [
+    module.server_cruncher,
+    module.session_cruncher,
+    module.redis_time_series,
+    google_redis_instance.redis,
+    google_sql_database_instance.postgres,
+  ]
 }
 
 output "api_address" {
@@ -845,7 +853,7 @@ module "server_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
@@ -944,7 +952,7 @@ module "portal" {
   target_size              = var.disable_backend ? 0 : 1
 }
 
-output "portal_address" {
+output "yoportal_address" {
   description = "The IP address of the portal load balancer"
   value       = module.portal.address
 }
