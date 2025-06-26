@@ -35,4 +35,4 @@ test_server_tag             = "001" # increment this each time you want to deplo
 
 disable_backend             = false
 disable_raspberry           = true
-disable_ip2location         = true
+disable_ip2location         = false
