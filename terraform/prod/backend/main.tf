@@ -949,7 +949,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
-  target_size              = var.disable_backend ? 0 : 1
+  target_size              = var.disable_backend ? 0 : 2
 }
 
 output "yoportal_address" {

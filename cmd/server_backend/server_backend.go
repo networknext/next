@@ -571,12 +571,7 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 }
 
 func locateIP_Real(ip net.IP) (float32, float32) {
-	// production
-	// todo: force saopaulo
-	return -23.533773, -46.625290
-	/*
 	return service.GetLocation(ip)
-	*/
 }
 
 // ------------------------------------------------------------------------------------
