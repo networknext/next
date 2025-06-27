@@ -1,20 +1,19 @@
-
 package main
 
 import (
-	"net"
-	"time"
-	"fmt"
-	"os"
 	"bytes"
-	"strconv"
 	"context"
-	"hash/fnv"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
-    "crypto/sha256"
-	"crypto/rand"
+	"fmt"
 	"golang.org/x/crypto/chacha20poly1305"
+	"hash/fnv"
+	"net"
+	"os"
+	"strconv"
+	"time"
 )
 
 const RouteTokenBytes = 71
@@ -46,7 +45,7 @@ func GetEnvAddress(name string, defaultValue string) net.UDPAddr {
 	string, ok := os.LookupEnv(name)
 	if !ok {
 		return ParseAddress(defaultValue)
-	}	
+	}
 	return ParseAddress(string)
 }
 
@@ -154,9 +153,9 @@ func BasicPacketFilter(data []byte, packetLength int) bool {
 		return false
 	}
 
-    if data[2] != ( 1 | ( ( 255 - data[1] ) ^ 113 ) ) {
-    	return false;
-    }
+	if data[2] != (1 | ((255 - data[1]) ^ 113)) {
+		return false
+	}
 
 	if data[3] < 0x2A || data[3] > 0x2D {
 		return false
@@ -235,41 +234,50 @@ func AdvancedPacketFilter(data []byte, magic []byte, fromAddress []byte, toAddre
 }
 
 func GeneratePingToken(expireTimestamp uint64, from net.UDPAddr, to net.UDPAddr, pingKey []byte) []byte {
-	data := make([]byte, 32 + 20)
+	data := make([]byte, 32+20)
 	index := 0
-	copy(data[index:], pingKey);                                       index += 32
-	binary.LittleEndian.PutUint64(data[index:], expireTimestamp);      index += 8
-	copy(data[index:], from.IP.To4());                                 index += 4
-	copy(data[index:], to.IP.To4());                                   index += 4
-	binary.BigEndian.PutUint16(data[index:], uint16(from.Port));       index += 2
-	binary.BigEndian.PutUint16(data[index:], uint16(to.Port));
-	result := sha256.Sum256(data);
+	copy(data[index:], pingKey)
+	index += 32
+	binary.LittleEndian.PutUint64(data[index:], expireTimestamp)
+	index += 8
+	copy(data[index:], from.IP.To4())
+	index += 4
+	copy(data[index:], to.IP.To4())
+	index += 4
+	binary.BigEndian.PutUint16(data[index:], uint16(from.Port))
+	index += 2
+	binary.BigEndian.PutUint16(data[index:], uint16(to.Port))
+	result := sha256.Sum256(data)
 	return result[:]
 }
 
 func GenerateHeaderTag(packetType uint8, packetSequence uint64, sessionId uint64, sessionVersion uint8, sessionPrivateKey []byte) []byte {
-	data := make([]byte, 32 + 1 + 8 + 8 + 1)
+	data := make([]byte, 32+1+8+8+1)
 	index := 0
-	copy(data[index:], sessionPrivateKey);                             index += 32
-	data[index] = packetType;   		    						   index += 1
-	binary.LittleEndian.PutUint64(data[index:], packetSequence);       index += 8
-	binary.LittleEndian.PutUint64(data[index:], sessionId);            index += 8
+	copy(data[index:], sessionPrivateKey)
+	index += 32
+	data[index] = packetType
+	index += 1
+	binary.LittleEndian.PutUint64(data[index:], packetSequence)
+	index += 8
+	binary.LittleEndian.PutUint64(data[index:], sessionId)
+	index += 8
 	data[index] = sessionVersion
-	result := sha256.Sum256(data);
+	result := sha256.Sum256(data)
 	return result[0:8]
 }
 
 type RouteTokenData struct {
 	SessionPrivateKey [32]byte
-	ExpireTimestamp uint64
-	SessionId uint64
-	SessionVersion uint8
-	EnvelopeKbpsUp uint32
-	EnvelopeKbpsDown uint32
-	NextAddress net.UDPAddr
-	PrevAddress net.UDPAddr
-	NextInternal uint8
-	PrevInternal uint8
+	ExpireTimestamp   uint64
+	SessionId         uint64
+	SessionVersion    uint8
+	EnvelopeKbpsUp    uint32
+	EnvelopeKbpsDown  uint32
+	NextAddress       net.UDPAddr
+	PrevAddress       net.UDPAddr
+	NextInternal      uint8
+	PrevInternal      uint8
 }
 
 func GenerateRouteToken(secretKey []byte, data RouteTokenData) []byte {
@@ -277,18 +285,30 @@ func GenerateRouteToken(secretKey []byte, data RouteTokenData) []byte {
 	routeToken := make([]byte, RouteTokenBytes)
 
 	index := 0
-	copy(routeToken[index:], data.SessionPrivateKey[:]);                                index += 32
-	binary.LittleEndian.PutUint64(routeToken[index:], data.ExpireTimestamp);       		index += 8
-	binary.LittleEndian.PutUint64(routeToken[index:], data.SessionId);             		index += 8
-	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsUp);		   		index += 4
-	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsDown);	   		index += 4
-	copy(routeToken[index:], GetAddressData(data.NextAddress));  				   		index += 4
-	copy(routeToken[index:], GetAddressData(data.PrevAddress));  				   		index += 4
-	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.NextAddress.Port));		index += 2
-	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.PrevAddress.Port));		index += 2
-	routeToken[index] = data.SessionVersion;                                       		index += 1
-	routeToken[index] = data.NextInternal;                                         		index += 1
-	routeToken[index] = data.PrevInternal;                                         		index += 1
+	copy(routeToken[index:], data.SessionPrivateKey[:])
+	index += 32
+	binary.LittleEndian.PutUint64(routeToken[index:], data.ExpireTimestamp)
+	index += 8
+	binary.LittleEndian.PutUint64(routeToken[index:], data.SessionId)
+	index += 8
+	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsUp)
+	index += 4
+	binary.LittleEndian.PutUint32(routeToken[index:], data.EnvelopeKbpsDown)
+	index += 4
+	copy(routeToken[index:], GetAddressData(data.NextAddress))
+	index += 4
+	copy(routeToken[index:], GetAddressData(data.PrevAddress))
+	index += 4
+	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.NextAddress.Port))
+	index += 2
+	binary.BigEndian.PutUint16(routeToken[index:], uint16(data.PrevAddress.Port))
+	index += 2
+	routeToken[index] = data.SessionVersion
+	index += 1
+	routeToken[index] = data.NextInternal
+	index += 1
+	routeToken[index] = data.PrevInternal
+	index += 1
 
 	aead, err := chacha20poly1305.NewX(secretKey)
 	if err != nil {
@@ -307,8 +327,8 @@ func GenerateRouteToken(secretKey []byte, data RouteTokenData) []byte {
 
 type ContinueTokenData struct {
 	ExpireTimestamp uint64
-	SessionId uint64
-	SessionVersion uint8
+	SessionId       uint64
+	SessionVersion  uint8
 }
 
 func GenerateContinueToken(secretKey []byte, data ContinueTokenData) []byte {
@@ -316,9 +336,12 @@ func GenerateContinueToken(secretKey []byte, data ContinueTokenData) []byte {
 	continueToken := make([]byte, ContinueTokenBytes)
 
 	index := 0
-	binary.LittleEndian.PutUint64(continueToken[index:], data.ExpireTimestamp);       index += 8
-	binary.LittleEndian.PutUint64(continueToken[index:], data.SessionId);             index += 8
-	continueToken[index] = data.SessionVersion;                                       index += 1
+	binary.LittleEndian.PutUint64(continueToken[index:], data.ExpireTimestamp)
+	index += 8
+	binary.LittleEndian.PutUint64(continueToken[index:], data.SessionId)
+	index += 8
+	continueToken[index] = data.SessionVersion
+	index += 1
 
 	aead, err := chacha20poly1305.NewX(secretKey)
 	if err != nil {
@@ -349,9 +372,9 @@ func CreateClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -362,7 +385,7 @@ func CreateClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -374,7 +397,7 @@ func CreateClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -409,7 +432,7 @@ func TestClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -420,7 +443,7 @@ func TestClientToServerPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -463,9 +486,9 @@ func CreateServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -476,7 +499,7 @@ func CreateServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -488,7 +511,7 @@ func CreateServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -523,7 +546,7 @@ func TestServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -534,7 +557,7 @@ func TestServerToClientPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -586,13 +609,13 @@ func CreateRelayPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 		panic("ping token should be 32 bytes long")
 	}
 
-	payload := make([]byte, 8 + 8 + 1 + 32)
+	payload := make([]byte, 8+8+1+32)
 
 	binary.LittleEndian.PutUint64(payload[8:], expireTimestamp)
 
 	copy(payload[1+8+8:], pingToken)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = 11 // relay ping packet
 
@@ -604,7 +627,7 @@ func CreateRelayPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -633,7 +656,7 @@ func TestRelayPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) {
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -689,13 +712,13 @@ func CreateClientPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 		panic("ping token should be 32 bytes long")
 	}
 
-	payload := make([]byte, 8 + 8 + 8 + 32)
+	payload := make([]byte, 8+8+8+32)
 
 	binary.LittleEndian.PutUint64(payload[8+8:], expireTimestamp)
 
 	copy(payload[8+8+8:], pingToken)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = 9 // client ping packet
 
@@ -707,7 +730,7 @@ func CreateClientPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -736,7 +759,7 @@ func TestClientPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) 
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -788,13 +811,13 @@ func CreateServerPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 		panic("ping token should be 32 bytes long")
 	}
 
-	payload := make([]byte, 8 + 8 + 32)
+	payload := make([]byte, 8+8+32)
 
 	binary.LittleEndian.PutUint64(payload[8:], expireTimestamp)
 
 	copy(payload[8+8:], pingToken)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = 13 // server ping packet
 
@@ -806,7 +829,7 @@ func CreateServerPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -835,7 +858,7 @@ func TestServerPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr) 
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -878,9 +901,9 @@ func CreateSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -891,7 +914,7 @@ func CreateSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -903,7 +926,7 @@ func CreateSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -938,7 +961,7 @@ func TestSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -949,7 +972,7 @@ func TestSessionPingPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -992,9 +1015,9 @@ func CreateSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -1005,7 +1028,7 @@ func CreateSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -1017,7 +1040,7 @@ func CreateSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -1052,7 +1075,7 @@ func TestSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -1063,7 +1086,7 @@ func TestSessionPongPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr,
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -1108,16 +1131,16 @@ func CreateRouteRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 	prevAddress.Port = 0
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	data := RouteTokenData{
-		ExpireTimestamp: 	uint64(time.Now().Unix() + 30),
-		SessionId: 			0x12345,
-		SessionVersion: 	1,
-		NextAddress:        nextAddress,
-		PrevAddress:        prevAddress,
+		ExpireTimestamp: uint64(time.Now().Unix() + 30),
+		SessionId:       0x12345,
+		SessionVersion:  1,
+		NextAddress:     nextAddress,
+		PrevAddress:     prevAddress,
 	}
 
 	copy(data.SessionPrivateKey[:], sessionPrivateKey)
@@ -1127,7 +1150,7 @@ func CreateRouteRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 	copy(payload[0:EncryptedRouteTokenBytes], routeToken)
 	copy(payload[EncryptedRouteTokenBytes:EncryptedRouteTokenBytes*2], routeToken)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -1139,7 +1162,7 @@ func CreateRouteRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPAd
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -1174,7 +1197,7 @@ func TestRouteRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPAddr
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -1215,9 +1238,9 @@ func CreateContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UD
 	packetType := uint8(7) // continue request packet
 
 	data := ContinueTokenData{
-		ExpireTimestamp: 	uint64(time.Now().Unix() + 30),
-		SessionId: 			0x12345,
-		SessionVersion: 	1,
+		ExpireTimestamp: uint64(time.Now().Unix() + 30),
+		SessionId:       0x12345,
+		SessionVersion:  1,
 	}
 
 	continueToken := GenerateContinueToken(secretKey, data)
@@ -1225,7 +1248,7 @@ func CreateContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UD
 	copy(payload[0:EncryptedContinueTokenBytes], continueToken)
 	copy(payload[EncryptedContinueTokenBytes:EncryptedContinueTokenBytes*2], continueToken)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -1237,7 +1260,7 @@ func CreateContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UD
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -1272,7 +1295,7 @@ func TestContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -1283,7 +1306,7 @@ func TestContinueRequestPacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -1326,9 +1349,9 @@ func CreateRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -1339,7 +1362,7 @@ func CreateRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -1351,7 +1374,7 @@ func CreateRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPA
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -1386,7 +1409,7 @@ func TestRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -1397,7 +1420,7 @@ func TestRouteResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDPAdd
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -1440,9 +1463,9 @@ func CreateContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.U
 	binary.LittleEndian.PutUint64(payload[0:8], sequenceNumber)
 
 	sessionPrivateKey := make([]byte, 32)
-    for i := range sessionPrivateKey {
-    	sessionPrivateKey[i] = 100 + uint8(i);
-    }
+	for i := range sessionPrivateKey {
+		sessionPrivateKey[i] = 100 + uint8(i)
+	}
 
 	sessionId := uint64(0x12345)
 	binary.LittleEndian.PutUint64(payload[8:16], sessionId)
@@ -1453,7 +1476,7 @@ func CreateContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.U
 	tag := GenerateHeaderTag(packetType, sequenceNumber, sessionId, sessionVersion, sessionPrivateKey)
 	copy(payload[8+8+1:], tag)
 
-	packet := make([]byte, 18 + len(payload))
+	packet := make([]byte, 18+len(payload))
 
 	packet[0] = packetType
 
@@ -1465,7 +1488,7 @@ func CreateContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.U
 
 	GenerateChonkle(b, magic, fromAddressData, toAddressData, len(packet))
 
-	copy(packet[18:len(packet)], payload)
+	copy(packet[18:], payload)
 
 	return packet
 }
@@ -1500,7 +1523,7 @@ func TestContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	for i := 0; i < 10; i++ {
@@ -1511,7 +1534,7 @@ func TestContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDP
 
 		conn.WriteToUDP(packet, &serverAddress)
 
-		time.Sleep(time.Millisecond*100)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	fromAddressData := GetAddressData(clientAddress)
@@ -1545,8 +1568,8 @@ func TestContinueResponsePacket(clientAddress net.UDPAddr, serverAddress net.UDP
 func main() {
 
 	/*
-	clientAddress := GetEnvAddress("CLIENT_ADDRESS", "204.148.157.38:30000")
-	serverAddress := GetEnvAddress("SERVER_ADDRESS", "34.136.112.3:40000")
+		clientAddress := GetEnvAddress("CLIENT_ADDRESS", "204.148.157.38:30000")
+		serverAddress := GetEnvAddress("SERVER_ADDRESS", "34.136.112.3:40000")
 	*/
 
 	clientAddress := GetEnvAddress("CLIENT_ADDRESS", "192.168.1.20:30000")
@@ -1562,7 +1585,7 @@ func main() {
 	// TestServerPingPacket(clientAddress, serverAddress)
 	// TestRouteRequestPacket(clientAddress, serverAddress, secretKey)
 	TestContinueRequestPacket(clientAddress, serverAddress, secretKey)
-	
+
 	// TestClientToServerPacket(clientAddress, serverAddress, secretKey)
 	// TestServerToClientPacket(clientAddress, serverAddress, secretKey)
 	// TestSessionPingPacket(clientAddress, serverAddress, secretKey)

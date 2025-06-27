@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/crypto"
 	"github.com/networknext/next/modules/envvar"
@@ -129,13 +129,13 @@ func RunSession(index int) {
 			numClientRelays := int32(packets.SDK_MaxClientRelays)
 			var clientRelayIds [packets.SDK_MaxClientRelays]uint64
 			for i := range clientRelayIds {
-				clientRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+				clientRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0, numRelays)))
 			}
 
 			numServerRelays := int32(packets.SDK_MaxServerRelays)
 			var serverRelayIds [packets.SDK_MaxServerRelays]uint64
 			for i := range serverRelayIds {
-				serverRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0,numRelays)))
+				serverRelayIds[i] = common.RelayId(fmt.Sprintf("%s:%d", relayAddress, 10000+common.RandomInt(0, numRelays)))
 			}
 
 			lc := net.ListenConfig{}
@@ -170,7 +170,7 @@ func RunSession(index int) {
 
 					if packetType == packets.SDK_SESSION_UPDATE_RESPONSE_PACKET {
 
-						packetData = packetData[18 : len(packetData)]
+						packetData = packetData[18:]
 
 						packet := packets.SDK_SessionUpdateResponsePacket{}
 						if err := packets.ReadPacket(packetData, &packet); err != nil {
@@ -251,8 +251,8 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.ClientRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
-							packet.HasClientRelayPings = ( sessionId % 10 ) == 0
+							packet.ClientRelayPingsHaveChanged = sliceNumber == 1 || (sliceNumber%30) == 0
+							packet.HasClientRelayPings = (sessionId % 10) == 0
 							packet.NumClientRelays = numClientRelays
 							copy(packet.ClientRelayIds[:], clientRelayIds[:])
 							for i := range packet.ClientRelayRTT {
@@ -261,8 +261,8 @@ func RunSession(index int) {
 						}
 
 						if sliceNumber >= 1 {
-							packet.ServerRelayPingsHaveChanged = sliceNumber == 1 || ( sliceNumber % 30 ) == 0
-							packet.HasServerRelayPings = ( sessionId % 10 ) == 0
+							packet.ServerRelayPingsHaveChanged = sliceNumber == 1 || (sliceNumber%30) == 0
+							packet.HasServerRelayPings = (sessionId % 10) == 0
 							packet.NumServerRelays = numServerRelays
 							copy(packet.ServerRelayIds[:], clientRelayIds[:])
 							for i := range packet.ServerRelayRTT {
@@ -312,13 +312,13 @@ func RunSession(index int) {
 
 					// send client relay request packets once every 5 minutes
 
-					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+					if sliceNumber == 1 || sliceNumber > 0 && (sliceNumber%30) == 0 {
 
 						packet := packets.SDK_ClientRelayRequestPacket{
-							Version:            packets.SDKVersion{255, 255, 255},
-							BuyerId:            buyerId,
-							RequestId:			rand.Uint64(),
-							DatacenterId:       datacenterId,
+							Version:      packets.SDKVersion{255, 255, 255},
+							BuyerId:      buyerId,
+							RequestId:    rand.Uint64(),
+							DatacenterId: datacenterId,
 						}
 
 						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_CLIENT_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)
@@ -335,13 +335,13 @@ func RunSession(index int) {
 
 					// send server relay request packets once every 5 minutes
 
-					if ( sliceNumber == 1 || sliceNumber > 0 && ( sliceNumber % 30 ) == 0 ) {
+					if sliceNumber == 1 || sliceNumber > 0 && (sliceNumber%30) == 0 {
 
 						packet := packets.SDK_ServerRelayRequestPacket{
-							Version:            packets.SDKVersion{255, 255, 255},
-							BuyerId:            buyerId,
-							RequestId:			rand.Uint64(),
-							DatacenterId:       datacenterId,
+							Version:      packets.SDKVersion{255, 255, 255},
+							BuyerId:      buyerId,
+							RequestId:    rand.Uint64(),
+							DatacenterId: datacenterId,
 						}
 
 						packetData, err := packets.SDK_WritePacket(&packet, packets.SDK_SERVER_RELAY_REQUEST_PACKET, constants.MaxPacketBytes, &address, &serverBackendAddress, buyerPrivateKey)

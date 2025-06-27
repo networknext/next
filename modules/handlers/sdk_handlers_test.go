@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"sync/atomic"
 	"testing"
 	"time"
-	"sort"
 
 	"github.com/stretchr/testify/assert"
 
@@ -1465,7 +1465,7 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 	// generate a route matrix with the relays
 
-	relayIds := []uint64{1,2,3}
+	relayIds := []uint64{1, 2, 3}
 
 	costMatrix := make([]uint8, 3)
 
@@ -1579,7 +1579,9 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 			// check all response packet fields match expected values
 
 			sort.Slice(responsePacket.ClientRelayIds[:responsePacket.NumClientRelays], func(i, j int) bool { return responsePacket.ClientRelayIds[i] < responsePacket.ClientRelayIds[j] })
-			sort.Slice(responsePacket.ClientRelayAddresses[:responsePacket.NumClientRelays], func(i, j int) bool { return responsePacket.ClientRelayAddresses[i].String() < responsePacket.ClientRelayAddresses[j].String() })
+			sort.Slice(responsePacket.ClientRelayAddresses[:responsePacket.NumClientRelays], func(i, j int) bool {
+				return responsePacket.ClientRelayAddresses[i].String() < responsePacket.ClientRelayAddresses[j].String()
+			})
 
 			fmt.Printf("%v\n", responsePacket.ClientRelayIds[:])
 
@@ -1590,9 +1592,9 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 			assert.Equal(t, responsePacket.ClientRelayIds[0], uint64(1))
 			assert.Equal(t, responsePacket.ClientRelayIds[1], uint64(2))
 			assert.Equal(t, responsePacket.ClientRelayIds[2], uint64(3))
-			assert.Equal(t, responsePacket.ClientRelayAddresses[0].String(), "127.0.0.1:40000" )
-			assert.Equal(t, responsePacket.ClientRelayAddresses[1].String(), "127.0.0.1:40001" )
-			assert.Equal(t, responsePacket.ClientRelayAddresses[2].String(), "127.0.0.1:40002" )
+			assert.Equal(t, responsePacket.ClientRelayAddresses[0].String(), "127.0.0.1:40000")
+			assert.Equal(t, responsePacket.ClientRelayAddresses[1].String(), "127.0.0.1:40001")
+			assert.Equal(t, responsePacket.ClientRelayAddresses[2].String(), "127.0.0.1:40002")
 
 			// success!
 

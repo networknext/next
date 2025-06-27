@@ -380,14 +380,14 @@ void relay_address_data( uint32_t address, uint8_t * output )
 
 void relay_write_ping_packet( uint8_t * packet_data, int & packet_length, uint64_t sequence, uint64_t expire_timestamp, uint32_t from, uint32_t to, uint8_t internal, uint8_t * magic )
 {
-	assert( packet_data );
+    assert( packet_data );
 
     uint8_t ping_token[RELAY_PING_TOKEN_BYTES];
 
-	for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
-	{
-		ping_token[i] = (uint8_t) i;
-	}
+    for ( int i = 0; i < RELAY_PING_TOKEN_BYTES; i++ )
+    {
+        ping_token[i] = (uint8_t) i;
+    }
 
     packet_data[0] = RELAY_PING_PACKET;
     uint8_t * a = packet_data + 1;
@@ -571,26 +571,26 @@ void relay_write_ping_token( uint8_t * data, uint32_t source_address, uint16_t s
 
 int main( int argc, char *argv[] )
 {
-	printf( "test relay\n" );
+    printf( "test relay\n" );
 
-	uint8_t packet_data[256];
+    uint8_t packet_data[256];
 
-	int packet_length = 0;
+    int packet_length = 0;
 
-	uint64_t sequence = 1000000ULL;
-	uint64_t expire_timestamp = 123456789101112ULL;
-	uint32_t from = 0x11223344;
-	uint32_t to = 0x55667788;
-	uint8_t internal = 1;
-	uint8_t magic[8] = { 1, 2, 3, 4, 5, 6, 7, 8 };
+    uint64_t sequence = 1000000ULL;
+    uint64_t expire_timestamp = 123456789101112ULL;
+    uint32_t from = 0x11223344;
+    uint32_t to = 0x55667788;
+    uint8_t internal = 1;
+    uint8_t magic[8] = { 1, 2, 3, 4, 5, 6, 7, 8 };
 
-	relay_write_ping_packet( packet_data, packet_length, sequence, expire_timestamp, from, to, internal, magic );
+    relay_write_ping_packet( packet_data, packet_length, sequence, expire_timestamp, from, to, internal, magic );
 
-	if ( !ref_basic_packet_filter( packet_data, packet_length ) )
-	{
-		printf( "basic packet filter failed\n" );
-		exit( 1 );
-	}
+    if ( !ref_basic_packet_filter( packet_data, packet_length ) )
+    {
+        printf( "basic packet filter failed\n" );
+        exit( 1 );
+    }
 
     uint8_t to_address_data[4];
     uint8_t from_address_data[4];
@@ -598,11 +598,11 @@ int main( int argc, char *argv[] )
     relay_address_data( to, to_address_data );
     relay_address_data( from, from_address_data );
 
-	if ( !ref_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_length ) )
-	{
-		printf( "advanced packet filter failed\n" );
-		exit( 1 );
-	}
+    if ( !ref_advanced_packet_filter( packet_data, magic, from_address_data, to_address_data, packet_length ) )
+    {
+        printf( "advanced packet filter failed\n" );
+        exit( 1 );
+    }
 
     char network_interface_name[1024];
     network_interface_name[0] = 'a';
@@ -613,5 +613,5 @@ int main( int argc, char *argv[] )
     char command[2048];
     snprintf( command, sizeof(command), "sudo ifconfig %s mtu 1500 up", (const char*) &network_interface_name[0] );
 
-	return 0;
+    return 0;
 }

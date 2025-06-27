@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"math/rand"
+	"os"
 
 	"github.com/networknext/next/modules/common"
 )

@@ -1,7 +1,7 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -813,7 +813,7 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
 
-	fmt.Printf( "global:\n\n")
+	fmt.Printf("global:\n\n")
 
 	writeGlobalSecret("global_test_relay_public_key", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
 	writeGlobalSecret("global_test_relay_private_key", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
@@ -907,9 +907,9 @@ func config(env Environment, regexes []string) {
 
 	// IMPORTANT: if we don't have the global secrets yet (1.0 version of network next), we need to back generate them from the source code...
 
-	if (!fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir))) {
+	if !fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir)) {
 
-		fmt.Printf("extracting global secrets from source:\n\n" );
+		fmt.Printf("extracting global secrets from source:\n\n")
 
 		local_env_data, err := os.ReadFile("envs/local.env")
 		if err != nil {
@@ -2252,7 +2252,6 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
-
 	ExamplePremakeFile = `
 solution "next"
 	platforms { "portable", "x86", "x64", "avx", "avx2" }

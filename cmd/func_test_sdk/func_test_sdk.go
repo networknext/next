@@ -1,7 +1,7 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -1194,7 +1194,7 @@ func test_reconnect_next() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	// IMPORTANT: give the server time to ping server relays and get ready
-	time.Sleep(time.Second*10)
+	time.Sleep(time.Second * 10)
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -1317,7 +1317,7 @@ func test_connect_to_another_server_next() {
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
 	// IMPORTANT: give the relays time initialize with the backend
-	time.Sleep(time.Second*10)
+	time.Sleep(time.Second * 10)
 
 	serverConfig1 := &ServerConfig{}
 	serverConfig1.buyer_private_key = TestBuyerPrivateKey
@@ -1330,7 +1330,7 @@ func test_connect_to_another_server_next() {
 	server_2_cmd, server_stdout := server(serverConfig2)
 
 	// IMPORTANT: give the servers time to ping server relays and get ready
-	time.Sleep(time.Second*10)
+	time.Sleep(time.Second * 10)
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0
@@ -1642,7 +1642,7 @@ func test_packet_loss_next() {
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
 	// IMPORTANT: give the relays time to initialize with the backend
-	time.Sleep(time.Second*10)
+	time.Sleep(time.Second * 10)
 
 	serverConfig := &ServerConfig{}
 	serverConfig.buyer_private_key = TestBuyerPrivateKey
@@ -1651,7 +1651,7 @@ func test_packet_loss_next() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	// IMPORTANT: give the server time to ping server relays and get ready
-	time.Sleep(time.Second*10)
+	time.Sleep(time.Second * 10)
 
 	clientConfig := &ClientConfig{}
 	clientConfig.duration = 60.0

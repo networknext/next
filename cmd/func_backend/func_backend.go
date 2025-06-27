@@ -1,7 +1,7 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -673,8 +673,8 @@ func ProcessClientRelayRequestPacket(conn *net.UDPConn, from *net.UDPAddr, reque
 	responsePacket := &packets.SDK_ClientRelayResponsePacket{
 		RequestId:       requestPacket.RequestId,
 		ClientAddress:   requestPacket.ClientAddress,
-		Latitude: 		  41, // iowa
-		Longitude: 		  -93,
+		Latitude:        41, // iowa
+		Longitude:       -93,
 		NumClientRelays: int32(numRelays),
 		ExpireTimestamp: uint64(time.Now().Unix()) + 15,
 	}

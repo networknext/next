@@ -1,5 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.
     
     Licensed under the Network Next Source Available License 1.0
 */
@@ -386,18 +386,18 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
         // timeout < 0, socket is blocking with no timeout
     }
 
-	// set do not fragment
+    // set do not fragment
 
-	int value = 1;
-	nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_DontFrag, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
+    int value = 1;
+    nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_DontFrag, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
 
-	// enable dscp packet tagging
+    // enable dscp packet tagging
 
-	if ( next_packet_tagging_enabled )
-	{
-		int value = 46;
-		nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_Tos, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
-	}
+    if ( next_packet_tagging_enabled )
+    {
+        int value = 46;
+        nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_Tos, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
+    }
 
     return NEXT_OK;
 }
@@ -546,7 +546,7 @@ int next_platform_id()
 
 bool next_platform_packet_tagging_can_be_enabled()
 {
-	return true;
+    return true;
 }
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_SWITCH

@@ -687,10 +687,10 @@ func upgradeServerRelayData(database *db.Database, input []portal.ServerRelayDat
 }
 
 type PortalSessionDataResponse struct {
-	SessionData     PortalSessionData        `json:"session_data"`
-	SliceData       []portal.SliceData       `json:"slice_data"`
-	ClientRelayData []PortalClientRelayData  `json:"client_relay_data"`
-	ServerRelayData []PortalServerRelayData  `json:"server_relay_data"`
+	SessionData     PortalSessionData       `json:"session_data"`
+	SliceData       []portal.SliceData      `json:"slice_data"`
+	ClientRelayData []PortalClientRelayData `json:"client_relay_data"`
+	ServerRelayData []PortalServerRelayData `json:"server_relay_data"`
 }
 
 func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
