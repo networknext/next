@@ -32,7 +32,7 @@ test_datacenters = [
 	"unity.saopaulo.3",
 ]
 
-rematch_buyer_public_key    = "pTajZoYIAqBcMcYIz97X2hh2sDb/0Oe3S6bFmxc0v6IiCnjNQZJ1sQ=="
+rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
 
 rematch_datacenters = [
 	"google.saopaulo.1",
