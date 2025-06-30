@@ -66,13 +66,11 @@ RELAY_BACKEND_URL=$RELAY_BACKEND_URL
 RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
 
-# gotta do this on AWS or sometimes the relay_module doesn't have BTF!!!
+# if we need to reboot, it's best to do it now before we try to install linux headers because the kernel version may change
 
-curl -s -m 1 http://169.254.169.254/latest/meta-data/ami-id > /dev/null
-if [ $? -eq 0 ]; then
-  echo "AWS magic!"
-  sudo apt install linux-modules-extra-aws -y
-  [ -f /var/run/reboot-required ] && sudo reboot
+if [ -f /var/run/reboot-required ]; then
+    echo "rebooting. please run setup again on this relay"
+    sudo reboot
 fi
 
 # setup linux tools, headers and vmlinux BTF file needed for bpf. this requires 6.5+ linux kernel to work
