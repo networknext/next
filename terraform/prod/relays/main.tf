@@ -646,39 +646,6 @@ resource "networknext_buyer_datacenter_settings" raspberry {
   enable_acceleration = true
 }
 
-# ==========
-# TEST BUYER
-# ==========
-
-resource "networknext_route_shader" test {
-  name = "test"
-  force_next = true
-  latency_reduction_threshold = 1
-  acceptable_latency = 0
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-  route_select_threshold = 1
-  route_switch_threshold = 10
-}
-
-resource "networknext_buyer" test {
-  name = "Test"
-  code = "test"
-  debug = false
-  live = true
-  route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
-  buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[each.value].id
-  enable_acceleration = true
-}
-
 # =============
 # REMATCH BUYER
 # =============
