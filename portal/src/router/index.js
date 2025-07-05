@@ -9,7 +9,6 @@ import RelayView from '../views/RelayView.vue'
 import DatacenterView from '../views/DatacenterView.vue'
 import BuyersView from '../views/BuyersView.vue'
 import BuyerView from '../views/BuyerView.vue'
-import SellersView from '../views/SellersView.vue'
 import SellerView from '../views/SellerView.vue'
 import AdminView from '../views/AdminView.vue'
 
@@ -69,11 +68,6 @@ const routes = [
     name: 'buyer',
     component: BuyerView
   },    
-  {
-    path: '/sellers/:page?',
-    name: 'sellers',
-    component: SellersView
-  },
   {
     path: '/seller/:id', 
     name: 'seller',
