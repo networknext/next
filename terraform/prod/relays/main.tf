@@ -160,9 +160,16 @@ locals {
 
   unity_relays = {
 
+    "unity.saopaulo.1" = {
+      datacenter_name = "unity.saopaulo.1"
+      public_address  = "185.50.104.109"
+      ssh_user = "root"
+    },
+
     "unity.saopaulo.2" = {
       datacenter_name = "unity.saopaulo.2"
       public_address  = "189.1.173.223"
+      ssh_user = "ubuntu"
     },
 
   }
