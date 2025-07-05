@@ -653,11 +653,11 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" rematch {
   name = "rematch"
-  force_next = true
+  force_next = false
   latency_reduction_threshold = 20
   acceptable_latency = 50
   acceptable_packet_loss_instant = 1.0
-  acceptable_packet_loss_sustained = 0.1
+  acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5
