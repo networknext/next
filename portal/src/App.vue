@@ -46,10 +46,6 @@
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" @click="nav_sellers" to="/sellers">Sellers</router-link>
-          </li>
-
-          <li class="nav-item">
             <router-link class="nav-link" @click="nav_admin" to="/admin">Admin</router-link>
           </li>
 
