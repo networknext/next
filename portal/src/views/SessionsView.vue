@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------------------
+mess// -----------------------------------------------------------------------------------------
 
 <template>
 
@@ -39,6 +39,36 @@
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
+            <td class="right_align"> {{ item["Direct RTT"] }} </td>
+            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
+            <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+            <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+            <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+            <td class="nada" v-else> -- </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-none d-xxl-block">
+      <table id="sessions_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Session ID</th>
+            <th>User Hash</th>
+            <th>ISP</th>
+            <th>Datacenter</th>
+            <th class="right_align">Direct RTT</th>
+            <th class="right_align">Accelerated RTT</th>
+            <th class="right_align">Improvement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
+            <td> {{ item["ISP"] }} </td>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
             <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
