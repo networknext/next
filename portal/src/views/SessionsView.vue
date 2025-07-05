@@ -24,7 +24,7 @@
       </table>
     </div>
 
-    <div class="d-xl-block d-xxl-none">
+    <div class="d-xxl-none">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>
