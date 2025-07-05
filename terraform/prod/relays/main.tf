@@ -46,19 +46,7 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
-    "google.saopaulo.1.a" = {
-      datacenter_name = "google.saopaulo.1"
-      type            = "c2-standard-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.saopaulo.1.b" = {
-      datacenter_name = "google.saopaulo.1"
-      type            = "c2-standard-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.saopaulo.1.c" = {
+    "google.saopaulo.1" = {
       datacenter_name = "google.saopaulo.1"
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -170,6 +158,12 @@ locals {
       datacenter_name = "unity.saopaulo.2"
       public_address  = "189.1.173.223"
       ssh_user = "ubuntu"
+    },
+
+    "unity.saopaulo.3" = {
+      datacenter_name = "unity.saopaulo.3"
+      public_address  = "92.38.150.8"
+      ssh_user = "root"
     },
 
   }

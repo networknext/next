@@ -6,7 +6,6 @@ import ServersView from '../views/ServersView.vue'
 import ServerView from '../views/ServerView.vue'
 import RelaysView from '../views/RelaysView.vue'
 import RelayView from '../views/RelayView.vue'
-import DatacentersView from '../views/DatacentersView.vue'
 import DatacenterView from '../views/DatacenterView.vue'
 import BuyersView from '../views/BuyersView.vue'
 import BuyerView from '../views/BuyerView.vue'
@@ -54,11 +53,6 @@ const routes = [
     path: '/relay/:id',
     name: 'relay',
     component: RelayView
-  },
-  {
-    path: '/datacenters/:page?',
-    name: 'datacenters',
-    component: DatacentersView
   },
   {
     path: '/datacenter/:id', 
