@@ -164,22 +164,22 @@ while (bytes >= 64) {
 
 #define ONEQUAD_SHUFFLE(A, B, C, D)                      \
     do {                                                 \
-        uint32_t in##A = _mm_cvtsi128_si32(diag0);       \
-        uint32_t in##B = _mm_cvtsi128_si32(diag1);       \
-        uint32_t in##C = _mm_cvtsi128_si32(diag2);       \
-        uint32_t in##D = _mm_cvtsi128_si32(diag3);       \
+        uint32_t in2##A = _mm_cvtsi128_si32(diag0);      \
+        uint32_t in2##B = _mm_cvtsi128_si32(diag1);      \
+        uint32_t in2##C = _mm_cvtsi128_si32(diag2);      \
+        uint32_t in2##D = _mm_cvtsi128_si32(diag3);      \
         diag0          = _mm_shuffle_epi32(diag0, 0x39); \
         diag1          = _mm_shuffle_epi32(diag1, 0x39); \
         diag2          = _mm_shuffle_epi32(diag2, 0x39); \
         diag3          = _mm_shuffle_epi32(diag3, 0x39); \
-        in##A ^= *(const uint32_t *) (m + (A * 4));      \
-        in##B ^= *(const uint32_t *) (m + (B * 4));      \
-        in##C ^= *(const uint32_t *) (m + (C * 4));      \
-        in##D ^= *(const uint32_t *) (m + (D * 4));      \
-        *(uint32_t *) (c + (A * 4)) = in##A;             \
-        *(uint32_t *) (c + (B * 4)) = in##B;             \
-        *(uint32_t *) (c + (C * 4)) = in##C;             \
-        *(uint32_t *) (c + (D * 4)) = in##D;             \
+        in2##A ^= *(const uint32_t *) (m + (A * 4));     \
+        in2##B ^= *(const uint32_t *) (m + (B * 4));     \
+        in2##C ^= *(const uint32_t *) (m + (C * 4));     \
+        in2##D ^= *(const uint32_t *) (m + (D * 4));     \
+        *(uint32_t *) (c + (A * 4)) = in2##A;            \
+        *(uint32_t *) (c + (B * 4)) = in2##B;            \
+        *(uint32_t *) (c + (C * 4)) = in2##C;            \
+        *(uint32_t *) (c + (D * 4)) = in2##D;            \
     } while (0)
 
 #define ONEQUAD(A, B, C, D) ONEQUAD_SHUFFLE(A, B, C, D)

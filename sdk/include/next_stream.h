@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -333,12 +332,12 @@ namespace next
     #define serialize_int( stream, value, min, max )                    \
         do                                                              \
         {                                                               \
-            next_assert( min < max );                               \
+            next_assert( min < max );                                   \
             int32_t int32_value = 0;                                    \
             if ( Stream::IsWriting )                                    \
             {                                                           \
-                next_assert( int64_t(value) >= int64_t(min) );      \
-                next_assert( int64_t(value) <= int64_t(max) );      \
+                next_assert( int64_t(value) >= int64_t(min) );          \
+                next_assert( int64_t(value) <= int64_t(max) );          \
                 int32_value = (int32_t) value;                          \
             }                                                           \
             if ( !stream.SerializeInteger( int32_value, min, max ) )    \
@@ -369,8 +368,8 @@ namespace next
     #define serialize_bits( stream, value, bits )                       \
         do                                                              \
         {                                                               \
-            next_assert( bits > 0 );                                \
-            next_assert( bits <= 32 );                              \
+            next_assert( bits > 0 );                                    \
+            next_assert( bits <= 32 );                                  \
             uint32_t uint32_value = 0;                                  \
             if ( Stream::IsWriting )                                    \
             {                                                           \
