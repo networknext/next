@@ -55,7 +55,7 @@ Session updates contain network performance data once every 10 seconds for a ses
 | disabled | BOOL | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group. (potentially accelerated) |
-| b | BOOL | This session was part of an AB test, and is in the A group. (never accelerated) |
+| b | BOOL | This session was part of an AB test, and is in the B group. (never accelerated) |
 | latency_worse | BOOL | True if we made significantly latency worse. In this case the session is told to stop acceleration immediately. |
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
