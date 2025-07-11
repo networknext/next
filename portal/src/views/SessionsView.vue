@@ -1,4 +1,4 @@
-// -----------------------------------------------------------------------------------------
+mess// -----------------------------------------------------------------------------------------
 
 <template>
 
@@ -24,7 +24,7 @@
       </table>
     </div>
 
-    <div class="d-xl-block d-xxl-none">
+    <div class="d-none d-md-block d-lg-none">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>
@@ -50,7 +50,7 @@
       </table>
     </div>
 
-    <div class="d-xxl-block">
+    <div class="d-none d-lg-block">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>

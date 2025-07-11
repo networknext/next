@@ -69,7 +69,7 @@ output "relays" {
         "", 
         v.public_address,
         22,
-        local.ssh_user,
+        v.ssh_user != "" ? v.ssh_user : local.ssh_user,
       ]
     )
   }

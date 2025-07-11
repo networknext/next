@@ -46,20 +46,7 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
-  /*
-    "google.saopaulo.1.a" = {
-      datacenter_name = "google.saopaulo.1"
-      type            = "c2-standard-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.saopaulo.1.b" = {
-      datacenter_name = "google.saopaulo.1"
-      type            = "c2-standard-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.saopaulo.1.c" = {
+    "google.saopaulo.1" = {
       datacenter_name = "google.saopaulo.1"
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -76,7 +63,6 @@ locals {
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-  */
 
   }
 }
@@ -162,9 +148,22 @@ locals {
 
   unity_relays = {
 
+    "unity.saopaulo.1" = {
+      datacenter_name = "unity.saopaulo.1"
+      public_address  = "185.50.104.109"
+      ssh_user = "root"
+    },
+
     "unity.saopaulo.2" = {
       datacenter_name = "unity.saopaulo.2"
       public_address  = "189.1.173.223"
+      ssh_user = "ubuntu"
+    },
+
+    "unity.saopaulo.3" = {
+      datacenter_name = "unity.saopaulo.3"
+      public_address  = "92.38.150.8"
+      ssh_user = "root"
     },
 
   }
@@ -648,50 +647,17 @@ resource "networknext_buyer_datacenter_settings" raspberry {
   enable_acceleration = true
 }
 
-# ==========
-# TEST BUYER
-# ==========
-
-resource "networknext_route_shader" test {
-  name = "test"
-  force_next = true
-  latency_reduction_threshold = 1
-  acceptable_latency = 0
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-  route_select_threshold = 1
-  route_switch_threshold = 10
-}
-
-resource "networknext_buyer" test {
-  name = "Test"
-  code = "test"
-  debug = false
-  live = true
-  route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
-  buyer_id = networknext_buyer.test.id
-  datacenter_id = networknext_datacenter.datacenters[each.value].id
-  enable_acceleration = true
-}
-
 # =============
 # REMATCH BUYER
 # =============
 
 resource "networknext_route_shader" rematch {
   name = "rematch"
-  force_next = true
+  force_next = false
   latency_reduction_threshold = 20
   acceptable_latency = 50
   acceptable_packet_loss_instant = 1.0
-  acceptable_packet_loss_sustained = 0.1
+  acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5

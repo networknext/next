@@ -16,6 +16,7 @@ struct next_proxy_session_entry_t
 
     next_address_t address;
     uint64_t session_id;
+    uint64_t user_hash;
 
     NEXT_DECLARE_SENTINEL(1)
 

@@ -4383,6 +4383,8 @@ uint64_t next_server_upgrade_session( next_server_t * server, const next_address
         return 0;
     }
 
+    entry->user_hash = user_hash;
+
     return session_id;
 }
 
@@ -4640,41 +4642,56 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
     next_assert( address );
     next_assert( stats );
 
-    next_platform_mutex_guard( &server->internal->session_mutex );
+    // first try to get stats from session manager (fully established session)
+    {
+        next_platform_mutex_guard( &server->internal->session_mutex );
+        next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
+        if ( entry )
+        {
+            stats->session_id = entry->session_id;
+            stats->user_hash = entry->user_hash;
+            stats->platform_id = entry->stats_platform_id;
+            stats->connection_type = entry->stats_connection_type;
+            stats->next = entry->stats_next;
+            stats->multipath = entry->stats_multipath;
+            stats->reported = entry->stats_reported;
+            stats->fallback_to_direct = entry->stats_fallback_to_direct;
+            stats->direct_rtt = entry->stats_direct_rtt;
+            stats->direct_jitter = entry->stats_direct_jitter;
+            stats->direct_packet_loss = entry->stats_direct_packet_loss;
+            stats->direct_max_packet_loss_seen = entry->stats_direct_max_packet_loss_seen;
+            stats->next_rtt = entry->stats_next_rtt;
+            stats->next_jitter = entry->stats_next_jitter;
+            stats->next_packet_loss = entry->stats_next_packet_loss;
+            stats->direct_kbps_up = entry->stats_direct_kbps_up;
+            stats->direct_kbps_down = entry->stats_direct_kbps_down;
+            stats->next_kbps_up = entry->stats_next_kbps_up;
+            stats->next_kbps_down = entry->stats_next_kbps_down;
+            stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
+            stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
+            stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
+            stats->packets_lost_server_to_client = entry->stats_packets_lost_server_to_client;
+            stats->packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
+            stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
+            stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
+            stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
+            return true;
+        }
+    }
 
-    next_session_entry_t * entry = next_session_manager_find_by_address( server->internal->session_manager, address );
-    if ( !entry )
-        return false;
+    // fall back to getting session id and user hash from the proxy session, this lets you get these values immediately after calling "next_server_upgrade_session"
+    {
+        next_proxy_session_entry_t * entry = next_proxy_session_manager_find( server->pending_session_manager, address );
+        if ( entry )
+        {
+            memset( stats, 0, sizeof(next_server_stats_t) );
+            stats->session_id = entry->session_id;
+            stats->user_hash = entry->user_hash;
+            return true;
+        }
+    }
 
-    stats->session_id = entry->session_id;
-    stats->user_hash = entry->user_hash;
-    stats->platform_id = entry->stats_platform_id;
-    stats->connection_type = entry->stats_connection_type;
-    stats->next = entry->stats_next;
-    stats->multipath = entry->stats_multipath;
-    stats->reported = entry->stats_reported;
-    stats->fallback_to_direct = entry->stats_fallback_to_direct;
-    stats->direct_rtt = entry->stats_direct_rtt;
-    stats->direct_jitter = entry->stats_direct_jitter;
-    stats->direct_packet_loss = entry->stats_direct_packet_loss;
-    stats->direct_max_packet_loss_seen = entry->stats_direct_max_packet_loss_seen;
-    stats->next_rtt = entry->stats_next_rtt;
-    stats->next_jitter = entry->stats_next_jitter;
-    stats->next_packet_loss = entry->stats_next_packet_loss;
-    stats->direct_kbps_up = entry->stats_direct_kbps_up;
-    stats->direct_kbps_down = entry->stats_direct_kbps_down;
-    stats->next_kbps_up = entry->stats_next_kbps_up;
-    stats->next_kbps_down = entry->stats_next_kbps_down;
-    stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
-    stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
-    stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;
-    stats->packets_lost_server_to_client = entry->stats_packets_lost_server_to_client;
-    stats->packets_out_of_order_client_to_server = entry->stats_packets_out_of_order_client_to_server;
-    stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
-    stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
-    stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
-
-    return true;
+    return false;
 }
 
 bool next_server_ready( next_server_t * server ) 

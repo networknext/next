@@ -26,6 +26,7 @@ bool next_autodetect_google( char * output, size_t output_size )
     char buffer[1024*10];
 
     // are we running in google cloud?
+    
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r" );
