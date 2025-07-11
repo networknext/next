@@ -55,7 +55,7 @@ Session updates contain network performance data once every 10 seconds for a ses
 | disabled | BOOL | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group. (potentially accelerated) |
-| b | BOOL | This session was part of an AB test, and is in the A group. (never accelerated) |
+| b | BOOL | This session was part of an AB test, and is in the B group. (never accelerated) |
 | latency_worse | BOOL | True if we made significantly latency worse. In this case the session is told to stop acceleration immediately. |
 | mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
 | lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
@@ -73,7 +73,7 @@ A session summary is written at the end of each session, with the intent that if
 | user_hash | INT64 | Pseudonymized hash of a unique user id passed up from the SDK |
 | latitude | FLOAT64 | Approximate latitude of the player from ip2location |
 | longitude | FLOAT64 | Approximate longitude of the player from ip2location |
-| client_address | STRING | Client address and port number |
+| client_address | STRING | Anonymized client address |
 | server_address | STRING | Server address and port number |
 | connection_type | INT64 | Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular |
 | platform_type | INT64 | Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5 |
@@ -175,7 +175,7 @@ These entries are written to bigquery at the start of each session when relays a
 | user_hash | INT64 | Pseudonymized hash of a user id passed up from the SDK |
 | latitude | FLOAT64 | Approximate latitude of the player from ip2location |
 | longitude | FLOAT64 | Approximate longitude of the player from ip2location |
-| client_address | STRING | Client address and port number |
+| client_address | STRING | Anonymized client address |
 | connection_type | INT64 | Connection type: 0 = unknown, 1 = wired, 2 = wifi, 3 = cellular |
 | platform_type | INT64 | Platform type: 0 = unknown, 1 = windows, 2 = mac, 3 = linux, 4 = switch, 5 = ps4, 6 = ios, 7 = xbox one, 8 = xbox series x, 9 = ps5 |
 | client_relay_id | INT64 | Relay id being pinged by the client |
