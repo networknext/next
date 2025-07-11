@@ -552,7 +552,7 @@ module "magic_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                   = var.disable_backend ? 0 : 2
+  min_size                   = var.disable_backend ? 0 : 1
   max_size                   = var.disable_backend ? 0 : 16
   target_cpu                 = 60
 }
@@ -601,7 +601,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = var.disable_backend ? 0 : 2
+  min_size                 = var.disable_backend ? 0 : 1
   max_size                 = var.disable_backend ? 0 : 64
   target_cpu               = 60
   domain                   = "relay.${var.cloudflare_domain}"
@@ -665,7 +665,7 @@ module "relay_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 420
-  target_size                = var.disable_backend ? 0 : 2
+  target_size                = var.disable_backend ? 0 : 1
   tier_1                     = false
 
   depends_on = [
@@ -723,7 +723,7 @@ module "api" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = var.disable_backend ? 0 : 2
+  min_size                 = var.disable_backend ? 0 : 1
   max_size                 = var.disable_backend ? 0 : 16
   target_cpu               = 60
   domain                   = "api.${var.cloudflare_domain}"
@@ -876,7 +876,7 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = var.disable_backend ? 0 : 2
+  min_size                   = var.disable_backend ? 0 : 1
   max_size                   = var.disable_backend ? 0 : 64
   target_cpu                 = 30
   tier_1                     = false
@@ -949,7 +949,7 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
-  target_size              = var.disable_backend ? 0 : 2
+  target_size              = var.disable_backend ? 0 : 1
 }
 
 output "yoportal_address" {
