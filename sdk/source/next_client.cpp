@@ -25,9 +25,9 @@
 // ---------------------------------------------------------------
 
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
-#define NEXT_CLIENT_COMMAND_CLOSE_SESSION            1
-#define NEXT_CLIENT_COMMAND_DESTROY                    2
-#define NEXT_CLIENT_COMMAND_REPORT_SESSION            3
+#define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
+#define NEXT_CLIENT_COMMAND_DESTROY                 2
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
 
 struct next_client_command_t
 {
@@ -56,8 +56,8 @@ struct next_client_command_report_session_t : public next_client_command_t
 
 // ---------------------------------------------------------------
 
-#define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED            0
-#define NEXT_CLIENT_NOTIFY_UPGRADED                    1
+#define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED          0
+#define NEXT_CLIENT_NOTIFY_UPGRADED                 1
 #define NEXT_CLIENT_NOTIFY_STATS_UPDATED            2
 #define NEXT_CLIENT_NOTIFY_MAGIC_UPDATED            3
 #define NEXT_CLIENT_NOTIFY_READY                    4
