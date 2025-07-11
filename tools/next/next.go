@@ -111,6 +111,26 @@ func main() {
 		},
 	}
 
+	var unrealCommand = &ffcli.Command{
+		Name:       "unreal",
+		ShortUsage: "next unreal",
+		ShortHelp:  "Copy SDK source to unreal plugin",
+		Exec: func(ctx context.Context, args []string) error {
+			unreal()
+			return nil
+		},
+	}
+
+	var cleanCommand = &ffcli.Command{
+		Name:       "clean",
+		ShortUsage: "next clean",
+		ShortHelp:  "Clean temporary files",
+		Exec: func(ctx context.Context, args []string) error {
+			clean()
+			return nil
+		},
+	}
+
 	var secretsCommand = &ffcli.Command{
 		Name:       "secrets",
 		ShortUsage: "next secrets",
@@ -416,6 +436,8 @@ func main() {
 		keygenCommand,
 		configCommand,
 		exampleCommand,
+		unrealCommand,
+		cleanCommand,
 		secretsCommand,
 		selectCommand,
 		envCommand,
@@ -855,6 +877,36 @@ func generateExampleDir() {
 	bash("cp -f sdk/sodium/* example/sodium")
 	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
 	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+
+	fmt.Printf("generated example dir\n\n")
+}
+
+// ------------------------------------------------------------------------------
+
+func unreal() {
+	bash("rm -rf unreal/NetworkNext/Source/Private/include")
+	bash("rm -rf unreal/NetworkNext/Source/Private/source")
+	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/include")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/source")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/sodium")
+	bash("cp -f sdk/include/* unreal/NetworkNext/Source/Private/include")
+	bash("cp -f sdk/source/* unreal/NetworkNext/Source/Private/source")
+	bash("cp -f sdk/sodium/* unreal/NetworkNext/Source/Private/sodium")
+
+	fmt.Printf("copied sdk source to unreal plugin\n\n")
+}
+
+// ------------------------------------------------------------------------------
+
+func clean() {
+	bash("rm -rf example")
+	bash("rm -rf unreal/NetworkNext/Source/Private/include")
+	bash("rm -rf unreal/NetworkNext/Source/Private/source")
+	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
+	bash("rm -rf dist")
+	bash("rm -f secrets.tar.gz")
+	bash("make clean")
 }
 
 // ------------------------------------------------------------------------------
