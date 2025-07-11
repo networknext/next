@@ -49,7 +49,6 @@ Network Next, Inc. also offers a hosted solution with commercial support. Please
 2. [Customize your route shader](docs/customize_your_route_shader.md)
 3. [Run your own client and server](docs/run_your_own_client_and_server.md)
 4. [Integrate with your game](docs/integrate_with_your_game.md)
-5. [Unreal engine plugin](docs/unreal_engine_plugin.md)
 
 # Set up your Production Environment
 
