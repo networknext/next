@@ -28,10 +28,6 @@ if [[ $major -lt 6 ]]; then
   sudo reboot
 fi
 
-# install linux headers needed for xdp/ebpf
-
-sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
-
 # make the relay prompt cool
 
 echo making the relay prompt cool
@@ -70,9 +66,16 @@ RELAY_BACKEND_URL=$RELAY_BACKEND_URL
 RELAY_BACKEND_PUBLIC_KEY=$RELAY_BACKEND_PUBLIC_KEY
 EOM
 
+# if we need to reboot, it's best to do it now before we try to install linux headers because the kernel version may change
+
+if [ -f /var/run/reboot-required ]; then
+    echo "rebooting. please run setup again on this relay"
+    sudo reboot
+fi
+
 # setup linux tools, headers and vmlinux BTF file needed for bpf. this requires 6.5+ linux kernel to work
 
-sudo NEEDRESTART_SUSPEND=1 apt install linux-headers-`uname -r` linux-tools-`uname -r` -y
+sudo NEEDRESTART_SUSPEND=1 apt install dwarves linux-headers-`uname -r` linux-tools-`uname -r` -y
 
 sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
@@ -80,7 +83,7 @@ sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
 mkdir -p ~/relay_module
 cd ~/relay_module
-wget https://storage.googleapis.com/next_network_next_relay_artifacts/relay_module.tar.gz
+wget https://storage.googleapis.com/sloclap_network_next_relay_artifacts/relay_module.tar.gz
 tar -zxf relay_module.tar.gz
 make
 sudo mkdir -p /lib/modules/`uname -r`/kernel/net/relay_module

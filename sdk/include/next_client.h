@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -42,6 +41,8 @@ void next_client_send_packet_raw( next_client_t * client, const next_address_t *
 uint16_t next_client_port( next_client_t * client );
 
 uint64_t next_client_session_id( next_client_t * client );
+
+void next_client_report_session( next_client_t * client );
 
 const next_client_stats_t * next_client_stats( next_client_t * client );
 

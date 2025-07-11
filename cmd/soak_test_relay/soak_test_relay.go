@@ -1,7 +1,6 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -13,6 +12,7 @@ import "C"
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -21,12 +21,11 @@ import (
 	"os"
 	"os/exec"
 	"time"
-	"crypto/sha256"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/crypto"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 )
 
 const ROUTE_REQUEST_PACKET = 1
@@ -52,10 +51,10 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "peLF27fnP8pXz6AqgH6SM7s90iCOgEI+2rjGrACgGCU="
-const TestRelayPrivateKey = "ACQytjHVJca67Tp5RFCe9f/IKEwQLCxjr8xSymqu09E="
-const TestRelayBackendPublicKey = "LSSu6JW+6nx9FZ8yf5eu2g3S7NxqIzZEq0AUaRfLrh4="
-const TestRelayBackendPrivateKey = "+IA2a0tW7lnrnq0KThYPX1SZXh7kZAgSsKKjLQTOBoA="
+const TestRelayPublicKey = "1nTj7bQmo8gfIDqG+o//GFsak/g1TRo4hl6XXw1JkyI="
+const TestRelayPrivateKey = "cwvK44Pr5aHI3vE3siODS7CUgdPI/l1VwjVZ2FvEyAo="
+const TestRelayBackendPublicKey = "IsjRpWEz9H7qslhWWupW4A9LIpVh+PzWoLleuXL1NUE="
+const TestRelayBackendPrivateKey = "qXeUdLPZxaMnZ/zFHLHkmgkQOmunWq1AmRv55nqTYMg="
 
 const (
 	relayBin   = "./relay-debug"
@@ -190,27 +189,27 @@ func soak_test_relay(run_forever bool) {
 		}
 
 		/*
-		// send a bunch of random packets that don't pass the basic packet filter
+			// send a bunch of random packets that don't pass the basic packet filter
 
-		for i := 0; i < NumSockets; i++ {
-			packet := make([]byte, common.RandomInt(1, 10*1024))
-			common.RandomBytes(packet[:])
-			conn[i].WriteToUDP(packet, &relayAddress)
-		}
+			for i := 0; i < NumSockets; i++ {
+				packet := make([]byte, common.RandomInt(1, 10*1024))
+				common.RandomBytes(packet[:])
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
 
-		// send a bunch of random packets that do pass the packet filters
+			// send a bunch of random packets that do pass the packet filters
 
-		for i := 0; i < NumSockets; i++ {
-			packet := make([]byte, common.RandomInt(18, 6000))
-			common.RandomBytes(packet[:])
-			var magic [constants.MagicBytes]byte
-			fromAddress := core.GetAddressData(&clientAddress[i])
-			toAddress := core.GetAddressData(&relayAddress)
-			packetLength := len(packet)
-			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-			conn[i].WriteToUDP(packet, &relayAddress)
-		}
+			for i := 0; i < NumSockets; i++ {
+				packet := make([]byte, common.RandomInt(18, 6000))
+				common.RandomBytes(packet[:])
+				var magic [constants.MagicBytes]byte
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
+				packetLength := len(packet)
+				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
 		*/
 
 		// send valid route request packets

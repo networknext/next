@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -69,7 +68,7 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 void next_platform_client_thread_priority( next_platform_thread_t * thread )
 {
     // IMPORTANT: If you are developing on Nintendo Switch, please set thread priority and cpu core mask for the network next client thread here.
-    // This thread need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your game's framerate. 
+    // This threads need to wake up and process sockets as they arrive, so the measurements of round trip time are not quantized to your game's framerate. 
     // Due to the way thread scheduling works on the switch, and how relative to other platforms it's somewhat underpowered, it's best that we leave it 
     // up to you to decide how you want to prioritize these threads, and which core(s) you want them to run on.
     (void) thread;
@@ -386,18 +385,18 @@ int next_platform_socket_init( next_platform_socket_t * s, next_address_t * addr
         // timeout < 0, socket is blocking with no timeout
     }
 
-	// set do not fragment
+    // set do not fragment
 
-	int value = 1;
-	nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_DontFrag, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
+    int value = 1;
+    nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_DontFrag, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
 
-	// enable dscp packet tagging
+    // enable dscp packet tagging
 
-	if ( next_packet_tagging_enabled )
-	{
-		int value = 46;
-		nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_Tos, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
-	}
+    if ( next_packet_tagging_enabled )
+    {
+        int value = 46;
+        nn::socket::SetSockOpt( s->handle, nn::socket::Level::Sol_Ip, nn::socket::Option::Ip_Tos, (void*)( &value ), nn::socket::SockLenT( sizeof( int ) ) );
+    }
 
     return NEXT_OK;
 }
@@ -546,7 +545,7 @@ int next_platform_id()
 
 bool next_platform_packet_tagging_can_be_enabled()
 {
-	return true;
+    return true;
 }
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_SWITCH

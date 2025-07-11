@@ -19,7 +19,7 @@
 # include "sodium_xmm6int_salsa20-avx2.h"
 #endif
 
-#if HAVE_AMD64_ASM
+#ifdef HAVE_AMD64_ASM
 static const crypto_stream_salsa20_implementation *implementation =
     &crypto_stream_salsa20_xmm6_implementation;
 #else

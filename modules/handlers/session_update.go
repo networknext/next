@@ -960,11 +960,11 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 	}
 
 	/*
-		If we have debug, print it here. 
+		If we have debug, print it here.
 		We no longer send it down to the SDK because of MTU.
 	*/
 
-	if ( state.Debug != nil ) {
+	if state.Debug != nil {
 		core.Debug("%s", *state.Debug)
 	}
 
@@ -1053,7 +1053,7 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 		sendPortalSessionUpdateMessage(state)
 		sendPortalClientRelayUpdateMessage(state)
 		sendPortalServerRelayUpdateMessage(state)
-	
+
 		sendAnalyticsSessionUpdateMessage(state)
 		sendAnalyticsSessionSummaryMessage(state)
 		sendAnalyticsClientRelayPingMessages(state)

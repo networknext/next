@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -11,14 +12,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"sort"
 	"sync"
 	"syscall"
 	"time"
-	"os/exec"
-	"bufio"
 
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -125,7 +125,7 @@ type Service struct {
 	Context           context.Context
 	ContextCancelFunc context.CancelFunc
 
-    GoogleProjectId string
+	GoogleProjectId string
 
 	// ------------------
 
@@ -221,10 +221,10 @@ func CreateService(serviceName string) *Service {
 
 	service.runStatusUpdateLoop()
 
-    service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
-    if service.GoogleProjectId != "" {
-        core.Log("google project id is '%s'", service.GoogleProjectId)
-    }
+	service.GoogleProjectId = envvar.GetString("GOOGLE_PROJECT_ID", "")
+	if service.GoogleProjectId != "" {
+		core.Log("google project id is '%s'", service.GoogleProjectId)
+	}
 
 	service.sendTrafficToMe = func() bool { return true }
 	service.machineIsHealthy = func() bool { return true }

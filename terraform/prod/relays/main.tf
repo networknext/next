@@ -15,6 +15,8 @@ variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_datacenters" { type = list(string) }
 variable "test_buyer_public_key" { type = string }
 variable "test_datacenters" { type = list(string) }
+variable "rematch_buyer_public_key" { type = string }
+variable "rematch_datacenters" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -26,21 +28,17 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
 
 provider "networknext" {
   hostname = "https://api.virtualgo.net"
-  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTI0NzI5MH0.eKUcvfr6AtkO8MZI7ybybsOMjAP7a7NI-t2wQd--6m0"
+  api_key  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTczODE4OX0._3gzvR5D7mIILHXnujbGkqwK0jiDCUUXRRzTpjJv-gc"
 }
 
 # ----------------------------------------------------------------------------------------
-
-# =============
-# GOOGLE RELAYS
-# =============
 
 locals {
 
@@ -48,83 +46,21 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
-    # IOWA
-
-    "google.iowa.1.a" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
+    "google.saopaulo.1" = {
+      datacenter_name = "google.saopaulo.1"
+      type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.iowa.1.b" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
+    "google.saopaulo.2" = {
+      datacenter_name = "google.saopaulo.2"
+      type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.iowa.1.c" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.d" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.e" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.f" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.g" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.h" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.i" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.j" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.2" = {
-      datacenter_name = "google.iowa.2"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.3" = {
-      datacenter_name = "google.iowa.3"
-      type            = "c3-highcpu-8"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.6" = {
-      datacenter_name = "google.iowa.6"
-      type            = "c3-highcpu-8"
+    "google.saopaulo.3" = {
+      datacenter_name = "google.saopaulo.3"
+      type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
@@ -142,10 +78,6 @@ module "google_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
-
-# =============
-# AMAZON RELAYS
-# =============
 
 locals {
   amazon_config      = ["~/.aws/config"]
@@ -168,31 +100,15 @@ module "amazon_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# =============
-# AKAMAI RELAYS
-# =============
-
 locals {
 
   akamai_relays = {
 
-    "akamai.newyork" = {
-      datacenter_name = "akamai.newyork"
-      type            = "g6-dedicated-2"
+    "akamai.saopaulo" = {
+      datacenter_name = "akamai.saopaulo"
+      type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
-
-    "akamai.fremont" = {
-      datacenter_name = "akamai.fremont"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
-    
-    "akamai.dallas" = {
-      datacenter_name = "akamai.dallas"
-      type            = "g6-dedicated-2"
-      image           = "linode/ubuntu22.04"
-    }
     
   }
 }
@@ -207,20 +123,66 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# =================
-# DATAPACKET RELAYS
-# =================
+locals {
+
+  zenlayer_relays = {
+
+    "zenlayer.saopaulo" = {
+      datacenter_name = "zenlayer.saopaulo"
+      public_address  = "128.14.222.42"
+    },
+
+  }
+}
+
+module "zenlayer_relays" {
+  relays = local.zenlayer_relays
+  source = "../../sellers/zenlayer"
+}
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+
+  unity_relays = {
+
+    "unity.saopaulo.1" = {
+      datacenter_name = "unity.saopaulo.1"
+      public_address  = "185.50.104.109"
+      ssh_user = "root"
+    },
+
+    "unity.saopaulo.2" = {
+      datacenter_name = "unity.saopaulo.2"
+      public_address  = "189.1.173.223"
+      ssh_user = "ubuntu"
+    },
+
+    "unity.saopaulo.3" = {
+      datacenter_name = "unity.saopaulo.3"
+      public_address  = "92.38.150.8"
+      ssh_user = "root"
+    },
+
+  }
+}
+
+module "unity_relays" {
+  relays = local.unity_relays
+  source = "../../sellers/unity"
+}
+
+# ----------------------------------------------------------------------------------------
 
 locals {
 
   datapacket_relays = {
 
-    /*
-    "datapacket.losangeles" = {
-      datacenter_name = "datapacket.losangeles"
-      public_address  = "185.152.67.2"
+    "datapacket.saopaulo" = {
+      datacenter_name = "datapacket.saopaulo"
+      ssh_address = "79.127.137.166"
+      public_address = "79.127.137.166"
     },
-    */
 
   }
 }
@@ -229,6 +191,34 @@ module "datapacket_relays" {
   relays = local.datapacket_relays
   source = "../../sellers/datapacket"
 }
+
+# ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ----------------------------------------------------------------------------------------
 
@@ -433,31 +423,6 @@ module "velia_relays" {
 # ----------------------------------------------------------------------------------------
 
 # ===============
-# ZENLAYER RELAYS
-# ===============
-
-locals {
-
-  zenlayer_relays = {
-
-    /*
-    "zenlayer.singapore" = {
-      datacenter_name = "zenlayer.singapore"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "zenlayer_relays" {
-  relays = local.zenlayer_relays
-  source = "../../sellers/zenlayer"
-}
-
-# ----------------------------------------------------------------------------------------
-
-# ===============
 # LATITUDE RELAYS
 # ===============
 
@@ -532,6 +497,7 @@ locals {
       keys(module.zenlayer_relays.relays),
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
+      keys(module.unity_relays.relays),
     )
   )
 
@@ -551,6 +517,7 @@ locals {
     module.zenlayer_relays.relays,
     module.latitude_relays.relays,
     module.equinix_relays.relays,
+    module.unity_relays.relays,
   )
 
   datacenters = merge(
@@ -569,6 +536,7 @@ locals {
     module.zenlayer_relays.datacenters,
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
+    module.unity_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
@@ -664,7 +632,7 @@ resource "networknext_route_shader" raspberry {
 resource "networknext_buyer" raspberry {
   name = "Raspberry"
   code = "raspberry"
-  debug = true
+  debug = false
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
   public_key_base64 = var.raspberry_buyer_public_key
@@ -677,35 +645,35 @@ resource "networknext_buyer_datacenter_settings" raspberry {
   enable_acceleration = true
 }
 
-# ==========
-# TEST BUYER
-# ==========
+# =============
+# REMATCH BUYER
+# =============
 
-resource "networknext_route_shader" test {
-  name = "test"
-  force_next = true
-  latency_reduction_threshold = 1
-  acceptable_latency = 0
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
-  bandwidth_envelope_up_kbps = 256
-  bandwidth_envelope_down_kbps = 256
-  route_select_threshold = 1
+resource "networknext_route_shader" rematch {
+  name = "rematch"
+  force_next = false
+  latency_reduction_threshold = 20
+  acceptable_latency = 50
+  acceptable_packet_loss_instant = 1.0
+  acceptable_packet_loss_sustained = 0.25
+  bandwidth_envelope_up_kbps = 1024
+  bandwidth_envelope_down_kbps = 1024
+  route_select_threshold = 5
   route_switch_threshold = 10
 }
 
-resource "networknext_buyer" test {
-  name = "Test"
-  code = "test"
-  debug = true
+resource "networknext_buyer" rematch {
+  name = "REMATCH"
+  code = "rematch"
+  debug = false
   live = true
-  route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
+  route_shader_id = networknext_route_shader.rematch.id
+  public_key_base64 = var.rematch_buyer_public_key
 }
 
-resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
-  buyer_id = networknext_buyer.test.id
+resource "networknext_buyer_datacenter_settings" rematch {
+  for_each = toset(var.rematch_datacenters)
+  buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }

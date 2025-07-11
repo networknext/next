@@ -46,3 +46,11 @@ nodes.conf
 sdk/build/ps4/client
 sdk/build/ps4/test
 Gaming.Xbox.*
+
+# example dir
+example
+
+# unreal sdk source
+unreal/NetworkNext/Source/Private/include
+unreal/NetworkNext/Source/Private/source
+unreal/NetworkNext/Source/Private/sodium

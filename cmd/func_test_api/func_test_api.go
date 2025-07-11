@@ -1,7 +1,6 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -25,9 +24,9 @@ import (
 )
 
 const Hostname = "http://127.0.0.1:50000"
-const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTI0NzI5MH0.x_X99Wt_xkdr8UkpVwSg5BG6naLwn-zC4P2UN8aWIpE"
-const TestAPIPrivateKey = "fhWwyybJcUVgvewtGqepaHCwpNdAeCBxsYXuPNFNgSaIZbgqQJKOuuQfzuHCJKDB"
-const TestBuyerPublicKey = "OPsJ/biQrnQEgoJr2oo9zeJG9vVkOUpWklw2+O2nfyy1BljyFxrU8Q=="
+const TestAPIKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwicG9ydGFsIjp0cnVlLCJpc3MiOiJuZXh0IGtleWdlbiIsImlhdCI6MTc0OTczODE4OX0.I89NXJCRMU_pIjnSleAnbux5HNsHhymzQ_SVatFo3b4"
+const TestAPIPrivateKey = "uKUsmTySUVEssqBmVNciJWWolchcGGhFzRWMpydwOtVExvqYpHMotnkanNTaGHHh"
+const TestBuyerPublicKey = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
 
 // ----------------------------------------------------------------------------------------
 

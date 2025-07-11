@@ -1,7 +1,6 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -13,10 +12,11 @@ import "C"
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
-	"io"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -26,7 +26,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	"crypto/sha256"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -57,10 +56,10 @@ func Base64String(value string) []byte {
 	return data
 }
 
-const TestRelayPublicKey = "peLF27fnP8pXz6AqgH6SM7s90iCOgEI+2rjGrACgGCU="
-const TestRelayPrivateKey = "ACQytjHVJca67Tp5RFCe9f/IKEwQLCxjr8xSymqu09E="
-const TestRelayBackendPublicKey = "LSSu6JW+6nx9FZ8yf5eu2g3S7NxqIzZEq0AUaRfLrh4="
-const TestRelayBackendPrivateKey = "+IA2a0tW7lnrnq0KThYPX1SZXh7kZAgSsKKjLQTOBoA="
+const TestRelayPublicKey = "1nTj7bQmo8gfIDqG+o//GFsak/g1TRo4hl6XXw1JkyI="
+const TestRelayPrivateKey = "cwvK44Pr5aHI3vE3siODS7CUgdPI/l1VwjVZ2FvEyAo="
+const TestRelayBackendPublicKey = "IsjRpWEz9H7qslhWWupW4A9LIpVh+PzWoLleuXL1NUE="
+const TestRelayBackendPrivateKey = "qXeUdLPZxaMnZ/zFHLHkmgkQOmunWq1AmRv55nqTYMg="
 
 const (
 	relayBin   = "./relay-debug"
@@ -1268,7 +1267,7 @@ func test_server_ping_packet_responded_with_pong() {
 	serverAddress := core.ParseAddress("127.0.0.1:2000")
 
 	sequence := uint64(0)
-	
+
 	pingKey := make([]byte, 32)
 
 	receivedPong := false
@@ -5044,7 +5043,7 @@ func test_session_expired_route_response_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5162,7 +5161,7 @@ func test_session_expired_continue_request_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5268,7 +5267,7 @@ func test_session_expired_continue_response_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5386,7 +5385,7 @@ func test_session_expired_client_to_server_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5504,7 +5503,7 @@ func test_session_expired_server_to_client_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5622,7 +5621,7 @@ func test_session_expired_session_ping_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5742,7 +5741,7 @@ func test_session_expired_session_pong_packet() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	// send a route request packet to create the session
 	{
@@ -5858,7 +5857,7 @@ func test_relay_backend_stats() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	packet := make([]byte, 18+111*2)
 	packet[0] = ROUTE_REQUEST_PACKET
@@ -5943,7 +5942,7 @@ func test_relay_backend_counters() {
 	testRelayPrivateKey := Base64String(TestRelayPrivateKey)
 	testRelayBackendPublicKey := Base64String(TestRelayBackendPublicKey)
 
-	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)	
+	testSecretKey, _ := crypto.SecretKey_GenerateLocal(testRelayPublicKey, testRelayPrivateKey, testRelayBackendPublicKey)
 
 	packet := make([]byte, 18+111*2)
 	packet[0] = ROUTE_REQUEST_PACKET

@@ -1,7 +1,6 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright 2017 - 2025 Network Next, Inc.
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -108,6 +107,26 @@ func main() {
 		ShortHelp:  "Generate example directory",
 		Exec: func(ctx context.Context, args []string) error {
 			generateExampleDir()
+			return nil
+		},
+	}
+
+	var unrealCommand = &ffcli.Command{
+		Name:       "unreal",
+		ShortUsage: "next unreal",
+		ShortHelp:  "Copy SDK source to unreal plugin",
+		Exec: func(ctx context.Context, args []string) error {
+			unreal()
+			return nil
+		},
+	}
+
+	var cleanCommand = &ffcli.Command{
+		Name:       "clean",
+		ShortUsage: "next clean",
+		ShortHelp:  "Clean temporary files",
+		Exec: func(ctx context.Context, args []string) error {
+			clean()
 			return nil
 		},
 	}
@@ -417,6 +436,8 @@ func main() {
 		keygenCommand,
 		configCommand,
 		exampleCommand,
+		unrealCommand,
+		cleanCommand,
 		secretsCommand,
 		selectCommand,
 		envCommand,
@@ -813,7 +834,7 @@ func keygen(env Environment, regexes []string) {
 
 	fmt.Printf("------------------------------------------\n             writing secrets\n------------------------------------------\n\n")
 
-	fmt.Printf( "global:\n\n")
+	fmt.Printf("global:\n\n")
 
 	writeGlobalSecret("global_test_relay_public_key", base64.StdEncoding.EncodeToString(testRelayPublicKey[:]))
 	writeGlobalSecret("global_test_relay_private_key", base64.StdEncoding.EncodeToString(testRelayPrivateKey[:]))
@@ -856,6 +877,36 @@ func generateExampleDir() {
 	bash("cp -f sdk/sodium/* example/sodium")
 	bash("cp -f sdk/examples/upgraded_client.cpp example/client.cpp")
 	bash("cp -f sdk/examples/upgraded_server.cpp example/server.cpp")
+
+	fmt.Printf("generated example dir\n\n")
+}
+
+// ------------------------------------------------------------------------------
+
+func unreal() {
+	bash("rm -rf unreal/NetworkNext/Source/Private/include")
+	bash("rm -rf unreal/NetworkNext/Source/Private/source")
+	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/include")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/source")
+	bash("mkdir -p unreal/NetworkNext/Source/Private/sodium")
+	bash("cp -f sdk/include/* unreal/NetworkNext/Source/Private/include")
+	bash("cp -f sdk/source/* unreal/NetworkNext/Source/Private/source")
+	bash("cp -f sdk/sodium/* unreal/NetworkNext/Source/Private/sodium")
+
+	fmt.Printf("copied sdk source to unreal plugin\n\n")
+}
+
+// ------------------------------------------------------------------------------
+
+func clean() {
+	bash("rm -rf example")
+	bash("rm -rf unreal/NetworkNext/Source/Private/include")
+	bash("rm -rf unreal/NetworkNext/Source/Private/source")
+	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
+	bash("rm -rf dist")
+	bash("rm -f secrets.tar.gz")
+	bash("make clean")
 }
 
 // ------------------------------------------------------------------------------
@@ -907,9 +958,9 @@ func config(env Environment, regexes []string) {
 
 	// IMPORTANT: if we don't have the global secrets yet (1.0 version of network next), we need to back generate them from the source code...
 
-	if (!fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir))) {
+	if !fileExists(fmt.Sprintf("%s/global-test-relay-public-key.txt", secretsDir)) {
 
-		fmt.Printf("extracting global secrets from source:\n\n" );
+		fmt.Printf("extracting global secrets from source:\n\n")
 
 		local_env_data, err := os.ReadFile("envs/local.env")
 		if err != nil {
@@ -1476,10 +1527,6 @@ func config(env Environment, regexes []string) {
 		replace("terraform/projects/main.tf", "^\\s*billing_account = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  billing_account = \"%s\"", config.GoogleBillingAccount))
 		replace("terraform/projects/main.tf", "^\\s*company_name = \"[A-Za-z0-9-]+\"\\s*$", fmt.Sprintf("  company_name = \"%s\"", config.CompanyName))
 	}
-
-	// generate example dir
-
-	generateExampleDir()
 
 	// update scripts
 
@@ -2256,7 +2303,6 @@ func (con SSHConn) ConnectAndIssueCmd(cmd string) bool {
 // ------------------------------------------------------------------------------
 
 const (
-
 	ExamplePremakeFile = `
 solution "next"
 	platforms { "portable", "x86", "x64", "avx", "avx2" }

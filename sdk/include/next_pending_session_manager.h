@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -290,17 +289,16 @@ inline next_pending_session_entry_t * next_pending_session_manager_find( next_pe
     return NULL;
 }
 
-inline int next_pending_session_manager_num_entries( next_pending_session_manager_t * pending_session_manager )
+inline int next_pending_session_manager_num_entries( next_pending_session_manager_t * session_manager )
 {
-    next_pending_session_manager_verify_sentinels( pending_session_manager );
+    next_pending_session_manager_verify_sentinels( session_manager );
 
     int num_entries = 0;
 
-    const int max_index = pending_session_manager->max_entry_index;
-
+    const int max_index = session_manager->max_entry_index;
     for ( int i = 0; i <= max_index; ++i )
     {
-        if ( pending_session_manager->addresses[i].type != 0 )
+        if ( session_manager->addresses[i].type != 0 )
         {
             num_entries++;
         }

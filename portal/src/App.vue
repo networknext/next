@@ -42,15 +42,7 @@
           </li>
 
           <li class="nav-item">
-            <router-link class="nav-link" @click="nav_datacenters" to="/datacenters">Datacenters</router-link>
-          </li>
-
-          <li class="nav-item">
             <router-link class="nav-link" @click="nav_buyers" to="/buyers">Buyers</router-link>
-          </li>
-
-          <li class="nav-item">
-            <router-link class="nav-link" @click="nav_sellers" to="/sellers">Sellers</router-link>
           </li>
 
           <li class="nav-item">
@@ -124,14 +116,6 @@ export default {
     nav_relays() {
       if (this.current_view != 'relays') {
         this.$router.push('/relays')
-      } else {
-        this.onLoaded()
-      }
-    },
-
-    nav_datacenters() {
-      if (this.current_view != 'datacenters') {
-        this.$router.push('/datacenters')
       } else {
         this.onLoaded()
       }

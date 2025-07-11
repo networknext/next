@@ -6,11 +6,9 @@ import ServersView from '../views/ServersView.vue'
 import ServerView from '../views/ServerView.vue'
 import RelaysView from '../views/RelaysView.vue'
 import RelayView from '../views/RelayView.vue'
-import DatacentersView from '../views/DatacentersView.vue'
 import DatacenterView from '../views/DatacenterView.vue'
 import BuyersView from '../views/BuyersView.vue'
 import BuyerView from '../views/BuyerView.vue'
-import SellersView from '../views/SellersView.vue'
 import SellerView from '../views/SellerView.vue'
 import AdminView from '../views/AdminView.vue'
 
@@ -56,11 +54,6 @@ const routes = [
     component: RelayView
   },
   {
-    path: '/datacenters/:page?',
-    name: 'datacenters',
-    component: DatacentersView
-  },
-  {
     path: '/datacenter/:id', 
     name: 'datacenter',
     component: DatacenterView
@@ -75,11 +68,6 @@ const routes = [
     name: 'buyer',
     component: BuyerView
   },    
-  {
-    path: '/sellers/:page?',
-    name: 'sellers',
-    component: SellersView
-  },
   {
     path: '/seller/:id', 
     name: 'seller',

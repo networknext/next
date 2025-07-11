@@ -72,7 +72,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -138,6 +138,15 @@ resource "google_compute_subnetwork" "production" {
   project                  = local.google_project_id
   ip_cidr_range            = "10.0.0.0/16"
   region                   = var.google_region
+  network                  = google_compute_network.production.id
+  private_ip_google_access = true
+}
+
+resource "google_compute_subnetwork" "raspberry" {
+  name                     = "raspberry"
+  project                  = local.google_project_id
+  ip_cidr_range            = "10.3.0.0/16"
+  region                   = var.raspberry_region
   network                  = google_compute_network.production.id
   private_ip_google_access = true
 }
@@ -307,7 +316,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "n1-standard-2"
+  machine_type             = "n1-highmem-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zone                     = var.google_zone
@@ -324,74 +333,19 @@ output "redis_time_series_address" {
 
 # ----------------------------------------------------------------------------------------
 
-resource "google_redis_cluster" "portal" {
-  provider       = google-beta
-  name           = "portal"
-  shard_count    = 10
-  psc_configs {
-    network = google_compute_network.production.id
-  }
-  region = "us-central1"
-  replica_count = 1
-  transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
-  authorization_mode = "AUTH_MODE_DISABLED"
-  depends_on = [
-    google_network_connectivity_service_connection_policy.default
-  ]
-  lifecycle {
-    ignore_changes = all
-  }
-}
-
-resource "google_network_connectivity_service_connection_policy" "default" {
-  provider = google-beta
-  name = "redis"
-  location = "us-central1"
-  service_class = "gcp-memorystore-redis"
-  description   = "redis cluster service connection policy"
-  network = google_compute_network.production.id
-  psc_config {
-    subnetworks = [google_compute_subnetwork.production.id]
-  }
-}
-
-locals {
-  redis_portal_address = "${google_redis_cluster.portal.discovery_endpoints[0].address}:6379"
-}
-
-resource "google_redis_instance" "redis_relay_backend" {
-  name                    = "redis-relay-backend"
+resource "google_redis_instance" "redis" {
+  name                    = "redis"
   tier                    = "STANDARD_HA"
   memory_size_gb          = 10
-  region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
-  redis_configs           = { "maxmemory-gb" = "5" }
+  region                  = var.google_region
+  redis_version           = "REDIS_7_2"
+  redis_configs           = { "maxmemory-gb" = "5", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
 }
 
-resource "google_redis_instance" "redis_raspberry" {
-  name               = "redis-raspberry"
-  tier               = "STANDARD_HA"
-  memory_size_gb     = 2
-  region             = "us-central1"
-  redis_version      = "REDIS_7_0"
-  redis_configs      = { "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
-  authorized_network = google_compute_network.production.id
-}
-
-output "redis_portal_address" {
+output "redis_address" {
   description = "The IP address of the portal redis instance"
-  value       = local.redis_portal_address
-}
-
-output "redis_relay_backend_address" {
-  description = "The IP address of the relay backend redis instance"
-  value       = google_redis_instance.redis_relay_backend.host
-}
-
-output "redis_raspberry_address" {
-  description = "The IP address of the raspberry redis instance"
-  value       = google_redis_instance.redis_raspberry.host
+  value       = google_redis_instance.redis.host
 }
 
 # ----------------------------------------------------------------------------------------
@@ -524,7 +478,7 @@ resource "google_service_networking_connection" "postgres" {
 resource "google_sql_database_instance" "postgres" {
   name = "postgres"
   database_version = "POSTGRES_14"
-  region = "${var.google_region}"
+  region = var.google_region
   depends_on = [google_service_networking_connection.postgres]
   settings {
     tier = "db-custom-1-3840"
@@ -598,8 +552,8 @@ module "magic_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                   = 3
-  max_size                   = 16
+  min_size                   = var.disable_backend ? 0 : 1
+  max_size                   = var.disable_backend ? 0 : 16
   target_cpu                 = 60
 }
 
@@ -624,7 +578,7 @@ module "relay_gateway" {
     cat <<EOF > /app/app.env
     ENV=prod
     GOOGLE_PROJECT_ID=${local.google_project_id}
-    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
@@ -647,14 +601,14 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = 3
-  max_size                 = 64
+  min_size                 = var.disable_backend ? 0 : 1
+  max_size                 = var.disable_backend ? 0 : 64
   target_cpu               = 60
   domain                   = "relay.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
   depends_on = [
-    google_redis_instance.redis_relay_backend
+    google_redis_instance.redis
   ]
 }
 
@@ -680,17 +634,17 @@ module "relay_backend" {
     ENV=prod
     ENABLE_RELAY_HISTORY=true
     GOOGLE_PROJECT_ID=${local.google_project_id}
-    REDIS_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=360s
-    MAX_JITTER=2
+    MAX_JITTER=1
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     EOF
@@ -700,7 +654,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-44"
+  machine_type               = "c3-highcpu-4"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -711,13 +665,13 @@ module "relay_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 420
-  target_size                = var.disable_backend ? 0 : 3
-  tier_1                     = true
+  target_size                = var.disable_backend ? 0 : 1
+  tier_1                     = false
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
     google_pubsub_subscription.pubsub_subscription,
-    google_redis_instance.redis_relay_backend,
+    google_redis_instance.redis,
     module.redis_time_series
   ]
 }
@@ -739,13 +693,13 @@ module "api" {
     #!/bin/bash
     gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
-    sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -755,8 +709,8 @@ module "api" {
     API_PRIVATE_KEY=${local.api_private_key}
     ALLOWED_ORIGIN="*"
     EOF
-    sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
-    sudo systemctl start app.service
+    gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
+    systemctl start app.service
   EOF1
 
   tag                      = var.tag
@@ -769,11 +723,19 @@ module "api" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = var.disable_backend ? 0 : 3
+  min_size                 = var.disable_backend ? 0 : 1
   max_size                 = var.disable_backend ? 0 : 16
   target_cpu               = 60
   domain                   = "api.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
+
+  depends_on = [
+    module.server_cruncher,
+    module.session_cruncher,
+    module.redis_time_series,
+    google_redis_instance.redis,
+    google_sql_database_instance.postgres,
+  ]
 }
 
 output "api_address" {
@@ -880,7 +842,6 @@ module "server_backend" {
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
     MAGIC_URL="http://${module.magic_backend.address}/magic"
-    REDIS_CLUSTER="${local.redis_portal_address}"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     SERVER_BACKEND_ADDRESS="##########:40000"
@@ -892,8 +853,8 @@ module "server_backend" {
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
-    REDIS_PORTAL_CLUSTER="${local.redis_portal_address}"
-    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis_relay_backend.host}:6379"
+    REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
+    REDIS_RELAY_BACKEND_HOSTNAME="${google_redis_instance.redis.host}:6379"
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     PORTAL_NEXT_SESSIONS_ONLY=false
@@ -904,7 +865,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-44"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -915,14 +876,15 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = var.disable_backend ? 0 : 3
+  min_size                   = var.disable_backend ? 0 : 1
   max_size                   = var.disable_backend ? 0 : 64
   target_cpu                 = 30
+  tier_1                     = false
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
     google_pubsub_subscription.pubsub_subscription,
-    google_redis_cluster.portal
+    google_redis_instance.redis
   ]
 }
 
@@ -987,10 +949,10 @@ module "portal" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "portal.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.portal.id
-  target_size              = var.disable_backend ? 0 : 3
+  target_size              = var.disable_backend ? 0 : 1
 }
 
-output "portal_address" {
+output "yoportal_address" {
   description = "The IP address of the portal load balancer"
   value       = module.portal.address
 }
@@ -1027,7 +989,7 @@ module "raspberry_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a raspberry_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    REDIS_HOSTNAME="${google_redis_instance.redis_raspberry.host}:6379"
+    REDIS_HOSTNAME="${google_redis_instance.redis.host}:6379"
     EOF
     sudo systemctl start app.service
   EOF1
@@ -1044,7 +1006,7 @@ module "raspberry_backend" {
   tags                     = ["allow-ssh", "allow-http", "allow-https"]
   domain                   = "raspberry.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.raspberry.id
-  target_size              = ( var.disable_raspberry || var.disable_backend ) ? 0 : 3
+  target_size              = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1
 }
 
 output "raspberry_backend_address" {
@@ -1074,7 +1036,6 @@ module "raspberry_server" {
     NEXT_SERVER_BACKEND_PUBLIC_KEY="${var.server_backend_public_key}"
     NEXT_RELAY_BACKEND_PUBLIC_KEY="${var.relay_backend_public_key}"
     RASPBERRY_BACKEND_URL="https://raspberry.${var.cloudflare_domain}"
-    RASPBERRY_FAKE_LATENCY=1
     EOF
     sudo gsutil cp ${var.google_artifacts_bucket}/${var.tag}/libnext.so /usr/local/lib/libnext.so
     sudo ldconfig
@@ -1088,10 +1049,10 @@ module "raspberry_server" {
   region             = var.raspberry_region
   zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
-  default_subnetwork = google_compute_subnetwork.production.id
+  default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 256
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 16
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1128,14 +1089,15 @@ module "raspberry_client" {
   region             = var.raspberry_region
   zones              = var.raspberry_zones
   default_network    = google_compute_network.production.id
-  default_subnetwork = google_compute_subnetwork.production.id
+  default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1000
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 100
 }
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
   region = var.test_server_region
@@ -1197,5 +1159,6 @@ output "test_server_address" {
   description = "The IP address of the test server"
   value = "${google_compute_address.test_server_address.address}:30000"
 }
+*/
 
 # ----------------------------------------------------------------------------------------

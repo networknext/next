@@ -6,26 +6,41 @@ vpn_address                 = "45.79.157.168"
 ssh_public_key_file         = "~/secrets/next_ssh.pub"
 ssh_private_key_file        = "~/secrets/next_ssh"
 relay_version               = "relay-release"
-relay_artifacts_bucket      = "next_network_next_relay_artifacts"
-relay_backend_public_key    = "unH/Yxm0C6JCZ1dTGZH2BTBOFhGMcYsOEDURd9qY72w="
+relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
 relay_backend_url           = "relay.virtualgo.net"
 
-raspberry_buyer_public_key  = "YJHQ5FGeoveQMdSzLRmbOKFRVY6QeMyUX1c4kRA72anucqnPRBr8IA=="
+raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
 
 raspberry_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
+	"unity.saopaulo.1",
+	"unity.saopaulo.2",
+	"unity.saopaulo.3",
 ]
 
-test_buyer_public_key       = "OPsJ/biQrnQEgoJr2oo9zeJG9vVkOUpWklw2+O2nfyy1BljyFxrU8Q=="
+test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
 
 test_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
+	"unity.saopaulo.1",
+	"unity.saopaulo.2",
+	"unity.saopaulo.3",
+]
+
+rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
+
+rematch_datacenters = [
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
+	"unity.saopaulo.1",
+	"unity.saopaulo.2",
+	"unity.saopaulo.3",
 ]
 
 sellers = {
@@ -44,4 +59,5 @@ sellers = {
 	"Zenlayer" = "zenlayer"
 	"Latitude" = "latitude"
 	"Equinix" = "equinix"
+	"Unity" = "unity"
 }

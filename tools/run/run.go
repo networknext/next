@@ -389,7 +389,7 @@ func client() {
 		filename := fmt.Sprintf("%s/secrets/%s-project-id.txt", homeDir, env.Name)
 		projectId, err := os.ReadFile(filename)
 		if err != nil {
-			fmt.Printf("\nerror: could not load project file '%s'\n\n", )
+			fmt.Printf("\nerror: could not load project file '%s'\n\n")
 			os.Exit(1)
 		}
 		_, output := bash_output(fmt.Sprintf("gcloud compute addresses list --project %s", projectId))

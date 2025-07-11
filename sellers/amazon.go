@@ -17,21 +17,18 @@ import (
 // DEV RELAYS
 
 var devRelayMap = map[string][]string{
-	"amazon.virginia.1":  {"amazon.virginia.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2":  {"amazon.virginia.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.1":      {"amazon.ohio.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.2":      {"amazon.ohio.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // PROD RELAYS
 
 var prodRelayMap = map[string][]string{
-	"amazon.virginia.1": {"amazon.virginia.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.virginia.2": {"amazon.virginia.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.1":     {"amazon.ohio.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.ohio.2":     {"amazon.ohio.2", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.oregon.1":   {"amazon.oregon.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.sanjose.1":  {"amazon.sanjose.1", "m5a.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.1": {"amazon.saopaulo.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.2": {"amazon.saopaulo.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.saopaulo.3": {"amazon.saopaulo.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
@@ -439,7 +436,7 @@ terraform {
 
 		devRelayNames := make([]string, len(devRelayMap))
 		index := 0
-		for k, _ := range devRelayMap {
+		for k := range devRelayMap {
 			devRelayNames[index] = k
 			index++
 		}
@@ -601,7 +598,7 @@ terraform {
 
 		prodRelayNames := make([]string, len(prodRelayMap))
 		index := 0
-		for k, _ := range prodRelayMap {
+		for k := range prodRelayMap {
 			prodRelayNames[index] = k
 			index++
 		}

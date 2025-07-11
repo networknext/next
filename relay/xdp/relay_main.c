@@ -26,6 +26,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->curl )
     {
         printf( "\nerror: could not initialize curl\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -33,6 +34,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->control_queue )
     {
         printf( "\nerror: could not create control queue\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -40,6 +42,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->control_mutex )
     {
         printf( "\nerror: could not create control mutex\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -47,6 +50,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->stats_queue )
     {
         printf( "\nerror: could not create stats queue\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -54,6 +58,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->stats_mutex )
     {
         printf( "\nerror: could not create stats mutex\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -61,6 +66,7 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     if ( !main->update_response_memory )
     {
         printf( "\nerror: could not allocate update response memory\n\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -115,6 +121,8 @@ int main_run( struct main_t * main )
 {
     printf( "Starting main thread\n" );
 
+    fflush( stdout );
+
     bool aborted = false;
 
     int update_attempts = 0;
@@ -130,6 +138,7 @@ int main_run( struct main_t * main )
             if ( update_attempts++ >= RELAY_MAX_UPDATE_ATTEMPTS )
             {
                 printf( "error: could not update relay %d times in a row. shutting down :(", RELAY_MAX_UPDATE_ATTEMPTS );
+                fflush( stdout );
                 aborted = true;
                 quit = 1;
                 break;
@@ -143,12 +152,15 @@ int main_run( struct main_t * main )
     {
         printf( "\nClean shutdown...\n" );
 
+        fflush( stdout );
+
         main->shutting_down = true;
 
         uint seconds = 0;
         while ( seconds <= 60 && main_update( main ) == RELAY_OK )
         {
             printf( "Shutting down in %d seconds\n", 60 - seconds );
+            fflush( stdout );
             relay_platform_sleep( 60.0 );
             seconds++;
         }
@@ -156,14 +168,19 @@ int main_run( struct main_t * main )
         if ( seconds < 60 )
         {
             printf( "Sleeping for extra 30 seconds for safety...\n" );
+            fflush( stdout );
             relay_platform_sleep( 30.0 );
         }
 
         printf( "Clean shutdown completed\n" );
+
+        fflush( stdout );        
     }
     else
     {
         printf( "\nHard shutdown!\n" );
+
+        fflush( stdout );        
     }
 
     return 0;
@@ -336,6 +353,7 @@ int main_update( struct main_t * main )
     if ( bpf_map_lookup_elem( main->stats_fd, &key, values ) != 0 ) 
     {
         printf( "error: could not look up relay stats: %s\n", strerror( errno ) );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -504,6 +522,7 @@ int main_update( struct main_t * main )
     if ( crypto_box_easy( encrypt_buffer, encrypt_buffer, encrypt_buffer_length, nonce, main->relay_backend_public_key, main->relay_private_key ) != 0 )
     {
         printf( "error: failed to encrypt relay update\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
     
@@ -549,6 +568,7 @@ int main_update( struct main_t * main )
     if ( ret != 0 )
     {
         printf( "error: could not post relay update\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -557,6 +577,7 @@ int main_update( struct main_t * main )
     if ( code != 200 )
     {
         printf( "error: relay update response is %d\n", (int)code );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -571,6 +592,7 @@ int main_update( struct main_t * main )
     if ( version != update_response_version )
     {
         printf( "error: bad relay update response version. expected %d, got %d\n", update_response_version, version );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -590,6 +612,7 @@ int main_update( struct main_t * main )
     if ( num_relays > MAX_RELAYS )
     {
         printf( "error: too many relays to ping. max is %d, got %d\n", MAX_RELAYS, num_relays );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -603,6 +626,7 @@ int main_update( struct main_t * main )
         if ( address_type != RELAY_ADDRESS_IPV4 )
         {
             printf( "error: only ipv4 relay addresses are supported\n" );
+            fflush( stdout );
             return RELAY_ERROR;
         }
         relay_ping_set.address[i] = ntohl( relay_read_uint32( &q ) );
@@ -628,12 +652,14 @@ int main_update( struct main_t * main )
     if ( main->relay_public_address != expected_public_address )
     {
         printf( "error: relay public address mismatch\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
     if ( main->relay_port != expected_port )
     {
         printf( "error: relay port mismatch\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -645,6 +671,7 @@ int main_update( struct main_t * main )
         if ( main->relay_internal_address != expected_internal_address )
         {
             printf( "error: relay internal address mismatch\n" );
+            fflush( stdout );
             return RELAY_ERROR;
         }
     }
@@ -657,6 +684,7 @@ int main_update( struct main_t * main )
     if ( memcmp( main->relay_public_key, expected_relay_public_key, crypto_box_PUBLICKEYBYTES ) != 0 )
     {
         printf( "error: relay is misconfigured. relay public key does not match expected value\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
@@ -682,6 +710,7 @@ int main_update( struct main_t * main )
         if ( bpf_map_update_elem( main->state_fd, &key, &state, BPF_ANY ) != 0 )
         {
             printf( "error: failed to update relay state\n" );
+            fflush( stdout );
             return RELAY_ERROR;
         }
     }
@@ -704,6 +733,7 @@ int main_update( struct main_t * main )
     if ( !message )
     {
         printf( "error: could not allocate control message\n" );
+        fflush( stdout );
         return RELAY_ERROR;
     }
 
