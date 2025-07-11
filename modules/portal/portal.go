@@ -885,8 +885,8 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
-		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
-		if batchIndex > publisher.config.NumBuckets - 1 {
+		batchIndex := int(publisher.batchMessages[i].Score) / (MaxScore / publisher.config.NumBuckets)
+		if batchIndex > publisher.config.NumBuckets-1 {
 			batchIndex = publisher.config.NumBuckets - 1
 		}
 		batchSize[batchIndex]++
@@ -899,8 +899,8 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	}
 
 	for i := range publisher.batchMessages {
-		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
-		if batchIndex > publisher.config.NumBuckets - 1 {
+		batchIndex := int(publisher.batchMessages[i].Score) / (MaxScore / publisher.config.NumBuckets)
+		if batchIndex > publisher.config.NumBuckets-1 {
 			batchIndex = publisher.config.NumBuckets - 1
 		}
 		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
@@ -1549,8 +1549,8 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 	batchSize := make([]uint32, publisher.config.NumBuckets)
 
 	for i := range publisher.batchMessages {
-		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
-		if batchIndex > publisher.config.NumBuckets - 1 {
+		batchIndex := int(publisher.batchMessages[i].Score) / (MaxScore / publisher.config.NumBuckets)
+		if batchIndex > publisher.config.NumBuckets-1 {
 			batchIndex = publisher.config.NumBuckets - 1
 		}
 		batchSize[batchIndex]++
@@ -1563,8 +1563,8 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 	}
 
 	for i := range publisher.batchMessages {
-		batchIndex := int(publisher.batchMessages[i].Score) / ( MaxScore / publisher.config.NumBuckets )
-		if batchIndex > publisher.config.NumBuckets - 1 {
+		batchIndex := int(publisher.batchMessages[i].Score) / (MaxScore / publisher.config.NumBuckets)
+		if batchIndex > publisher.config.NumBuckets-1 {
 			batchIndex = publisher.config.NumBuckets - 1
 		}
 		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])

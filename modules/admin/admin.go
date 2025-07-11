@@ -355,7 +355,7 @@ func (controller *Controller) CreateBuyer(buyerData *BuyerData) (uint64, error) 
 	{
 		data, err := base64.StdEncoding.DecodeString(buyerData.PublicKeyBase64)
 		if err != nil || len(data) != 40 {
-			return 0, fmt.Errorf( "could not create buyer: invalid public key\n");
+			return 0, fmt.Errorf("could not create buyer: invalid public key\n")
 		}
 	}
 	sql := "INSERT INTO buyers (buyer_name, buyer_code, public_key_base64, route_shader_id, live, debug) VALUES ($1, $2, $3, $4, $5, $6) RETURNING buyer_id;"
@@ -406,7 +406,7 @@ func (controller *Controller) UpdateBuyer(buyerData *BuyerData) error {
 	{
 		data, err := base64.StdEncoding.DecodeString(buyerData.PublicKeyBase64)
 		if err != nil || len(data) != 40 {
-			return fmt.Errorf( "could not update buyer: invalid public key\n");
+			return fmt.Errorf("could not update buyer: invalid public key\n")
 		}
 	}
 	// IMPORTANT: Cannot change buyer id once created
@@ -591,14 +591,14 @@ func (controller *Controller) CreateRelay(relayData *RelayData) (uint64, error) 
 	{
 		data, err := base64.StdEncoding.DecodeString(relayData.PublicKeyBase64)
 		if err != nil || len(data) != 32 {
-			return 0, fmt.Errorf( "could not create relay: invalid public key\n");
+			return 0, fmt.Errorf("could not create relay: invalid public key\n")
 		}
 	}
 	// IMPORTANT: Don't allow update of a relay without a valid private key!!!
 	{
 		data, err := base64.StdEncoding.DecodeString(relayData.PrivateKeyBase64)
 		if err != nil || len(data) != 32 {
-			return 0, fmt.Errorf( "could not create relay: invalid private key\n");
+			return 0, fmt.Errorf("could not create relay: invalid private key\n")
 		}
 	}
 	query := `
@@ -794,14 +794,14 @@ func (controller *Controller) UpdateRelay(relayData *RelayData) error {
 	{
 		data, err := base64.StdEncoding.DecodeString(relayData.PublicKeyBase64)
 		if err != nil || len(data) != 32 {
-			return fmt.Errorf( "could not update relay: invalid public key\n");
+			return fmt.Errorf("could not update relay: invalid public key\n")
 		}
 	}
 	// IMPORTANT: Don't allow update of a relay without a valid private key!!!
 	{
 		data, err := base64.StdEncoding.DecodeString(relayData.PrivateKeyBase64)
 		if err != nil || len(data) != 32 {
-			return fmt.Errorf( "could not update relay: invalid private key\n");
+			return fmt.Errorf("could not update relay: invalid private key\n")
 		}
 	}
 	// IMPORTANT: Cannot change relay id once created

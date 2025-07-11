@@ -1455,7 +1455,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		if buyerId == 0 {
 			// IMPORTANT: Downgrade to a warning otherwise the API service can get stuck in a broken state
-			fmt.Printf( "warning: could not find runtime buyer id for buyer '%s'\n", buyerName)
+			fmt.Printf("warning: could not find runtime buyer id for buyer '%s'\n", buyerName)
 		}
 
 		fmt.Printf("buyer datacenter settings %d: %s [%x] -> %s [%x] enabled\n", i, buyerName, buyerId, datacenterName, datacenterId)

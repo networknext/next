@@ -1,7 +1,7 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
-    Licensed under the Network Next Source Available License 1.0
+   Network Next. Copyright © 2017 - 2025 Network Next, Inc.
+
+   Licensed under the Network Next Source Available License 1.0
 */
 
 package main
@@ -13,6 +13,7 @@ import "C"
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -21,12 +22,11 @@ import (
 	"os"
 	"os/exec"
 	"time"
-	"crypto/sha256"
 
-	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/common"
-	"github.com/networknext/next/modules/crypto"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
+	"github.com/networknext/next/modules/crypto"
 )
 
 const ROUTE_REQUEST_PACKET = 1
@@ -190,27 +190,27 @@ func soak_test_relay(run_forever bool) {
 		}
 
 		/*
-		// send a bunch of random packets that don't pass the basic packet filter
+			// send a bunch of random packets that don't pass the basic packet filter
 
-		for i := 0; i < NumSockets; i++ {
-			packet := make([]byte, common.RandomInt(1, 10*1024))
-			common.RandomBytes(packet[:])
-			conn[i].WriteToUDP(packet, &relayAddress)
-		}
+			for i := 0; i < NumSockets; i++ {
+				packet := make([]byte, common.RandomInt(1, 10*1024))
+				common.RandomBytes(packet[:])
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
 
-		// send a bunch of random packets that do pass the packet filters
+			// send a bunch of random packets that do pass the packet filters
 
-		for i := 0; i < NumSockets; i++ {
-			packet := make([]byte, common.RandomInt(18, 6000))
-			common.RandomBytes(packet[:])
-			var magic [constants.MagicBytes]byte
-			fromAddress := core.GetAddressData(&clientAddress[i])
-			toAddress := core.GetAddressData(&relayAddress)
-			packetLength := len(packet)
-			core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
-			core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
-			conn[i].WriteToUDP(packet, &relayAddress)
-		}
+			for i := 0; i < NumSockets; i++ {
+				packet := make([]byte, common.RandomInt(18, 6000))
+				common.RandomBytes(packet[:])
+				var magic [constants.MagicBytes]byte
+				fromAddress := core.GetAddressData(&clientAddress[i])
+				toAddress := core.GetAddressData(&relayAddress)
+				packetLength := len(packet)
+				core.GeneratePittle(packet[1:3], fromAddress[:], toAddress[:], packetLength)
+				core.GenerateChonkle(packet[3:18], magic[:], fromAddress[:], toAddress[:], packetLength)
+				conn[i].WriteToUDP(packet, &relayAddress)
+			}
 		*/
 
 		// send valid route request packets

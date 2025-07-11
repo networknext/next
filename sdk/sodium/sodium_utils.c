@@ -91,6 +91,10 @@ static size_t        page_size;
 #endif // #if HAVE_ALIGNED_MALLOC
 static unsigned char canary[CANARY_SIZE];
 
+// gfiedler: fix warnings on linux under Unreal Engine
+#define HAVE_WEAK_SYMBOLS 0
+#define HAVE_ALLOCA 0
+
 /* LCOV_EXCL_START */
 #ifdef HAVE_WEAK_SYMBOLS
 __attribute__((weak)) void

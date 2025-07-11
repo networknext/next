@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -122,6 +121,7 @@ const char * next_log_level_string( int level )
 
 static void default_log_function( int level, const char * format, ... )
 {
+#if !NETWORK_NEXT_UNREAL_ENGINE     // IMPORTANT: Unreal doesn't like printf
     va_list args;
     va_start( args, format );
     char buffer[1024];
@@ -140,6 +140,7 @@ static void default_log_function( int level, const char * format, ... )
     }
     va_end( args );
     fflush( stdout );
+#endif // #if !NETWORK_NEXT_UNREAL_ENGINE
 }
 
 static void (*log_function)( int level, const char * format, ... ) = default_log_function;

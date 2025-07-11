@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -26,9 +25,9 @@
 // ---------------------------------------------------------------
 
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
-#define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
-#define NEXT_CLIENT_COMMAND_DESTROY                 2
-#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
+#define NEXT_CLIENT_COMMAND_CLOSE_SESSION            1
+#define NEXT_CLIENT_COMMAND_DESTROY                    2
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION            3
 
 struct next_client_command_t
 {
@@ -57,8 +56,8 @@ struct next_client_command_report_session_t : public next_client_command_t
 
 // ---------------------------------------------------------------
 
-#define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED          0
-#define NEXT_CLIENT_NOTIFY_UPGRADED                 1
+#define NEXT_CLIENT_NOTIFY_PACKET_RECEIVED            0
+#define NEXT_CLIENT_NOTIFY_UPGRADED                    1
 #define NEXT_CLIENT_NOTIFY_STATS_UPDATED            2
 #define NEXT_CLIENT_NOTIFY_MAGIC_UPDATED            3
 #define NEXT_CLIENT_NOTIFY_READY                    4
@@ -1038,29 +1037,32 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
             return;
         }
 
-        next_platform_mutex_guard( &client->route_manager_mutex );
-
-        next_replay_protection_t * replay_protection = &client->special_replay_protection;
-
-        if ( next_replay_protection_already_received( replay_protection, packet_sequence ) )
+        // check if packet is received out of order
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", packet_sequence, replay_protection->most_recent_sequence );
-            return;
-        }
+            next_platform_mutex_guard( &client->route_manager_mutex );
 
-        if ( packet_session_id != pending_route_session_id )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
-            return;
-        }
+            next_replay_protection_t * replay_protection = &client->special_replay_protection;
 
-        if ( packet_session_version != pending_route_session_version )
-        {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
-            return;
-        }
+            if ( next_replay_protection_already_received( replay_protection, packet_sequence ) )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. sequence already received (%" PRIx64 " vs. %" PRIx64 ")", packet_sequence, replay_protection->most_recent_sequence );
+                return;
+            }
 
-        next_replay_protection_advance_sequence( replay_protection, packet_sequence );
+            if ( packet_session_id != pending_route_session_id )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session id mismatch" );
+                return;
+            }
+
+            if ( packet_session_version != pending_route_session_version )
+            {
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "client ignored route response packet from relay. session version mismatch" );
+                return;
+            }
+
+            next_replay_protection_advance_sequence( replay_protection, packet_sequence );
+        }
 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client received route response from relay" );
 

@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -458,18 +457,18 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         // timeout <= 0, socket is blocking with no timeout
     }
 
-	// set don't fragment
+    // set don't fragment
 
-	int value = 1;
-	sceNetSetsockopt( s->handle, SCE_NET_IPPROTO_IP, SCE_NET_IP_DONTFRAG, &value, sizeof( value ) );
+    int value = 1;
+    sceNetSetsockopt( s->handle, SCE_NET_IPPROTO_IP, SCE_NET_IP_DONTFRAG, &value, sizeof( value ) );
 
-	// enable dscp packet tagging
+    // enable dscp packet tagging
 
-	if ( next_packet_tagging_enabled )
-	{
-		int value = 46;
-		sceNetSetsockopt( s->handle, SCE_NET_IPPROTO_IP, SCE_NET_IP_TOS, &value, sizeof( value ) );
-	}
+    if ( next_packet_tagging_enabled )
+    {
+        int value = 46;
+        sceNetSetsockopt( s->handle, SCE_NET_IPPROTO_IP, SCE_NET_IP_TOS, &value, sizeof( value ) );
+    }
 
     return s;
 }
@@ -571,7 +570,7 @@ int next_platform_id()
 
 bool next_platform_packet_tagging_can_be_enabled()
 {
-	return true;
+    return true;
 }
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_PS5

@@ -50,14 +50,14 @@ func DownloadDatabases_MaxMind(licenseKey string) error {
 
 	core.Debug("downloading isp database")
 
-	err = Bash(fmt. Sprintf("curl -J -L -u %s 'https://download.maxmind.com/geoip/databases/GeoIP2-ISP/download?suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
+	err = Bash(fmt.Sprintf("curl -J -L -u %s 'https://download.maxmind.com/geoip/databases/GeoIP2-ISP/download?suffix=tar.gz' --output %s/GeoIP2-ISP.tar.gz", licenseKey, dir))
 	if err != nil {
 		return err
 	}
 
 	core.Debug("downloading city database")
 
-	err = Bash(fmt. Sprintf("curl -J -L -u %s 'https://download.maxmind.com/geoip/databases/GeoIP2-City/download?suffix=tar.gz' --output %s/GeoIP2-City.tar.gz", licenseKey, dir))
+	err = Bash(fmt.Sprintf("curl -J -L -u %s 'https://download.maxmind.com/geoip/databases/GeoIP2-City/download?suffix=tar.gz' --output %s/GeoIP2-City.tar.gz", licenseKey, dir))
 	if err != nil {
 		return err
 	}

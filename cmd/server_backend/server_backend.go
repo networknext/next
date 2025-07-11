@@ -566,7 +566,7 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 	if enableIP2Location {
 		return service.GetLocation(ip)
 	} else {
-		return 40.7128, -74.0060	// new york
+		return 40.7128, -74.0060 // new york
 	}
 }
 

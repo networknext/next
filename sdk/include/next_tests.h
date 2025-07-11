@@ -1,6 +1,5 @@
 /*
-    Network Next. Copyright © 2017 - 2025 Network Next, Inc.
-    
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
