@@ -1,0 +1,39 @@
+{
+  "FileVersion": 3,
+  "Version": 1.0,
+  "VersionName": "Stable",
+  "FriendlyName": "Network Next",
+  "Description": "Network Next is a network accelerator for multiplayer games. Target players with lag and fix it. Improve the player experience. Increase engagement, retention and monetization.",
+  "Category": "Networking",
+  "CreatedBy": "Network Next, Inc.",
+  "CreatedByURL": "https://networknext.com",
+  "DocsURL": "",
+  "MarketplaceURL": "",
+  "SupportURL": "",
+  "EnabledByDefault": true,
+  "CanContainContent": true,
+  "IsBetaVersion": false,
+  "Installed": false,
+  "Modules": [
+    {
+      "Name": "NetworkNext",
+      "Type": "Runtime",
+      "LoadingPhase": "Default",
+      "WhitelistPlatforms": [
+        "Win64",
+        "Linux",
+        "Mac"
+      ]
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "OnlineSubsystem",
+      "Enabled": true
+    },
+    {
+      "Name": "OnlineSubsystemUtils",
+      "Enabled": true
+    }
+  ]
+}
