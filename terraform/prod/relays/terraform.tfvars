@@ -60,4 +60,5 @@ sellers = {
 	"Latitude" = "latitude"
 	"Equinix" = "equinix"
 	"Unity" = "unity"
+	"Azure" = "azure"
 }

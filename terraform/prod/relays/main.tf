@@ -144,6 +144,26 @@ module "zenlayer_relays" {
 
 locals {
 
+  azure_relays = {
+
+    "azure.saopaulo.1" = {
+      datacenter_name  = "azure.saopaulo.1"
+      public_address   = "20.206.244.28"
+      internal_address = "10.1.0.4"
+    },
+
+  }
+}
+
+module "azure_relays" {
+  relays = local.azure_relays
+  source = "../../sellers/azure"
+}
+
+# ----------------------------------------------------------------------------------------
+
+locals {
+
   unity_relays = {
 
     "unity.saopaulo.1" = {
@@ -498,6 +518,7 @@ locals {
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
       keys(module.unity_relays.relays),
+      keys(module.azure_relays.relays),
     )
   )
 
@@ -518,6 +539,7 @@ locals {
     module.latitude_relays.relays,
     module.equinix_relays.relays,
     module.unity_relays.relays,
+    module.azure_relays.relays,
   )
 
   datacenters = merge(
@@ -537,6 +559,7 @@ locals {
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
     module.unity_relays.datacenters,
+    module.azure_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
