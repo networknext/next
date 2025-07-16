@@ -391,7 +391,7 @@ func isAdminAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(w
 
 			if token == nil || err != nil || !claims.Admin {
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintf(w, err.Error())
+				fmt.Fprintf(w, "Not Authorized")
 				return
 			}
 
@@ -429,7 +429,7 @@ func isPortalAuthorized(endpoint func(http.ResponseWriter, *http.Request)) func(
 
 			if token == nil || err != nil || !claims.Portal {
 				w.WriteHeader(http.StatusUnauthorized)
-				fmt.Fprintf(w, err.Error())
+				fmt.Fprintf(w, "Not Authorized")
 				return
 			}
 
