@@ -758,7 +758,7 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -771,7 +771,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-highmem-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -799,14 +799,14 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     EOF
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-highmem-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -834,10 +834,10 @@ module "server_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=4
+    UDP_NUM_THREADS=8
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -865,7 +865,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-4"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -878,7 +878,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = var.disable_backend ? 0 : 1
   max_size                   = var.disable_backend ? 0 : 64
-  target_cpu                 = 30
+  target_cpu                 = 60
   tier_1                     = false
 
   depends_on = [
