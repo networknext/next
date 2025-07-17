@@ -542,7 +542,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-2"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -837,7 +837,7 @@ module "server_backend" {
     NUM_BUCKETS=1000
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=8
+    UDP_NUM_THREADS=4
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -916,7 +916,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-1"
+  machine_type       = "n1-standard-1"
   project            = local.google_project_id
   region             = var.google_region
   zones              = var.google_zones
