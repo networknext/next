@@ -76,7 +76,7 @@ int bpf_init( struct bpf_t * bpf, uint32_t relay_public_address, uint32_t relay_
     {
         printf( "Checking if we are running in AWS...\n" );
         char command_line[2048];
-        strncpy( command_line, "curl -s \"http://169.254.169.254/latest/meta-data\" --max-time 2 -vs 2>/dev/null", sizeof(command_line) );
+        strncpy( command_line, "curl -s \"http://169.254.169.254/latest/meta-data\" --max-time 2 -s 2>/dev/null", sizeof(command_line) );
         printf( "command line: '%s'\n", command_line );
         FILE * file = popen( command_line, "r" );
         if ( file )

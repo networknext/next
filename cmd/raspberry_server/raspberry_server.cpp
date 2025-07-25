@@ -118,7 +118,7 @@ int main()
 
     // if we are running in google cloud, detect google cloud public IP address
 
-    FILE * file = popen( "curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+    FILE * file = popen( "curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -s 2>/dev/null", "r" );
 
     char buffer[1024];
 

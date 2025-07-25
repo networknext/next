@@ -111,7 +111,7 @@ func Bash(command string) (bool, string) {
 }
 
 func DetectGoogleServerAddress(input string) string {
-	result, output := Bash("curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null")
+	result, output := Bash("curl -s http://metadata/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip -H \"Metadata-Flavor: Google\" --max-time 10 -s 2>/dev/null")
 	if !result {
 		return input
 	}

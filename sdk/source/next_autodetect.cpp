@@ -32,7 +32,11 @@ bool next_autodetect_google( char * output, size_t output_size )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 2 -vs 2>/dev/null", "r" );
+    const char * command_line = "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 2 -s 2>/dev/null";
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "%s", command_line );
+
+    file = popen( command_line, "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -50,53 +54,26 @@ bool next_autodetect_google( char * output, size_t output_size )
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
+    // parse line: "projects/743508022626/zones/southamerica-east1-c" --> zone = "southamerica-east1-c"
+
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
-        size_t length = strlen( buffer );
-        if ( length < 10 )
+        next_printf( NEXT_LOG_LEVEL_SPAM, "%s", buffer );
+
+        const char * p = strstr( buffer, "projects/" );
+        if ( p == NULL )
         {
+            next_printf( NEXT_LOG_LEVEL_SPAM, "'projects/' not found" );
             continue;
         }
 
-        if ( buffer[0] != 'p' ||
-             buffer[1] != 'r' ||
-             buffer[2] != 'o' ||
-             buffer[3] != 'j' ||
-             buffer[4] != 'e' ||
-             buffer[5] != 'c' ||
-             buffer[6] != 't' ||
-             buffer[7] != 's' ||
-             buffer[8] != '/' )
+        const char * q = strstr( p, "zones/" );
+        if ( q == NULL )
         {
-            continue;
+            next_printf( NEXT_LOG_LEVEL_SPAM, "'zones/' not found" );
         }
 
-        bool found = false;
-        size_t index = length - 1;
-        while ( index > 10 && length  )
-        {
-            if ( buffer[index] == '/' )
-            {
-                found = true;
-                break;
-            }
-            index--;
-        }
-
-        if ( !found )
-        {
-            continue;
-        }
-
-        next_copy_string( zone, buffer + index + 1, sizeof(zone) );
-
-        size_t zone_length = strlen(zone);
-        index = zone_length - 1;
-        while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
-        {
-            zone[index] = '\0';
-            index--;
-        }
+        next_copy_string( zone, q + 6, sizeof(zone) );
 
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: google zone is \"%s\"", zone );
 
@@ -126,7 +103,7 @@ bool next_autodetect_google( char * output, size_t output_size )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/google.txt?ts=%x\" --max-time 10 -s 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
@@ -201,7 +178,7 @@ bool next_autodetect_amazon( char * output, size_t output_size )
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl -s \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
+    file = popen( "curl -s \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -s 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -264,7 +241,7 @@ bool next_autodetect_amazon( char * output, size_t output_size )
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" --max-time 10 -s 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     file = popen( cmd, "r" );
     if ( !file )
     {
