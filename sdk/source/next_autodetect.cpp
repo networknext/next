@@ -25,62 +25,14 @@ bool next_autodetect_google( char * output, size_t output_size )
     FILE * file;
     char buffer[1024*10];
 
-    // are we running in google cloud?
-    
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r" );
-    if ( file == NULL )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run ls" );
-        return false;
-    }
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    file = _popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud", "r" );
-    if ( file == NULL )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run dir" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    bool in_gcp = false;
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: running in google cloud" );
-        in_gcp = true;
-        break;
-    }
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    pclose( file );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    _pclose( file );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // we are not running in google cloud :(
-
-    if ( !in_gcp )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
-        return false;
-    }
-
-    // we are running in google cloud, which zone are we in?
+    // if we are running in google cloud, we should be able to detect our zone via metadata server
 
     char zone[256];
     zone[0] = '\0';
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = popen( "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
+    file = popen( "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 2 -vs 2>/dev/null", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
@@ -89,7 +41,7 @@ bool next_autodetect_google( char * output, size_t output_size )
 
 #elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10", "r" );
+    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 2", "r" );
     if ( !file )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );

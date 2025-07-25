@@ -1,9 +1,9 @@
 {
   "FileVersion": 3,
-  "Version": 1.0,
+  "Version": 1.2,
   "VersionName": "Stable",
   "FriendlyName": "Network Next",
-  "Description": "Network Next is a network accelerator for multiplayer games. Target players with lag and fix it. Improve the player experience. Increase engagement, retention and monetization.",
+  "Description": "Network accelerator for multiplayer games",
   "Category": "Networking",
   "CreatedBy": "Network Next, Inc.",
   "CreatedByURL": "https://networknext.com",
