@@ -71,6 +71,7 @@ bool next_autodetect_google( char * output, size_t output_size )
         if ( q == NULL )
         {
             next_printf( NEXT_LOG_LEVEL_SPAM, "'zones/' not found" );
+            continue;
         }
 
         next_copy_string( zone, q + 6, sizeof(zone) );
