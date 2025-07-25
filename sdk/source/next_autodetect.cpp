@@ -117,7 +117,7 @@ bool next_autodetect_google( char * output, size_t output_size )
 
     if ( zone[0] == '\0' )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not detect google zone" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
         return false;
     }
 

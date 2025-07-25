@@ -390,7 +390,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 	// grab google cloud instance name from metadata
 
-	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -vs 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -406,7 +406,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 	// grab google cloud zone from metadata
 
 	var zone string
-	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 1 -vs 2>/dev/null")
+	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -vs 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
