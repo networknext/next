@@ -20,7 +20,7 @@
 #define strtok_r strtok_s
 #endif
 
-bool next_http_request( const char * url, const char * header, char * output, size_t output_size )
+bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
 {
     next_assert( url );
     next_assert( header );
@@ -65,6 +65,20 @@ bool next_http_request( const char * url, const char * header, char * output, si
     next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
 
     return num_lines > 0;
+}
+
+static bool (*next_http_request)( const char * url, const char * header, char * output, size_t output_size ) = next_default_http_request_function;
+
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+{
+    if ( function != NULL )
+    {
+        next_http_request = function;
+    }
+    else
+    {
+        next_http_request = next_default_http_request_function;
+    }
 }
 
 bool next_autodetect_google( char * datacenter, size_t datacenter_size )
@@ -255,6 +269,11 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 }
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+{
+    (void) function;
+}
 
 bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size )
 {

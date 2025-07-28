@@ -84,7 +84,14 @@ void (*next_assert_function_pointer)( const char * condition, const char * funct
 
 void next_assert_function( void (*function)( const char * condition, const char * function, const char * file, int line ) )
 {
-    next_assert_function_pointer = function;
+    if ( function )
+    {
+        next_assert_function_pointer = function;
+    }
+    else
+    {
+        next_assert_function_pointer = default_assert_function;
+    }
 }
 
 // -------------------------------------------------------------
@@ -147,7 +154,14 @@ static void (*log_function)( int level, const char * format, ... ) = default_log
 
 void next_log_function( void (*function)( int level, const char * format, ... ) )
 {
-    log_function = function;
+    if ( function )
+    {
+        log_function = function;
+    }
+    else
+    {
+        log_function = default_log_function;
+    }
 }
 
 void next_printf( int level, const char * format, ... )

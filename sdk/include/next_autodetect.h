@@ -8,6 +8,8 @@
 
 #include "next.h"
 
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) );
+
 bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size );
 
 bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_size );
