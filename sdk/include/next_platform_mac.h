@@ -19,8 +19,8 @@ typedef int next_platform_socket_handle_t;
 
 struct next_platform_socket_t
 {
-    void * context = NULL;
-    bool ipv6 = false;
+    void * context;
+    bool ipv6;
     next_platform_socket_handle_t handle;
 };
 
@@ -28,7 +28,7 @@ struct next_platform_socket_t
 
 struct next_platform_thread_t
 {
-    void * context = NULL;
+    void * context;
     pthread_t handle;
 };
 
@@ -36,7 +36,7 @@ struct next_platform_thread_t
 
 struct next_platform_mutex_t
 {
-    bool ok = false;
+    bool ok;
     pthread_mutex_t handle;
 };
 

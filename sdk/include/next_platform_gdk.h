@@ -43,7 +43,7 @@ struct next_platform_thread_t
 
 struct next_platform_mutex_t
 {
-    bool ok = false;
+    bool ok;
     CRITICAL_SECTION handle;
 };
 
