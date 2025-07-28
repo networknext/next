@@ -723,11 +723,6 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->socket )
-    {
-        next_platform_socket_destroy( server->socket );
-    }
-
     if ( server->resolve_hostname_thread )
     {
         next_platform_thread_join( server->resolve_hostname_thread );
@@ -738,6 +733,11 @@ void next_server_internal_destroy( next_server_internal_t * server )
     {
         next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
+    }
+
+    if ( server->socket )
+    {
+        next_platform_socket_destroy( server->socket );
     }
 
     if ( server->command_queue )
@@ -3272,7 +3272,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+            next_printf( NEXT_LOG_LEVEL_WARN, "resolve hostname timed out" );
         }
     }
     
@@ -3309,10 +3309,6 @@ static void next_server_internal_autodetect_thread_function( void * context )
     bool autodetect_actually_did_something = false;
     char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // autodetect datacenter is currently windows and linux only (mac is just for testing...)
-
     const char * autodetect_input = server->datacenter_name;
     
     char autodetect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -3321,34 +3317,19 @@ static void next_server_internal_autodetect_thread_function( void * context )
     next_address_to_string( &server_address_no_port, autodetect_address );
 
     if ( !next_global_config.disable_autodetect &&
-         ( autodetect_input[0] == '\0' 
-            ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
            autodetect_input[2] == 'o' &&
            autodetect_input[3] == 'u' &&
            autodetect_input[4] == 'd' &&
-           autodetect_input[5] == '\0' ) 
-            ||
-         ( autodetect_input[0] == 'm' && 
-           autodetect_input[1] == 'u' && 
-           autodetect_input[2] == 'l' && 
-           autodetect_input[3] == 't' && 
-           autodetect_input[4] == 'i' && 
-           autodetect_input[5] == 'p' && 
-           autodetect_input[6] == 'l' && 
-           autodetect_input[7] == 'a' && 
-           autodetect_input[8] == 'y' && 
-           autodetect_input[9] == '.' ) ) )
+           autodetect_input[5] == '\0' ) )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect cloud datacenter" );
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
         autodetect_actually_did_something = true;
     }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
