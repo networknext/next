@@ -4454,7 +4454,7 @@ void test_packet_tagging()
 
 void next_run_tests()
 {
-    while ( true )
+    // while ( true )
     {
         RUN_TEST( test_time );
         RUN_TEST( test_endian );
