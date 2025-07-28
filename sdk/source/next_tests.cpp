@@ -133,9 +133,12 @@ void test_copy_string()
         next_check( strncmp( buffer, "", sizeof(buffer) ) == 0 );
     }
 
-    // truncate
+    // truncated string
     {
-
+        char buffer[4];
+        size_t result = next_copy_string( buffer, "hello my baby, hello my darling", sizeof(buffer) );
+        next_check( result == 3 );
+        next_check( strncmp( buffer, "hel", sizeof(buffer) ) == 0 );
     }
 }
 
@@ -4459,8 +4462,8 @@ void next_run_tests()
         RUN_TEST( test_time );
         RUN_TEST( test_endian );
         RUN_TEST( test_base64 );
-        RUN_TEST( test_copy_string );
         RUN_TEST( test_hash );
+        RUN_TEST( test_copy_string );
         RUN_TEST( test_queue );
         RUN_TEST( test_bitpacker );
         RUN_TEST( test_bits_required );
@@ -4490,7 +4493,6 @@ void next_run_tests()
         RUN_TEST( test_header );
         RUN_TEST( test_abi );
         RUN_TEST( test_packet_filter );
-        
         RUN_TEST( test_basic_packet_filter );
 #if NEXT_ADVANCED_PACKET_FILTER
         RUN_TEST( test_advanced_packet_filter );
