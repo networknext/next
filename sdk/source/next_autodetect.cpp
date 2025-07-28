@@ -256,6 +256,30 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-int next_autodetect_dummy;
+bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect google datacenter is not available on this platform" );
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;
+}
+
+bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect amazon datacenter is not available on this platform" );
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;    
+}
+
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect datacenter is not available on this platform" );
+    (void) input_datacenter;
+    (void) public_address;
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;
+}
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
