@@ -124,6 +124,8 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
         {
             q++;
         }
+        if ( q >= end )
+            break;
         *q = '\0';
         {
             const char * separators = ",\n\r";
@@ -200,6 +202,8 @@ bool next_autodetect_amazon( char * datacenter, size_t datacenter_size )
         {
             q++;
         }
+        if ( q >= end )
+            break;
         *q = '\0';
         {
             const char * separators = ",\n\r";
@@ -230,6 +234,8 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
     next_assert( public_address );
     next_assert( output_datacenter );
     next_assert( output_datacenter_size > 0 );
+
+    (void) public_address;
 
     if ( input_datacenter[0] == 'c' && 
          input_datacenter[1] == 'l' &&
