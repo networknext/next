@@ -54,11 +54,11 @@ bool next_autodetect_google( char * output, size_t output_size )
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-    // parse line: "projects/743508022626/zones/southamerica-east1-c" --> zone = "southamerica-east1-c"
-
     while ( fgets( buffer, sizeof(buffer), file ) != NULL )
     {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "%s", buffer );
+        // parse line: "(.*)projects/743508022626/zones/southamerica-east1-c" --> zone = "southamerica-east1-c"
+
+        next_printf( NEXT_LOG_LEVEL_SPAM, "line: %s", buffer );
 
         const char * p = strstr( buffer, "projects/" );
         if ( p == NULL )

@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.1"
+    #define NEXT_VERSION_FULL                               "1.2.2"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                1
+    #define NEXT_VERSION_PATCH_INT                                2
 
 #else // !NEXT_DEVELOPMENT
 
@@ -151,11 +151,11 @@
 #endif // #if NEXT_UNREAL_ENGINE && NEXT_PLATFORM == NEXT_PLATFORM_PS5 && !defined(PLATFORM_PS5)
 
 #if !defined(NEXT_SPIKE_TRACKING)
-#define NEXT_SPIKE_TRACKING 0
+#define NEXT_SPIKE_TRACKING 1
 #endif // #if !defined(NEXT_SPIKE_TRACKING)
 
 #if !defined(NEXT_ENABLE_MEMORY_CHECKS)
-#define NEXT_ENABLE_MEMORY_CHECKS 0
+#define NEXT_ENABLE_MEMORY_CHECKS 1
 #endif // #if !defined(NEXT_ENABLE_MEMORY_CHECKS)
 
 #if !defined (NEXT_LITTLE_ENDIAN ) && !defined( NEXT_BIG_ENDIAN )
@@ -497,7 +497,7 @@ NEXT_EXPORT_FUNC void next_disable_packet_tagging();
 
 // -----------------------------------------
 
-NEXT_EXPORT_FUNC void next_copy_string( char * dest, const char * source, size_t dest_size );
+NEXT_EXPORT_FUNC size_t next_copy_string( char * dest, const char * source, size_t dest_size );
 
 // -----------------------------------------
 

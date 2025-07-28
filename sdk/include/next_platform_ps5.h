@@ -37,7 +37,7 @@ struct next_platform_thread_t
 
 struct next_platform_mutex_t
 {
-    bool ok;
+    bool ok = false;
     ScePthreadMutex handle;
 };
 

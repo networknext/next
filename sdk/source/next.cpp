@@ -96,7 +96,7 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_INFO;
+static int log_level = NEXT_LOG_LEVEL_SPAM;
 
 void next_log_level( int level )
 {
@@ -251,18 +251,20 @@ uint64_t next_random_uint64()
 
 // -------------------------------------------------------------
 
-void next_copy_string( char * dest, const char * source, size_t dest_size )
+size_t next_copy_string( char * dest, const char * source, size_t dest_size )
 {
     next_assert( dest );
     next_assert( source );
     next_assert( dest_size >= 1 );
     memset( dest, 0, dest_size );
-    for ( size_t i = 0; i < dest_size - 1; i++ )
+    size_t i = 0;
+    for ( ; i < dest_size - 1; i++ )
     {
         if ( source[i] == '\0' )
             break;
         dest[i] = source[i];
     }
+    return i;
 }
 
 // -------------------------------------------------------------

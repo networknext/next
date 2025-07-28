@@ -111,6 +111,8 @@ struct next_platform_mutex_helper_t
 #define next_platform_mutex_guard( _mutex ) next_platform_mutex_helper_t __mutex_helper( _mutex )
 #endif // #if NEXT_SPIKE_TRACKING
 
+#include <stdio.h>
+
 #if NEXT_SPIKE_TRACKING
 inline next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform_mutex_t * mutex, const char * file, int line ) : mutex(mutex), file(file), line(line), start_time(next_platform_time())
 #else // #if NEXT_SPIKE_TRACKING
@@ -118,6 +120,14 @@ inline next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform
 #endif // #if NEXT_SPIKE_TRACKING
 {
     next_assert( mutex );
+
+    // todo
+    if ( !mutex->ok )
+    {
+        printf( "MUTEX IS FUCKED: file = %s, line = %d\n", file, line );
+        fflush( stdout );
+    }
+
     next_platform_mutex_acquire( mutex );
 }
 

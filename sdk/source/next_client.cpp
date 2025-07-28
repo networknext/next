@@ -2484,29 +2484,29 @@ void next_client_destroy( next_client_t * client )
 {
     next_client_verify_sentinels( client );
 
-    if ( client->thread )
-    {
-        next_client_command_destroy_t * command = (next_client_command_destroy_t*) next_malloc( client->context, sizeof( next_client_command_destroy_t ) );
-        if ( !command )
-        {
-            next_printf( NEXT_LOG_LEVEL_ERROR, "client destroy failed. could not create destroy command" );
-            return;
-        }
-        command->type = NEXT_CLIENT_COMMAND_DESTROY;
-        {
-#if NEXT_SPIKE_TRACKING
-            next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_DESTROY" );
-#endif // #if NEXT_SPIKE_TRACKING
-            next_platform_mutex_guard( &client->internal->command_mutex );
-            next_queue_push( client->internal->command_queue, command );
-        }
-
-        next_platform_thread_join( client->thread );
-        next_platform_thread_destroy( client->thread );
-    }
-
     if ( client->internal )
     {
+        if ( client->thread )
+        {
+            next_client_command_destroy_t * command = (next_client_command_destroy_t*) next_malloc( client->context, sizeof( next_client_command_destroy_t ) );
+            if ( !command )
+            {
+                next_printf( NEXT_LOG_LEVEL_ERROR, "client destroy failed. could not create destroy command" );
+                return;
+            }
+            command->type = NEXT_CLIENT_COMMAND_DESTROY;
+            {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client sent NEXT_CLIENT_COMMAND_DESTROY" );
+#endif // #if NEXT_SPIKE_TRACKING
+                next_platform_mutex_guard( &client->internal->command_mutex );
+                next_queue_push( client->internal->command_queue, command );
+            }
+
+            next_platform_thread_join( client->thread );
+            next_platform_thread_destroy( client->thread );
+        }
+
         next_client_internal_destroy( client->internal );
     }
 

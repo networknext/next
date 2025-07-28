@@ -730,11 +730,13 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     if ( server->resolve_hostname_thread )
     {
+        next_platform_thread_join( server->resolve_hostname_thread );
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
 
     if ( server->autodetect_thread )
     {
+        next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
     }
 
@@ -2879,7 +2881,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
 #if NEXT_SPIKE_TRACKING
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_SPAM, "server next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server next_platform_socket_receive_packet returns with a %d byte packet from %s", packet_bytes, next_address_to_string( &from, address_buffer ) );
 #endif // #if NEXT_SPIKE_TRACKING
 
     if ( packet_bytes == 0 )
@@ -4150,6 +4152,12 @@ void next_server_destroy( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
+    if ( server->thread )
+    {
+        next_server_internal_quit( server->internal );
+        next_platform_thread_join( server->thread );
+    }
+
     if ( server->pending_session_manager )
     {
         next_proxy_session_manager_destroy( server->pending_session_manager );
@@ -4160,16 +4168,14 @@ void next_server_destroy( next_server_t * server )
         next_proxy_session_manager_destroy( server->session_manager );
     }
 
-    if ( server->thread )
-    {
-        next_server_internal_quit( server->internal );
-        next_platform_thread_join( server->thread );
-        next_platform_thread_destroy( server->thread );
-    }
-
     if ( server->internal )
     {
         next_server_internal_destroy( server->internal );
+    }
+
+    if ( server->thread )
+    {
+        next_platform_thread_destroy( server->thread );
     }
 
     next_clear_and_free( server->context, server, sizeof(next_server_t) );
