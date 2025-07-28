@@ -2577,7 +2577,7 @@ func test_server_ready_resolve_hostname_timeout() {
 	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
-	serverTimedOutHostnameResolve := strings.Contains(server_stdout.String(), "info: resolve hostname timed out")
+	serverTimedOutHostnameResolve := strings.Contains(server_stdout.String(), "resolve hostname timed out")
 
 	server_check(server_stdout, backend_stdout, serverFallbackToDirect)
 	server_check(server_stdout, backend_stdout, serverReady)
@@ -2610,7 +2610,7 @@ func test_server_ready_autodetect_timeout() {
 	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
-	serverTimedOutAutodetect := strings.Contains(server_stdout.String(), "info: autodetect timed out. sticking with 'local' [249f1fb6f3a680e8]")
+	serverTimedOutAutodetect := strings.Contains(server_stdout.String(), "autodetect timed out. sticking with 'local' [249f1fb6f3a680e8]")
 
 	server_check(server_stdout, backend_stdout, serverFallbackToDirect)
 	server_check(server_stdout, backend_stdout, serverReady)
@@ -2649,7 +2649,7 @@ func test_client_connect_before_ready() {
 	serverFallbackToDirect := strings.Contains(server_stdout.String(), "info: server init timed out. falling back to direct mode only :(")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'local'")
-	serverTimedOutHostnameResolve := strings.Contains(server_stdout.String(), "info: resolve hostname timed out")
+	serverTimedOutHostnameResolve := strings.Contains(server_stdout.String(), "resolve hostname timed out")
 
 	server_check(server_stdout, backend_stdout, serverFallbackToDirect)
 	server_check(server_stdout, backend_stdout, serverReady)
