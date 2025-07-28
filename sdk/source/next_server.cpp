@@ -1118,7 +1118,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
             server->server_relay_request_packet.request_id = next_random_uint64();
 
             server->requesting_server_relays = true;                     
-            server->next_server_relay_request_packet_send_time = current_time;   
+            server->next_server_relay_request_packet_send_time = current_time;
             server->server_relay_request_timeout_time = current_time + NEXT_SERVER_RELAYS_TIMEOUT;
         }
     }
@@ -2062,10 +2062,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         double current_time = next_platform_time();
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "server found %d server relays", packet.num_server_relays );
-
         if ( packet.num_server_relays > 0 )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server found %d server relays", packet.num_server_relays );
+
             next_printf( NEXT_LOG_LEVEL_INFO, "server started pinging server relays" );
 
             server->pinging_server_relays = true;
@@ -2080,9 +2080,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
         else
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "no server relays found. trying again in ~5 minutes..." );
+
             server->pinging_server_relays = false;
             server->requesting_server_relays = false;
             server->stats_has_server_relay_pings = true;               // IMPORTANT: so we don't time out ready
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
         }
     }
 

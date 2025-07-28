@@ -8,14 +8,10 @@
 
 #include "next.h"
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size );
 
-bool next_autodetect_google( char * output, size_t output_size );
+bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_size );
 
-bool next_autodetect_amazon( char * output, size_t output_size );
-
-bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output, size_t output_size );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size );
 
 #endif // #ifndef NEXT_AUTODETECT_H

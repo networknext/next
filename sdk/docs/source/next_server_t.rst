@@ -603,7 +603,7 @@ Call this once next_server_ready returns true to get the autodetected datacenter
 	if ( ready )
 	{
 		const char * datacenter = next_server_datacenter( server );
-		printf( "server datacenter is %s\n", datacenter );
+		printf( "server datacenter is '%s'\n", datacenter );
 	}
 
 next_server_session_event

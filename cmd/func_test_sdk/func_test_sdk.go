@@ -2488,7 +2488,7 @@ func test_server_ready_autodetect_cloud() {
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
-	time.Sleep(time.Second * 15)
+	time.Sleep(time.Second * 25)
 
 	server_cmd.Process.Signal(os.Interrupt)
 	backend_cmd.Process.Signal(os.Interrupt)
@@ -2499,9 +2499,9 @@ func test_server_ready_autodetect_cloud() {
 	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
-	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect cloud datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in amazon cloud")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
 	server_check(server_stdout, backend_stdout, serverInitSuccessful)
@@ -2538,9 +2538,9 @@ func test_server_ready_disable_autodetect_cloud() {
 	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
-	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
+	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect cloud datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
-	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in AWS")
+	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in amazon cloud")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
 	server_check(server_stdout, backend_stdout, serverInitSuccessful)
