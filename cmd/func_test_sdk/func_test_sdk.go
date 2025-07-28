@@ -2488,7 +2488,7 @@ func test_server_ready_autodetect_cloud() {
 
 	backend_cmd, backend_stdout := backend("DEFAULT")
 
-	time.Sleep(time.Second * 25)
+	time.Sleep(time.Second * 15)
 
 	server_cmd.Process.Signal(os.Interrupt)
 	backend_cmd.Process.Signal(os.Interrupt)
