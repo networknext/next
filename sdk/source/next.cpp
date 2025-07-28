@@ -61,7 +61,7 @@ void next_printf( const char * format, ... );
 
 static void default_assert_function( const char * condition, const char * function, const char * file, int line )
 {
-    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    next_printf( NEXT_LOG_LEVEL_ERROR, "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
     fflush( stdout );
     #if defined(_MSC_VER)
         __debugbreak();
@@ -148,16 +148,6 @@ static void (*log_function)( int level, const char * format, ... ) = default_log
 void next_log_function( void (*function)( int level, const char * format, ... ) )
 {
     log_function = function;
-}
-
-void next_printf( const char * format, ... )
-{
-    va_list args;
-    va_start( args, format );
-    char buffer[1024];
-    vsnprintf( buffer, sizeof(buffer), format, args );
-    log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
-    va_end( args );
 }
 
 void next_printf( int level, const char * format, ... )
