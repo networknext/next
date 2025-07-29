@@ -61,7 +61,7 @@ bool next_default_http_request_function( const char * url, const char * header, 
     pclose( file );
 
     next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
-    next_printf( NEXT_LOG_LEVEL_SPAM, "%s" );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "%s", output );
     next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
 
     return num_lines > 0;
