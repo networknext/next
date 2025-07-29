@@ -50,18 +50,31 @@ bool next_default_http_request_function( const char * url, const char * header, 
 
     int num_lines = 0;
 
+    next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
+
     char line[1024];
     while ( fgets( line, sizeof(line), file ) != NULL )
     {
         int bytes_copied = next_copy_string( p, line, output_size - ( p - output ) );
         p += bytes_copied;
         num_lines++;
+
+        for ( size_t i = 0; i < sizeof(line); i++ )
+        {
+            if ( line[i] == '\0' )
+                break;
+
+            if ( line[i] == '\n' || line[i] == '\r' )
+            {
+                line[i] = '\0';
+            }
+        }
+
+        next_printf( NEXT_LOG_LEVEL_SPAM, "%s", line );
     }
 
     pclose( file );
 
-    next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
-    next_printf( NEXT_LOG_LEVEL_SPAM, "%s" );
     next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
 
     return num_lines > 0;
