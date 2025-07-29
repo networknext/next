@@ -1,6 +1,6 @@
 /*
-	Network Next. Copyright 2017 - 2025 Network Next, Inc.  
-	Licensed under the Network Next Source Available License 1.0
+    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
+    Licensed under the Network Next Source Available License 1.0
 */
 
 #pragma once
@@ -17,54 +17,54 @@ class FNetworkNextSocketSubsystem : public ISocketSubsystem, public FTSTickerObj
 {
 private:
 
-	TArray<class FNetworkNextSocket*> NetworkNextSockets;
+    TArray<class FNetworkNextSocket*> NetworkNextSockets;
 
 public:
 
-	static FNetworkNextSocketSubsystem* Create();
+    static FNetworkNextSocketSubsystem* Create();
 
-	static void Destroy();
+    static void Destroy();
 
-	FNetworkNextSocketSubsystem() {}
+    FNetworkNextSocketSubsystem() {}
 
-	virtual bool Init(FString& Error) override;
+    virtual bool Init(FString& Error) override;
 
-	virtual void Shutdown() override;
+    virtual void Shutdown() override;
 
-	virtual FSocket* CreateSocket(const FName& SocketType, const FString& SocketDescription, const FName& ProtocolName) override;
+    virtual FSocket* CreateSocket(const FName& SocketType, const FString& SocketDescription, const FName& ProtocolName) override;
 
-	virtual void DestroySocket(FSocket* Socket) override;
+    virtual void DestroySocket(FSocket* Socket) override;
 
-	virtual FAddressInfoResult GetAddressInfo(const TCHAR* HostName, const TCHAR* ServiceName = NULL,
-		EAddressInfoFlags QueryFlags = EAddressInfoFlags::Default,
-		const FName ProtocolTypeName = NAME_None,
-		ESocketType SocketType = ESocketType::SOCKTYPE_Unknown) override;
+    virtual FAddressInfoResult GetAddressInfo(const TCHAR* HostName, const TCHAR* ServiceName = NULL,
+        EAddressInfoFlags QueryFlags = EAddressInfoFlags::Default,
+        const FName ProtocolTypeName = NAME_None,
+        ESocketType SocketType = ESocketType::SOCKTYPE_Unknown) override;
 
-	virtual TSharedPtr<FInternetAddr> GetAddressFromString(const FString& InAddress) override;
+    virtual TSharedPtr<FInternetAddr> GetAddressFromString(const FString& InAddress) override;
 
-	virtual bool RequiresChatDataBeSeparate() override {
-		return false;
-	}
+    virtual bool RequiresChatDataBeSeparate() override {
+        return false;
+    }
 
-	virtual bool RequiresEncryptedPackets() override {
-		return true;
-	}
+    virtual bool RequiresEncryptedPackets() override {
+        return true;
+    }
 
-	virtual bool GetHostName(FString& HostName) override;
+    virtual bool GetHostName(FString& HostName) override;
 
-	virtual TSharedRef<FInternetAddr> CreateInternetAddr() override;
+    virtual TSharedRef<FInternetAddr> CreateInternetAddr() override;
 
-	virtual bool HasNetworkDevice() override;
+    virtual bool HasNetworkDevice() override;
 
-	virtual const TCHAR* GetSocketAPIName() const override;
+    virtual const TCHAR* GetSocketAPIName() const override;
 
-	virtual ESocketErrors GetLastErrorCode() override;
+    virtual ESocketErrors GetLastErrorCode() override;
 
-	virtual ESocketErrors TranslateErrorCode(int32 Code) override;
+    virtual ESocketErrors TranslateErrorCode(int32 Code) override;
 
-	virtual bool IsSocketWaitSupported() const override { 
-		return false; 
-	}
+    virtual bool IsSocketWaitSupported() const override { 
+        return false; 
+    }
 
-	virtual bool Tick(float DeltaTime) override;
+    virtual bool Tick(float DeltaTime) override;
 };

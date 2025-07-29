@@ -14,6 +14,67 @@ DEFINE_LOG_CATEGORY(LogNetworkNext);
 
 IMPLEMENT_MODULE(FNetworkNextModule, NetworkNext)
 
+// gfiedler: Autodetect calls to this function are *always* made from the same background thread and never run in ||, hence it is safe for us to use statics here
+
+static volatile int unreal_http_request_complete;
+
+void HandleHttpRequestComplete(FHttpRequestPtr Request, FHttpResponsePtr Response, bool bWasSuccessful)
+{
+    (void) Request;
+    (void) Response;
+    (void) bWasSuccessful;
+    unreal_http_request_complete = 1;
+}
+
+static bool unreal_http_request_function( const char * url, const char * header, char * output, size_t output_size )
+{
+    FString URL(url);
+    FString Header(header);
+
+    UE_LOG(LogNetworkNext, Display, TEXT("unreal_http_request: URL='%s', Header='%s'"), *URL, *Header);
+
+    FHttpModule & HttpModule = FHttpModule::Get();
+
+    FHttpRequestPtr Request = HttpModule.CreateRequest();
+
+    Request->SetVerb(TEXT("GET"));
+
+    if (header[0] != '\0')
+    {
+        Request->SetHeader(TEXT("Metadata-Flavor"), TEXT("Google"));
+    }
+
+    Request->SetURL(URL);
+
+    unreal_http_request_complete = 0;
+
+    Request->OnProcessRequestComplete().BindStatic(&HandleHttpRequestComplete);
+
+    if (!Request->ProcessRequest())
+    {
+        UE_LOG(LogNetworkNext, Error, TEXT("Failed to start HTTP Request"));
+        return false;
+    }
+
+    while (!unreal_http_request_complete)
+    {
+        FPlatformProcess::Sleep(0.1);
+    }
+
+    FHttpResponsePtr Response = Request->GetResponse();
+
+    if (Response && Response->GetResponseCode() == 200)
+    {
+        FString ResponseData = Response->GetContentAsString();
+        next_copy_string( output, TCHAR_TO_ANSI(*ResponseData), output_size );
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void FNetworkNextModule::StartupModule()
 {
     UE_LOG(LogNetworkNext, Display, TEXT("Network Next Plugin loaded"));
@@ -34,6 +95,9 @@ void FNetworkNextModule::StartupModule()
 #endif // #if WITH_SERVER
 
     next_log_level(NEXT_LOG_LEVEL_DEBUG);
+
+    // IMPORTANT: Use Unreal HTTP module instead of "curl" for autodetecting server datacenter
+    next_autodetect_http_request_function(unreal_http_request_function);
 
     if (next_init(NULL, &config) != NEXT_OK)
     {

@@ -29,7 +29,7 @@ public:
     };
 
     /** Call this from game mode OnPostLogin to enable acceleration for this player */
-	static void NETWORKNEXT_API UpgradePlayer(AController* Controller, const FString& UserId);
+    static void NETWORKNEXT_API UpgradePlayer(AController* Controller, const FString& UserId);
 
 private:
 
