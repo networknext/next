@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.0"
+    #define NEXT_VERSION_FULL                               "1.2.2"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                0
+    #define NEXT_VERSION_PATCH_INT                                2
 
 #else // !NEXT_DEVELOPMENT
 
@@ -497,7 +497,7 @@ NEXT_EXPORT_FUNC void next_disable_packet_tagging();
 
 // -----------------------------------------
 
-NEXT_EXPORT_FUNC void next_copy_string( char * dest, const char * source, size_t dest_size );
+NEXT_EXPORT_FUNC size_t next_copy_string( char * dest, const char * source, size_t dest_size );
 
 // -----------------------------------------
 

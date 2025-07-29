@@ -118,6 +118,14 @@ inline next_platform_mutex_helper_t::next_platform_mutex_helper_t( next_platform
 #endif // #if NEXT_SPIKE_TRACKING
 {
     next_assert( mutex );
+
+#if NEXT_SPIKE_TRACKING
+    if ( !mutex->ok )
+    {
+        next_printf( NEXT_LOG_LEVEL_ERROR, "bad mutex - %s:%d", file, line );
+    }
+#endif // #if NEXT_SPIKE_TRACKING
+
     next_platform_mutex_acquire( mutex );
 }
 

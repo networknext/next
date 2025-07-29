@@ -115,6 +115,33 @@ void test_hash()
     next_check( hash == 0x249f1fb6f3a680e8ULL );
 }
 
+void test_copy_string()
+{
+    // copy valid string
+    {
+        char buffer[256];
+        size_t result = next_copy_string( buffer, "hello", sizeof(buffer) );
+        next_check( result == 5 );
+        next_check( strncmp( buffer, "hello", sizeof(buffer) ) == 0 );
+    }
+
+    // copy empty string
+    {
+        char buffer[256];
+        size_t result = next_copy_string( buffer, "", sizeof(buffer) );
+        next_check( result == 0 );
+        next_check( strncmp( buffer, "", sizeof(buffer) ) == 0 );
+    }
+
+    // truncated string
+    {
+        char buffer[4];
+        size_t result = next_copy_string( buffer, "hello my baby, hello my darling", sizeof(buffer) );
+        next_check( result == 3 );
+        next_check( strncmp( buffer, "hel", sizeof(buffer) ) == 0 );
+    }
+}
+
 void test_queue()
 {
     const int QueueSize = 64;
@@ -4358,9 +4385,13 @@ void test_passthrough_packets_server_packet_received_callback( next_server_t * s
 
 void test_passthrough_packets()
 {
-    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", test_passthrough_packets_server_packet_received_callback );
+    next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:0", "local", test_passthrough_packets_server_packet_received_callback );
 
     next_check( server );
+
+    next_address_t address;
+    next_address_parse( &address, "127.0.0.1" );
+    address.port = next_server_port( server );
 
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_passthrough_packets_client_packet_received_callback );
 
@@ -4368,7 +4399,8 @@ void test_passthrough_packets()
 
     next_check( next_client_port( client ) != 0 );
 
-    next_client_open_session( client, "127.0.0.1:12345" );
+    char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+    next_client_open_session( client, next_address_to_string( &address, buffer ) );
 
     uint8_t packet_data[NEXT_MTU];
     memset( packet_data, 0, sizeof(packet_data) );
@@ -4410,15 +4442,6 @@ void test_packet_tagging()
     if ( next_packet_tagging_can_be_enabled() )
     {
         next_enable_packet_tagging();
-
-#if NEXT_PLATFORM_CAN_RUN_SERVER
-        next_server_t * server = next_server_create( NULL, "127.0.0.1", "0.0.0.0:12345", "local", test_passthrough_packets_server_packet_received_callback );
-        next_check( server );
-#endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
-
-        next_client_t * client = next_client_create( NULL, "0.0.0.0:0", test_passthrough_packets_client_packet_received_callback );
-        next_check( client );
-
         next_disable_packet_tagging();
     }
 }
@@ -4440,6 +4463,7 @@ void next_run_tests()
         RUN_TEST( test_endian );
         RUN_TEST( test_base64 );
         RUN_TEST( test_hash );
+        RUN_TEST( test_copy_string );
         RUN_TEST( test_queue );
         RUN_TEST( test_bitpacker );
         RUN_TEST( test_bits_required );

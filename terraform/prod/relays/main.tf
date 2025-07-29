@@ -15,8 +15,6 @@ variable "raspberry_buyer_public_key" { type = string }
 variable "raspberry_datacenters" { type = list(string) }
 variable "test_buyer_public_key" { type = string }
 variable "test_datacenters" { type = list(string) }
-variable "rematch_buyer_public_key" { type = string }
-variable "rematch_datacenters" { type = list(string) }
 
 # ----------------------------------------------------------------------------------------
 
@@ -127,10 +125,12 @@ locals {
 
   zenlayer_relays = {
 
+    /*
     "zenlayer.saopaulo" = {
       datacenter_name = "zenlayer.saopaulo"
       public_address  = "128.14.222.42"
     },
+    */
 
   }
 }
@@ -166,6 +166,7 @@ locals {
 
   unity_relays = {
 
+    /*
     "unity.saopaulo.1" = {
       datacenter_name = "unity.saopaulo.1"
       public_address  = "185.50.104.109"
@@ -183,6 +184,7 @@ locals {
       public_address  = "92.38.150.8"
       ssh_user = "root"
     },
+    */
 
   }
 }
@@ -198,11 +200,13 @@ locals {
 
   datapacket_relays = {
 
+    /*
     "datapacket.saopaulo" = {
       datacenter_name = "datapacket.saopaulo"
       ssh_address = "79.127.137.166"
       public_address = "79.127.137.166"
     },
+    */
 
   }
 }
@@ -211,34 +215,6 @@ module "datapacket_relays" {
   relays = local.datapacket_relays
   source = "../../sellers/datapacket"
 }
-
-# ----------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # ----------------------------------------------------------------------------------------
 
@@ -664,39 +640,6 @@ resource "networknext_buyer" raspberry {
 resource "networknext_buyer_datacenter_settings" raspberry {
   for_each = toset(var.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
-  datacenter_id = networknext_datacenter.datacenters[each.value].id
-  enable_acceleration = true
-}
-
-# =============
-# REMATCH BUYER
-# =============
-
-resource "networknext_route_shader" rematch {
-  name = "rematch"
-  force_next = false
-  latency_reduction_threshold = 20
-  acceptable_latency = 50
-  acceptable_packet_loss_instant = 1.0
-  acceptable_packet_loss_sustained = 0.25
-  bandwidth_envelope_up_kbps = 1024
-  bandwidth_envelope_down_kbps = 1024
-  route_select_threshold = 5
-  route_switch_threshold = 10
-}
-
-resource "networknext_buyer" rematch {
-  name = "REMATCH"
-  code = "rematch"
-  debug = false
-  live = true
-  route_shader_id = networknext_route_shader.rematch.id
-  public_key_base64 = var.rematch_buyer_public_key
-}
-
-resource "networknext_buyer_datacenter_settings" rematch {
-  for_each = toset(var.rematch_datacenters)
-  buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }

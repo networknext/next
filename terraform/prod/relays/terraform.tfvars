@@ -32,17 +32,6 @@ test_datacenters = [
 	"unity.saopaulo.3",
 ]
 
-rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
-
-rematch_datacenters = [
-	"google.saopaulo.1",
-	"google.saopaulo.2",
-	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
-]
-
 sellers = {
 	"Akamai" = "akamai"
 	"Amazon" = "amazon"

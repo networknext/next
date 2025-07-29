@@ -61,7 +61,7 @@ void next_printf( const char * format, ... );
 
 static void default_assert_function( const char * condition, const char * function, const char * file, int line )
 {
-    next_printf( "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
+    next_printf( NEXT_LOG_LEVEL_ERROR, "assert failed: ( %s ), function %s, file %s, line %d\n", condition, function, file, line );
     fflush( stdout );
     #if defined(_MSC_VER)
         __debugbreak();
@@ -84,7 +84,14 @@ void (*next_assert_function_pointer)( const char * condition, const char * funct
 
 void next_assert_function( void (*function)( const char * condition, const char * function, const char * file, int line ) )
 {
-    next_assert_function_pointer = function;
+    if ( function )
+    {
+        next_assert_function_pointer = function;
+    }
+    else
+    {
+        next_assert_function_pointer = default_assert_function;
+    }
 }
 
 // -------------------------------------------------------------
@@ -96,7 +103,7 @@ void next_quiet( bool flag )
     log_quiet = flag;
 }
 
-static int log_level = NEXT_LOG_LEVEL_INFO;
+static int log_level = NEXT_LOG_LEVEL_SPAM;
 
 void next_log_level( int level )
 {
@@ -147,17 +154,14 @@ static void (*log_function)( int level, const char * format, ... ) = default_log
 
 void next_log_function( void (*function)( int level, const char * format, ... ) )
 {
-    log_function = function;
-}
-
-void next_printf( const char * format, ... )
-{
-    va_list args;
-    va_start( args, format );
-    char buffer[1024];
-    vsnprintf( buffer, sizeof(buffer), format, args );
-    log_function( NEXT_LOG_LEVEL_NONE, "%s", buffer );
-    va_end( args );
+    if ( function )
+    {
+        log_function = function;
+    }
+    else
+    {
+        log_function = default_log_function;
+    }
 }
 
 void next_printf( int level, const char * format, ... )
@@ -251,18 +255,20 @@ uint64_t next_random_uint64()
 
 // -------------------------------------------------------------
 
-void next_copy_string( char * dest, const char * source, size_t dest_size )
+size_t next_copy_string( char * dest, const char * source, size_t dest_size )
 {
     next_assert( dest );
     next_assert( source );
     next_assert( dest_size >= 1 );
     memset( dest, 0, dest_size );
-    for ( size_t i = 0; i < dest_size - 1; i++ )
+    size_t i = 0;
+    for ( ; i < dest_size - 1; i++ )
     {
         if ( source[i] == '\0' )
             break;
         dest[i] = source[i];
     }
+    return i;
 }
 
 // -------------------------------------------------------------

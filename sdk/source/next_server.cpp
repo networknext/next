@@ -723,19 +723,21 @@ void next_server_internal_destroy( next_server_internal_t * server )
 
     next_server_internal_verify_sentinels( server );
 
-    if ( server->socket )
-    {
-        next_platform_socket_destroy( server->socket );
-    }
-
     if ( server->resolve_hostname_thread )
     {
+        next_platform_thread_join( server->resolve_hostname_thread );
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
 
     if ( server->autodetect_thread )
     {
+        next_platform_thread_join( server->autodetect_thread );
         next_platform_thread_destroy( server->autodetect_thread );
+    }
+
+    if ( server->socket )
+    {
+        next_platform_socket_destroy( server->socket );
     }
 
     if ( server->command_queue )
@@ -1116,7 +1118,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
             server->server_relay_request_packet.request_id = next_random_uint64();
 
             server->requesting_server_relays = true;                     
-            server->next_server_relay_request_packet_send_time = current_time;   
+            server->next_server_relay_request_packet_send_time = current_time;
             server->server_relay_request_timeout_time = current_time + NEXT_SERVER_RELAYS_TIMEOUT;
         }
     }
@@ -2060,10 +2062,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         double current_time = next_platform_time();
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "server found %d server relays", packet.num_server_relays );
-
         if ( packet.num_server_relays > 0 )
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "server found %d server relays", packet.num_server_relays );
+
             next_printf( NEXT_LOG_LEVEL_INFO, "server started pinging server relays" );
 
             server->pinging_server_relays = true;
@@ -2078,9 +2080,12 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         }
         else
         {
+            next_printf( NEXT_LOG_LEVEL_INFO, "no server relays found. trying again in ~5 minutes..." );
+
             server->pinging_server_relays = false;
             server->requesting_server_relays = false;
             server->stats_has_server_relay_pings = true;               // IMPORTANT: so we don't time out ready
+            server->next_server_relay_request_packet_send_time = current_time + NEXT_SERVER_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_SERVER_RELAYS_UPDATE_TIME_VARIATION );
         }
     }
 
@@ -2879,7 +2884,7 @@ void next_server_internal_block_and_receive_packet( next_server_internal_t * ser
 
 #if NEXT_SPIKE_TRACKING
     char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-    next_printf( NEXT_LOG_LEVEL_SPAM, "server next_platform_socket_receive_packet returns with a %d byte packet from %s", next_address_to_string( &from, address_buffer ) );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server next_platform_socket_receive_packet returns with a %d byte packet from %s", packet_bytes, next_address_to_string( &from, address_buffer ) );
 #endif // #if NEXT_SPIKE_TRACKING
 
     if ( packet_bytes == 0 )
@@ -3270,7 +3275,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "resolve hostname timed out" );
+            next_printf( NEXT_LOG_LEVEL_WARN, "resolve hostname timed out" );
         }
     }
     
@@ -3307,10 +3312,6 @@ static void next_server_internal_autodetect_thread_function( void * context )
     bool autodetect_actually_did_something = false;
     char autodetect_output[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // autodetect datacenter is currently windows and linux only (mac is just for testing...)
-
     const char * autodetect_input = server->datacenter_name;
     
     char autodetect_address[NEXT_MAX_ADDRESS_STRING_LENGTH];
@@ -3319,34 +3320,19 @@ static void next_server_internal_autodetect_thread_function( void * context )
     next_address_to_string( &server_address_no_port, autodetect_address );
 
     if ( !next_global_config.disable_autodetect &&
-         ( autodetect_input[0] == '\0' 
-            ||
          ( autodetect_input[0] == 'c' &&
            autodetect_input[1] == 'l' &&
            autodetect_input[2] == 'o' &&
            autodetect_input[3] == 'u' &&
            autodetect_input[4] == 'd' &&
-           autodetect_input[5] == '\0' ) 
-            ||
-         ( autodetect_input[0] == 'm' && 
-           autodetect_input[1] == 'u' && 
-           autodetect_input[2] == 'l' && 
-           autodetect_input[3] == 't' && 
-           autodetect_input[4] == 'i' && 
-           autodetect_input[5] == 'p' && 
-           autodetect_input[6] == 'l' && 
-           autodetect_input[7] == 'a' && 
-           autodetect_input[8] == 'y' && 
-           autodetect_input[9] == '.' ) ) )
+           autodetect_input[5] == '\0' ) )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect cloud datacenter" );
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
         autodetect_actually_did_something = true;
     }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
 #if NEXT_DEVELOPMENT
     if ( next_platform_getenv( "NEXT_FORCE_AUTODETECT_TIMEOUT" ) )
@@ -4150,6 +4136,12 @@ void next_server_destroy( next_server_t * server )
 {
     next_server_verify_sentinels( server );
 
+    if ( server->thread )
+    {
+        next_server_internal_quit( server->internal );
+        next_platform_thread_join( server->thread );
+    }
+
     if ( server->pending_session_manager )
     {
         next_proxy_session_manager_destroy( server->pending_session_manager );
@@ -4160,16 +4152,14 @@ void next_server_destroy( next_server_t * server )
         next_proxy_session_manager_destroy( server->session_manager );
     }
 
-    if ( server->thread )
-    {
-        next_server_internal_quit( server->internal );
-        next_platform_thread_join( server->thread );
-        next_platform_thread_destroy( server->thread );
-    }
-
     if ( server->internal )
     {
         next_server_internal_destroy( server->internal );
+    }
+
+    if ( server->thread )
+    {
+        next_platform_thread_destroy( server->thread );
     }
 
     next_clear_and_free( server->context, server, sizeof(next_server_t) );

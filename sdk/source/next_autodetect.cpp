@@ -20,441 +20,285 @@
 #define strtok_r strtok_s
 #endif
 
-bool next_autodetect_google( char * output, size_t output_size )
+bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
 {
-    FILE * file;
-    char buffer[1024*10];
+    next_assert( url );
+    next_assert( header );
+    next_assert( output );
+    next_assert( output_size > 0 );
 
-    // are we running in google cloud?
-    
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    file = popen( "/bin/ls /usr/bin | grep google_ 2>/dev/null", "r" );
-    if ( file == NULL )
+    char command_line[1024];
+    if ( header[0] != '\0' )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run ls" );
+        snprintf( command_line, sizeof(command_line), "curl -s \"%s\" -H \"%s\" --max-time 2 -s 2>/dev/null", url, header );
+    }
+    else
+    {
+        snprintf( command_line, sizeof(command_line), "curl -s \"%s\" --max-time 2 -s 2>/dev/null", url );
+    }
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "command line: '%s'", command_line );
+
+    FILE * file = popen( command_line, "r" );
+    if ( !file )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not execute curl" );
         return false;
     }
 
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    char * p = output;
 
-    file = _popen( "dir \"C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\" | findstr gcloud", "r" );
-    if ( file == NULL )
+    int num_lines = 0;
+
+    char line[1024];
+    while ( fgets( line, sizeof(line), file ) != NULL )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run dir" );
-        return false;
+        int bytes_copied = next_copy_string( p, line, output_size - ( p - output ) );
+        p += bytes_copied;
+        num_lines++;
     }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    bool in_gcp = false;
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: running in google cloud" );
-        in_gcp = true;
-        break;
-    }
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
     pclose( file );
 
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "%s" );
+    next_printf( NEXT_LOG_LEVEL_SPAM, "---------------------------" );
 
-    _pclose( file );
+    return num_lines > 0;
+}
 
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
+static bool (*next_http_request)( const char * url, const char * header, char * output, size_t output_size ) = next_default_http_request_function;
 
-    // we are not running in google cloud :(
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+{
+    if ( function != NULL )
+    {
+        next_http_request = function;
+    }
+    else
+    {
+        next_http_request = next_default_http_request_function;
+    }
+}
 
-    if ( !in_gcp )
+bool next_autodetect_google( char * datacenter, size_t datacenter_size )
+{
+    // if we are in google cloud, we can hit the metadata server and ask it what google cloud zone we are in
+
+    char buffer[32*1024];
+    memset( buffer, 0, sizeof(buffer) );
+
+    if ( !next_http_request( "http://metadata.google.internal/computeMetadata/v1/instance/zone", "Metadata-Flavor: Google", buffer, sizeof(buffer) ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
         return false;
     }
 
-    // we are running in google cloud, which zone are we in?
+    char * p = strstr( buffer, "projects/" );
+    if ( p == NULL )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: 'projects/' not found" );
+        return false;
+    }
+
+    char * q = strstr( p + 9, "zones/" );
+    if ( q == NULL )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: 'zone/' not found" );
+        return false;
+    }
+
+    // we are in google cloud
 
     char zone[256];
-    zone[0] = '\0';
+    next_copy_string( zone, q + 6, sizeof(zone) );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: google cloud zone is '%s'", zone );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // download "google.txt" from google cloud storage. it contains lines mapping from google cloud zone to network next datacenter
 
-    file = popen( "curl -s \"http://metadata.google.internal/computeMetadata/v1/instance/zone\" -H \"Metadata-Flavor: Google\" --max-time 10 -vs 2>/dev/null", "r" );
-    if ( !file )
+    char url[1024];
+    snprintf( url, sizeof(url), "https://storage.googleapis.com/%s/google.txt?ts=%x", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+    memset( buffer, 0, sizeof(buffer) );
+    if ( !next_http_request( url, "", buffer, sizeof(buffer) ) )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not download google.txt file" );
         return false;
     }
 
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // map our google cloud zone to a network next datacenter
 
-    file = _popen( "powershell Invoke-RestMethod -Uri http://metadata.google.internal/computeMetadata/v1/instance/zone -Headers @{'Metadata-Flavor' = 'Google'} -TimeoutSec 10", "r" );
-    if ( !file )
+    p = buffer;
+
+    char * end = buffer + sizeof(buffer);
+
+    while ( p < end && *p != '\0' )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        size_t length = strlen( buffer );
-        if ( length < 10 )
+        char * q = p;
+        while ( q < end && *q != '\n' && *q != '\r' && *q != '\0' )
         {
-            continue;
+            q++;
         }
-
-        if ( buffer[0] != 'p' ||
-             buffer[1] != 'r' ||
-             buffer[2] != 'o' ||
-             buffer[3] != 'j' ||
-             buffer[4] != 'e' ||
-             buffer[5] != 'c' ||
-             buffer[6] != 't' ||
-             buffer[7] != 's' ||
-             buffer[8] != '/' )
-        {
-            continue;
-        }
-
-        bool found = false;
-        size_t index = length - 1;
-        while ( index > 10 && length  )
-        {
-            if ( buffer[index] == '/' )
-            {
-                found = true;
-                break;
-            }
-            index--;
-        }
-
-        if ( !found )
-        {
-            continue;
-        }
-
-        next_copy_string( zone, buffer + index + 1, sizeof(zone) );
-
-        size_t zone_length = strlen(zone);
-        index = zone_length - 1;
-        while ( index > 0 && ( zone[index] == '\n' || zone[index] == '\r' ) )
-        {
-            zone[index] = '\0';
-            index--;
-        }
-
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: google zone is \"%s\"", zone );
-
-        break;
-    }
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    pclose( file );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    _pclose( file );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // we couldn't work out which zone we are in :(
-
-    if ( zone[0] == '\0' )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not detect google zone" );
-        return false;
-    }
-
-    // look up google zone -> network next datacenter via mapping in google cloud storage "google.txt" file
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/google.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
-    file = popen( cmd, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
-        return false;
-    }
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/%s/google.txt?ts=%x\" -TimeoutSec 10", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
-    file = _popen( cmd, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    bool found = false;
-
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        const char * separators = ",\n\r";
-        char * rest = buffer;
-        char * google_zone = strtok_r( buffer, separators, &rest );
-        if ( google_zone == NULL )
-        {
-            continue;
-        }
-
-        char * google_datacenter = strtok_r( NULL, separators, &rest );
-        if ( google_datacenter == NULL )
-        {
-            continue;
-        }
-
-        if ( strcmp( zone, google_zone ) == 0 )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", zone, google_datacenter );
-            next_copy_string( output, google_datacenter, output_size );
-            found = true;
+        if ( q >= end )
             break;
+        *q = '\0';
+        {
+            const char * separators = ",\n\r";
+            char * rest = buffer;
+            char * google_zone = strtok_r( p, separators, &rest );
+            if ( google_zone && strcmp( zone, google_zone ) == 0 )
+            {
+                char * network_next_datacenter = strtok_r( NULL, separators, &rest );
+                if ( network_next_datacenter )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: '%s' -> '%s'", zone, network_next_datacenter );
+                    next_copy_string( datacenter, network_next_datacenter, datacenter_size );
+                    return true;
+                }
+            }
         }
+        p = q + 1;
     }
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    next_printf( NEXT_LOG_LEVEL_WARN, "could not find network next datacenter for google cloud zone :(" );
 
-    pclose( file );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    _pclose( file );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    return found;
+    return false;
 }
 
-bool next_autodetect_amazon( char * output, size_t output_size )
+bool next_autodetect_amazon( char * datacenter, size_t datacenter_size )
 {
-    FILE * file;
-    char buffer[1024*10];
+    char buffer[32*1024];
+    memset( buffer, 0, sizeof(buffer) );
 
     // Get the AZID from instance metadata
     // This is necessary because only AZ IDs are the same across different AWS accounts
     // See https://docs.aws.amazon.com/ram/latest/userguide/working-with-az-ids.html for details
 
+    if ( !next_http_request( "http://169.254.169.254/latest/meta-data/placement/availability-zone-id", "", buffer, sizeof(buffer) ) || strstr( buffer, "-az" ) == NULL )
+    {
+        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in amazon cloud" );
+        return false;
+    }
+
     char azid[256];
-    azid[0] = '\0';
+    next_copy_string( azid, buffer, sizeof(azid) );
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    file = popen( "curl -s \"http://169.254.169.254/latest/meta-data/placement/availability-zone-id\" --max-time 2 -vs 2>/dev/null", "r" );
-    if ( !file )
+    size_t azid_length = strlen( azid );
+    size_t index = azid_length - 1;
+    while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
+        azid[index] = '\0';
+        index--;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: amazon azid is '%s'", azid );
+
+    // download "amazon.txt" from google cloud storage. it contains lines mapping from AZID to network next datacenter
+
+    char url[1024];
+    snprintf( url, sizeof(url), "https://storage.googleapis.com/%s/amazon.txt?ts=%x", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+    memset( buffer, 0, sizeof(buffer) );
+    if ( !next_http_request( url, "", buffer, sizeof(buffer) ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not download amazon.txt file" );
         return false;
     }
 
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    // map our amazon azid to a network next datacenter
 
-    file = _popen ( "powershell Invoke-RestMethod -Uri http://169.254.169.254/latest/meta-data/placement/availability-zone-id -TimeoutSec 2", "r" );
-    if ( !file )
+    char * p = buffer;
+
+    char * end = buffer + sizeof(buffer);
+
+    while ( p < end && *p != '\0' )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        if ( strstr( buffer, "-az" ) == NULL )
+        char * q = p;
+        while ( q < end && *q != '\n' && *q != '\r' && *q != '\0' )
         {
-            continue;
+            q++;
         }
-
-        next_copy_string( azid, buffer, sizeof(azid) );
-
-        size_t azid_length = strlen( azid );
-        size_t index = azid_length - 1;
-        while ( index > 0 && ( azid[index] == '\n' || azid[index] == '\r' ) )
-        {
-            azid[index] = '\0';
-            index--;
-        }
-
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: azid is \"%s\"", azid );
-
-        break;
-    }
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    pclose( file );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    _pclose( file );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // we are probably not in AWS :(
-
-    if ( azid[0] == '\0' )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in AWS" );
-        return false;
-    }
-
-    // look up AZID -> network next datacenter via mapping in google cloud storage "amazon.txt" file
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "curl -s \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" --max-time 10 -vs 2>/dev/null", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
-    file = popen( cmd, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run curl" );
-        return false;
-    }
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    char cmd[1024];
-    snprintf( cmd, sizeof(cmd), "powershell Invoke-RestMethod -Uri \"https://storage.googleapis.com/%s/amazon.txt?ts=%x\" -TimeoutSec 10", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
-    file = _popen ( cmd, "r" );
-    if ( !file )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: could not run powershell Invoke-RestMethod" );
-        return false;
-    }
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    bool found = false;
-
-    while ( fgets( buffer, sizeof(buffer), file ) != NULL )
-    {
-        const char * separators = ",\n\r";
-        char* rest = buffer;
-        char * amazon_zone = strtok_r( buffer, separators, &rest );
-        if ( amazon_zone == NULL )
-        {
-            continue;
-        }
-
-        char * amazon_datacenter = strtok_r( NULL, separators, &rest );
-        if ( amazon_datacenter == NULL )
-        {
-            continue;
-        }
-
-        if ( strcmp( azid, amazon_zone ) == 0 )
-        {
-            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: \"%s\" -> \"%s\"", azid, amazon_datacenter );
-            next_copy_string( output, amazon_datacenter, output_size );
-            found = true;
+        if ( q >= end )
             break;
+        *q = '\0';
+        {
+            const char * separators = ",\n\r";
+            char * rest = buffer;
+            char * amazon_azid = strtok_r( p, separators, &rest );
+            if ( amazon_azid && strcmp( azid, amazon_azid ) == 0 )
+            {
+                char * network_next_datacenter = strtok_r( NULL, separators, &rest );
+                if ( network_next_datacenter )
+                {
+                    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: '%s' -> '%s'", azid, network_next_datacenter );
+                    next_copy_string( datacenter, network_next_datacenter, datacenter_size );
+                    return true;
+                }
+            }
         }
+        p = q + 1;
     }
 
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+    next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not find network next datacenter for azid :(" );
 
-    pclose( file );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    _pclose( file );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    return found;
+    return true;
 }
 
-// --------------------------------------------------------------------------------------------------------------
-
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-#include <sys/cdefs.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <ctype.h>
-#include <err.h>
-#include <netdb.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sysexits.h>
-#include <unistd.h>
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output, size_t output_size )
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
 {
-#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-    
-    // we need curl to do any autodetect. bail if we don't have it
+    next_assert( input_datacenter );
+    next_assert( public_address );
+    next_assert( output_datacenter );
+    next_assert( output_datacenter_size > 0 );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for curl" );
-
-    int result = system( "curl -s >/dev/null 2>&1" );
-
-    if ( result < 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl not found" );
-        return false;
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: curl exists" );
-
-#elif NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
-
-    // we need access to powershell and Invoke-RestMethod to do any autodetect. bail if we don't have it
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: looking for powershell Invoke-RestMethod" );
-
-    int result = system( "powershell Invoke-RestMethod -? > NUL 2>&1" );
-
-    if ( result > 0 )
-    {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod not found" );
-        return false;
-    }
-
-    next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: powershell Invoke-RestMethod exists" );
-
-#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
-
-    // google cloud
-
-    bool google_result = next_autodetect_google( output, output_size );
-    if ( google_result )
-    {
-        return true;
-    }
-
-    // amazon
-
-    bool amazon_result = next_autodetect_amazon( output, output_size );
-    if ( amazon_result )
-    {
-        return true;
-    }
-
-    (void) input_datacenter;
     (void) public_address;
-    (void) output_size;
+
+    if ( input_datacenter[0] == 'c' && 
+         input_datacenter[1] == 'l' &&
+         input_datacenter[2] == 'o' &&
+         input_datacenter[3] == 'u' &&
+         input_datacenter[4] == 'd' &&
+         input_datacenter[5] == '\0' )
+    {
+        if ( next_autodetect_google( output_datacenter, output_datacenter_size ) )
+            return true;
+
+        if ( next_autodetect_amazon( output_datacenter, output_datacenter_size ) )
+            return true;
+    }
 
     return false;
 }
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-int next_autodetect_dummy;
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+{
+    (void) function;
+}
+
+bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect google datacenter is not available on this platform" );
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;
+}
+
+bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect amazon datacenter is not available on this platform" );
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;    
+}
+
+bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect datacenter is not available on this platform" );
+    (void) input_datacenter;
+    (void) public_address;
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;
+}
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS

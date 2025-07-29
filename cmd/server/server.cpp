@@ -43,7 +43,7 @@ int main()
         printf( "error: failed to create server\n" );
         return 1;
     }
-    
+
     while ( !quit )
     {
         next_server_update( server );
