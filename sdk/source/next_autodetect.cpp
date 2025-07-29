@@ -20,7 +20,7 @@
 #define strtok_r strtok_s
 #endif
 
-bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
+static bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
 {
     next_assert( url );
     next_assert( header );
@@ -82,7 +82,7 @@ bool next_default_http_request_function( const char * url, const char * header, 
 
 static bool (*next_http_request)( const char * url, const char * header, char * output, size_t output_size ) = next_default_http_request_function;
 
-void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
 {
     if ( function != NULL )
     {
