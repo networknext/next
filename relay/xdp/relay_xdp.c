@@ -1755,11 +1755,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 packet_data[0] = RELAY_ROUTE_REQUEST_PACKET;
 
-                                int payload_bytes = data_end - (void*)packet_data;
-
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = data_end - (void*)packet_data;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session.next_address;
                                 args.source_port = config->relay_port;
@@ -1898,11 +1896,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "route response packet forward to previous hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
-
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = 18 + RELAY_HEADER_BYTES;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
@@ -1995,13 +1991,11 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 packet_data[0] = RELAY_CONTINUE_REQUEST_PACKET;
 
-                                int payload_bytes = data_end - (void*)packet_data;
-
                                 relay_printf( "continue request packet forward to next hop" );
 
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = data_end - (void*)packet_data;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
@@ -2147,11 +2141,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "continue response packet forward to previous hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES;
-
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = 18 + RELAY_HEADER_BYTES;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
@@ -2298,7 +2290,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = (int) ( data_end - (void*)packet_data );
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
@@ -2445,7 +2437,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = (int) ( data_end - (void*)packet_data );
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
@@ -2587,11 +2579,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 relay_printf( "session ping packet forward to next hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
-
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->next_address;
                                 args.source_port = config->relay_port;
@@ -2735,11 +2725,9 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
    
                                 relay_printf( "session pong packet forward to previous hop" );
 
-                                int payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
-
                                 struct redirect_args_t args;
                                 args.data = data;
-                                args.payload_bytes = payload_bytes;
+                                args.payload_bytes = 18 + RELAY_HEADER_BYTES + 8;
                                 args.source_address = config->relay_internal_address;
                                 args.dest_address = session->prev_address;
                                 args.source_port = config->relay_port;
