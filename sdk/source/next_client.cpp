@@ -609,7 +609,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
     {
         if ( !next_basic_packet_filter( packet_data, packet_bytes ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet (%d)", packet_id );
+            char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "client basic packet filter dropped packet from %s [%d] (%d bytes)", next_address_to_string( from, buffer ), packet_id, packet_bytes );
             return;
         }
 
@@ -629,7 +630,8 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
                 {
                     if ( !next_advanced_packet_filter( packet_data, client->previous_magic, from_address_data, to_address_data, packet_bytes ) )
                     {
-                        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet (%d)", packet_id );
+                        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                        next_printf( NEXT_LOG_LEVEL_DEBUG, "client advanced packet filter dropped packet from %s [%d] (%d bytes)", packet_id, packet_bytes );
                     }
                     return;
                 }
