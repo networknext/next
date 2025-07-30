@@ -930,7 +930,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
 
     if ( packet_bytes <= NEXT_HEADER_BYTES )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid" );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet is too small to be valid (%d bytes)", packet_bytes );
         return NULL;
     }
 
@@ -1613,7 +1613,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
     {
         if ( !next_basic_packet_filter( packet_data + begin, end - begin ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet" );
+            char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server basic packet filter dropped packet from %s [%d] (%d bytes)", next_address_to_string( from, buffer ), packet_id, end - begin );
             return;
         }
 
@@ -1633,7 +1634,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
                 {
                     if ( !next_advanced_packet_filter( packet_data + begin, server->previous_magic, from_address_data, to_address_data, end - begin ) )
                     {
-                        next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet" );
+                        char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+                        next_printf( NEXT_LOG_LEVEL_DEBUG, "server advanced packet filter dropped packet from %s [%d] (%d bytes)", next_address_to_string( from, buffer ), packet_id, end - begin );
                         return;
                     }
                 }
@@ -1785,14 +1787,14 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( packet_bytes <= 9 )
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too small to be valid", next_address_to_string( from, address_buffer ) );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too small to be valid (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
             return;
         }
 
         if ( packet_bytes > NEXT_MTU + 9 )
         {
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too large to be valid", next_address_to_string( from, address_buffer ) );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored direct packet from %s. packet is too large to be valid (%d bytes)", next_address_to_string( from, address_buffer ), packet_bytes );
             return;
         }
 
@@ -2512,7 +2514,8 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_bytes <= NEXT_HEADER_BYTES )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet. packet too small to be valid" );
+            char buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored client to server packet from %s. packet is too small to be valid (%d bytes)", next_address_to_string( from, buffer ), packet_bytes );
             return;
         }
 

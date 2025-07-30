@@ -73,9 +73,6 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
-    // todo
-    printf( "*** TEST VERSION 1 ***\n" );
-
     fflush( stdout );
 
     signal( SIGINT,  interrupt_handler );

@@ -556,7 +556,7 @@ int main_update( struct main_t * main )
     curl_easy_setopt( main->curl, CURLOPT_MAXREDIRS, 50L );
     curl_easy_setopt( main->curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
     curl_easy_setopt( main->curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 10000L );
+    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 1000L );
     curl_easy_setopt( main->curl, CURLOPT_WRITEDATA, &update_response_buffer );
     curl_easy_setopt( main->curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
 
