@@ -1104,7 +1104,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-s1erver-${var.tag}"
+  name         = "test-server-${var.tag}"
   machine_type = "n1-standard-2"
   zone         = var.test_server_zone
   tags         = ["allow-ssh", "allow-udp-all"]
