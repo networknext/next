@@ -22,10 +22,12 @@ raspberry_datacenters = [
 test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
 
 test_datacenters = [
-	"google.iowa.1",
-	"google.iowa.2",
-	"google.iowa.3",
-	"google.iowa.6"
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
+	"unity.saopaulo.1",
+	"unity.saopaulo.2",
+	"unity.saopaulo.3",
 ]
 
 sellers = {

@@ -1097,7 +1097,6 @@ module "raspberry_client" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
   region = var.test_server_region
@@ -1159,6 +1158,5 @@ output "test_server_address" {
   description = "The IP address of the test server"
   value = "${google_compute_address.test_server_address.address}:30000"
 }
-*/
 
 # ----------------------------------------------------------------------------------------
