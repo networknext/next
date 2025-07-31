@@ -3328,9 +3328,16 @@ static void next_server_internal_autodetect_thread_function( void * context )
            autodetect_input[2] == 'o' &&
            autodetect_input[3] == 'u' &&
            autodetect_input[4] == 'd' &&
-           autodetect_input[5] == '\0' ) )
+           autodetect_input[5] == '\0' ) || 
+         ( autodetect_input[0] == 'u' &&
+           autodetect_input[1] == 'n' &&
+           autodetect_input[2] == 'i' &&
+           autodetect_input[3] == 't' &&
+           autodetect_input[4] == 'y' &&
+           autodetect_input[5] == '.' &&
+           autodetect_input[6] == '\0' ) )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect cloud datacenter" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
