@@ -31,7 +31,7 @@ server_backend_public_key   = "3UISqg8chLDHu4BKFc+3lr1elIha0IMI2c8vKpwzpbA="
 
 test_server_region          = "southamerica-east1"
 test_server_zone            = "southamerica-east1-a"
-test_server_tag             = "003" # increment this each time you want to deploy the test server
+test_server_tag             = "004" # increment this each time you want to deploy the test server
 
 disable_backend             = false
 disable_raspberry           = true
