@@ -166,18 +166,6 @@ locals {
 
   unity_relays = {
 
-    "unity.saopaulo.1" = {
-      datacenter_name = "unity.saopaulo.1"
-      public_address  = "185.50.104.109"
-      ssh_user = "root"
-    },
-
-    "unity.saopaulo.2" = {
-      datacenter_name = "unity.saopaulo.2"
-      public_address  = "189.1.173.223"
-      ssh_user = "ubuntu"
-    },
-
     "unity.saopaulo.3" = {
       datacenter_name = "unity.saopaulo.3"
       public_address  = "92.38.150.8"
@@ -214,34 +202,6 @@ module "datapacket_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ----------------------------------------------------------------------------------------
-
 # ==========
 # i3D RELAYS
 # ==========
@@ -250,12 +210,10 @@ locals {
 
   i3d_relays = {
 
-    /*
-    "i3d.losangeles" = {
-      datacenter_name = "i3d.losangeles"
-      public_address  = "185.152.67.2"
+    "i3d.saopaulo" = {
+      datacenter_name = "i3d.saopaulo"
+      public_address  = "185.50.104.109"
     },
-    */
 
   }
 }
@@ -264,6 +222,57 @@ module "i3d_relays" {
   relays = local.i3d_relays
   source = "../../sellers/i3d"
 }
+
+# ----------------------------------------------------------------------------------------
+
+# ===============
+# LATITUDE RELAYS
+# ===============
+
+locals {
+
+  latitude_relays = {
+
+    "latitude.saopaulo" = {
+      datacenter_name = "latitude.saopaulo.1"
+      public_address  = "189.1.173.223"
+    },
+
+  }
+}
+
+module "latitude_relays" {
+  relays = local.latitude_relays
+  source = "../../sellers/latitude"
+}
+
+# ----------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ----------------------------------------------------------------------------------------
 
@@ -442,31 +451,6 @@ module "velia_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ===============
-# LATITUDE RELAYS
-# ===============
-
-locals {
-
-  latitude_relays = {
-
-    /*
-    "latitude.buenosaires" = {
-      datacenter_name = "latitude.buenosaires"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "latitude_relays" {
-  relays = local.latitude_relays
-  source = "../../sellers/latitude"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # ==============
 # EQUINIX RELAYS
 # ==============
@@ -641,6 +625,7 @@ output "all_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 # ===============
 # RASPBERRY BUYER
 # ===============
@@ -700,6 +685,7 @@ resource "networknext_buyer_datacenter_settings" test {
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
+*/
 
 # =============
 # REMATCH BUYER

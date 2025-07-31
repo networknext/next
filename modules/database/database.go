@@ -1408,10 +1408,6 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		relay.DatacenterId = HashString(datacenter_row.datacenter_name)
 
-		if !strings.Contains(relay.Name, datacenter_row.datacenter_name) {
-			return nil, fmt.Errorf("relay '%s' does not contain the datacenter name '%s' as a substring. are you sure this relay has the right datacenter?\n", relay.Name, datacenter_row.datacenter_name)
-		}
-
 		relay.Datacenter = database.DatacenterMap[relay.DatacenterId]
 		if relay.Datacenter.Id != relay.DatacenterId {
 			return nil, fmt.Errorf("relay '%s' has a bad datacenter\n", relay.Name)
