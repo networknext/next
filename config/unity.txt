@@ -1,0 +1,5 @@
+maxihost,latitude
+latitude,latitude
+i3d,i3d
+gcore,gcore
+g-core,gcore

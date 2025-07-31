@@ -20,7 +20,7 @@
 #define strtok_r strtok_s
 #endif
 
-static bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
+bool next_default_http_request_function( const char * url, const char * header, char * output, size_t output_size )
 {
     next_assert( url );
     next_assert( header );
@@ -82,7 +82,7 @@ static bool next_default_http_request_function( const char * url, const char * h
 
 static bool (*next_http_request)( const char * url, const char * header, char * output, size_t output_size ) = next_default_http_request_function;
 
-void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+void next_set_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
 {
     if ( function != NULL )
     {
@@ -156,7 +156,7 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
         *q = '\0';
         {
             const char * separators = ",\n\r";
-            char * rest = buffer;
+            char * rest;
             char * google_zone = strtok_r( p, separators, &rest );
             if ( google_zone && strcmp( zone, google_zone ) == 0 )
             {
@@ -234,7 +234,7 @@ bool next_autodetect_amazon( char * datacenter, size_t datacenter_size )
         *q = '\0';
         {
             const char * separators = ",\n\r";
-            char * rest = buffer;
+            char * rest;
             char * amazon_azid = strtok_r( p, separators, &rest );
             if ( amazon_azid && strcmp( azid, amazon_azid ) == 0 )
             {
@@ -253,6 +253,275 @@ bool next_autodetect_amazon( char * datacenter, size_t datacenter_size )
     next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not find network next datacenter for azid :(" );
 
     return true;
+}
+
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <ctype.h>
+#include <err.h>
+#include <netdb.h>
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sysexits.h>
+#include <unistd.h>
+
+#define ANICHOST        "whois.arin.net"
+#define LNICHOST        "whois.lacnic.net"
+#define RNICHOST        "whois.ripe.net"
+#define PNICHOST        "whois.apnic.net"
+#define BNICHOST        "whois.registro.br"
+#define AFRINICHOST     "whois.afrinic.net"
+
+const char * ip_whois[] = { LNICHOST, RNICHOST, PNICHOST, BNICHOST, AFRINICHOST, NULL };
+
+static bool next_whois( const char * address, const char * hostname, int recurse, char ** buffer, size_t & bytes_remaining )
+{
+    struct addrinfo *hostres, *res;
+    char *nhost;
+    int i, s;
+    size_t c;
+
+    struct addrinfo hints;
+    int error;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_flags = 0;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    error = getaddrinfo( hostname, "nicname", &hints, &hostres );
+    if ( error != 0 )
+    {
+        return 0;
+    }
+
+    for ( res = hostres; res; res = res->ai_next ) 
+    {
+        s = socket( res->ai_family, res->ai_socktype, res->ai_protocol );
+        if ( s < 0 )
+            continue;
+        if ( connect(s, res->ai_addr, res->ai_addrlen ) == 0 )
+            break;
+        close( s );
+    }
+
+    freeaddrinfo( hostres );
+
+    if ( res == NULL )
+        return 0;
+
+    FILE * sfi = fdopen( s, "r" );
+    FILE * sfo = fdopen( s, "w" );
+    if ( sfi == NULL || sfo == NULL )
+        return 0;
+
+    if ( strcmp( hostname, "de.whois-servers.net" ) == 0 ) {
+#ifdef __APPLE__
+        fprintf( sfo, "-T dn -C UTF-8 %s\r\n", address );
+#else
+        fprintf( sfo, "-T dn,ace -C US-ASCII %s\r\n", address );
+#endif
+    } else {
+        fprintf( sfo, "%s\r\n", address );
+    }
+    fflush( sfo );
+
+    nhost = NULL;
+
+    char buf[10*1024];
+
+    while ( fgets( buf, sizeof(buf), sfi ) )
+    {
+        size_t len = strlen(buf);
+
+        if ( len < bytes_remaining )
+        {
+            memcpy( *buffer, buf, len );
+            bytes_remaining -= len;
+            *buffer += len;
+        }
+
+        if ( nhost == NULL )
+        {
+            if ( recurse && strcmp( hostname, ANICHOST ) == 0 )
+            {
+                for (c = 0; c <= len; c++)
+                {
+                    buf[c] = tolower( (int) buf[c] );
+                }
+                for ( i = 0; ip_whois[i] != NULL; i++ )
+                {
+                    if ( strstr( buf, ip_whois[i] ) != NULL )
+                    {
+                        int result = asprintf( &nhost, "%s", ip_whois[i] );  // note: nhost is allocated here
+                        if ( result == -1 )
+                        {
+                            nhost = NULL;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    close( s );
+    fclose( sfo );
+    fclose( sfi );
+
+    bool result = true;
+
+    if ( nhost != NULL)
+    {
+        result = next_whois( address, nhost, 0, buffer, bytes_remaining );
+        free( nhost );
+    }
+
+    return result;
+}
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+bool next_autodetect_unity( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
+{
+#if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    // Implement whois based autodetection. Unity passes in "unity.saopaulo(.*)" as the datacenter and we run our own whois on the public server IP.
+    // The whois output is then pattern matched against a set of strings in the "unity.txt" file downloaded from cloud storage. The whois data makes
+    // it clear which provider is actually running the server (latitude, i3d, gcore, whatever...). 
+    // For example, if the string "Latitude" is found in the whois output, "unity.saopaulo(.*)" becomes "latitude.saopaulo"
+
+    if ( input_datacenter[0] != 'u' ||
+         input_datacenter[1] != 'n' ||
+         input_datacenter[2] != 'i' ||
+         input_datacenter[3] != 't' ||
+         input_datacenter[4] != 'y' ||
+         input_datacenter[5] != '.' )
+    {
+        // not unity bare metal
+        return false;
+    }
+
+    char location_buffer[1024];
+    next_copy_string( location_buffer, input_datacenter, sizeof(location_buffer) );
+    const char * location = location_buffer + 6;
+    char * q = location_buffer + 6;
+    while ( *q != '\0' && *q != '.' ) { q++; }
+    *q = '\0';
+
+    if ( location[0] == '\0' )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not find unity location" );
+        return false;
+    }
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "unity location is '%s'", location );
+
+    // run our own custom whois implementation on the server public IP address
+
+    char whois_data[1024*64];
+    {
+        memset( whois_data, 0, sizeof(whois_data) );
+        char * whois_output = &whois_data[0];
+        size_t bytes_remaining = sizeof(whois_data) - 1;
+        next_whois( public_address, ANICHOST, 1, &whois_output, bytes_remaining );
+    }
+
+    // download "unity.txt" from google cloud storage. it contains strings that map to seller names if they are found in the whois output
+
+    char url[1024];
+    snprintf( url, sizeof(url), "https://storage.googleapis.com/%s/unity.txt?ts=%x", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+    char unity_data[10*1024];
+    memset( unity_data, 0, sizeof(unity_data) );
+    if ( !next_http_request( url, "", unity_data, sizeof(unity_data) ) )
+    {
+        next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not download unity.txt file" );
+        return false;
+    }
+
+    // walk across each line in "unity.txt" and use the pattern strings to find the seller name
+    {
+        char * p = unity_data;
+
+        char * end = unity_data + sizeof(unity_data);
+
+        while ( p < end && *p != '\0' )
+        {
+            char * q = p;
+            while ( q < end && *q != '\n' && *q != '\r' && *q != '\0' )
+            {
+                q++;
+            }
+            if ( q >= end )
+                break;
+            *q = '\0';
+            {
+                const char * separators = ",\n\r";
+                char * rest;
+                char * pattern = strtok_r( p, separators, &rest );
+                if ( pattern != 0 )
+                {
+                    next_printf( NEXT_LOG_LEVEL_SPAM, "checking pattern: '%s'", p );
+                    if ( strcasestr( whois_data, pattern ) )
+                    {
+                        char * seller = strtok_r( NULL, separators, &rest );
+                        if ( seller )
+                        {
+                            snprintf( output_datacenter, output_datacenter_size, "%s.%s", seller, location );
+                            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: '%s' -> '%s'", input_datacenter, output_datacenter );
+                            return true;
+                        }
+                    }
+                }
+            }
+            p = q + 1;
+        }
+    }
+
+    // if we got down here, we tried each pattern on the whois output but didn't find any match, print out whois data so we can debug it
+
+    next_printf( NEXT_LOG_LEVEL_ERROR, "did not find any bare metal seller in whois output :(" );
+
+    next_copy_string( output_datacenter, input_datacenter, output_datacenter_size );
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "==============================" );
+    {
+        char * p = whois_data;
+
+        char * end = whois_data + sizeof(whois_data);
+
+        while ( p < end && *p != '\0' )
+        {
+            char * q = p;
+            while ( q < end && *q != '\n' && *q != '\r' && *q != '\0' )
+            {
+                q++;
+            }
+            if ( q >= end )
+                break;
+            *q = '\0';
+            {
+                next_printf( NEXT_LOG_LEVEL_SPAM, "%s", p );
+            }
+            p = q + 1;
+        }
+    }
+    next_printf( NEXT_LOG_LEVEL_SPAM, "==============================" );
+
+    return false;
+
+#else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
+
+    // IMPORTANT: On other platforms we cannot do whois based detection. Just use the datacenter passed in by Unity as-is.
+    next_copy_string( output_datacenter, input_datacenter, output_datacenter_size );
+    return true;
+
+#endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 }
 
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
@@ -278,6 +547,9 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
             return true;
     }
 
+    if ( next_autodetect_unity( input_datacenter, public_address, output_datacenter, output_datacenter_size ) )
+        return true;
+
     return false;
 }
 
@@ -302,6 +574,16 @@ bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_
     (void) output_datacenter;
     (void) output_datacenter_size;
     return false;    
+}
+
+bool next_autodetect_unity( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
+{
+    next_printf( NEXT_LOG_LEVEL_WARN, "autodetect unity datacenter is not available on this platform" );
+    (void) input_datacenter;
+    (void) public_address;
+    (void) output_datacenter;
+    (void) output_datacenter_size;
+    return false;
 }
 
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size )
