@@ -517,9 +517,8 @@ bool next_autodetect_unity( const char * input_datacenter, const char * public_a
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 
-    // IMPORTANT: On other platforms we cannot do whois based detection. Just use the datacenter passed in by Unity as-is.
-    next_copy_string( output_datacenter, input_datacenter, output_datacenter_size );
-    return true;
+    // IMPORTANT: Windows does not support whois-based unity bare metal datacenter detection (yet)
+    return false;
 
 #endif // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC
 }
