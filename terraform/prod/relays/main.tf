@@ -40,6 +40,10 @@ provider "networknext" {
 
 # ----------------------------------------------------------------------------------------
 
+# =============
+# GOOGLE RELAYS
+# =============
+
 locals {
 
   google_credentials = "~/secrets/terraform-prod-relays.json"
@@ -79,6 +83,10 @@ module "google_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =============
+# AMAZON RELAYS
+# =============
+
 locals {
   amazon_config      = ["~/.aws/config"]
   amazon_credentials = ["~/.aws/credentials"]
@@ -99,6 +107,10 @@ module "amazon_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+# =============
+# AKAMAI RELAYS
+# =============
 
 locals {
 
@@ -123,6 +135,10 @@ module "akamai_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===============
+# ZENLAYER RELAYS
+# ===============
+
 locals {
 
   zenlayer_relays = {
@@ -141,6 +157,10 @@ module "zenlayer_relays" {
 }
 
 # ----------------------------------------------------------------------------------------
+
+# ============
+# AZURE RELAYS
+# ============
 
 locals {
 
@@ -162,25 +182,9 @@ module "azure_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-locals {
-
-  unity_relays = {
-
-    "unity.saopaulo.3" = {
-      datacenter_name = "unity.saopaulo.3"
-      public_address  = "92.38.150.8"
-      ssh_user = "root"
-    },
-
-  }
-}
-
-module "unity_relays" {
-  relays = local.unity_relays
-  source = "../../sellers/unity"
-}
-
-# ----------------------------------------------------------------------------------------
+# =================
+# DATAPACKET RELAYS
+# =================
 
 locals {
 
@@ -203,7 +207,7 @@ module "datapacket_relays" {
 # ----------------------------------------------------------------------------------------
 
 # ==========
-# i3D RELAYS
+# I3D RELAYS
 # ==========
 
 locals {
@@ -248,6 +252,28 @@ module "latitude_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ============
+# GCORE RELAYS
+# ============
+
+locals {
+
+  gcore_relays = {
+
+    "gcore.saopaulo" = {
+      datacenter_name = "gcore.saopaulo"
+      public_address  = "92.38.150.8"
+    },
+
+  }
+}
+
+module "gcore_relays" {
+  relays = local.gcore_relays
+  source = "../../sellers/gcore"
+}
+
+# ----------------------------------------------------------------------------------------
 
 
 
@@ -273,6 +299,27 @@ module "latitude_relays" {
 
 
 
+
+
+# ----------------------------------------------------------------------------------------
+
+# ============
+# UNITY RELAYS
+# ============
+
+locals {
+
+  unity_relays = {
+
+     //...
+ 
+  }
+}
+
+module "unity_relays" {
+  relays = local.unity_relays
+  source = "../../sellers/unity"
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -297,31 +344,6 @@ locals {
 module "oneqode_relays" {
   relays = local.oneqode_relays
   source = "../../sellers/oneqode"
-}
-
-# ----------------------------------------------------------------------------------------
-
-# ============
-# GCORE RELAYS
-# ============
-
-locals {
-
-  gcore_relays = {
-
-    /*
-    "gcore.frankfurt" = {
-      datacenter_name = "gcore.frankfurt"
-      public_address  = "185.152.67.2"
-    },
-    */
-
-  }
-}
-
-module "gcore_relays" {
-  relays = local.gcore_relays
-  source = "../../sellers/gcore"
 }
 
 # ----------------------------------------------------------------------------------------

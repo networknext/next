@@ -16,9 +16,6 @@ raspberry_datacenters = [
 	"google.saopaulo.1",
 	"google.saopaulo.2",
 	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
 ]
 
 test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
@@ -27,9 +24,6 @@ test_datacenters = [
 	"google.saopaulo.1",
 	"google.saopaulo.2",
 	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
 ]
 
 rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
@@ -38,9 +32,9 @@ rematch_datacenters = [
 	"google.saopaulo.1",
 	"google.saopaulo.2",
 	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
+	"i3d.saopaulo",
+	"latitude.saopaulo.1",
+	"gcore.saopaulo",
 ]
 
 sellers = {

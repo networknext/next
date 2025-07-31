@@ -14,6 +14,8 @@ bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_
 
 bool next_autodetect_amazon( char * output_datacenter, size_t output_datacenter_size );
 
+bool next_autodetect_unity( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size );
+
 bool next_autodetect_datacenter( const char * input_datacenter, const char * public_address, char * output_datacenter, size_t output_datacenter_size );
 
 #endif // #ifndef NEXT_AUTODETECT_H
