@@ -3406,7 +3406,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
         }
     }
     
