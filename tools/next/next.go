@@ -1550,8 +1550,8 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("sdk/include/next_config.h\n")
 	{
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_PROD_AUTODETECT_URL \"autodetect.%s\"", config.CloudflareDomain))
-		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_DEV_AUTODETECT_URL \"autodetect-dev.%s\"", config.CloudflareDomain))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_PROD_AUTODETECT_URL \"https://autodetect.%s\"", config.CloudflareDomain))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_DEV_AUTODETECT_URL \"https://autodetect-dev.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_HOSTNAME \"server-dev.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_CONFIG_BUCKET_NAME\\s+\"[A-Za-z_]+?_network_next_sdk_config\"\\s*$", fmt.Sprintf("#define NEXT_CONFIG_BUCKET_NAME \"%s_network_next_sdk_config\"", config.CompanyName))

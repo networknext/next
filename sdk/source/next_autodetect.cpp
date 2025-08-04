@@ -282,6 +282,9 @@ bool next_autodetect_unity( const char * input_datacenter, const char * public_a
     snprintf( url, sizeof(url), "%s/%s/%s", NEXT_AUTODETECT_URL, input_datacenter, public_address );
     char unity_data[1024];
     memset( unity_data, 0, sizeof(unity_data) );
+
+    next_printf( NEXT_LOG_LEVEL_SPAM, "server autodetect url is '%s'", url );
+
     if ( !next_http_request( url, "", 10, unity_data, sizeof(unity_data) ) )
     {
         next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: could not talk to autodetect service" );
