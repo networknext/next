@@ -48,6 +48,11 @@ blocks:
             - artifact pull workflow api.tar.gz
             - gsutil cp api.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/api.tar.gz
 
+        - name: "Autodetect"
+          commands:
+            - artifact pull workflow autodetect.tar.gz
+            - gsutil cp autodetect.tar.gz ${ARTIFACT_BUCKET}/${SEMAPHORE_GIT_TAG_NAME}/autodetect.tar.gz
+
         - name: "Session Cruncher"
           commands:
             - artifact pull workflow session_cruncher.tar.gz
