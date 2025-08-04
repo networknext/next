@@ -9,12 +9,12 @@
 #include "next.h"
 #include "next_constants.h"
 
-#define NEXT_PROD_AUTODETECT_URL "https://autodetect.virtualgo.net"
+#define NEXT_PROD_AUTODETECT_URL "autodetect.virtualgo.net"
 #define NEXT_PROD_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
 #define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "3UISqg8chLDHu4BKFc+3lr1elIha0IMI2c8vKpwzpbA="
 #define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
 
-#define NEXT_DEV_AUTODETECT_URL "https://autodetect-dev.virtualgo.net"
+#define NEXT_DEV_AUTODETECT_URL "autodetect-dev.virtualgo.net"
 #define NEXT_DEV_SERVER_BACKEND_HOSTNAME "server-dev.virtualgo.net"
 #define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY "0dvRVqU+krtetlEosEdPN+IxVsNqi7/+Hi6gVjSwSl0="
 #define NEXT_DEV_RELAY_BACKEND_PUBLIC_KEY "Z+9puZkCkV03nm4yO49ySF+H181jAlWVy7JPGMlk10I="
