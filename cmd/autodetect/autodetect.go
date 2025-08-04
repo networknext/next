@@ -20,6 +20,8 @@ var cache map[string]string
 
 var patterns []string
 
+var re *regexp.Regexp
+
 func main() {
 
 	service := common.CreateService("autodetect")
@@ -30,6 +32,8 @@ func main() {
 
 	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore")
 	patterns = strings.Split(patternString, "|")
+
+	re = regexp.MustCompile(`^unity\.([a-z]+)[\.]?(.*)?$`)
 
 	service.StartWebServer()
 
@@ -44,9 +48,21 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	serverAddress := vars["server_address"]
 
+	// extract location from the input datacenter, eg. "unity.saopaulo.1" -> "saopaulo"
+
+	matches := re.FindStringSubmatch(inputDatacenter)
+	if len(matches) < 2 {
+		core.Error("invalid input datacenter: '%s'", inputDatacenter)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	location := matches[1]
+
 	// see if we have the result in cache already
 
-	key := inputDatacenter + ":" + serverAddress
+	key := "unity." + location + ":" + serverAddress
+
 	mutex.Lock()
 	value, found := cache[key]
 	mutex.Unlock()
@@ -58,16 +74,6 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// not in cache, run whois autodetect logic then add result to cache
-
-	re := regexp.MustCompile(`^unity\.([a-z]+)[\.]?(.*)?$`)
-	matches := re.FindStringSubmatch(inputDatacenter)
-	if len(matches) < 2 {
-		core.Error("invalid input datacenter: '%s'", inputDatacenter)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	location := matches[1]
 
 	cmd := exec.Command("whois", serverAddress)
 	output, err := cmd.Output()
@@ -97,7 +103,9 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	value = fmt.Sprintf("%s.%s", seller, location)
 
+	mutex.Lock()
 	cache[key] = value
+	mutex.Unlock()
 
 	core.Log("%s -> %s", key, value)
 
