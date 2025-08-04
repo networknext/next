@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
-	"sync"
-	"strings"
 	"regexp"
-	
+	"strings"
+	"sync"
+
 	"github.com/gorilla/mux"
-	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/envvar"
 )
 
@@ -69,8 +69,8 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	location := matches[1]
 
-	cmd := exec.Command("whois", serverAddress) 
-	output, err := cmd.Output() 
+	cmd := exec.Command("whois", serverAddress)
+	output, err := cmd.Output()
 	if err != nil {
 		core.Error("error running whois command: %v", err)
 		w.WriteHeader(http.StatusBadRequest)

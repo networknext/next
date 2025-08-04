@@ -9,7 +9,7 @@
 #include "UObject/ObjectMacros.h"
 #include "IpNetDriver.h"
 #include "NetworkNextNetDriver.generated.h"
-													
+                                                    
 class FNetworkNotify;
 
 UCLASS(transient, config = Engine)
@@ -38,5 +38,5 @@ private:
     bool bIsClient;
     bool bIsServer;
 
-	friend class UNetworkNextBlueprint;
+    friend class UNetworkNextBlueprint;
 };
