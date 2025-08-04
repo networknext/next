@@ -1166,6 +1166,8 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("sdk/include/next_config.h\n")
 	{
+		// todo: we should update the prod/dev backend urls here too*
+
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["server_backend_public_key"]))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_PROD_RELAY_BACKEND_PUBLIC_KEY \"%s\"", keypairs["prod"]["relay_backend_public_key"]))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_PUBLIC_KEY \"%s\"", keypairs["dev"]["server_backend_public_key"]))
@@ -1448,9 +1450,11 @@ func config(env Environment, regexes []string) {
 					replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
+					replace(envFile, "^\\s*NEXT_AUTODETECT_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_AUTODETECT_HOSTNAME=\"autodetect-%s.%s\"", envs[i], config.CloudflareDomain))
 				}
 			} else {
 				replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api.%s\"", config.CloudflareDomain))
+				replace(envFile, "^\\s*NEXT_AUTODETECT_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_AUTODETECT_HOSTNAME=\"autodetect.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
