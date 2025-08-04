@@ -93,7 +93,7 @@ resource "google_compute_managed_ssl_certificate" "api-dev" {
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "autodetect" {
+resource "google_compute_managed_ssl_certificate" "autodetect-dev" {
   name = "autodetect"
   managed {
     domains = ["autodetect-dev.${var.cloudflare_domain}"]
