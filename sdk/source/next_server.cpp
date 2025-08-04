@@ -3344,7 +3344,7 @@ static void next_server_internal_autodetect_thread_function( void * context )
          )
        )
     {
-        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect cloud datacenter" );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 
         autodetect_result = next_autodetect_datacenter( autodetect_input, autodetect_address, autodetect_output, sizeof(autodetect_output) );
         
@@ -3406,7 +3406,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
         else
         {
             // but don't wait forever...
-            next_printf( NEXT_LOG_LEVEL_INFO, "autodetect timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
+            next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter timed out. sticking with '%s' [%" PRIx64 "]", server->datacenter_name, server->datacenter_id );
         }
     }
     

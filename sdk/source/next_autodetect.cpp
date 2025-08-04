@@ -32,11 +32,11 @@ static bool next_default_http_request_function( const char * url, const char * h
 	char command_line[1024];
 	if ( header[0] != '\0' )
 	{
-		snprintf( command_line, sizeof(command_line), "curl -s \"%s\" -H \"%s\" --max-time 10 -s 2>/dev/null", url, header );
+		snprintf( command_line, sizeof(command_line), "curl -s \"%s\" -H \"%s\" --max-time 5 -s 2>/dev/null", url, header );
 	}
 	else
 	{
-		snprintf( command_line, sizeof(command_line), "curl -s \"%s\" --max-time 10 -s 2>/dev/null", url );
+		snprintf( command_line, sizeof(command_line), "curl -s \"%s\" --max-time 5 -s 2>/dev/null", url );
 	}
 
 	next_printf( NEXT_LOG_LEVEL_SPAM, "command line: '%s'", command_line );
