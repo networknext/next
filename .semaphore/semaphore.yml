@@ -33,7 +33,6 @@ blocks:
             - artifact push workflow config/google.txt --force
             - artifact push workflow config/amazon.txt --force
             - artifact push workflow config/akamai.txt --force
-            - artifact push workflow config/unity.txt --force
 
   - name: "Sodium"
     dependencies: []

@@ -279,7 +279,7 @@ bool next_autodetect_unity( const char * input_datacenter, const char * public_a
 	}
 
 	char url[1024];
-	snprintf( url, sizeof(url), "%s/%s/%s", NEXT_AUTODETECT_HOSTNAME, input_datacenter, public_address );
+	snprintf( url, sizeof(url), "%s/%s/%s", NEXT_AUTODETECT_URL, input_datacenter, public_address );
 	char unity_data[1024];
 	memset( unity_data, 0, sizeof(unity_data) );
 	if ( !next_http_request( url, "", 10, unity_data, sizeof(unity_data) ) )

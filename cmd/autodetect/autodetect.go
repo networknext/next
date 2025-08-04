@@ -1,18 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os/exec"
+	"sync"
+	"strings"
+	"regexp"
 	
+	"github.com/gorilla/mux"
+	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/envvar"
 )
 
-var magicUpdateSeconds int
+var mutex sync.Mutex
+
+var cache map[string]string
+
+var patterns []string
 
 func main() {
 
 	service := common.CreateService("autodetect")
 
-	service.Router.HandleFunc("/", autodetectHandler).Methods("GET")
+	service.Router.HandleFunc("/{input_datacenter}/{server_address}", autodetectHandler).Methods("GET")
+
+	cache = make(map[string]string)
+
+	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore|")
+	patterns = strings.Split(patternString, "|")
 
 	service.StartWebServer()
 
@@ -21,11 +38,68 @@ func main() {
 
 func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
-	// todo: grab mutex, look for cache
+	vars := mux.Vars(r)
 
-	// todo: run whois
+	inputDatacenter := vars["input_datacenter"]
 
-	// todo: update cache
+	serverAddress := vars["server_address"]
 
-	w.Write([]byte("latitude.saopaulo"))
+	// see if we have the result in cache already
+
+	key := inputDatacenter + ":" + serverAddress
+	mutex.Lock()
+	value, found := cache[key]
+	mutex.Unlock()
+
+	if found {
+		core.Log("%s -> %s (cached)", key, value)
+		w.Write([]byte(value))
+		return
+	}
+
+	// not in cache, run whois autodetect logic then add result to cache
+
+	re := regexp.MustCompile(`^unity\.([a-z]+)[\.]?(.*)?$`)
+	matches := re.FindStringSubmatch(inputDatacenter)
+	if len(matches) < 2 {
+		core.Error("invalid input datacenter: '%s'", inputDatacenter)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	location := matches[1]
+
+	cmd := exec.Command("whois", serverAddress) 
+	output, err := cmd.Output() 
+	if err != nil {
+		core.Error("error running whois command: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	outputString := string(output)
+
+	seller := ""
+	for i := range patterns {
+		values := strings.Split(patterns[i], ",")
+		if len(values) == 2 {
+			if strings.Contains(outputString, values[0]) {
+				seller = values[1]
+			}
+		}
+	}
+
+	if seller == "" {
+		core.Error("could not find any seller for: '%s'", key)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	value = fmt.Sprintf("%s.%s", seller, location)
+
+	cache[key] = value
+
+	core.Log("%s -> %s", key, value)
+
+	w.Write([]byte(value))
 }
