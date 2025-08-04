@@ -775,6 +775,8 @@ module "autodetect" {
     ENV=prod
     AUTODETECT_PATTERNS=maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore
     EOF
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
     systemctl start app.service
   EOF1
 
