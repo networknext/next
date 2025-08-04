@@ -28,7 +28,7 @@ func main() {
 
 	cache = make(map[string]string)
 
-	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore|")
+	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore")
 	patterns = strings.Split(patternString, "|")
 
 	service.StartWebServer()
