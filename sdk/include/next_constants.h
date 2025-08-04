@@ -9,9 +9,9 @@
 #include "next.h"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
-#define NEXT_SERVER_INIT_TIMEOUT                                       15
-#define NEXT_SERVER_AUTODETECT_TIMEOUT                                 15
-#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                           15
+#define NEXT_SERVER_INIT_TIMEOUT                                      9.0
+#define NEXT_SERVER_AUTODETECT_TIMEOUT                                9.0
+#define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
 #define NEXT_ADDRESS_BYTES_IPV4                                         6
 #define NEXT_ADDRESS_BYTES                                             19
 #define NEXT_ADDRESS_BUFFER_SAFETY                                     32
