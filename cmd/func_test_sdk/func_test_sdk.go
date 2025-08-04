@@ -2504,7 +2504,7 @@ func test_server_ready_autodetect_cloud() {
 	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in amazon cloud")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
-	server_check(server_stdout, backend_stdout, serverInitSuccessful)
+	server_check(server_stdout, backend_stdout, serverInitTimedOut)
 	server_check(server_stdout, backend_stdout, serverReady)
 	server_check(server_stdout, backend_stdout, serverDatacenter)
 	server_check(server_stdout, backend_stdout, serverAutodetecting)
