@@ -2496,7 +2496,7 @@ func test_server_ready_autodetect_cloud() {
 	server_cmd.Wait()
 	backend_cmd.Wait()
 
-	serverInitSuccessful := strings.Contains(server_stdout.String(), "info: welcome to network next :)")
+	serverInitTimedOut := strings.Contains(server_stdout.String(), "info: server init timed out")
 	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
 	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
 	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
