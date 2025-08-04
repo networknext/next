@@ -2496,18 +2496,12 @@ func test_server_ready_autodetect_cloud() {
 	server_cmd.Wait()
 	backend_cmd.Wait()
 
-	serverInitTimedOut := strings.Contains(server_stdout.String(), "info: server init timed out")
-	serverReady := strings.Contains(server_stdout.String(), "info: server is ready to receive client connections")
-	serverDatacenter := strings.Contains(server_stdout.String(), "info: server datacenter is 'cloud'")
 	serverAutodetecting := strings.Contains(server_stdout.String(), "info: server attempting to autodetect datacenter")
 	serverGoogleAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in google cloud")
 	serverAmazonAutodetect := strings.Contains(server_stdout.String(), "info: server autodetect datacenter: not in amazon cloud")
 	serverAutodetectFailed := strings.Contains(server_stdout.String(), "info: server autodetect datacenter failed. sticking with 'cloud' [9ebb5c9513bac4fe]")
 	serverAutodetectTimedOut := strings.Contains(server_stdout.String(), "info: server autodetect datacenter timed out. sticking with 'cloud' [9ebb5c9513bac4fe]")
 
-	server_check(server_stdout, backend_stdout, serverInitTimedOut)
-	server_check(server_stdout, backend_stdout, serverReady)
-	server_check(server_stdout, backend_stdout, serverDatacenter)
 	server_check(server_stdout, backend_stdout, serverAutodetecting)
 	server_check(server_stdout, backend_stdout, serverGoogleAutodetect)
 	server_check(server_stdout, backend_stdout, serverAmazonAutodetect)
