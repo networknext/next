@@ -83,7 +83,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outputString := string(output)
+	outputString := string(output).ToLower()
 
 	seller := ""
 	for i := range patterns {
@@ -96,7 +96,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if seller == "" {
-		core.Error("could not find any seller for: '%s'", key)
+		core.Error("could not find any seller for: '%s':", key)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
