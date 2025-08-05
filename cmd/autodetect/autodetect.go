@@ -75,7 +75,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// not in cache, run whois autodetect logic then add result to cache
 
-	cmd := exec.Command("whois", serverAddress)
+	cmd := exec.Command("whois -I", serverAddress)
 	output, err := cmd.Output()
 	if err != nil {
 		core.Error("error running whois command: %v", err)
