@@ -83,7 +83,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outputString := string(output).ToLower()
+	outputString := strings.ToLower(string(output))
 
 	seller := ""
 	for i := range patterns {
