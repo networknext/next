@@ -111,6 +111,13 @@ resource "google_compute_managed_ssl_certificate" "autodetect" {
   }
 }
 
+resource "google_compute_managed_ssl_certificate" "relay" {
+  name = "relay"
+  managed {
+    domains = ["relay.${var.cloudflare_domain}"]
+  }
+}
+
 resource "google_compute_managed_ssl_certificate" "relay_gateway" {
   name = "relay-gateway"
   managed {
