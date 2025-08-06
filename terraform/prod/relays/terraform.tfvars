@@ -6,7 +6,7 @@ vpn_address                 = "45.79.157.168"
 ssh_public_key_file         = "~/secrets/next_ssh.pub"
 ssh_private_key_file        = "~/secrets/next_ssh"
 relay_version               = "relay-release"
-relay_artifacts_bucket      = "next_network_next_relay_artifacts"
+relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
 relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
 relay_backend_url           = "relay.virtualgo.net"
 
@@ -16,9 +16,6 @@ raspberry_datacenters = [
 	"google.saopaulo.1",
 	"google.saopaulo.2",
 	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
 ]
 
 test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
@@ -27,9 +24,17 @@ test_datacenters = [
 	"google.saopaulo.1",
 	"google.saopaulo.2",
 	"google.saopaulo.3",
-	"unity.saopaulo.1",
-	"unity.saopaulo.2",
-	"unity.saopaulo.3",
+]
+
+rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
+
+rematch_datacenters = [
+	"google.saopaulo.1",
+	"google.saopaulo.2",
+	"google.saopaulo.3",
+	"i3d.saopaulo",
+	"latitude.saopaulo.1",
+	"gcore.saopaulo",
 ]
 
 sellers = {
@@ -49,4 +54,5 @@ sellers = {
 	"Latitude" = "latitude"
 	"Equinix" = "equinix"
 	"Unity" = "unity"
+	"Azure" = "azure"
 }

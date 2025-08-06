@@ -72,7 +72,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -101,6 +101,13 @@ resource "google_compute_managed_ssl_certificate" "api" {
   name = "api"
   managed {
     domains = ["api.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "autodetect" {
+  name = "autodetect"
+  managed {
+    domains = ["autodetect.${var.cloudflare_domain}"]
   }
 }
 
@@ -272,6 +279,14 @@ resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api"
   value   = module.api.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "autodetect_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "autodetect"
+  value   = module.autodetect.address
   type    = "A"
   proxied = false
 }
@@ -542,7 +557,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-2"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -593,7 +608,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c3-highcpu-4"
+  machine_type             = "n1-highcpu-2"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -654,7 +669,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-4"
+  machine_type               = "n1-highcpu-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -743,6 +758,50 @@ output "api_address" {
   value       = module.api.address
 }
 
+# ----------------------------------------------------------------------------------------
+
+module "autodetect" {
+
+  source = "../../modules/external_http_service_autoscale"
+
+  service_name = "autodetect"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a autodetect.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=prod
+    AUTODETECT_PATTERNS=maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore
+    EOF
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
+    systemctl start app.service
+  EOF1
+
+  tag                      = var.tag
+  extra                    = var.extra
+  machine_type             = "n1-highcpu-2"
+  project                  = local.google_project_id
+  region                   = var.google_region
+  zones                    = var.google_zones
+  default_network          = google_compute_network.production.id
+  default_subnetwork       = google_compute_subnetwork.production.id
+  service_account          = local.google_service_account
+  tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
+  min_size                 = var.disable_backend ? 0 : 1
+  max_size                 = var.disable_backend ? 0 : 16
+  target_cpu               = 60
+  domain                   = "autodetect.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.autodetect.id
+}
+
+output "autodetect_address" {
+  description = "The IP address of the autodetect load balancer"
+  value       = module.autodetect.address
+}
+
 // ---------------------------------------------------------------------------------------
 
 module "session_cruncher" {
@@ -758,7 +817,7 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -771,7 +830,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-4"
+  machine_type               = "n1-highmem-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -799,14 +858,14 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     EOF
     sudo systemctl start app.service
   EOF1
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highmem-4"
+  machine_type               = "n1-highmem-2"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -834,7 +893,7 @@ module "server_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    NUM_BUCKETS=1000
+    NUM_BUCKETS=100
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=8
@@ -878,7 +937,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = var.disable_backend ? 0 : 1
   max_size                   = var.disable_backend ? 0 : 64
-  target_cpu                 = 30
+  target_cpu                 = 60
   tier_1                     = false
 
   depends_on = [
@@ -916,7 +975,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-highcpu-2"
+  machine_type       = "n1-standard-1"
   project            = local.google_project_id
   region             = var.google_region
   zones              = var.google_zones
@@ -952,7 +1011,7 @@ module "portal" {
   target_size              = var.disable_backend ? 0 : 1
 }
 
-output "yoportal_address" {
+output "portal_address" {
   description = "The IP address of the portal load balancer"
   value       = module.portal.address
 }
@@ -1105,7 +1164,7 @@ resource "google_compute_address" "test_server_address" {
 
 resource "google_compute_instance" "test_server" {
 
-  name         = "test-s1erver-${var.tag}"
+  name         = "test-server-${var.tag}"
   machine_type = "n1-standard-2"
   zone         = var.test_server_zone
   tags         = ["allow-ssh", "allow-udp-all"]

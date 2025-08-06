@@ -1448,9 +1448,11 @@ func config(env Environment, regexes []string) {
 					replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server-%s.%s\"", envs[i], config.CloudflareDomain))
+					replace(envFile, "^\\s*NEXT_AUTODETECT_URL\\s*=.*$", fmt.Sprintf("NEXT_AUTODETECT_URL=\"https://autodetect-%s.%s\"", envs[i], config.CloudflareDomain))
 				}
 			} else {
 				replace(envFile, "^\\s*API_URL\\s*=.*$", fmt.Sprintf("API_URL=\"https://api.%s\"", config.CloudflareDomain))
+				replace(envFile, "^\\s*NEXT_AUTODETECT_URL\\s*=.*$", fmt.Sprintf("NEXT_AUTODETECT_URL=\"https://autodetect.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*NEXT_SERVER_BACKEND_HOSTNAME\\s*=.*$", fmt.Sprintf("NEXT_SERVER_BACKEND_HOSTNAME=\"server.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*RELAY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RELAY_BACKEND_URL=\"https://relay.%s\"", config.CloudflareDomain))
 				replace(envFile, "^\\s*RASPBERRY_BACKEND_URL\\s*=.*$", fmt.Sprintf("RASPBERRY_BACKEND_URL=\"https://raspberry.%s\"", config.CloudflareDomain))
@@ -1548,6 +1550,8 @@ func config(env Environment, regexes []string) {
 
 	fmt.Printf("sdk/include/next_config.h\n")
 	{
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_PROD_AUTODETECT_URL \"https://autodetect.%s\"", config.CloudflareDomain))
+		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_AUTODETECT_URL.*$", fmt.Sprintf("#define NEXT_DEV_AUTODETECT_URL \"https://autodetect-dev.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_PROD_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_PROD_SERVER_BACKEND_HOSTNAME \"server.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_DEV_SERVER_BACKEND_HOSTNAME.*$", fmt.Sprintf("#define NEXT_DEV_SERVER_BACKEND_HOSTNAME \"server-dev.%s\"", config.CloudflareDomain))
 		replace("sdk/include/next_config.h", "^\\s*\\#define NEXT_CONFIG_BUCKET_NAME\\s+\"[A-Za-z_]+?_network_next_sdk_config\"\\s*$", fmt.Sprintf("#define NEXT_CONFIG_BUCKET_NAME \"%s_network_next_sdk_config\"", config.CompanyName))

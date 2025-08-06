@@ -68,7 +68,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "dev"
   }
 }
@@ -90,6 +90,13 @@ resource "google_compute_managed_ssl_certificate" "api-dev" {
   name = "api-dev"
   managed {
     domains = ["api-dev.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "autodetect-dev" {
+  name = "autodetect"
+  managed {
+    domains = ["autodetect-dev.${var.cloudflare_domain}"]
   }
 }
 
@@ -156,6 +163,14 @@ resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-dev"
   value   = module.api.address
+  type    = "A"
+  proxied = false
+}
+
+resource "cloudflare_record" "autodetect_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "autodetect-dev"
+  value   = module.autodetect.address
   type    = "A"
   proxied = false
 }
@@ -739,6 +754,56 @@ module "api" {
 output "api_address" {
   description = "The IP address of the api load balancer"
   value       = module.api.address
+}
+
+# ----------------------------------------------------------------------------------------
+
+module "autodetect" {
+
+  source = "../../modules/external_http_service"
+
+  service_name = "autodetect"
+
+  startup_script = <<-EOF1
+    #!/bin/bash
+    gsutil cp ${var.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
+    chmod +x bootstrap.sh
+    ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a autodetect.tar.gz
+    cat <<EOF > /app/app.env
+    ENV=dev
+    AUTODETECT_PATTERNS=maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore
+    EOF
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
+    systemctl start app.service
+  EOF1
+
+  tag                        = var.tag
+  extra                      = var.extra
+  machine_type               = "g1-small"
+  project                    = local.google_project_id
+  region                     = var.google_region
+  zones                      = var.google_zones
+  default_network            = google_compute_network.development.id
+  default_subnetwork         = google_compute_subnetwork.development.id
+  service_account            = local.google_service_account
+  tags                       = ["allow-ssh", "allow-http", "allow-https"]
+  domain                     = "autodetect-dev.${var.cloudflare_domain}"
+  certificate                = google_compute_managed_ssl_certificate.autodetect-dev.id
+  target_size                = var.disable_backend ? 0 : 1
+
+  depends_on = [
+    module.server_cruncher,
+    module.session_cruncher,
+    module.redis_time_series,
+    google_redis_instance.redis_portal,
+    google_sql_database_instance.postgres,
+  ]
+}
+
+output "autodetect_address" {
+  description = "The IP address of the autodetect load balancer"
+  value       = module.autodetect.address
 }
 
 // ---------------------------------------------------------------------------------------

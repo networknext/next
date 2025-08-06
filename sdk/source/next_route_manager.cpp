@@ -529,23 +529,17 @@ bool next_route_manager_send_route_request( next_route_manager_t * route_manager
     next_assert( packet_data );
     next_assert( packet_bytes );
 
-    if ( route_manager->fallback_to_direct )
-    {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. fallback to direct" );
-        return false;
-    }
-
-    if ( !route_manager->route_data.pending_route )
-    {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. pending route" );
-        return false;
-    }
-
     double current_time = next_platform_time();
 
     if ( route_manager->route_data.pending_route_last_send_time + NEXT_ROUTE_REQUEST_SEND_TIME > current_time )
+        return false;
+
+    if ( !route_manager->route_data.pending_route )
+        return false;
+
+    if ( route_manager->fallback_to_direct )
     {
-        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. not yet" );
+        next_printf( NEXT_LOG_LEVEL_SPAM, "client not sending route request. fallback to direct" );
         return false;
     }
 

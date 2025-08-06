@@ -217,6 +217,8 @@ func main() {
 		redis_time_series()
 	} else if command == "load-relay-manager" {
 		load_relay_manager()
+	} else if command == "autodetect" {
+		autodetect()
 	} else {
 		fmt.Printf("\nunknown command\n\n")
 	}
@@ -326,7 +328,7 @@ func happy_path_no_wait() {
 }
 
 func server() {
-	bash("cd dist && ./server")
+	bash("cd dist && NEXT_DATACENTER=unity.saopaulo.1 NEXT_SERVER_ADDRESS=189.1.172.30 ./server")
 }
 
 func RunCommand(command string, args []string) (bool, string) {
@@ -684,4 +686,8 @@ func redis_time_series() {
 
 func load_relay_manager() {
 	bash("go run tools/load_relay_manager/load_relay_manager.go")
+}
+
+func autodetect() {
+	bash("cd dist && HTTP_PORT=60000 ./autodetect")
 }

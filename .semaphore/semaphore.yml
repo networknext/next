@@ -143,6 +143,11 @@ blocks:
             - make dist/api.tar.gz
             - artifact push workflow dist/api.tar.gz --force
 
+        - name: "Autodetect"
+          commands:
+            - make dist/autodetect.tar.gz
+            - artifact push workflow dist/autodetect.tar.gz --force
+
         - name: "Session Cruncher"
           commands:
             - make dist/session_cruncher.tar.gz
