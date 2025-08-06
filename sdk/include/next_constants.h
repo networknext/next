@@ -9,6 +9,7 @@
 #include "next.h"
 
 #define NEXT_SERVER_BACKEND_PORT                                  "40000"
+#define NEXT_SERVER_READY_TIMEOUT                                    20.0
 #define NEXT_SERVER_INIT_TIMEOUT                                     15.0
 #define NEXT_SERVER_AUTODETECT_TIMEOUT                               10.0
 #define NEXT_SERVER_RESOLVE_HOSTNAME_TIMEOUT                         10.0
@@ -132,8 +133,6 @@
 #define NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE                           300
 #define NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION                      300
 #define NEXT_CLIENT_RELAYS_REQUEST_SEND_RATE                          1.0
-
-#define NEXT_SERVER_READY_TIMEOUT                                      15
 
 #define NEXT_CLIENT_RELAY_UPDATE_SEND_RATE                            0.1
 #define NEXT_CLIENT_RELAY_UPDATE_TIMEOUT                                5
