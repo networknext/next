@@ -239,6 +239,9 @@ func (relayManager *RelayManager) GetCosts(currentTime int64, relayIds []uint64,
 					if rtt < 255 && jitter <= maxJitter && packetLoss <= maxPacketLoss {
 						index := TriMatrixIndex(i, j)
 						costs[index] = uint8(math.Ceil(float64(rtt)))
+						if costs[index] == 0 {
+							costs[index] = 255
+						}
 					}
 				}
 			}
