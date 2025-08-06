@@ -75,7 +75,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// not in cache, run whois autodetect logic then add result to cache
 
-	cmd := exec.Command("whois", serverAddress)
+	cmd := exec.Command("whois", "-I", serverAddress)
 	output, err := cmd.Output()
 	if err != nil {
 		core.Error("error running whois command: %v", err)
@@ -83,7 +83,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	outputString := string(output)
+	outputString := strings.ToLower(string(output))
 
 	seller := ""
 	for i := range patterns {
@@ -96,7 +96,7 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if seller == "" {
-		core.Error("could not find any seller for: '%s'", key)
+		core.Error("could not find any seller for: '%s':", key)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
