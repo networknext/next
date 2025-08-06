@@ -111,10 +111,17 @@ resource "google_compute_managed_ssl_certificate" "autodetect" {
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "relay" {
-  name = "relay"
+resource "google_compute_managed_ssl_certificate" "relay_gateway" {
+  name = "relay-gateway"
   managed {
-    domains = ["relay.${var.cloudflare_domain}"]
+    domains = ["relay-gateway.${var.cloudflare_domain}"]
+  }
+}
+
+resource "google_compute_managed_ssl_certificate" "relay_backend" {
+  name = "relay-backend"
+  managed {
+    domains = ["relay-backend.${var.cloudflare_domain}"]
   }
 }
 
@@ -299,10 +306,18 @@ resource "cloudflare_record" "server_backend_domain" {
   proxied = false
 }
 
+resource "cloudflare_record" "relay_gateway_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "relay-gateway"
+  value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
+}
+
 resource "cloudflare_record" "relay_backend_domain" {
   zone_id = var.cloudflare_zone_id
-  name    = "relay"
-  value   = module.relay_gateway.address
+  name    = "relay-backend"
+  value   = module.relay_backend.address
   type    = "A"
   proxied = false
 }
@@ -619,8 +634,8 @@ module "relay_gateway" {
   min_size                 = var.disable_backend ? 0 : 1
   max_size                 = var.disable_backend ? 0 : 64
   target_cpu               = 60
-  domain                   = "relay.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.relay.id
+  domain                   = "relay-gateway.${var.cloudflare_domain}"
+  certificate              = google_compute_managed_ssl_certificate.relay_gateway.id
   
   depends_on = [
     google_redis_instance.redis
@@ -636,7 +651,7 @@ output "relay_gateway_address" {
 
 module "relay_backend" {
 
-  source = "../../modules/internal_http_service"
+  source = "../../modules/external_http_service"
 
   service_name = "relay-backend"
 
@@ -675,13 +690,12 @@ module "relay_backend" {
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
-  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
-  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
+  domain                     = "relay-backend.${var.cloudflare_domain}"
+  certificate                = google_compute_managed_ssl_certificate.relay_backend.id
   initial_delay              = 420
   target_size                = var.disable_backend ? 0 : 1
-  tier_1                     = false
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
