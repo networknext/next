@@ -32,6 +32,10 @@ variable "initial_delay" {
   type = number
   default = 60
 }
+variable "connection_drain" {
+  type = number
+  default = 60
+}
 variable "tier_1" {
   type = bool
   default = false
@@ -91,7 +95,7 @@ resource "google_compute_backend_service" "service" {
     balancing_mode  = "UTILIZATION"
     capacity_scaler = 1.0
   }
-  connection_draining_timeout_sec = 360
+  connection_draining_timeout_sec = var.connection_drain
 }
 
 resource "google_compute_instance_template" "service" {
