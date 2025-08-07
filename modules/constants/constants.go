@@ -32,7 +32,6 @@ const (
 	CostBias          = 3
 	MaxIndirects      = 8
 	MaxRoutesPerEntry = 16
-	CostThreshold     = 1
 
 	MaxRouteCost = 255
 
