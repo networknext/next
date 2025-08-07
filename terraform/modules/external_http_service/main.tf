@@ -169,6 +169,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     max_surge_fixed                = 10
     max_unavailable_fixed          = 0
     replacement_method             = "SUBSTITUTE"
+    min_ready_sec                  = 360
   }
 }
 
