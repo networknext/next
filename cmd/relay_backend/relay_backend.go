@@ -961,13 +961,10 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 
 func sendTrafficToMe(service *common.Service) func() bool {
 	return func() bool {
-		return true
-		/*
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
 		return hasRouteMatrix && time.Now().Unix() > startTime+int64(initialDelay)
-		*/
 	}
 }
 
