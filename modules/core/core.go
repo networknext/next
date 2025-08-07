@@ -636,7 +636,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 
 	routes := make([]RouteEntry, entryCount)
 	for i := range routes {
-		routes[i].DirectCost = 255
+		routes[i].DirectCost = 256   // todo: set this value as a test, so we know when we don't process routes for a pair
 	}
 
 	// todo: don't do segments as a test
