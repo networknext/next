@@ -703,7 +703,7 @@ module "relay_backend" {
   domain                     = "relay-backend.${var.cloudflare_domain}"
   certificate                = google_compute_managed_ssl_certificate.relay_backend.id
   initial_delay              = 420
-  target_size                = var.disable_backend ? 0 : 1
+  target_size                = var.disable_backend ? 0 : 2
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
