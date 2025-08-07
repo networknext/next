@@ -6417,6 +6417,7 @@ int main()
         while ( seconds <= 60 && main_update( &main ) == RELAY_OK )
         {
             printf( "Shutting down in %d seconds\n", 60 - seconds );
+            fflush( stdout );
             relay_platform_sleep( 1.0 );
             seconds++;
         }
@@ -6424,6 +6425,7 @@ int main()
         if ( seconds < 60 )
         {
             printf( "Sleeping for extra 30 seconds for safety...\n" );
+            fflush( stdout );
             relay_platform_sleep( 30.0 );
         }
 
