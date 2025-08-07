@@ -86,7 +86,6 @@ mkdir -p ~/relay_module
 cd ~/relay_module
 wget https://storage.googleapis.com/sloclap_network_next_relay_artifacts/relay_module.tar.gz
 tar -zxf relay_module.tar.gz
-make clean
 make
 sudo mkdir -p /lib/modules/`uname -r`/kernel/net/relay_module
 sudo mv relay_module.ko /lib/modules/`uname -r`/kernel/net/relay_module
