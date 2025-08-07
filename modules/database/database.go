@@ -706,7 +706,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 	<html lang="en">
 	<head>
 	  <meta charset="utf-8">
-	  <meta http-equiv="refresh" content="1">
 	  <title>Database</title>
 	  <style>
 		table, th, td {
