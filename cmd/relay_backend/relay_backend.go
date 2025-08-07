@@ -961,7 +961,7 @@ func relayCountersHandler(service *common.Service, relayManager *common.RelayMan
 
 func sendTrafficToMe(service *common.Service) func() bool {
 	return func() bool {
-		true
+		return true
 		/*
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
