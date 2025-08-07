@@ -564,7 +564,7 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
 #else // #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, char * output, size_t output_size ) )
+void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, int timeout, char * output, size_t output_size ) )
 {
     (void) function;
 }
