@@ -60,7 +60,7 @@ var routeMatrixData []byte
 var delayMutex sync.RWMutex
 var delayCompleted bool
 
-var startTime time.Time
+var startTime int64
 
 var counterNames [constants.NumRelayCounters]string
 
@@ -133,7 +133,7 @@ func main() {
 
 	relayInserterBatchSize = envvar.GetInt("RELAY_INSERTER_BATCH_SIZE", 1024)
 
-	startTime = time.Now()
+	startTime = time.Now().Unix()
 
 	lastTimeSeriesUpdateTime = make(map[uint64]int64, constants.MaxRelays)
 
@@ -181,8 +181,6 @@ func main() {
 	core.Debug("enable relay to relay ping analytics: %v", enableRelayToRelayPingAnalytics)
 
 	core.Debug("initial delay: %d", initialDelay)
-
-	core.Debug("start time: %s", startTime.String())
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -966,7 +964,7 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
-		return hasRouteMatrix
+		return hasRouteMatrix && time.Now().Unix() > startTime+int64(initialDelay)
 	}
 }
 
@@ -990,7 +988,8 @@ func initialDelayCompleted() bool {
 func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
-			if int(time.Since(startTime).Seconds()) >= initialDelay {
+			currentTime := int64(time.Now().Unix())
+			if currentTime - startTime >= int64(initialDelay) {
 				core.Debug("initial delay completed")
 				delayMutex.Lock()
 				delayCompleted = true
