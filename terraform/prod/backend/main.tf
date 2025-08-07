@@ -702,8 +702,8 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   domain                     = "relay-backend.${var.cloudflare_domain}"
   certificate                = google_compute_managed_ssl_certificate.relay_backend.id
-  initial_delay              = 360
-  connection_drain           = 360
+  initial_delay              = 400
+  connection_drain           = 400
   target_size                = var.disable_backend ? 0 : 2
 
   depends_on = [
