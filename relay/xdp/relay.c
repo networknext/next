@@ -73,8 +73,6 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
-    printf( "*** Includes XDP relay fix ***\n" );
-
     fflush( stdout );
 
     signal( SIGINT,  interrupt_handler );
