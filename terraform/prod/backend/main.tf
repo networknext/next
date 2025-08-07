@@ -639,7 +639,7 @@ module "relay_gateway" {
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = var.disable_backend ? 0 : 2
-  max_size                 = var.disable_backend ? 0 : 2
+  max_size                 = var.disable_backend ? 0 : 4
   target_cpu               = 100
   domain                   = "relay-gateway.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay_gateway.id
