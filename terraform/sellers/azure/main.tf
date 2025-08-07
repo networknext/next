@@ -64,7 +64,7 @@ output "relays" {
         local.seller_code, 
         v.public_address,
         40000,
-        v.private_address,
+        v.internal_address,
         40000,
         "", 
         v.public_address,
