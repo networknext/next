@@ -618,7 +618,7 @@ module "relay_gateway" {
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   target_size              = var.disable_backend ? 0 : 1
   domain                   = "relay.${var.cloudflare_domain}"
-  certificate              = google_compute_managed_ssl_certificate.relay_gateway.id
+  certificate              = google_compute_managed_ssl_certificate.relay.id
   
   depends_on = [
     google_redis_instance.redis
