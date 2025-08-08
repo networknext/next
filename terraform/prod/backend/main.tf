@@ -611,7 +611,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../../modules/internal_http_service"
+  source = "../../modules/external_http_service"
 
   service_name = "relay-gateway"
 
@@ -704,10 +704,10 @@ module "relay_backend" {
   zones                      = var.google_zones
   default_network            = google_compute_network.production.id
   default_subnetwork         = google_compute_subnetwork.production.id
+  load_balancer_subnetwork   = google_compute_subnetwork.internal_http_load_balancer.id
+  load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  domain                     = "relay-backend.${var.cloudflare_domain}"
-  certificate                = google_compute_managed_ssl_certificate.relay_backend.id
   initial_delay              = 500
   connection_drain           = 0
   target_size                = var.disable_backend ? 0 : 2

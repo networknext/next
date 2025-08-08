@@ -33,6 +33,10 @@ variable "initial_delay" {
   type = number
   default = 60
 }
+variable "connection_drain" {
+  type = number
+  default = 60
+}
 variable "tier_1" {
   type = bool
   default = false
@@ -165,6 +169,7 @@ resource "google_compute_health_check" "service_vm" {
 }
 
 resource "google_compute_region_instance_group_manager" "service" {
+  provider = google-beta
   name     = var.service_name
   project  = var.project
   region   = var.region
@@ -190,6 +195,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     max_surge_fixed                = 10
     max_unavailable_fixed          = 0
     replacement_method             = "SUBSTITUTE"
+    min_ready_sec                  = var.initial_delay    
   }
 }
 
