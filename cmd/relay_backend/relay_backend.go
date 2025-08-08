@@ -1012,6 +1012,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					BinFileBytes:       int32(len(relayData.DatabaseBinFile)),
 					BinFileData:        relayData.DatabaseBinFile,
 					CostMatrixSize:     uint32(len(costMatrixDataNew)),
+					CostMatrixData:     costMatrixDataNew,
 					OptimizeTime:       uint32(optimizeDuration.Milliseconds()),
 				}
 
