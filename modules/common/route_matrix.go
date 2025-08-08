@@ -37,7 +37,7 @@ type RouteMatrix struct {
 	CostMatrixSize uint32
 	OptimizeTime   uint32
 
-	CostMatrixData []byte
+	Costs []byte
 }
 
 func (m *RouteMatrix) GetCostMatrix() *CostMatrix {
@@ -50,7 +50,7 @@ func (m *RouteMatrix) GetCostMatrix() *CostMatrix {
 	costMatrix.RelayLongitudes = m.RelayLongitudes
 	costMatrix.RelayDatacenterIds = m.RelayDatacenterIds
 	costMatrix.DestRelays = m.DestRelays
-	costMatrix.Costs = m.CostMatrixData
+	costMatrix.Costs = m.Costs
 	return costMatrix
 }
 
@@ -152,9 +152,9 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 
 	if m.Version >= 3 {
 		if stream.IsReading() {
-			m.CostMatrixData = make([]byte, m.CostMatrixSize)
+			m.Costs = make([]byte, numEntries)
 		}		
-		stream.SerializeBytes(m.CostMatrixData)
+		stream.SerializeBytes(m.Costs)
 	}
 
 	return stream.Error()
@@ -394,6 +394,8 @@ func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 			routeMatrix.RouteEntries[i].RouteHash[j] = core.RouteHash(routeMatrix.RouteEntries[i].RouteRelays[j][:]...)
 		}
 	}
+
+	routeMatrix.Costs = make([]byte, numEntries)
 
 	return routeMatrix
 }

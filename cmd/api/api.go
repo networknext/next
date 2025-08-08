@@ -2706,6 +2706,11 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 	routeMatrix, _ := service.RouteMatrixAndDatabase()
 
+	if routeMatrix == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	
 	costMatrix := routeMatrix.GetCostMatrix()
 
 	w.Header().Set("Content-Type", "text/html")
