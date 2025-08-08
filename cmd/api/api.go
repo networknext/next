@@ -80,7 +80,7 @@ func main() {
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
 	enableDebug := envvar.GetBool("ENABLE_DEBUG", false)
-	relayBackendURL = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30000")
+	relayBackendURL = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30001")
 
 	if privateKey == "" {
 		core.Error("You must specify API_PRIVATE_KEY!")
@@ -103,6 +103,8 @@ func main() {
 	core.Debug("enable debug: %v", enableDebug)
 
 	if enableDebug {
+
+		service.UpdateRouteMatrix(nil, nil)
 
 		service.Router.HandleFunc("/debug/relays", debugRelaysHandler)
 		service.Router.HandleFunc("/debug/cost_matrix", debugCostMatrixHandler)
@@ -2626,16 +2628,155 @@ func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
 	proxy(fmt.Sprintf("%s/relay_counters/%s", relayBackendURL, vars["relay_name"]), w, r)
 }
 
-func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
+func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+	vars := mux.Vars(r)
+	src := vars["src"]
+	dest := vars["dest"]
+	routeMatrixMutex.RLock()
+	data := routeMatrixData
+	routeMatrixMutex.RUnlock()
+	routeMatrix := common.RouteMatrix{}
+	err := routeMatrix.Read(data)
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "no route matrix\n")
+		return
+	}
+	src_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == src {
+			src_index = i
+			break
+		}
+	}
+	dest_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == dest {
+			dest_index = i
+			break
+		}
+	}
+	if src_index == -1 || dest_index == -1 || src_index == dest_index {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Routes</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		*{
+	    font-family:Courier;
+	  }	  
+	  </style>
+	</head>
+	<body>`
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+	fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
+	index := core.TriMatrixIndex(src_index, dest_index)
+	entry := routeMatrix.RouteEntries[index]
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		routeRelays := ""
+		numRouteRelays := int(entry.RouteNumRelays[i])
+		for j := 0; j < numRouteRelays; j++ {
+			routeRelayIndex := entry.RouteRelays[i][j]
+			routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+			routeRelays += routeRelayName
+			if j != numRouteRelays-1 {
+				routeRelays += " - "
+			}
+		}
+		fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
+	}
+	fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
+	fmt.Fprintf(w, "</table>\n")
+	const htmlFooter = `</body></html>`
+	fmt.Fprintf(w, "%s\n", htmlFooter)
+	*/
 }
 
-func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
+func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+	costMatrixMutex.RLock()
+	data := costMatrixData
+	costMatrixMutex.RUnlock()
+	costMatrix := common.CostMatrix{}
+	err := costMatrix.Read(data)
+	if err != nil {
+		w.Header().Set("Content-Type", "text/plain")
+		fmt.Fprintf(w, "no cost matrix: %v\n", err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html")
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Cost Matrix</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		cost{
+     	  color: white;
+  		}
+		*{
+	    font-family:Courier;
+	    }	  
+	  </style>
+	</head>
+	<body>`
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+	fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+	fmt.Fprintf(w, "<tr><td></td>")
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+	}
+	fmt.Fprintf(w, "</tr>\n")
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+				continue
+			}
+			nope := false
+			costString := ""
+			index := core.TriMatrixIndex(i, j)
+			cost := costMatrix.Costs[index]
+			if cost >= 0 && cost < 255 {
+				costString = fmt.Sprintf("%d", cost)
+			} else {
+				nope = true
+			}
+			clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+
+			if nope {
+				fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
+			} else {
+				fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
+			}
+		}
+		fmt.Fprintf(w, "</tr>\n")
+	}
+	fmt.Fprintf(w, "</table>\n")
+	const htmlFooter = `</body></html>`
+	fmt.Fprintf(w, "%s\n", htmlFooter)
+	*/
 }
 
 func debugHealthHandler(w http.ResponseWriter, r *http.Request) {
