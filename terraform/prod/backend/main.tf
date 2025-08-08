@@ -302,7 +302,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay"
-  value   = "34.8.12.76" // module.relay_gateway.address
+  value   = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
@@ -579,7 +579,6 @@ output "magic_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "relay_gateway" {
 
   source = "../../modules/external_http_service"
@@ -630,7 +629,6 @@ output "relay_gateway_address" {
   description = "The IP address of the relay gateway load balancer"
   value       = module.relay_gateway.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
