@@ -313,6 +313,14 @@ resource "cloudflare_record" "server_backend_domain" {
   proxied = false
 }
 
+resource "cloudflare_record" "relay_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "relay"
+  value   = module.relay_gateway.address
+  type    = "A"
+  proxied = false
+}
+
 resource "cloudflare_record" "relay_gateway_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay-gateway"
@@ -603,7 +611,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../../modules/external_http_service_autoscale"
+  source = "../../modules/internal_http_service"
 
   service_name = "relay-gateway"
 
@@ -638,10 +646,8 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = var.disable_backend ? 0 : 2
-  max_size                 = var.disable_backend ? 0 : 4
-  target_cpu               = 100
-  domain                   = "relay-gateway.${var.cloudflare_domain}"
+  target_size              = var.disable_backend ? 0 : 1
+  domain                   = "relay.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay_gateway.id
   
   depends_on = [
@@ -658,7 +664,7 @@ output "relay_gateway_address" {
 
 module "relay_backend" {
 
-  source = "../../modules/external_http_service"
+  source = "../../modules/internal_http_service"
 
   service_name = "relay-backend"
 
