@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	RouteMatrixVersion_Min   = 1
+	RouteMatrixVersion_Min   = 3
 	RouteMatrixVersion_Max   = 3
 	RouteMatrixVersion_Write = 3
 )
@@ -61,6 +61,7 @@ func (m *RouteMatrix) GetMaxSize() int {
 	size += numRelays * (8 + 19 + constants.MaxRelayNameLength + 4 + 4 + 8)
 	size += core.TriMatrixLength(numRelays) * (4 + 4 + 12*constants.MaxRoutesPerEntry + 4*constants.MaxRoutesPerEntry*constants.MaxRouteRelays)
 	size += int(m.BinFileBytes)
+	size += core.TriMatrixLength(numRelays)
 	size -= size % 4
 	return size
 }
@@ -376,7 +377,6 @@ func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 	RandomBytes(routeMatrix.BinFileData)
 
 	routeMatrix.CreatedAt = rand.Uint64()
-	routeMatrix.Version = uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max))
 
 	numEntries := core.TriMatrixLength(numRelays)
 
