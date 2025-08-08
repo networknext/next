@@ -2629,20 +2629,14 @@ func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
-	/*
+
+	routeMatrix, _ := service.RouteMatrixAndDatabase()
+
 	vars := mux.Vars(r)
+
 	src := vars["src"]
 	dest := vars["dest"]
-	routeMatrixMutex.RLock()
-	data := routeMatrixData
-	routeMatrixMutex.RUnlock()
-	routeMatrix := common.RouteMatrix{}
-	err := routeMatrix.Read(data)
-	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(w, "no route matrix\n")
-		return
-	}
+
 	src_index := -1
 	for i := range routeMatrix.RelayNames {
 		if routeMatrix.RelayNames[i] == src {
@@ -2650,6 +2644,7 @@ func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
 	dest_index := -1
 	for i := range routeMatrix.RelayNames {
 		if routeMatrix.RelayNames[i] == dest {
@@ -2657,10 +2652,12 @@ func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+
 	if src_index == -1 || dest_index == -1 || src_index == dest_index {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	w.Header().Set("Content-Type", "text/html")
 	const htmlHeader = `<!DOCTYPE html>
 	<html lang="en">
@@ -2703,22 +2700,16 @@ func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "</table>\n")
 	const htmlFooter = `</body></html>`
 	fmt.Fprintf(w, "%s\n", htmlFooter)
-	*/
 }
 
 func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
-	/*
-	costMatrixMutex.RLock()
-	data := costMatrixData
-	costMatrixMutex.RUnlock()
-	costMatrix := common.CostMatrix{}
-	err := costMatrix.Read(data)
-	if err != nil {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprintf(w, "no cost matrix: %v\n", err)
-		return
-	}
+
+	routeMatrix, _ := service.RouteMatrixAndDatabase()
+
+	costMatrix := routeMatrix.GetCostMatrix()
+
 	w.Header().Set("Content-Type", "text/html")
+
 	const htmlHeader = `<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -2763,7 +2754,7 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				nope = true
 			}
-			clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+			clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/debug/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
 
 			if nope {
 				fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
@@ -2776,7 +2767,6 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "</table>\n")
 	const htmlFooter = `</body></html>`
 	fmt.Fprintf(w, "%s\n", htmlFooter)
-	*/
 }
 
 func debugHealthHandler(w http.ResponseWriter, r *http.Request) {

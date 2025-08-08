@@ -13,8 +13,8 @@ import (
 
 const (
 	RouteMatrixVersion_Min   = 1
-	RouteMatrixVersion_Max   = 2
-	RouteMatrixVersion_Write = 2
+	RouteMatrixVersion_Max   = 3
+	RouteMatrixVersion_Write = 3
 )
 
 type RouteMatrix struct {
@@ -36,6 +36,22 @@ type RouteMatrix struct {
 
 	CostMatrixSize uint32
 	OptimizeTime   uint32
+
+	CostMatrixData []byte
+}
+
+func (m *RouteMatrix) GetCostMatrix() *CostMatrix {
+	costMatrix := &CostMatrix{}
+	costMatrix.Version = CostMatrixVersion_Write
+	costMatrix.RelayIds = m.RelayIds
+	costMatrix.RelayAddresses = m.RelayAddresses
+	costMatrix.RelayNames = m.RelayNames
+	costMatrix.RelayLatitudes = m.RelayLatitudes
+	costMatrix.RelayLongitudes = m.RelayLongitudes
+	costMatrix.RelayDatacenterIds = m.RelayDatacenterIds
+	costMatrix.DestRelays = m.DestRelays
+	costMatrix.Costs = m.CostMatrixData
+	return costMatrix
 }
 
 func (m *RouteMatrix) GetMaxSize() int {
@@ -132,6 +148,13 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	if m.Version >= 2 {
 		stream.SerializeUint32(&m.CostMatrixSize)
 		stream.SerializeUint32(&m.OptimizeTime)
+	}
+
+	if m.Version >= 3 {
+		if stream.IsReading() {
+			m.CostMatrixData = make([]byte, m.CostMatrixSize)
+		}		
+		stream.SerializeBytes(m.CostMatrixData)
 	}
 
 	return stream.Error()
