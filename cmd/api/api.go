@@ -76,6 +76,7 @@ func main() {
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
+	enableDebug := envvar.GetBool("ENABLE_DEBUG", false)
 
 	if privateKey == "" {
 		core.Error("You must specify API_PRIVATE_KEY!")
@@ -95,12 +96,30 @@ func main() {
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
+	core.Debug("enable debug: %v", enableDebug)
 
-	service.Router.HandleFunc("/ping", isAdminAuthorized(pingHandler))
+	if enableDebug {
+
+		relayBackendURL := envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30000")
+
+		service.Router.Handle("/debug/relays", http.RedirectHandler(fmt.Sprintf("%s/relays", relayBackendURL), http.StatusOK))
+
+		/*
+
+		service.Router.HandleFunc("/debug/relays", debugRelaysHandler)
+		service.Router.HandleFunc("/debug/cost_matrix", debugCostMatrixHandler)
+		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
+		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
+		service.Router.HandleFunc("/debug/health", debugHealth)
+		*/
+
+	}
 
 	if enableAdmin {
 
 		controller = admin.CreateController(pgsqlConfig)
+
+		service.Router.HandleFunc("/ping", isAdminAuthorized(pingHandler))
 
 		service.Router.HandleFunc("/admin/database", isAdminAuthorized(adminDatabaseHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/commit", isAdminAuthorized(adminCommitHandler)).Methods("PUT")
@@ -2571,5 +2590,52 @@ func databaseBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+// todo
+/*
+func debugRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugDatabaseHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+
+func debugHealthHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain")
+	// ...
+}
+*/
 
 // ---------------------------------------------------------------------------------------------------------------------
