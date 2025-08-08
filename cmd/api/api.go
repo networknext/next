@@ -2621,10 +2621,9 @@ func debugRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	proxy(fmt.Sprintf("%s/relays", relayBackendURL), w, r)
 }
 
-func debugDatabaseHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
+func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	proxy(fmt.Sprintf("%s/relay_counters/%s", relayBackendURL, vars["relay_name"]), w, r)
 }
 
 func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
@@ -2634,12 +2633,6 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
-}
-
-func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain")
 	// ...
