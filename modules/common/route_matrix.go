@@ -341,7 +341,7 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 
 	routeMatrix := RouteMatrix{
-		Version: uint32(RandomInt(RouteMatrixVersion_Min, RouteMatrixVersion_Max)),
+		Version: RouteMatrixVersion_Max,
 	}
 
 	if numRelays > constants.MaxRelays {
