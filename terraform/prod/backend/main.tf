@@ -118,20 +118,6 @@ resource "google_compute_managed_ssl_certificate" "relay" {
   }
 }
 
-resource "google_compute_managed_ssl_certificate" "relay_gateway" {
-  name = "relay-gateway"
-  managed {
-    domains = ["relay-gateway.${var.cloudflare_domain}"]
-  }
-}
-
-resource "google_compute_managed_ssl_certificate" "relay_backend" {
-  name = "relay-backend"
-  managed {
-    domains = ["relay-backend.${var.cloudflare_domain}"]
-  }
-}
-
 resource "google_compute_managed_ssl_certificate" "portal" {
   name = "portal"
   managed {
@@ -317,22 +303,6 @@ resource "cloudflare_record" "relay_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay"
   value   = module.relay_gateway.address
-  type    = "A"
-  proxied = false
-}
-
-resource "cloudflare_record" "relay_gateway_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "relay-gateway"
-  value   = module.relay_gateway.address
-  type    = "A"
-  proxied = false
-}
-
-resource "cloudflare_record" "relay_backend_domain" {
-  zone_id = var.cloudflare_zone_id
-  name    = "relay-backend"
-  value   = module.relay_backend.address
   type    = "A"
   proxied = false
 }
