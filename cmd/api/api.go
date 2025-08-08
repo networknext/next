@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"io"
 
 	"github.com/networknext/next/modules/admin"
 	"github.com/networknext/next/modules/common"
@@ -52,6 +53,8 @@ var buyerCountersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
+var relayBackendURL string
+
 func main() {
 
 	service = common.CreateService("api")
@@ -77,6 +80,7 @@ func main() {
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
 	enableDebug := envvar.GetBool("ENABLE_DEBUG", false)
+	relayBackendURL = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30000")
 
 	if privateKey == "" {
 		core.Error("You must specify API_PRIVATE_KEY!")
@@ -100,18 +104,11 @@ func main() {
 
 	if enableDebug {
 
-		relayBackendURL := envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30000")
-
-		service.Router.Handle("/debug/relays", http.RedirectHandler(fmt.Sprintf("%s/relays", relayBackendURL), http.StatusOK))
-
-		/*
-
 		service.Router.HandleFunc("/debug/relays", debugRelaysHandler)
 		service.Router.HandleFunc("/debug/cost_matrix", debugCostMatrixHandler)
 		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
 		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
-		service.Router.HandleFunc("/debug/health", debugHealth)
-		*/
+		service.Router.HandleFunc("/debug/health", debugHealthHandler)
 
 	}
 
@@ -2593,12 +2590,35 @@ func databaseBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Reque
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-// todo
-/*
+func proxy(targetURL string, w http.ResponseWriter, r *http.Request) {
+
+	request, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer response.Body.Close()
+
+	for name, values := range response.Header {
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+
+	w.WriteHeader(response.StatusCode)
+
+	_, _ = io.Copy(w, response.Body)
+}
+
 func debugRelaysHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
+	proxy(fmt.Sprintf("%s/relays", relayBackendURL), w, r)
 }
 
 func debugDatabaseHandler(w http.ResponseWriter, r *http.Request) {
@@ -2608,12 +2628,6 @@ func debugDatabaseHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/plain")
-	// ...
-}
-
-func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain")
 	// ...
@@ -2636,6 +2650,5 @@ func debugHealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	// ...
 }
-*/
 
 // ---------------------------------------------------------------------------------------------------------------------
