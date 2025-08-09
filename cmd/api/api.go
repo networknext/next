@@ -54,7 +54,6 @@ var buyerCountersWatcher *common.RedisCountersWatcher
 var enableRedisTimeSeries bool
 
 var relayBackendURL string
-var serverBackendURL string
 
 func main() {
 
@@ -82,7 +81,6 @@ func main() {
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
 	enableDebug := envvar.GetBool("ENABLE_DEBUG", false)
 	relayBackendURL = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30001")
-	serverBackendURL = envvar.GetString("SERVER_BACKEND_URL", "http://127.0.0.1")
 
 	if privateKey == "" {
 		core.Error("You must specify API_PRIVATE_KEY!")
@@ -113,7 +111,6 @@ func main() {
 		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
 		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
 		service.Router.HandleFunc("/debug/relay_backend", debugRelayBackendHandler)
-		service.Router.HandleFunc("/debug/server_backend", debugServerBackendHandler)
 
 	}
 
@@ -2779,10 +2776,6 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 func debugRelayBackendHandler(w http.ResponseWriter, r *http.Request) {
 	proxy(fmt.Sprintf("%s/status", relayBackendURL), w, r)
-}
-
-func debugServerBackendHandler(w http.ResponseWriter, r *http.Request) {
-	proxy(fmt.Sprintf("%s/status", serverBackendURL), w, r)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
