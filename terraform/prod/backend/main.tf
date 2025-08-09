@@ -28,6 +28,7 @@ variable "server_backend_public_key" { type = string }
 variable "test_buyer_public_key" { type = string }
 variable "test_buyer_private_key" { type = string }
 
+variable "raspberry_tag" { type = string }
 variable "raspberry_region" { type = string }
 variable "raspberry_zones" { type = list(string) }
 variable "raspberry_buyer_public_key" { type = string }
@@ -719,6 +720,7 @@ module "api" {
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${local.google_project_id}
     RELAY_BACKEND_URL="http://${module.relay_backend.address}"
+    SERVER_BACKEND_URL="http://${module.server_backend.address}"
     ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
@@ -1055,7 +1057,7 @@ module "raspberry_backend" {
     sudo systemctl start app.service
   EOF1
 
-  tag                      = var.tag
+  tag                      = var.raspberry_tag
   extra                    = var.extra
   machine_type             = "n1-standard-2"
   project                  = local.google_project_id
@@ -1103,7 +1105,7 @@ module "raspberry_server" {
     sudo systemctl start app.service
   EOF1
 
-  tag                = var.tag
+  tag                = var.raspberry_tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
@@ -1143,7 +1145,7 @@ module "raspberry_client" {
     sudo systemctl start app.service
   EOF1
 
-  tag                = var.tag
+  tag                = var.raspberry_tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
