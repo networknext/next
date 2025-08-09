@@ -42,7 +42,6 @@ resource "google_compute_target_https_proxy" "service" {
 
 resource "google_compute_global_address" "service" {
   name         = var.service_name
-  network_tier = "PREMIUM"
 }
 
 resource "google_compute_url_map" "service" {
