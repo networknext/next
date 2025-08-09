@@ -28,7 +28,6 @@ variable "server_backend_public_key" { type = string }
 variable "test_buyer_public_key" { type = string }
 variable "test_buyer_private_key" { type = string }
 
-variable "raspberry_tag" { type = string }
 variable "raspberry_region" { type = string }
 variable "raspberry_zones" { type = list(string) }
 variable "raspberry_buyer_public_key" { type = string }
@@ -1057,7 +1056,7 @@ module "raspberry_backend" {
     sudo systemctl start app.service
   EOF1
 
-  tag                      = var.raspberry_tag
+  tag                      = var.tag
   extra                    = var.extra
   machine_type             = "n1-standard-2"
   project                  = local.google_project_id
@@ -1105,7 +1104,7 @@ module "raspberry_server" {
     sudo systemctl start app.service
   EOF1
 
-  tag                = var.raspberry_tag
+  tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
@@ -1145,7 +1144,7 @@ module "raspberry_client" {
     sudo systemctl start app.service
   EOF1
 
-  tag                = var.raspberry_tag
+  tag                = var.tag
   extra              = var.extra
   machine_type       = "n1-standard-2"
   project            = local.google_project_id
