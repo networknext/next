@@ -2792,12 +2792,6 @@ func debugSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	sessions := int(math.Ceil(sessionUpdate * 10.0 / 60.0))
 	accelerated := int(math.Ceil(nextSessionUpdate * 10.0 / 60.0))
 	fmt.Fprintf(w, "%d sessions\n%d accelerated\n", sessions, accelerated)
-	if sessions == 0 {
-		fmt.Fprintf(w, "no sessions\n")
-	}
-	if accelerated == 0 {
-		fmt.Fprintf(w, "no accelerated sessions\n")
-	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
