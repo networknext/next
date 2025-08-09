@@ -81,6 +81,7 @@ resource "google_compute_global_forwarding_rule" "service" {
   port_range            = 443
   target                = google_compute_target_https_proxy.service.id
   ip_address            = google_compute_global_address.service.id
+  network_tier          = "PREMIUM"
 }
 
 resource "google_compute_backend_service" "service" {

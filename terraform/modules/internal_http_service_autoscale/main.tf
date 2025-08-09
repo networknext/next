@@ -60,7 +60,6 @@ resource "google_compute_forwarding_rule" "service" {
   target                = google_compute_region_target_http_proxy.service.id
   network               = var.default_network
   subnetwork            = var.default_subnetwork
-  network_tier          = "PREMIUM"
 }
 
 resource "google_compute_region_target_http_proxy" "service" {
