@@ -294,7 +294,7 @@ resource "cloudflare_record" "autodetect_domain" {
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "server"
-  value   = module.server_backend.address
+  value   = "35.206.85.218" // module.server_backend.address
   type    = "A"
   proxied = false
 }
@@ -882,6 +882,7 @@ module "server_cruncher" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 module "server_backend" {
 
   source = "../../modules/external_udp_service_autoscale"
@@ -953,6 +954,7 @@ output "server_backend_address" {
   description = "The IP address of the server backend load balancer"
   value       = module.server_backend.address
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
