@@ -179,6 +179,11 @@ output "address" {
   value = google_compute_address.service.address
 }
 
+output "http_address" {
+  description = "The IP address of the internal http load balancer"
+  value = google_compute_address.dummy.address
+}
+
 # ----------------------------------------------------------------------------------------
 
 resource "google_compute_region_autoscaler" "default" {
