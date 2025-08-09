@@ -852,7 +852,7 @@ func relaysHandler(w http.ResponseWriter, r *http.Request) {
 	relaysMutex.RLock()
 	responseData := relaysCSVData
 	relaysMutex.RUnlock()
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	buffer := bytes.NewBuffer(responseData)
 	buffer.WriteTo(w)
 }

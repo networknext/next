@@ -111,6 +111,7 @@ func main() {
 		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
 		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
 		service.Router.HandleFunc("/debug/relay_backend", debugRelayBackendHandler)
+		service.Router.HandleFunc("/debug/sessions", debugSessionsHandler)
 
 	}
 
@@ -2776,6 +2777,27 @@ func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
 
 func debugRelayBackendHandler(w http.ResponseWriter, r *http.Request) {
 	proxy(fmt.Sprintf("%s/status", relayBackendURL), w, r)
+}
+
+func debugSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	var sessionUpdate float64
+	var nextSessionUpdate float64
+	if enableRedisTimeSeries {
+		adminCountersWatcher.Lock()
+		sessionUpdate = adminCountersWatcher.GetFloatValue("session_update")
+		nextSessionUpdate = adminCountersWatcher.GetFloatValue("next_session_update")
+		adminCountersWatcher.Unlock()
+	}
+	sessions := int(math.Ceil(sessionUpdate * 10.0 / 60.0))
+	accelerated := int(math.Ceil(nextSessionUpdate * 10.0 / 60.0))
+	fmt.Fprintf(w, "%d sessions\n%d accelerated\n")
+	if sessions == 0 {
+		fmt.Fprintf(w, "no sessions\n")
+	}
+	if accelerated == 0 {
+		fmt.Fprintf(w, "no accelerated sessions\n")
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
