@@ -161,7 +161,7 @@ int main_run( struct main_t * main )
         {
             printf( "Shutting down in %d seconds\n", 60 - seconds );
             fflush( stdout );
-            relay_platform_sleep( 60.0 );
+            relay_platform_sleep( 1.0 );
             seconds++;
         }
 

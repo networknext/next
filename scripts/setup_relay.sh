@@ -81,6 +81,7 @@ sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 
 # install relay module
 
+sudo rm -rf ~/relay_module
 mkdir -p ~/relay_module
 cd ~/relay_module
 wget https://storage.googleapis.com/sloclap_network_next_relay_artifacts/relay_module.tar.gz
@@ -116,7 +117,7 @@ ExecStart=/app/relay
 EnvironmentFile=/app/relay.env
 Restart=always
 RestartSec=10
-
+TimeoutStopSec=90s
 [Install]
 WantedBy=multi-user.target
 EOM

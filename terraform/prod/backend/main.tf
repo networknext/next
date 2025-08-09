@@ -299,7 +299,7 @@ resource "cloudflare_record" "server_backend_domain" {
   proxied = false
 }
 
-resource "cloudflare_record" "relay_backend_domain" {
+resource "cloudflare_record" "relay_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay"
   value   = module.relay_gateway.address
@@ -581,7 +581,7 @@ output "magic_backend_address" {
 
 module "relay_gateway" {
 
-  source = "../../modules/external_http_service_autoscale"
+  source = "../../modules/external_http_service"
 
   service_name = "relay-gateway"
 
@@ -616,9 +616,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = var.disable_backend ? 0 : 1
-  max_size                 = var.disable_backend ? 0 : 64
-  target_cpu               = 60
+  target_size              = var.disable_backend ? 0 : 1
   domain                   = "relay.${var.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
@@ -653,7 +651,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=360s
+    INITIAL_DELAY=360
     MAX_JITTER=1
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
@@ -662,6 +660,7 @@ module "relay_backend" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
+    DEBUG_LOGS=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
@@ -679,9 +678,9 @@ module "relay_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
-  initial_delay              = 420
-  target_size                = var.disable_backend ? 0 : 1
-  tier_1                     = false
+  initial_delay              = 500
+  connection_drain           = 0
+  target_size                = var.disable_backend ? 0 : 2
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
@@ -711,6 +710,7 @@ module "api" {
     ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a api.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
+    ENABLE_DEBUG=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
@@ -718,6 +718,8 @@ module "api" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     GOOGLE_PROJECT_ID=${local.google_project_id}
+    RELAY_BACKEND_URL="http://${module.relay_backend.address}"
+    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     PGSQL_CONFIG="host=${google_sql_database_instance.postgres.ip_address.0.ip_address} port=5432 user=developer password=developer dbname=database sslmode=disable"
@@ -1111,7 +1113,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 16
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 64
 }
 
 # ----------------------------------------------------------------------------------------
