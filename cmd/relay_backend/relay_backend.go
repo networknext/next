@@ -613,7 +613,7 @@ func relayHistoryHandler(service *common.Service, relayManager *common.RelayMana
 		var routeMatrix common.RouteMatrix
 		err := routeMatrix.Read(data)
 		if err != nil {
-			fmt.Fprintf(w, "could not read route matrix: %v", err)
+			fmt.Fprintf(w, "error: could not read route matrix: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -639,7 +639,20 @@ func relayHistoryHandler(service *common.Service, relayManager *common.RelayMana
 			}
 		}
 
-		if src_index == -1 || dest_index == -1 || src_index == dest_index {
+		if src_index == -1 {
+			fmt.Printf("error: could not find source relay '%s'\n", src)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if dest_index == -1 {
+			fmt.Printf("error: could not find source relay '%s'\n", dest)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if src_index == dest_index {
+			fmt.Printf("error: no history between same relays\n")
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -649,7 +662,7 @@ func relayHistoryHandler(service *common.Service, relayManager *common.RelayMana
 
 		rtt, jitter, packetLoss := relayManager.GetHistory(sourceRelayId, destRelayId)
 
-		fmt.Fprintf(w, "history: %s -> %s\n")
+		fmt.Fprintf(w, "history: %s -> %s\n", src, dest)
 		fmt.Fprintf(w, "%v\n", rtt)	
 		fmt.Fprintf(w, "%v\n", jitter)	
 		fmt.Fprintf(w, "%v\n", packetLoss)	
