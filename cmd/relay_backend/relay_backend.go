@@ -288,6 +288,7 @@ func main() {
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
 	service.Router.HandleFunc("/active_relays", activeRelaysHandler(service, relayManager))
+	service.Router.HandleFunc("/relay_history", relayHistoryHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
@@ -598,6 +599,50 @@ func activeRelaysHandler(service *common.Service, relayManager *common.RelayMana
 			fmt.Fprintf(w, "%s, ", activeRelays[i].Name)
 		}
 		fmt.Fprintf(w, "\n")
+	}
+}
+
+func relayHistoryHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		routeMatrix, _ := service.RouteMatrixAndDatabase()
+
+		vars := mux.Vars(r)
+
+		src := vars["src"]
+		dest := vars["dest"]
+
+		src_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == src {
+				src_index = i
+				break
+			}
+		}
+
+		dest_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == dest {
+				dest_index = i
+				break
+			}
+		}
+
+		if src_index == -1 || dest_index == -1 || src_index == dest_index {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		sourceRelayId := routeMatrix.RelayIds[src_index]
+		destRelayId := routeMatrix.RelayIds[dest_index]
+
+		rtt, jitter, packetLoss := relayManager.GetHistory(sourceRelayId, destRelayId)
+
+		fmt.Fprintf(w, "history: %s -> %s\n")
+		fmt.Fprintf(w, "%v\n", rtt)	
+		fmt.Fprintf(w, "%v\n", jitter)	
+		fmt.Fprintf(w, "%v\n", packetLoss)	
 	}
 }
 

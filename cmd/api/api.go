@@ -110,6 +110,7 @@ func main() {
 		service.Router.HandleFunc("/debug/cost_matrix", debugCostMatrixHandler)
 		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
 		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
+		service.Router.HandleFunc("/debug/relay_history/{src}/{dest}", debugRelayHistoryHandler)
 		service.Router.HandleFunc("/debug/relay_backend", debugRelayBackendHandler)
 		service.Router.HandleFunc("/debug/sessions", debugSessionsHandler)
 
@@ -2627,6 +2628,11 @@ func debugRelaysHandler(w http.ResponseWriter, r *http.Request) {
 func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	proxy(fmt.Sprintf("%s/relay_counters/%s", relayBackendURL, vars["relay_name"]), w, r)
+}
+
+func debugRelayHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	proxy(fmt.Sprintf("%s/relay_history/%s/%s", relayBackendURL, vars["src"], vars["dest"]), w, r)
 }
 
 func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {

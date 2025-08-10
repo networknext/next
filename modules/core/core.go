@@ -1192,6 +1192,9 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 	for i := range sourceRelays {
 
+		// todo
+		fmt.Printf("trying source relay %d\n", i)
+
 		// IMPORTANT: RTT = 255 signals the source relay is unroutable
 		if sourceRelayCost[i] >= 255 {
 			continue
@@ -1203,9 +1206,14 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 
 		for j := range destRelays {
 
+			// todo
+			fmt.Printf("  trying dest relay %d\n", j)
+
 			destRelayIndex := destRelays[j]
 
 			if sourceRelayIndex == destRelayIndex {
+				// todo
+				fmt.Printf("    ignoring same source and dest relay\n")
 				continue
 			}
 
@@ -1216,6 +1224,9 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 			for k := 0; k < int(entry.NumRoutes); k++ {
 
 				cost := entry.RouteCost[k] + sourceRelayCost[i]
+
+				// todo
+				fmt.Printf("    route %d [%d]\n", k, cost)
 
 				if cost > maxCost {
 					break

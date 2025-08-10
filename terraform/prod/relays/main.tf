@@ -62,6 +62,12 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    "google.saopaulo.2.b" = {
+      datacenter_name = "google.saopaulo.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
     "google.saopaulo.3" = {
       datacenter_name = "google.saopaulo.3"
       type            = "c2-standard-4"
