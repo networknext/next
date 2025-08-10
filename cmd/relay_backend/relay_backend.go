@@ -606,7 +606,17 @@ func relayHistoryHandler(service *common.Service, relayManager *common.RelayMana
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		routeMatrix, _ := service.RouteMatrixAndDatabase()
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+
+		var routeMatrix common.RouteMatrix
+		err := routeMatrix.Read(data)
+		if err != nil {
+			fmt.Fprintf(w, "could not read route matrix: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 
 		vars := mux.Vars(r)
 
