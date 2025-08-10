@@ -472,13 +472,19 @@ int main_update( struct main_t * main )
     {
         relay_write_uint64( &p, main->ping_stats.relay_ids[i] );
 
-        float rtt = main->ping_stats.relay_rtt[i];
-        float jitter = main->ping_stats.relay_jitter[i];
-        float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
+        const float rtt = main->ping_stats.relay_rtt[i];
+        const float jitter = main->ping_stats.relay_jitter[i];
+        const float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
 
-        int integer_rtt = (int) ( rtt + 0.5f );
-        int integer_jitter = (int) ( jitter + 0.5f );
-        int integer_packet_loss = (int) ( packet_loss + 0.5f );
+        int integer_rtt = (int) rtt;
+        int integer_jitter = (int) jitter;
+        int integer_packet_loss = (int) packet_loss;
+
+        // IMPORTANT: Otherwise, if the RTT is < 0.5, we'll round to zero and consider this unroutable
+        if ( rtt > 0.0 && integer_rtt == 0 )
+        {
+            integer_rtt = 1;
+        }
 
         clamp( &integer_rtt, 0, 255 );
         clamp( &integer_jitter, 0, 255 );

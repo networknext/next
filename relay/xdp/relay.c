@@ -73,6 +73,9 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
+    // todo
+    printf( "(With RTT=0 fix)\n" );
+
     fflush( stdout );
 
     signal( SIGINT,  interrupt_handler );
