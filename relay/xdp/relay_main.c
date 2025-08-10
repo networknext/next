@@ -476,15 +476,9 @@ int main_update( struct main_t * main )
         const float jitter = main->ping_stats.relay_jitter[i];
         const float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
 
-        int integer_rtt = (int) rtt;
-        int integer_jitter = (int) jitter;
-        int integer_packet_loss = (int) packet_loss;
-
-        // IMPORTANT: Otherwise, if the RTT is < 0.5, we'll round to zero and consider this unroutable
-        if ( rtt > 0.0 && integer_rtt == 0 )
-        {
-            integer_rtt = 1;
-        }
+        int integer_rtt = (int) ceil( rtt );
+        int integer_jitter = (int) ceil( jitter );
+        int integer_packet_loss = (int) ceil( packet_loss );
 
         clamp( &integer_rtt, 0, 255 );
         clamp( &integer_jitter, 0, 255 );
