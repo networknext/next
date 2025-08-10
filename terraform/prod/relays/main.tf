@@ -166,12 +166,8 @@ locals {
 
   azure_relays = {
 
-    "azure.saopaulo.1" = {
-      datacenter_name  = "azure.saopaulo.1"
-      public_address   = "20.206.244.28"
-      internal_address = "10.1.0.4"
-    },
-
+    // ...
+    
   }
 }
 
