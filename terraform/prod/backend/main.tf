@@ -652,7 +652,7 @@ module "relay_backend" {
     DATABASE_URL="${var.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=360
-    MAX_JITTER=1
+    MAX_JITTER=2
     MAX_PACKET_LOSS=0.1
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
