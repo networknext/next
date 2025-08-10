@@ -288,7 +288,7 @@ func main() {
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
 	service.Router.HandleFunc("/active_relays", activeRelaysHandler(service, relayManager))
-	service.Router.HandleFunc("/relay_history", relayHistoryHandler(service, relayManager))
+	service.Router.HandleFunc("/relay_history/{src}/{dest}", relayHistoryHandler(service, relayManager))
 
 	service.SetHealthFunctions(sendTrafficToMe(service), machineIsHealthy, ready(service))
 
