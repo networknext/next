@@ -713,7 +713,7 @@ resource "networknext_route_shader" rematch {
   name = "rematch"
   force_next = false
   latency_reduction_threshold = 20
-  acceptable_latency = 50
+  acceptable_latency = 0
   acceptable_packet_loss_instant = 1.0
   acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
