@@ -326,7 +326,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 
 		for i := range addresses {
-			core.Debug("forwarding relay update to %s", addresses[index])
+			core.Debug("forwarding relay update to %s", addresses[i])
 			go func(index int) {
 				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
 				buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
