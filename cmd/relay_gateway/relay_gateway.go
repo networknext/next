@@ -440,6 +440,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 			case <-ticker.C:
 
+				core.Debug("=====================================")
 				core.Debug("updating relay backend VMs")
 
 				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
@@ -501,6 +502,8 @@ func TrackRelayBackendInstances(service *common.Service) {
 				}
 
 				core.Debug("verified: %v", verified)
+
+				core.Debug("=====================================")
 
 				mutex.Lock()
 				relayBackendAddresses = verified
