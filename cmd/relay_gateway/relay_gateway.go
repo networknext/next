@@ -326,6 +326,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 
 		for i := range addresses {
+			core.Debug("forwarding relay update to %s", addresses[index])
 			go func(index int) {
 				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
 				buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
@@ -439,6 +440,8 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 			case <-ticker.C:
 
+				core.Debug("updating relay backend VMs")
+
 				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
 
 				list_lines := strings.Split(list_output, "\n")
@@ -454,6 +457,9 @@ func TrackRelayBackendInstances(service *common.Service) {
 						zones = append(zones, zone)
 					}
 				}
+
+				core.Debug("instance ids: %v", instanceIds)
+				core.Debug("zones: %v", zones)
 
 				addresses := make([]string, len(instanceIds))
 				waitGroup := sync.WaitGroup{}
@@ -475,11 +481,13 @@ func TrackRelayBackendInstances(service *common.Service) {
 				}
 				waitGroup.Wait()
 
+				core.Debug("addresses: %v", addresses)
+
 				ok := make([]bool, len(addresses))
 				waitGroup.Add(len(addresses))
 				for i := range addresses {
 					go func(index int) {
-						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 1", addresses[index]))
+						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
 						waitGroup.Done()
 					}(i)
 				}
@@ -491,6 +499,8 @@ func TrackRelayBackendInstances(service *common.Service) {
 						verified = append(verified, addresses[i])
 					}
 				}
+
+				core.Debug("verified: %v", verified)
 
 				mutex.Lock()
 				relayBackendAddresses = verified

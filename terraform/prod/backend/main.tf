@@ -601,6 +601,7 @@ module "relay_gateway" {
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     PING_KEY=${local.ping_key}
     RELAY_BACKEND_ADDRESS=""
+    DEBUG_LOGS=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
