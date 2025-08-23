@@ -35,6 +35,8 @@ var relayBackendAddress string
 var mutex sync.Mutex
 var relayBackendAddresses []string
 
+var httpClient *http.Client
+
 func main() {
 
 	service := common.CreateService("relay_gateway")
@@ -105,6 +107,10 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
+
+	httpClient = &http.Client{
+		Timeout: 5 * time.Second,
+	}
 
 	TrackRelayBackendInstances(service)
 
@@ -332,7 +338,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 				buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 				forward_request, err := http.NewRequest("POST", url, buffer)
 				if err == nil {
-					response, err := http.DefaultClient.Do(forward_request)
+					response, err := httpClient.Do(forward_request)
 					if err != nil && response != nil {
 						io.Copy(io.Discard, response.Body)
 						response.Body.Close()
