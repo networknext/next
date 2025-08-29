@@ -154,8 +154,10 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 	if m.Version >= 3 {
 		if stream.IsReading() {
 			m.Costs = make([]byte, numEntries)
-		}		
-		stream.SerializeBytes(m.Costs)
+		}
+		if numEntries > 0 {	
+			stream.SerializeBytes(m.Costs)
+		}
 	}
 
 	return stream.Error()
