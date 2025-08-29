@@ -587,7 +587,7 @@ func test_optimize() {
 					}
 				}
 
-				binFileData := make([]byte, 100*1024)
+				binFileData := make([]byte, 256*1024)
 
 				routeMatrix := &common.RouteMatrix{
 					CreatedAt:          uint64(time.Now().Unix()),
@@ -602,11 +602,12 @@ func test_optimize() {
 					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, relayDatacenterIds, destRelays),
 					BinFileBytes:       int32(len(binFileData)),
 					BinFileData:        binFileData,
+					Costs:              costs,
 				}
 
 				routeMatrixData, err := routeMatrix.Write()
 				if err != nil {
-					panic("could not write route matrix")
+					panic(fmt.Sprintf("could not write route matrix: %v", err))
 					continue
 				}
 				_ = routeMatrixData
