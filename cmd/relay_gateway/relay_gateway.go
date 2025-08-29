@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -349,48 +348,16 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 	}
 }
 
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
+func Bash(command string) (bool, string) {
+	var output bytes.Buffer
+	cmd := exec.Command("bash", "-c", command)
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	err := cmd.Run()
 	if err != nil {
 		return false, ""
 	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool, string) {
-	return RunCommand("bash", []string{"-c", command})
+	return true, output.String()
 }
 
 func TrackRelayBackendInstances(service *common.Service) {
