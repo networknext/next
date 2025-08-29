@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -348,23 +347,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 	}
 }
 
-func Bash(command string) (bool, string) {
-	var output bytes.Buffer
-	cmd := exec.Command("bash", "-c", command)
-	cmd.Stdout = &output
-	cmd.Stderr = &output
-	err := cmd.Run()
-	if err != nil {
-		return false, ""
-	}
-	return true, output.String()
-}
-
 func TrackRelayBackendInstances(service *common.Service) {
 
 	// grab google cloud instance name from metadata
 
-	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -380,7 +367,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 	// grab google cloud zone from metadata
 
 	var zone string
-	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -416,7 +403,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 				core.Debug("=====================================")
 				core.Debug("updating relay backend VMs")
 
-				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
+				_, list_output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
 
 				list_lines := strings.Split(list_output, "\n")
 
@@ -440,7 +427,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 				waitGroup.Add(len(addresses))
 				for i := range instanceIds {
 					go func(index int) {
-						_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
+						_, describe_output := common.Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
 						describe_lines := strings.Split(describe_output, "\n")
 						address := ""
 						for j := range describe_lines {
@@ -461,7 +448,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 				waitGroup.Add(len(addresses))
 				for i := range addresses {
 					go func(index int) {
-						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
+						ok[index], _ = common.Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
 						waitGroup.Done()
 					}(i)
 				}

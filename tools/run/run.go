@@ -328,7 +328,7 @@ func happy_path_no_wait() {
 }
 
 func server() {
-	bash("cd dist && NEXT_DATACENTER=unity.saopaulo.1 NEXT_SERVER_ADDRESS=189.1.172.30 ./server")
+	bash("cd dist && ./server")
 }
 
 func RunCommand(command string, args []string) (bool, string) {

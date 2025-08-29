@@ -1,6 +1,8 @@
 package common
 
 import (
+	"os/exec"
+	"bytes"
 	"context"
 	"fmt"
 	"golang.org/x/exp/constraints"
@@ -11,6 +13,18 @@ import (
 
 	"github.com/networknext/next/modules/core"
 )
+
+func Bash(command string) (bool, string) {
+	var output bytes.Buffer
+	cmd := exec.Command("bash", "-c", command)
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+	err := cmd.Run()
+	if err != nil {
+		return false, ""
+	}
+	return true, output.String()
+}
 
 func RandomBool() bool {
 	value := rand.Intn(2)

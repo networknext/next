@@ -1,16 +1,14 @@
 package main
 
 import (
-	"bufio"
 	_ "embed"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
-
+	
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -322,57 +320,11 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool, string) {
-	return RunCommand("bash", []string{"-c", command})
-}
-
 func updateShuttingDown() {
 
 	// grab google cloud instance name from metadata
 
-	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -388,7 +340,7 @@ func updateShuttingDown() {
 	// grab google cloud zone from metadata
 
 	var zone string
-	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -421,7 +373,7 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
+				_, output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
 
 				lines := strings.Split(output, "\n")
 
