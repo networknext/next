@@ -3952,8 +3952,8 @@ int main_update( main_t * main )
         float jitter = main->ping_stats.relay_jitter[i];
         float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
 
-        int integer_rtt = int( rtt + 0.5f );
-        int integer_jitter = int( jitter + 0.5f );
+        int integer_rtt = ceil( rtt );
+        int integer_jitter = ceil( jitter );
         int integer_packet_loss = int( packet_loss + 0.5f );
 
         clamp( integer_rtt, 0, 255 );
