@@ -411,7 +411,7 @@ func happy_path(wait bool) int {
 
 	fmt.Printf("\nwaiting for leader election\n\n")
 
-	fmt.Printf("    relay backend ...")
+	fmt.Printf("   relay backend ...")
 
 	relay_backend_leader_elected := false
 
