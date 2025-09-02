@@ -917,7 +917,6 @@ module "server_backend" {
     SERVER_BACKEND_ADDRESS="##########:40000"
     SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     SERVER_BACKEND_PRIVATE_KEY=${local.server_backend_private_key}
-    #ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${local.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
