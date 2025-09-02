@@ -601,7 +601,6 @@ module "relay_gateway" {
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
     PING_KEY=${local.ping_key}
     RELAY_BACKEND_ADDRESS=""
-    DEBUG_LOGS=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
@@ -661,7 +660,6 @@ module "relay_backend" {
     REDIS_PORTAL_HOSTNAME="${google_redis_instance.redis.host}:6379"
     RELAY_BACKEND_PUBLIC_KEY=${var.relay_backend_public_key}
     RELAY_BACKEND_PRIVATE_KEY=${local.relay_backend_private_key}
-    DEBUG_LOGS=1
     EOF
     sudo gsutil cp ${var.google_database_bucket}/prod.bin /app/database.bin
     sudo systemctl start app.service
