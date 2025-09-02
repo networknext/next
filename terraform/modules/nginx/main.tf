@@ -190,6 +190,7 @@ output "address" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "google_compute_url_map" "http-redirect" {
   name = "http-redirect"
   default_url_redirect {
@@ -210,5 +211,6 @@ resource "google_compute_global_forwarding_rule" "http-redirect" {
   ip_address = google_compute_global_address.service.address
   port_range = "80"
 }
+*/
 
 # ----------------------------------------------------------------------------------------
