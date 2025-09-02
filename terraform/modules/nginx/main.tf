@@ -68,7 +68,7 @@ resource "google_compute_url_map" "service" {
 resource "google_compute_global_forwarding_rule" "service" {
   name                  = var.service_name
   ip_protocol           = "TCP"
-  load_balancing_scheme = "EXTERNAL"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = 443
   target                = google_compute_target_https_proxy.service.id
   ip_address            = google_compute_global_address.service.id
@@ -78,7 +78,7 @@ resource "google_compute_backend_service" "service" {
   name                    = var.service_name
   protocol                = "HTTP"
   port_name               = "http"
-  load_balancing_scheme   = "EXTERNAL"
+  load_balancing_scheme   = "EXTERNAL_MANAGED"
   timeout_sec             = 10
   health_checks           = [google_compute_health_check.service_lb.id]
   backend {
