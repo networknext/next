@@ -351,10 +351,10 @@ output "redis_time_series_address" {
 resource "google_redis_instance" "redis" {
   name                    = "redis"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 10
+  memory_size_gb          = 5
   region                  = var.google_region
   redis_version           = "REDIS_7_2"
-  redis_configs           = { "maxmemory-gb" = "5", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  redis_configs           = { "maxmemory-gb" = "4", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
 }
 
@@ -669,7 +669,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-highcpu-2"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -733,7 +733,7 @@ module "api" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-highcpu-2"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -785,7 +785,7 @@ module "autodetect" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-highcpu-2"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -1001,7 +1001,7 @@ module "portal" {
   config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-highcpu-2"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
