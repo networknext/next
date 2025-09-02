@@ -278,7 +278,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api"
-  value   = module.api.address
+  value   = module.api_new.address
   type    = "A"
   proxied = false
 }
@@ -286,7 +286,7 @@ resource "cloudflare_record" "api_domain" {
 resource "cloudflare_record" "autodetect_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "autodetect"
-  value   = module.autodetect.address
+  value   = module.autodetect_new.address
   type    = "A"
   proxied = false
 }
@@ -302,7 +302,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay"
-  value   = module.relay_gateway.address
+  value   = module.relay_gateway_new.address
   type    = "A"
   proxied = false
 }
@@ -310,7 +310,7 @@ resource "cloudflare_record" "relay_domain" {
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal"
-  value   = module.portal.address
+  value   = module.portal_new.address
   type    = "A"
   proxied = false
 }
@@ -318,7 +318,7 @@ resource "cloudflare_record" "portal_domain" {
 resource "cloudflare_record" "raspberry_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "raspberry"
-  value   = module.raspberry_backend.address
+  value   = module.raspberry_backend_new.address
   type    = "A"
   proxied = false
 }
@@ -579,7 +579,7 @@ output "magic_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-module "relay_gateway" {
+module "relay_gateway_new" {
 
   source = "../../modules/external_http_service"
 
@@ -628,7 +628,7 @@ module "relay_gateway" {
 
 output "relay_gateway_address" {
   description = "The IP address of the relay gateway load balancer"
-  value       = module.relay_gateway.address
+  value       = module.relay_gateway_new.address
 }
 
 # ----------------------------------------------------------------------------------------
@@ -698,7 +698,7 @@ output "relay_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-module "api" {
+module "api_new" {
 
   source = "../../modules/external_http_service_autoscale"
 
@@ -758,12 +758,12 @@ module "api" {
 
 output "api_address" {
   description = "The IP address of the api load balancer"
-  value       = module.api.address
+  value       = module.api_new.address
 }
 
 # ----------------------------------------------------------------------------------------
 
-module "autodetect" {
+module "autodetect_new" {
 
   source = "../../modules/external_http_service_autoscale"
 
@@ -802,7 +802,7 @@ module "autodetect" {
 
 output "autodetect_address" {
   description = "The IP address of the autodetect load balancer"
-  value       = module.autodetect.address
+  value       = module.autodetect_new.address
 }
 
 // ---------------------------------------------------------------------------------------
@@ -991,7 +991,7 @@ module "ip2location" {
 
 # ----------------------------------------------------------------------------------------
 
-module "portal" {
+module "portal_new" {
 
   source = "../../modules/nginx"
 
@@ -1016,7 +1016,7 @@ module "portal" {
 
 output "portal_address" {
   description = "The IP address of the portal load balancer"
-  value       = module.portal.address
+  value       = module.portal_new.address
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1038,7 +1038,7 @@ resource "google_compute_router_nat" "nat" {
 
 # ----------------------------------------------------------------------------------------
 
-module "raspberry_backend" {
+module "raspberry_backend_new" {
 
   source = "../../modules/external_http_service"
 
@@ -1073,7 +1073,7 @@ module "raspberry_backend" {
 
 output "raspberry_backend_address" {
   description = "The IP address of the raspberry backend load balancer"
-  value       = module.raspberry_backend.address
+  value       = module.raspberry_backend_new.address
 }
 
 # ----------------------------------------------------------------------------------------

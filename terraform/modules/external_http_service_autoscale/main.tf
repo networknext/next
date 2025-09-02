@@ -84,7 +84,7 @@ resource "google_compute_global_forwarding_rule" "service" {
 }
 
 resource "google_compute_backend_service" "service" {
-  name                    = "${var.service_name}-modern"
+  name                    = var.service_name
   protocol                = "HTTP"
   port_name               = "http"
   load_balancing_scheme   = "EXTERNAL_MANAGED"
