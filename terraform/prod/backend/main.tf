@@ -1047,6 +1047,7 @@ resource "google_compute_router_nat" "nat" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 module "raspberry_backend" {
 
   source = "../../modules/external_http_service"
@@ -1084,6 +1085,7 @@ output "raspberry_backend_address" {
   description = "The IP address of the raspberry backend load balancer"
   value       = module.raspberry_backend.address
 }
+*/
 
 # ----------------------------------------------------------------------------------------
 
