@@ -278,7 +278,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api"
-  value   = "34.102.225.246" // module.api.address
+  value   = module.api.address
   type    = "A"
   proxied = false
 }
@@ -286,7 +286,7 @@ resource "cloudflare_record" "api_domain" {
 resource "cloudflare_record" "autodetect_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "autodetect"
-  value   = "34.102.225.246" // module.autodetect.address
+  value   = module.autodetect.address
   type    = "A"
   proxied = false
 }
@@ -302,7 +302,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay"
-  value   = "34.102.225.246" // module.relay_gateway.address
+  value   = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
@@ -310,7 +310,7 @@ resource "cloudflare_record" "relay_domain" {
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal"
-  value   = "34.102.225.246" // module.portal.address
+  value   = module.portal.address
   type    = "A"
   proxied = false
 }
@@ -318,7 +318,7 @@ resource "cloudflare_record" "portal_domain" {
 resource "cloudflare_record" "raspberry_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "raspberry"
-  value   = "34.102.225.246" // module.raspberry_backend.address
+  value   = module.raspberry_backend.address
   type    = "A"
   proxied = false
 }
@@ -579,7 +579,6 @@ output "magic_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "relay_gateway" {
 
   source = "../../modules/external_http_service"
@@ -631,11 +630,9 @@ output "relay_gateway_address" {
   description = "The IP address of the relay gateway load balancer"
   value       = module.relay_gateway.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "relay_backend" {
 
   source = "../../modules/internal_http_service"
@@ -698,11 +695,9 @@ output "relay_backend_address" {
   description = "The IP address of the relay backend load balancer"
   value       = module.relay_backend.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "api" {
 
   source = "../../modules/external_http_service_autoscale"
@@ -765,11 +760,9 @@ output "api_address" {
   description = "The IP address of the api load balancer"
   value       = module.api.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "autodetect" {
 
   source = "../../modules/external_http_service_autoscale"
@@ -811,7 +804,6 @@ output "autodetect_address" {
   description = "The IP address of the autodetect load balancer"
   value       = module.autodetect.address
 }
-*/
 
 // ---------------------------------------------------------------------------------------
 
@@ -917,6 +909,7 @@ module "server_backend" {
     SERVER_BACKEND_ADDRESS="##########:40000"
     SERVER_BACKEND_PUBLIC_KEY=${var.server_backend_public_key}
     SERVER_BACKEND_PRIVATE_KEY=${local.server_backend_private_key}
+    ROUTE_MATRIX_URL="http://${module.relay_backend.address}/route_matrix"
     PING_KEY=${local.ping_key}
     IP2LOCATION_BUCKET_NAME=${var.ip2location_bucket_name}
     ENABLE_GOOGLE_PUBSUB=true
@@ -964,7 +957,6 @@ output "server_backend_address" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "ip2location" {
 
   source = "../../modules/external_mig_without_health_check"
@@ -1026,7 +1018,6 @@ output "portal_address" {
   description = "The IP address of the portal load balancer"
   value       = module.portal.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
@@ -1047,7 +1038,6 @@ resource "google_compute_router_nat" "nat" {
 
 # ----------------------------------------------------------------------------------------
 
-/*
 module "raspberry_backend" {
 
   source = "../../modules/external_http_service"
@@ -1085,7 +1075,6 @@ output "raspberry_backend_address" {
   description = "The IP address of the raspberry backend load balancer"
   value       = module.raspberry_backend.address
 }
-*/
 
 # ----------------------------------------------------------------------------------------
 
