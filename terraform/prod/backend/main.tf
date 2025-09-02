@@ -331,7 +331,7 @@ module "redis_time_series" {
 
   service_name = "redis-time-series"
 
-  machine_type             = "c4a-highmem-1"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zone                     = var.google_zone
@@ -557,7 +557,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c4a-highcpu-1"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -609,7 +609,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c4a-highcpu-1"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -669,7 +669,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c4a-highcpu-1"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -733,7 +733,7 @@ module "api" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c4a-highcpu-1"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -785,7 +785,7 @@ module "autodetect" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c4a-highcpu-1"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
@@ -833,7 +833,7 @@ module "session_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c4a-highmem-1"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -868,7 +868,7 @@ module "server_cruncher" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c4a-highmem-1"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -927,7 +927,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n2d-highcpu-8"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = var.google_region
   zones                      = var.google_zones
@@ -978,7 +978,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "c4a-highcpu-1"
+  machine_type       = "n1-standard-1"
   project            = local.google_project_id
   region             = var.google_region
   zones              = var.google_zones
@@ -1001,7 +1001,7 @@ module "portal" {
   config                   = "${var.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "c4a-highcpu-1"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = var.google_region
   zones                    = var.google_zones
