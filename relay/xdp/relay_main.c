@@ -558,6 +558,7 @@ int main_update( struct main_t * main )
     curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 10000L );
     curl_easy_setopt( main->curl, CURLOPT_WRITEDATA, &update_response_buffer );
     curl_easy_setopt( main->curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+    curl_easy_setopt( main->curl, CURLOPT_DNS_CACHE_TIMEOUT, (long) -1 ); // IMPORTANT: Perform DNS lookup once and hold that IP address forever. Fixes transient DNS issues making relays go offline!
 
     CURLcode ret = curl_easy_perform( main->curl );
 
