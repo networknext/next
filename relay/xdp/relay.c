@@ -73,7 +73,7 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
-    printf( "(http3)\n" );
+    printf( "(curl error strings)\n" );
 
     fflush( stdout );
 

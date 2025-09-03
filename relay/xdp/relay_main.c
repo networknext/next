@@ -564,9 +564,9 @@ int main_update( struct main_t * main )
     curl_slist_free_all( slist );
     slist = NULL;
 
-    if ( ret != 0 )
+    if ( ret != CURLE_OK )
     {
-        printf( "error: could not post relay update\n" );
+        printf( "error: could not post relay update (%s)\n", curl_easy_strerror(ret) );
         fflush( stdout );
         return RELAY_ERROR;
     }
