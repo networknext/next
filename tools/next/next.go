@@ -2929,54 +2929,6 @@ func analyzeRouteMatrix(inputFile string) {
 	fmt.Printf("    %.1f%% of relay pairs have no route\n", analysis.NoRoutePercent)
 
 	fmt.Printf("\n")
-
-	// ===================================================================
-
-	destRelays := make([]int32, 1)
-	for i := range routeMatrix.RelayNames {
-		if routeMatrix.RelayNames[i] == "google.saopaulo.1" {
-			destRelays[0] = int32(i)
-			break
-		}
-	}
-
-	for i := range routeMatrix.RelayNames {
-		if routeMatrix.RelayNames[i] == "google.saopaulo.2" {
-			fmt.Printf("google.saopaulo.2 is %d/%d\n", i, len(routeMatrix.RelayNames))
-			break
-		}
-	}
-
-	sourceRelays := make([]int32, len(routeMatrix.RelayIds))
-	sourceRelayCost := make([]int32, len(routeMatrix.RelayIds))
-	for i := range sourceRelays {
-		sourceRelays[i] = int32(i)
-		sourceRelayCost[i] = 1
-	}
-
-	var bestRoutes [1024]core.BestRoute
-	var numBestRoutes int
-	var routeDiversity int32
-
-	core.GetBestRoutes(routeMatrix.RouteEntries, sourceRelays, sourceRelayCost, destRelays, 254, bestRoutes[:], &numBestRoutes, &routeDiversity)
-
-	for i := range bestRoutes[:numBestRoutes] {
-		fmt.Printf("route %d: ", i)
-		if !bestRoutes[i].NeedToReverse {
-			for j := 0; j < int(bestRoutes[i].NumRelays); j++ {
-				fmt.Printf("%s ", routeMatrix.RelayNames[bestRoutes[i].Relays[j]])
-			}
-		} else {
-			for j := int(bestRoutes[i].NumRelays) - 1; j > 0; j-- {
-				fmt.Printf("%s ", routeMatrix.RelayNames[bestRoutes[i].Relays[j]])
-			}
-		}
-		fmt.Printf("[%d]\n", bestRoutes[i].Cost)
-	}
-
-	fmt.Printf("\n")
-
-	// ===================================================================
 }
 
 func routes(src string, dest string) {
