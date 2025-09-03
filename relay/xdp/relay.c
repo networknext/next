@@ -73,6 +73,8 @@ int main( int argc, char *argv[] )
 
     printf( "Network Next Relay (release)\n" );
 
+    printf( "(http3)\n" );
+
     fflush( stdout );
 
     signal( SIGINT,  interrupt_handler );
