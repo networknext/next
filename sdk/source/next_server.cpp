@@ -3201,7 +3201,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
         {
             next_printf( NEXT_LOG_LEVEL_DEBUG, "(before resolve hostname attempt #%d)", i + 1 );
 
-            int result = next_platform_hostname_resolve( hostname, port, &address );q
+            int result = next_platform_hostname_resolve( hostname, port, &address );
 
             next_printf( NEXT_LOG_LEVEL_DEBUG, "(after resolve hostname attempt #%d)", i + 1 );
 
