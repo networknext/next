@@ -1112,7 +1112,7 @@ module "raspberry_server" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh", "allow-udp-all"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 64
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1152,12 +1152,11 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.raspberry.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 100
+  target_size        = ( var.disable_raspberry || var.disable_backend ) ? 0 : 1
 }
 
 # ----------------------------------------------------------------------------------------
 
-/*
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
   region = var.test_server_region
@@ -1219,6 +1218,5 @@ output "test_server_address" {
   description = "The IP address of the test server"
   value = "${google_compute_address.test_server_address.address}:30000"
 }
-*/
 
 # ----------------------------------------------------------------------------------------
