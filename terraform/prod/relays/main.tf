@@ -676,6 +676,7 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
+  disable_network_next = true     # IMPORTANT: Flip this back to true to enable acceleration!
   force_next = true
   latency_reduction_threshold = 1
   acceptable_latency = 0
