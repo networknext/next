@@ -29,9 +29,9 @@ relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
 
 server_backend_public_key   = "3UISqg8chLDHu4BKFc+3lr1elIha0IMI2c8vKpwzpbA="
 
-test_server_region          = "southamerica-east1"
-test_server_zone            = "southamerica-east1-a"
-test_server_tag             = "006" # increment this each time you want to deploy the test server
+test_server_region          = "europe-west3"
+test_server_zone            = "europe-west3-b"
+test_server_tag             = "007" # increment this each time you want to deploy the test server
 
 disable_backend             = false
 disable_raspberry           = false
