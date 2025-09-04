@@ -2407,7 +2407,7 @@ project "server"
 
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
-	LoadRelayScript = `$( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `$( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s?ts=%d -O relay --no-cache && chmod +x relay && sudo mv relay /app/relay && sudo systemctl start relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo DEBIAN_FRONTEND=noninteractive apt update -y && sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt dist-upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt autoremove -y && sudo reboot`
 
@@ -2608,7 +2608,7 @@ func loadRelays(env Environment, regexes []string, version string) {
 			}
 			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
 			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version))
+			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version, time.Now().Unix()))
 		}
 	}
 }
