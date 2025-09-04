@@ -663,9 +663,9 @@ func relayHistoryHandler(service *common.Service, relayManager *common.RelayMana
 		rtt, jitter, packetLoss := relayManager.GetHistory(sourceRelayId, destRelayId)
 
 		fmt.Fprintf(w, "history: %s -> %s\n", src, dest)
-		fmt.Fprintf(w, "%v\n", rtt)	
-		fmt.Fprintf(w, "%v\n", jitter)	
-		fmt.Fprintf(w, "%v\n", packetLoss)	
+		fmt.Fprintf(w, "%v\n", rtt)
+		fmt.Fprintf(w, "%v\n", jitter)
+		fmt.Fprintf(w, "%v\n", packetLoss)
 	}
 }
 
@@ -904,7 +904,7 @@ func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
 			currentTime := int64(time.Now().Unix())
-			if currentTime - startTime >= int64(initialDelay) {
+			if currentTime-startTime >= int64(initialDelay) {
 				core.Debug("initial delay completed")
 				delayMutex.Lock()
 				delayCompleted = true

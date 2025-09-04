@@ -155,7 +155,7 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		if stream.IsReading() {
 			m.Costs = make([]byte, numEntries)
 		}
-		if numEntries > 0 {	
+		if numEntries > 0 {
 			stream.SerializeBytes(m.Costs)
 		}
 	}

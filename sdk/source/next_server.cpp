@@ -3199,7 +3199,13 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "(before resolve hostname attempt #%d)", i + 1 );
+
+            int result = next_platform_hostname_resolve( hostname, port, &address );q
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "(after resolve hostname attempt #%d)", i + 1 );
+
+            if ( result == NEXT_OK )
             {
                 next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
                 success = true;

@@ -487,7 +487,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []ui
 
 							x := indirect[i][k][x_index].relay
 							ixk_cost := indirect[i][k][x_index].cost
-							cost := int32(ixk_cost)+int32(kj_cost)
+							cost := int32(ixk_cost) + int32(kj_cost)
 							if cost < directCost {
 								routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(j))
 							}
@@ -498,7 +498,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []ui
 						for y_index := range indirect[k][j] {
 							kyj_cost := indirect[k][j][y_index].cost
 							y := indirect[k][j][y_index].relay
-							cost := int32(ik_cost)+int32(kyj_cost)
+							cost := int32(ik_cost) + int32(kyj_cost)
 							if cost < directCost {
 								routeManager.AddRoute(cost, int32(i), int32(k), int32(y), int32(j))
 							}
@@ -512,7 +512,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []ui
 							for y_index := range indirect[k][j] {
 								kyj_cost := indirect[k][j][y_index].cost
 								y := int(indirect[k][j][y_index].relay)
-								cost := int32(ixk_cost)+int32(kyj_cost)
+								cost := int32(ixk_cost) + int32(kyj_cost)
 								if cost < directCost {
 									routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(y), int32(j))
 								}
@@ -568,7 +568,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 
 		startIndex := segment * numRelays / numSegments
 		endIndex := (segment+1)*numRelays/numSegments - 1
-		if segment == numSegments - 1 {
+		if segment == numSegments-1 {
 			endIndex = numRelays - 1
 		}
 
@@ -703,7 +703,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 							for y_index := range indirect[k][j] {
 								kyj_cost := indirect[k][j][y_index].cost
 								y := indirect[k][j][y_index].relay
-								cost := int32(ik_cost)+int32(kyj_cost)
+								cost := int32(ik_cost) + int32(kyj_cost)
 								if cost < directCost {
 									routeManager.AddRoute(cost, int32(i), int32(k), int32(y), int32(j))
 								}
@@ -717,7 +717,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []u
 								for y_index := range indirect[k][j] {
 									kyj_cost := indirect[k][j][y_index].cost
 									y := int(indirect[k][j][y_index].relay)
-									cost := int32(ixk_cost)+int32(kyj_cost)
+									cost := int32(ixk_cost) + int32(kyj_cost)
 									if cost < directCost {
 										routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(y), int32(j))
 									}
