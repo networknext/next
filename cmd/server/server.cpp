@@ -59,7 +59,8 @@ int main()
         fflush( stdout );
     }
 
-    next_server_flush( server );
+    // todo: disable flush for the moment
+    // next_server_flush( server );
     
     next_server_destroy( server );
     
