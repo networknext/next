@@ -38,7 +38,7 @@ int main()
 
     srand( time(NULL) );
 
-    double restart_time = next_platform_time() + 10.0 * ( double(rand()) / double(RAND_MAX) );
+    double restart_time = next_platform_time() + 1.0 * ( double(rand()) / double(RAND_MAX) );
 
     next_server_t * server = next_server_create( NULL, "127.0.0.1:30000", "0.0.0.0:30000", "local", server_packet_received );
     if ( server == NULL )
@@ -66,7 +66,7 @@ int main()
                 return 1;
             }
 
-            restart_time = next_platform_time() + 10.0 * ( double(rand()) / double(RAND_MAX) );
+            restart_time = next_platform_time() + 1.0 * ( double(rand()) / double(RAND_MAX) );
         }
     }
     
