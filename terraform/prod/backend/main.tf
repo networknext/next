@@ -684,7 +684,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 500
   connection_drain           = 0
-  target_size                = local.disable_backend ? 0 : 2
+  target_size                = local.disable_backend ? 0 : 1
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
