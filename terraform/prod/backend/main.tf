@@ -930,7 +930,8 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  #machine_type               = "c3-highcpu-8"
+  machine_type               = "n1-standard-2"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
