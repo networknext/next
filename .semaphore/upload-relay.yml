@@ -32,7 +32,7 @@ blocks:
             - mv relay-debug ${SEMAPHORE_GIT_TAG_NAME}-debug
             - gsutil cp ${SEMAPHORE_GIT_TAG_NAME}-debug $RELAY_BUCKET
 
-        - name: "Release Relay (XDP)"
+        - name: "Release Relay"
           commands:
             - artifact pull workflow relay-release
             - artifact pull workflow relay_module.tar.gz
@@ -40,7 +40,7 @@ blocks:
             - mv relay-release ${SEMAPHORE_GIT_TAG_NAME}
             - gsutil cp ${SEMAPHORE_GIT_TAG_NAME} $RELAY_BUCKET
 
-        - name: "Relay Module (XDP)"
+        - name: "Relay Module"
           commands:
             - artifact pull workflow relay_module.tar.gz
             - gsutil cp relay_module.tar.gz $RELAY_BUCKET
