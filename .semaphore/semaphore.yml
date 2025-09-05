@@ -30,7 +30,7 @@ blocks:
             - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/relay-debug ./dist/libnext.so -DRELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME
+            - make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j ./dist/relay-debug ./dist/libnext.so
             - artifact push workflow ./dist/relay-debug --force
             - artifact push workflow ./dist/libnext.so --force
             - artifact push workflow tools/build_artifact/bootstrap.sh --force
@@ -106,7 +106,7 @@ blocks:
             - sudo ldconfig
             - popd
             - pushd .
-            - cd relay/xdp && make -j build -DRELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME
+            - cd relay/xdp && - make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j build
             - mv relay relay-release
             - artifact push workflow relay-release --force
             - make relay_xdp.o

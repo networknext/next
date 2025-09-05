@@ -1,6 +1,8 @@
 # Network Next Makefile
 
-CXX_FLAGS := -g -Wall -Wextra
+RELAY_VERSION := "relay"
+
+CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=$(RELAY_VERSION)
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
