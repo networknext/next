@@ -23,10 +23,14 @@ blocks:
       jobs:
         - name: "Build Components"
           commands:
+            - |
+              if [ -z "$SEMAPHORE_GIT_TAG_NAME" ]; then
+                export SEMAPHORE_GIT_TAG_NAME relay-debug
+              fi
             - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/relay-debug ./dist/libnext.so
+            - make -j ./dist/relay-debug ./dist/libnext.so -DRELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME
             - artifact push workflow ./dist/relay-debug --force
             - artifact push workflow ./dist/libnext.so --force
             - artifact push workflow tools/build_artifact/bootstrap.sh --force
@@ -82,6 +86,10 @@ blocks:
       jobs:
         - name: "XDP"
           commands:
+            - |
+              if [ -z "$SEMAPHORE_GIT_TAG_NAME" ]; then
+                export SEMAPHORE_GIT_TAG_NAME relay-release
+              fi
             - checkout
             - uname -r
             - sudo DEBIAN_FRONTEND=noninteractive apt update -y
@@ -98,7 +106,7 @@ blocks:
             - sudo ldconfig
             - popd
             - pushd .
-            - cd relay/xdp && make -j build
+            - cd relay/xdp && make -j build -DRELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME
             - mv relay relay-release
             - artifact push workflow relay-release --force
             - make relay_xdp.o
