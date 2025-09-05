@@ -34,5 +34,5 @@ test_server_zone            = "europe-west3-b"
 test_server_tag             = "007" # increment this each time you want to deploy the test server
 
 disable_backend             = false
-disable_raspberry           = false
+disable_raspberry           = true
 disable_ip2location         = false
