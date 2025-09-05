@@ -67,11 +67,15 @@ static void cleanup()
     fflush( stdout );
 }
 
+#ifndef RELAY_VERSION
+#define RELAY_VERSION "relay-release"
+#endif // #ifndef RELAY_VERSION
+
 int main( int argc, char *argv[] )
 {
     relay_platform_init();
 
-    printf( "Network Next Relay (release)\n" );
+    printf( "Network Next Relay (%s)\n", RELAY_VERSION );
 
     fflush( stdout );
 

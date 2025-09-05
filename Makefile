@@ -2,7 +2,7 @@
 
 RELAY_VERSION := "relay-debug"
 
-CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=$(RELAY_VERSION)
+CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=\"$(RELAY_VERSION)\"
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)

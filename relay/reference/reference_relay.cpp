@@ -5824,11 +5824,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 // ========================================================================================================================================
 
+#ifndef RELAY_VERSION
+#define RELAY_VERSION "relay-debug"
+#endif // #ifndef RELAY_VERSION
+
 int main()
 {
     uint64_t start_time = time( NULL );
 
-    printf( "Network Next Relay (debug)\n" );
+    printf( "Network Next Relay (%s)\n", RELAY_VERSION );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
