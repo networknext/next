@@ -25,16 +25,22 @@ blocks:
 
       jobs:
 
-        - name: "Relay (debug)"
+        - name: "Debug Relay"
           commands:
             - artifact pull workflow relay-debug
             - chmod +x relay-debug
-            - gsutil cp relay-debug $RELAY_BUCKET
+            - mv relay-debug ${SEMAPHORE_GIT_TAG_NAME}-debug
+            - gsutil cp ${SEMAPHORE_GIT_TAG_NAME}-debug $RELAY_BUCKET
 
-        - name: "Relay (release)"
+        - name: "Release Relay (XDP)"
           commands:
             - artifact pull workflow relay-release
             - artifact pull workflow relay_module.tar.gz
             - chmod +x relay-release
-            - gsutil cp relay-release $RELAY_BUCKET
+            - mv relay-release ${SEMAPHORE_GIT_TAG_NAME}
+            - gsutil cp ${SEMAPHORE_GIT_TAG_NAME} $RELAY_BUCKET
+
+        - name: "Relay Module (XDP)"
+          commands:
+            - artifact pull workflow relay_module.tar.gz
             - gsutil cp relay_module.tar.gz $RELAY_BUCKET
