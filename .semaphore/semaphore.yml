@@ -106,7 +106,7 @@ blocks:
             - sudo ldconfig
             - popd
             - pushd .
-            - cd relay/xdp && - make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j build
+            - cd relay/xdp && make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j build
             - mv relay relay-release
             - artifact push workflow relay-release --force
             - make relay_xdp.o

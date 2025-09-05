@@ -1,6 +1,6 @@
 # Network Next Makefile
 
-RELAY_VERSION := "relay"
+RELAY_VERSION := "relay-debug"
 
 CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=$(RELAY_VERSION)
 
