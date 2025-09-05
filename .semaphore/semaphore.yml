@@ -29,7 +29,7 @@ blocks:
             - make -j ./dist/relay-debug ./dist/libnext.so
             - artifact push workflow ./dist/relay-debug --force
             - artifact push workflow ./dist/libnext.so --force
-            - artifact push workflow deploy/bootstrap.sh --force
+            - artifact push workflow tools/build_artifact/bootstrap.sh --force
             - artifact push workflow config/google.txt --force
             - artifact push workflow config/amazon.txt --force
             - artifact push workflow config/akamai.txt --force
@@ -121,7 +121,7 @@ blocks:
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
             - cd ../..
-            - artifact push workflow deploy/nginx.conf --force
+            - artifact push workflow tools/build_artifact/nginx.conf --force
 
   - name: "Build Artifacts (Golang)"
 
