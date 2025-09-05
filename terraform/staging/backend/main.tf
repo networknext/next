@@ -236,7 +236,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
-  value   = module.api.address
+  content = module.api.address
   type    = "A"
   proxied = false
 }
@@ -244,7 +244,7 @@ resource "cloudflare_record" "api_domain" {
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "server-staging"
-  value   = module.server_backend.address
+  content = module.server_backend.address
   type    = "A"
   proxied = false
 }
@@ -252,7 +252,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay-staging"
-  value   = module.relay_gateway.address
+  content = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
@@ -260,7 +260,7 @@ resource "cloudflare_record" "relay_backend_domain" {
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-staging"
-  value   = module.portal.address
+  content = module.portal.address
   type    = "A"
   proxied = false
 }

@@ -162,7 +162,7 @@ resource "google_compute_subnetwork" "internal_http_load_balancer" {
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-dev"
-  value   = module.api.address
+  content = module.api.address
   type    = "A"
   proxied = false
 }
@@ -170,7 +170,7 @@ resource "cloudflare_record" "api_domain" {
 resource "cloudflare_record" "autodetect_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "autodetect-dev"
-  value   = module.autodetect.address
+  content = module.autodetect.address
   type    = "A"
   proxied = false
 }
@@ -178,7 +178,7 @@ resource "cloudflare_record" "autodetect_domain" {
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "server-dev"
-  value   = module.server_backend.address
+  content = module.server_backend.address
   type    = "A"
   proxied = false
 }
@@ -186,7 +186,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay-dev"
-  value   = module.relay_gateway.address
+  content = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
@@ -194,7 +194,7 @@ resource "cloudflare_record" "relay_backend_domain" {
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-dev"
-  value   = module.portal.address
+  content = module.portal.address
   type    = "A"
   proxied = false
 }
@@ -202,7 +202,7 @@ resource "cloudflare_record" "portal_domain" {
 resource "cloudflare_record" "raspberry_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "raspberry-dev"
-  value   = module.raspberry_backend.address
+  content = module.raspberry_backend.address
   type    = "A"
   proxied = false
 }
