@@ -241,12 +241,18 @@ promotions:
 
   - name: "SDK Tests"
     pipeline_file: sdk-tests.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Functional Tests"
     pipeline_file: functional-tests.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Happy Path"
     pipeline_file: happy-path.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Upload Artifacts"
     pipeline_file: upload-artifacts.yml
@@ -255,6 +261,8 @@ promotions:
 
   - name: "Upload Config"
     pipeline_file: upload-config.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'config'"
 
   - name: "Upload Relay"
     pipeline_file: upload-relay.yml
