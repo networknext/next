@@ -504,7 +504,7 @@ int main_update( struct main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, "release", RELAY_VERSION_LENGTH );
+    relay_write_string( &p, RELAY_VERSION, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
