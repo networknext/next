@@ -19,6 +19,13 @@ blocks:
 
       prologue:
         commands:
+            - |
+              # Check if the SEMAPHORE_GIT_TAG_NAME environment variable is empty.
+              # A build triggered without a tag will have this variable unset.
+              if [ -z "$SEMAPHORE_GIT_TAG_NAME" ]; then
+                echo "This workflow must be triggered by a Git tag. Aborting."
+                exit 1
+              fi          
             - tar xzf /home/semaphore/secrets/secrets.tar.gz -C /home/semaphore/secrets
             - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-storage.json
             - export RELAY_BUCKET=gs://sloclap_network_next_relay_artifacts
