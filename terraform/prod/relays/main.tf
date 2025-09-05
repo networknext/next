@@ -643,6 +643,7 @@ output "all_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 # ===============
 # RASPBERRY BUYER
 # ===============
@@ -703,6 +704,7 @@ resource "networknext_buyer_datacenter_settings" test {
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }
+*/
 
 # =============
 # REMATCH BUYER
