@@ -659,12 +659,16 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    const bool datacenter_is_local = datacenter[0] == 'l' &&
-                                     datacenter[1] == 'o' &&
-                                     datacenter[2] == 'c' &&
-                                     datacenter[3] == 'a' &&
-                                     datacenter[4] == 'l' &&
-                                     datacenter[5] == '\0';
+    bool datacenter_is_local = datacenter[0] == 'l' &&
+                               datacenter[1] == 'o' &&
+                               datacenter[2] == 'c' &&
+                               datacenter[3] == 'a' &&
+                               datacenter[4] == 'l' &&
+                               datacenter[5] == '\0';
+
+#if NEXT_FAKE_GOOGLE_AUTODETECT
+    datacenter_is_local = false;
+#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
 
     const char * hostname = next_global_config.server_backend_hostname;
 
@@ -3338,6 +3342,8 @@ static void next_server_internal_autodetect_thread_function( void * context )
     server_address_no_port.port = 0;
     next_address_to_string( &server_address_no_port, autodetect_address );
 
+#if !NEXT_FAKE_GOOGLE_AUTODETECT
+
     if ( !next_global_config.disable_autodetect 
          &&
          ( 
@@ -3359,6 +3365,8 @@ static void next_server_internal_autodetect_thread_function( void * context )
            ) 
          )
        )
+
+#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server attempting to autodetect datacenter" );
 

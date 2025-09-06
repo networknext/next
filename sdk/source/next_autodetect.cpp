@@ -113,7 +113,11 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "(before google metadata http request)" );
 
+#if !NEXT_FAKE_GOOGLE_AUTODETECT
     if ( !next_http_request( "http://metadata.google.internal/computeMetadata/v1/instance/zone", "Metadata-Flavor: Google", 2, buffer, sizeof(buffer) ) )
+#else // #if !NEXT_FAKE_GOOGLE_AUTODETECT
+    if ( !next_http_request( NEXT_AUTODETECT_URL "/fake_google_zone", "Metadata-Flavor: Google", 2, buffer, sizeof(buffer) ) )
+#endif // #if !NEXT_FAKE_GOOGLE_AUTODETECT
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
         return false;
@@ -146,7 +150,11 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
     next_printf( NEXT_LOG_LEVEL_DEBUG, "(before google.txt http request)" );
 
     char url[1024];
+#if !NEXT_FAKE_GOOGLE_AUTODETECT
     snprintf( url, sizeof(url), "https://storage.googleapis.com/%s/google.txt?ts=%x", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
+#else // #if !NEXT_FAKE_GOOGLE_AUTODETECT
+    snprintf( url, sizeof(url), NEXT_AUTODETECT_URL "/fake_google_txt" );
+#endif // #if !NEXT_FAKE_GOOGLE_AUTODETECT
     memset( buffer, 0, sizeof(buffer) );
     if ( !next_http_request( url, "", 5, buffer, sizeof(buffer) ) )
     {
@@ -314,7 +322,14 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
     next_assert( output_datacenter );
     next_assert( output_datacenter_size > 0 );
 
-    (void) public_address;
+#if NEXT_FAKE_GOOGLE_AUTODETECT
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "*** FAKE GOOGLE AUTODETECT ***" );
+
+    if ( next_autodetect_google( output_datacenter, output_datacenter_size ) )
+        return true;
+
+#else // #if NEXT_FAKE_GOOGLE_AUTODETECT
 
     if ( input_datacenter[0] == 'c' && 
          input_datacenter[1] == 'l' &&
@@ -332,6 +347,8 @@ bool next_autodetect_datacenter( const char * input_datacenter, const char * pub
 
     if ( next_autodetect_unity( input_datacenter, public_address, output_datacenter, output_datacenter_size ) )
         return true;
+
+#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
 
     return false;
 }

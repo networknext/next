@@ -8,6 +8,8 @@
 
 #include "next.h"
 
+#define NEXT_FAKE_GOOGLE_AUTODETECT 1
+
 void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, int timeout_seconds, char * output, size_t output_size ) );
 
 bool next_autodetect_google( char * output_datacenter, size_t output_datacenter_size );
