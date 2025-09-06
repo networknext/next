@@ -36,7 +36,8 @@ int main()
 
     next_init( NULL, NULL ); 
 
-    next_server_t * server = next_server_create( NULL, "127.0.0.1:30000", "0.0.0.0:30000", "local", server_packet_received );
+    // todo
+    next_server_t * server = next_server_create( NULL, "104.228.12.35:30000", "0.0.0.0:30000", "local", server_packet_received );
 
     if ( server == NULL )
     {
@@ -48,11 +49,14 @@ int main()
     {
         next_server_update( server );
 
+        // todo: disable for now
+        /*
         if ( next_server_direct_only( server ) )
         {
             next_printf( NEXT_LOG_LEVEL_INFO, "detected server is in direct only mode. restarting..." );
             break;
         }
+        */
 
         next_platform_sleep( 0.001 );
 

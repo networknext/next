@@ -1110,7 +1110,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
     if ( server->flushing )
         return;
 
-    if ( !server->received_init_response )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     const double current_time = next_platform_time();
@@ -1698,43 +1698,61 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
 
+            server->received_init_response = true;
+
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
                 switch ( packet.response )
                 {
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_BUYER:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown buyer" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown datacenter" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. sdk version too old" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_BUYER_NOT_ACTIVE:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. buyer not active" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. datacenter not enabled" );
-                        return;
+                        break;
 
                     default:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend" );
-                        return;
+                        break;
                 }
+
+                next_printf( NEXT_LOG_LEVEL_INFO, "falling back to direct only mode" );
+
+                server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+
+                next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
+                next_assert( notify_direct_only );
+                notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
+
+                {
+#if NEXT_SPIKE_TRACKING
+                    next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
+                    next_platform_mutex_guard( &server->notify_mutex );
+                    next_queue_push( server->notify_queue, notify_direct_only );
+                }
+
+                return;
             }
 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
-
-            server->received_init_response = true;
 
             memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
             memcpy( server->current_magic, packet.current_magic, 8 );

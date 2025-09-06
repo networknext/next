@@ -114,7 +114,7 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
 #if !NEXT_FAKE_GOOGLE_AUTODETECT
     if ( !next_http_request( "http://metadata.google.internal/computeMetadata/v1/instance/zone", "Metadata-Flavor: Google", 2, buffer, sizeof(buffer) ) )
 #else // #if !NEXT_FAKE_GOOGLE_AUTODETECT
-    if ( !next_http_request( NEXT_AUTODETECT_URL "/fake_google_zone", "Metadata-Flavor: Google", 2, buffer, sizeof(buffer) ) )
+    if ( !next_http_request( NEXT_AUTODETECT_URL "/fake_google_zone", "Metadata-Flavor: Google", 5, buffer, sizeof(buffer) ) )
 #endif // #if !NEXT_FAKE_GOOGLE_AUTODETECT
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
