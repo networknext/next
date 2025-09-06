@@ -120,7 +120,7 @@ func fakeGoogleZoneHandler(w http.ResponseWriter, r *http.Request) {
 	randomMilliseconds := rand.Intn(3001)
 	sleepDuration := time.Duration(randomMilliseconds) * time.Millisecond
 	time.Sleep(sleepDuration)
-	fmt.Fprintf(w, "europe-west3-c")
+	fmt.Fprintf(w, "projects/zones/europe-west3-c")
 }
 
 func fakeGoogleTextHandler(w http.ResponseWriter, r *http.Request) {
