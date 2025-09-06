@@ -4,6 +4,9 @@
 */
 
 #include "next.h"
+
+#if NEXT_DEVELOPMENT
+
 #include "next_crypto.h"
 #include "next_platform.h"
 
@@ -270,3 +273,15 @@ int main()
 
     return 0;
 }
+
+#else // #if NEXT_DEVELOPMENT
+
+#include <stdio.h>
+
+int main()
+{
+    printf( "not supported\n" );
+    return 0;
+}
+
+#endif // #if NEXT_DEVELOPMENT

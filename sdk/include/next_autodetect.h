@@ -7,8 +7,7 @@
 #define NEXT_AUTODETECT_H
 
 #include "next.h"
-
-#define NEXT_FAKE_GOOGLE_AUTODETECT 1
+#include "next_config.h"
 
 void next_autodetect_http_request_function( bool (*function)( const char * url, const char * header, int timeout_seconds, char * output, size_t output_size ) );
 

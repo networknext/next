@@ -3,6 +3,7 @@
     Licensed under the Network Next Source Available License 1.0
 */
 
+#include "next_config.h"
 #include "next_server.h"
 #include "next_queue.h"
 #include "next_hash.h"

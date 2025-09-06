@@ -7,8 +7,6 @@
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX || NEXT_PLATFORM == NEXT_PLATFORM_MAC || NEXT_PLATFORM == NEXT_PLATFORM_WINDOWS
 
-#include "next_config.h"
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -19,11 +17,6 @@
 #if defined(_WIN32) || defined(_WIN64)
 #define strtok_r strtok_s
 #endif
-
-#if NEXT_FAKE_GOOGLE_AUTODETECT
-#undef NEXT_AUTODETECT_URL
-#define NEXT_AUTODETECT_URL "https://autodetect.virtualgo.net"
-#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
 
 bool next_default_http_request_function( const char * url, const char * header, int timeout_seconds, char * output, size_t output_size )
 {
@@ -128,6 +121,8 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
         return false;
     }
 
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "output: '%s'", buffer );
+
     next_printf( NEXT_LOG_LEVEL_DEBUG, "(after google metadata http request)" );
 
     char * p = strstr( buffer, "projects/" );
@@ -177,6 +172,7 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "(before map to google datacenter)" );
 
+    int line = 0;
     while ( p < end && *p != '\0' )
     {
         q = p;
@@ -188,8 +184,7 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
             break;
         *q = '\0';
         {
-            // todo
-            printf( "line: '%s'\n", p );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "line %d: '%s'", line, p );
 
             const char * separators = ",\n\r";
             char * rest;
@@ -207,6 +202,7 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
             }
         }
         p = q + 1;
+        line++;
     }
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "(after map to google datacenter)" );

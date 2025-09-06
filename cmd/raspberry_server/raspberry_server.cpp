@@ -4,6 +4,10 @@
 */
 
 #include "next.h"
+
+#if NEXT_DEVELOPMENT
+
+#include "next_config.h"
 #include "next_platform.h"
 #include "next_address.h"
 
@@ -187,3 +191,15 @@ int main()
 
     return 0;
 }
+
+#else // #if NEXT_DEVELOPMENT
+
+#include <stdio.h>
+
+int main()
+{
+    printf( "not supported\n" );
+    return 0;
+}
+
+#endif // #if NEXT_DEVELOPMENT
