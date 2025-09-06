@@ -945,7 +945,7 @@ module "server_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = local.disable_backend ? 0 : 1
-  max_size                   = local.disable_backend ? 0 : 4
+  max_size                   = local.disable_backend ? 0 : 1
   target_cpu                 = 60
   tier_1                     = false
 
