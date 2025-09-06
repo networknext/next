@@ -127,5 +127,5 @@ func fakeGoogleTextHandler(w http.ResponseWriter, r *http.Request) {
 	randomMilliseconds := rand.Intn(3001)
 	sleepDuration := time.Duration(randomMilliseconds) * time.Millisecond
 	time.Sleep(sleepDuration)
-	fmt.Fprintf(w, "europe-west3-c google.frankfurt.3\n")
+	fmt.Fprintf(w, "europe-west3-c,google.frankfurt.3\n")
 }

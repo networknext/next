@@ -175,6 +175,8 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
 
     char * end = buffer + sizeof(buffer);
 
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "(before map to google datacenter)" );
+
     while ( p < end && *p != '\0' )
     {
         q = p;
@@ -186,6 +188,9 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
             break;
         *q = '\0';
         {
+            // todo
+            printf( "line: '%s'\n", p );
+
             const char * separators = ",\n\r";
             char * rest;
             char * google_zone = strtok_r( p, separators, &rest );
@@ -196,12 +201,15 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: '%s' -> '%s'", zone, network_next_datacenter );
                     next_copy_string( datacenter, network_next_datacenter, datacenter_size );
+                    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after map to google datacenter)" );
                     return true;
                 }
             }
         }
         p = q + 1;
     }
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after map to google datacenter)" );
 
     next_printf( NEXT_LOG_LEVEL_WARN, "could not find network next datacenter for google cloud zone :(" );
 
