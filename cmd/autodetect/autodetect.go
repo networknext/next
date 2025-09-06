@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"math/rand"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/networknext/next/modules/common"
@@ -27,6 +29,8 @@ func main() {
 	service := common.CreateService("autodetect")
 
 	service.Router.HandleFunc("/{input_datacenter}/{server_address}", autodetectHandler).Methods("GET")
+	service.Router.HandleFunc("/fake_google_zone", fakeGoogleZoneHandler).Methods("GET")
+	service.Router.HandleFunc("/fake_google_txt", fakeGoogleTextHandler).Methods("GET")
 
 	cache = make(map[string]string)
 
@@ -110,4 +114,18 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 	core.Log("%s -> %s", key, value)
 
 	w.Write([]byte(value))
+}
+
+func fakeGoogleZoneHandler(w http.ResponseWriter, r *http.Request) {
+	randomMilliseconds := rand.Intn(3001)
+	sleepDuration := time.Duration(randomMilliseconds) * time.Millisecond
+	time.Sleep(sleepDuration)
+	fmt.Fprintf(w, "europe-west3-c")
+}
+
+func fakeGoogleTextHandler(w http.ResponseWriter, r *http.Request) {
+	randomMilliseconds := rand.Intn(3001)
+	sleepDuration := time.Duration(randomMilliseconds) * time.Millisecond
+	time.Sleep(sleepDuration)
+	fmt.Fprintf(w, "europe-west3-c google.frankfurt.3\n")
 }

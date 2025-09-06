@@ -20,6 +20,11 @@
 #define strtok_r strtok_s
 #endif
 
+#if NEXT_FAKE_GOOGLE_AUTODETECT
+#undef NEXT_AUTODETECT_URL
+#define NEXT_AUTODETECT_URL "https://autodetect.virtualgo.net"
+#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
+
 bool next_default_http_request_function( const char * url, const char * header, int timeout_seconds, char * output, size_t output_size )
 {
     next_assert( url );
