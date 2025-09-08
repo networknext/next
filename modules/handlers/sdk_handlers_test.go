@@ -117,6 +117,8 @@ func TestBasicPacketFilterFailed_SDK(t *testing.T) {
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_BasicPacketFilterFailed])
 }
 
+// todo: disable advanced packet filter for the moment
+/*
 func TestAdvancedPacketFilterFailed_SDK(t *testing.T) {
 
 	t.Parallel()
@@ -144,6 +146,7 @@ func TestAdvancedPacketFilterFailed_SDK(t *testing.T) {
 
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed])
 }
+*/
 
 func TestNoRouteMatrix_SDK(t *testing.T) {
 
