@@ -9,7 +9,7 @@
 #include "next.h"
 #include "next_constants.h"
 
-#define NEXT_FAKE_GOOGLE_AUTODETECT 1
+// #define NEXT_FAKE_GOOGLE_AUTODETECT 1
 
 #if NEXT_FAKE_GOOGLE_AUTODETECT
 #undef NEXT_DEVELOPMENT
