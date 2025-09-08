@@ -4,6 +4,7 @@
 */
 
 #include "next.h"
+#include "next_config.h"
 
 #if NEXT_DEVELOPMENT
 
