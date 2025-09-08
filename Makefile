@@ -82,7 +82,7 @@ format:
 
 # Build sdk
 
-SDK_FLAGS := # -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 
+SDK_FLAGS := -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 
 
 dist/$(SDKNAME5).so: $(shell find sdk -type f)
 	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk/include -shared -o $(SDKNAME5).so ../sdk/source/*.cpp $(LDFLAGS)

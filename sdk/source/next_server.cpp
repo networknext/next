@@ -475,6 +475,7 @@ static void next_server_internal_thread_function( void * context );
 next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
 {
 #if !NEXT_DEVELOPMENT
+    #error not development
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
