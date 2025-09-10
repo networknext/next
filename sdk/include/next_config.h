@@ -9,12 +9,6 @@
 #include "next.h"
 #include "next_constants.h"
 
-// #define NEXT_FAKE_GOOGLE_AUTODETECT 1
-
-#if NEXT_FAKE_GOOGLE_AUTODETECT
-#undef NEXT_DEVELOPMENT
-#endif // #if NEXT_FAKE_GOOGLE_AUTODETECT
-
 #define NEXT_PROD_AUTODETECT_URL "https://autodetect.virtualgo.net"
 #define NEXT_PROD_SERVER_BACKEND_HOSTNAME "server.virtualgo.net"
 #define NEXT_PROD_SERVER_BACKEND_PUBLIC_KEY "3UISqg8chLDHu4BKFc+3lr1elIha0IMI2c8vKpwzpbA="
