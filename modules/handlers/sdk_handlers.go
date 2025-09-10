@@ -105,8 +105,6 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 
 	// make sure the advanced packet filter passes
 
-	// todo: disable the advanced packet filter for the moment
-	/*
 	to := &handler.ServerBackendAddress
 
 	var emptyMagic [8]byte
@@ -119,7 +117,6 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 		handler.Events[SDK_HandlerEvent_AdvancedPacketFilterFailed] = true
 		return
 	}
-	*/
 
 	// we can't process any packets without these
 
