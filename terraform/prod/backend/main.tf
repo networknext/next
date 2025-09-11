@@ -933,8 +933,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  #machine_type               = "c3-highcpu-8"
-  machine_type               = "n1-standard-2"
+  machine_type               = "c3-highcpu-8"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -946,7 +945,7 @@ module "server_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = local.disable_backend ? 0 : 1
-  max_size                   = local.disable_backend ? 0 : 1
+  max_size                   = local.disable_backend ? 0 : 4
   target_cpu                 = 60
   tier_1                     = false
 
