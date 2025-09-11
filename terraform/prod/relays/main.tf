@@ -36,7 +36,7 @@ locals {
     "google.saopaulo.2",
     "google.saopaulo.3",
     "i3d.saopaulo",
-    "latitude.saopaulo.1",
+    "latitude.saopaulo",
     "gcore.saopaulo",
   ]
 
