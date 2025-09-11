@@ -277,7 +277,7 @@ locals {
   latitude_relays = {
 
     "latitude.saopaulo" = {
-      datacenter_name = "latitude.saopaulo.1"
+      datacenter_name = "latitude.saopaulo"
       public_address  = "189.1.173.223"
     },
 
