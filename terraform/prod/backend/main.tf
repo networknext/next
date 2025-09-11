@@ -903,7 +903,7 @@ module "server_backend" {
     NUM_BUCKETS=100
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=2
+    UDP_NUM_THREADS=8
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -929,8 +929,6 @@ module "server_backend" {
     sudo systemctl start app.service
   EOF1
 
-  # IMPORTANT: bump threads above when scaling up!
-
   tag                        = var.tag
   extra                      = var.extra
   machine_type               = "c3-highcpu-8"
@@ -946,7 +944,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = local.disable_backend ? 0 : 1
   max_size                   = local.disable_backend ? 0 : 4
-  target_cpu                 = 60
+  target_cpu                 = 75
   tier_1                     = false
 
   depends_on = [
