@@ -276,9 +276,19 @@ locals {
 
   latitude_relays = {
 
-    "latitude.saopaulo" = {
+    "latitude.saopaulo.a" = {
       datacenter_name = "latitude.saopaulo"
       public_address  = "189.1.173.223"
+    },
+
+    "latitude.saopaulo.b" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.93"
+    },
+
+    "latitude.saopaulo.c" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.133"
     },
 
   }
@@ -720,7 +730,6 @@ resource "networknext_buyer_datacenter_settings" raspberry {
 
 resource "networknext_route_shader" test {
   name = "test"
-  disable_network_next = true     # IMPORTANT: Flip this back to true to enable acceleration!
   force_next = true
   latency_reduction_threshold = 1
   acceptable_latency = 0
@@ -755,11 +764,10 @@ resource "networknext_buyer_datacenter_settings" test {
 
 resource "networknext_route_shader" rematch {
   name = "rematch"
-  disable_network_next = true     # IMPORTANT: Flip this back to true to enable acceleration!
   force_next = false
   latency_reduction_threshold = 20
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 1.0
+  acceptable_packet_loss_instant = 5
   acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024

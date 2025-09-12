@@ -87,27 +87,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    // IMPORTANT: equivalent to latitude.saopaulo.1 for unity.saopaulo -> latitude.saopaulo autodetect
     "latitude.saopaulo" = {
       latitude    = -23.5558
       longitude   = -46.6396
       native_name = "SAO"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.saopaulo.1" = {
-      latitude    = -23.5558
-      longitude   = -46.6396
-      native_name = "SAO"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.saopaulo.2" = {
-      latitude    = -23.5558
-      longitude   = -46.6396
-      native_name = "SAO2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },
