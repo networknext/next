@@ -943,7 +943,7 @@ module "server_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = local.disable_backend ? 0 : 1
   max_size                   = local.disable_backend ? 0 : 4
-  target_cpu                 = 75
+  target_cpu                 = 60
   tier_1                     = false
 
   depends_on = [
