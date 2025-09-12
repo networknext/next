@@ -767,8 +767,8 @@ resource "networknext_route_shader" rematch {
   force_next = false
   latency_reduction_threshold = 10
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 10.0
-  acceptable_packet_loss_sustained = 2.5
+  acceptable_packet_loss_instant = 5.0
+  acceptable_packet_loss_sustained = 1.0
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5
