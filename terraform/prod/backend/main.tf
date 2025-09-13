@@ -672,7 +672,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-standard-4"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
