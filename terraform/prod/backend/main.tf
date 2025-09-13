@@ -657,8 +657,8 @@ module "relay_backend" {
     DATABASE_URL="${local.google_database_bucket}/prod.bin"
     DATABASE_PATH="/app/database.bin"
     INITIAL_DELAY=360
-    MAX_JITTER=2
-    MAX_PACKET_LOSS=0.1
+    MAX_JITTER=4
+    MAX_PACKET_LOSS=0.25
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
