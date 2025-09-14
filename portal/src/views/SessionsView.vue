@@ -61,6 +61,7 @@ mess// -------------------------------------------------------------------------
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
+            <th class="right_align">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -75,6 +76,7 @@ mess// -------------------------------------------------------------------------
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
             <td class="nada" v-else> -- </td>
+            <td> {{ item["Score"] }} </td>
           </tr>
         </tbody>
       </table>
@@ -109,7 +111,7 @@ async function getData(page) {
       const platform = getPlatformName(v.platform_type)
       const user_hash = parse_uint64(v.user_hash)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
-      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+      const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,
@@ -124,6 +126,7 @@ async function getData(page) {
         "Direct RTT":v.direct_rtt + " ms",
         "Accelerated RTT":next_rtt,
         "Improvement":improvement,
+        "Score":v.score,
       }
       data.push(row)
       i++;
