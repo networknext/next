@@ -1,7 +1,5 @@
 package messages
 
-// touch
-
 import (
 	"github.com/networknext/next/modules/constants"
 	"net"
