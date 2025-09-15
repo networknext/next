@@ -155,6 +155,7 @@ resource "google_compute_health_check" "service_vm" {
 resource "google_compute_region_instance_group_manager" "service" {
   provider = google-beta
   name     = var.service_name
+  project  = var.project
   region   = var.region
   distribution_policy_zones = var.zones
   named_port {
