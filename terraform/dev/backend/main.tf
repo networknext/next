@@ -1181,6 +1181,7 @@ resource "google_compute_router_nat" "nat" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 resource "google_compute_address" "test_server_address" {
   name = "test-server-address"
   region = local.test_server_region
@@ -1244,5 +1245,6 @@ output "test_server_address" {
   description = "The IP address of the test server"
   value = "${google_compute_address.test_server_address.address}:30000"
 }
+*/
 
 # ----------------------------------------------------------------------------------------
