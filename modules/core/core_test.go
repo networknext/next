@@ -4876,6 +4876,10 @@ func TestSessionScore(t *testing.T) {
 
 	assert.True(t, core.GetSessionScore(false, 0, 0) == uint32(999))
 
+	// make sure low direct rtt values have distinct scores
+
+	assert.True(t, core.GetSessionScore(false, 1, 0) != core.GetSessionScore(false, 2, 0))
+
 	// test random direct sessions
 
 	for i := 0; i < 10000; i++ {
