@@ -181,7 +181,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			}
 		}
 	} else {
-		state.Input.BestScore = uint32(999)
+		state.Input.BestScore = uint32(constants.MaxScore)
 	}
 
 	/*

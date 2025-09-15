@@ -77,4 +77,6 @@ const (
 	SecretKeyBytes = 32
 
 	MaxDatabaseSize = 256 * 1024
+
+	MaxScore = 999
 )
