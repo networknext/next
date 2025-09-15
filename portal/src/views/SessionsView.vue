@@ -61,7 +61,6 @@ mess// -------------------------------------------------------------------------
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
-            <th class="right_align">Score</th>
           </tr>
         </thead>
         <tbody>
@@ -76,7 +75,6 @@ mess// -------------------------------------------------------------------------
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
             <td class="nada" v-else> -- </td>
-            <td> {{ item["Score"] }} </td>
           </tr>
         </tbody>
       </table>
@@ -126,7 +124,6 @@ async function getData(page) {
         "Direct RTT":v.direct_rtt + " ms",
         "Accelerated RTT":next_rtt,
         "Improvement":improvement,
-        "Score":v.score,
       }
       data.push(row)
       i++;
