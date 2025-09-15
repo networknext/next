@@ -571,23 +571,53 @@ type PortalSessionsResponse struct {
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
-	response := PortalSessionsResponse{}
+
+	// Get the "top sessions" (around 10k max) with the biggest improvement as an array of session ids
+	// This lets us scale the portal up to any number of sessions. We'll only ever display the top ~10k in the portal session list.
 	sessionIds := topSessionsWatcher.GetTopSessions()
+
+	// Apply a very simple pagination algorithm to narrow session ids down to a single page of ~100 session ids
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
+
+	// Get basic session data for each of the ~100 session ids in the current page
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
-	response.Sessions = make([]PortalSessionData, len(sessions))
+
+	// Upgrade the session data for the page being displayed with data from redis per-session
+	// This fills the per-session data in with additional data that's stored elsewhere
+	upgradedSessions := make([]PortalSessionData, len(sessions))
+	for i := range upgradedSessions {
+		upgradePortalSessionData(service.Database(), sessions[i], &upgradedSessions[i])
+	}
+
+	// IMPORTANT: Remove any outliers in the sessions for this page (sessions that just went on next can sometimes pop up temporarily in the wrong page, exclude these)
+	if len(upgradedSessions) > 2 {
+		minScore := upgradedSessions[0].Score
+		maxScore := upgradedSessions[len(upgradedSessions)-1].Score
+		filteredSessions := make([]PortalSessionData, 0, len(upgradedSessions))
+		for i := range upgradedSessions {
+			if upgradedSessions[i].Score >= minScore && upgradedSessions[i].Score <= maxScore {
+				filteredSessions = append(filteredSessions, upgradedSessions[i])
+			}
+		}
+		upgradedSessions = filteredSessions
+	}
+
+	// Sometimes the score is out of date between redis and the session cruncher. Sort the sessions page here to fix it
+	sort.SliceStable(upgradedSessions, func(i, j int) bool { return upgradedSessions[i].Score < upgradedSessions[j].Score })
+
+	// Fill out the HTTP response struct and fire it back as JSON
+	response := PortalSessionsResponse{}
+	response.Sessions = upgradedSessions
 	response.OutputPage = outputPage
 	response.NumPages = numPages
-	database := service.Database()
-	for i := range response.Sessions {
-		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
-	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
