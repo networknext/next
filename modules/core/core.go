@@ -2210,7 +2210,7 @@ func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {
 		if directRTT > constants.MaxScore {
 			directRTT = constants.MaxScore
 		}
-		score = 255 + uint32(constants.MaxScore - directRTT)
+		score = 255 + uint32(constants.MaxScore-directRTT)
 		if score < 255 {
 			score = 255
 		} else if score > constants.MaxScore {

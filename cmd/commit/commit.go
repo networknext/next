@@ -27,9 +27,8 @@ func main() {
 		message = args[1]
 		fmt.Printf("\nCommitting '%s'\n\n", message)
 	} else {
-		fmt.Printf("\nCommitting\n\n")		
+		fmt.Printf("\nCommitting\n\n")
 	}
-
 
 	Bash(fmt.Sprintf("git pull && git commit -am \"%s\" && git push origin", message))
 

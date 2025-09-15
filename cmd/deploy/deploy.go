@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
-	"bytes"
 	"os"
 	"os/exec"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 func Bash(command string) {

@@ -4856,7 +4856,7 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 
 func TestSessionScore(t *testing.T) {
 
-	// biggest next improvement should be 0 (lowest score)
+	// biggest next improvement possible should be 0 (lowest score)
 
 	assert.True(t, core.GetSessionScore(true, 254, 0) == uint32(0))
 

@@ -883,7 +883,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	for i := range publisher.batchMessages {
 		batchIndex := int(publisher.batchMessages[i].Score)
-		if batchIndex > constants.NumBuckets - 1 {
+		if batchIndex > constants.NumBuckets-1 {
 			batchIndex = constants.NumBuckets - 1
 		}
 		batchSize[batchIndex]++
@@ -897,7 +897,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 
 	for i := range publisher.batchMessages {
 		batchIndex := int(publisher.batchMessages[i].Score)
-		if batchIndex > constants.NumBuckets - 1 {
+		if batchIndex > constants.NumBuckets-1 {
 			batchIndex = constants.NumBuckets - 1
 		}
 		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
@@ -1158,7 +1158,7 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 	if end > len(watcher.topSessions) {
 		end = len(watcher.topSessions)
 	}
-	sessions := make([]uint64, end - begin)
+	sessions := make([]uint64, end-begin)
 	copy(sessions, watcher.topSessions[begin:end])
 	watcher.mutex.RUnlock()
 	return sessions
@@ -1547,7 +1547,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	for i := range publisher.batchMessages {
 		batchIndex := int(publisher.batchMessages[i].Score)
-		if batchIndex > constants.NumBuckets - 1 {
+		if batchIndex > constants.NumBuckets-1 {
 			batchIndex = constants.NumBuckets - 1
 		}
 		batchSize[batchIndex]++
@@ -1561,7 +1561,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 
 	for i := range publisher.batchMessages {
 		batchIndex := int(publisher.batchMessages[i].Score)
-		if batchIndex > constants.NumBuckets - 1 {
+		if batchIndex > constants.NumBuckets-1 {
 			batchIndex = constants.NumBuckets - 1
 		}
 		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
@@ -1840,7 +1840,7 @@ func (watcher *TopServersWatcher) GetServers(begin int, end int) []string {
 	if end > len(watcher.topServers) {
 		end = len(watcher.topServers)
 	}
-	servers := make([]string, end - begin)
+	servers := make([]string, end-begin)
 	copy(servers, watcher.topServers[begin:end])
 	watcher.mutex.RUnlock()
 	return servers

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	// "github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
@@ -46,19 +46,14 @@ var topServersData []byte
 
 var service *common.Service
 
-var numBuckets int
-
 func main() {
-
-	// todo
-	numBuckets = 1000 // envvar.GetInt("NUM_BUCKETS", 10)
 
 	service = common.CreateService("server_cruncher")
 
 	service.Router.HandleFunc("/server_batch", serverBatchHandler).Methods("POST")
 	service.Router.HandleFunc("/top_servers", topServersHandler).Methods("GET")
 
-	buckets = make([]Bucket, numBuckets)
+	buckets = make([]Bucket, constants.NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
 		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 10000) // todo - 1000000)
@@ -79,7 +74,7 @@ func main() {
 
 func TestThread() {
 	for {
-		for index := 0; index < numBuckets; index++ {
+		for index := 0; index < constants.NumBuckets; index++ {
 			batch := make([]ServerUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				serverAddress := common.RandomAddress()
@@ -95,8 +90,8 @@ func GetBucketIndex(score uint32) int {
 	index := int(score)
 	if index < 0 {
 		index = 0
-	} else if index > numBuckets-1 {
-		index = numBuckets - 1
+	} else if index > constants.NumBuckets-1 {
+		index = constants.NumBuckets - 1
 	}
 	return index
 }
@@ -141,18 +136,18 @@ func TopSessionsThread() {
 
 		core.Debug("-------------------------------------------------------------------")
 
-		servers := make([]*SortedSet, numBuckets)
+		servers := make([]*SortedSet, constants.NumBuckets)
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			buckets[i].mutex.Lock()
 		}
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			servers[i] = buckets[i].servers
 			buckets[i].servers = NewSortedSet()
 		}
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			buckets[i].mutex.Unlock()
 		}
 
@@ -169,7 +164,7 @@ func TopSessionsThread() {
 
 		topServers := make([]Server, 0, TopServersCount)
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			bucketServers := servers[i].GetByRankRange(1, -1)
 			for j := range bucketServers {
 				if _, exists := serversMap[bucketServers[j].Key]; !exists {
@@ -226,7 +221,7 @@ func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 	body = body[8:]
 
 	index := 0
-	for j := 0; j < numBuckets; j++ {
+	for j := 0; j < constants.NumBuckets; j++ {
 		var numUpdates uint32
 		encoding.ReadUint32(body[:], &index, &numUpdates)
 		batch := make([]ServerUpdate, numUpdates)
