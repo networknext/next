@@ -926,7 +926,6 @@ module "server_backend" {
     SESSION_CRUNCHER_URL="http://${module.session_cruncher.address}"
     SERVER_CRUNCHER_URL="http://${module.server_cruncher.address}"
     ENABLE_IP2LOCATION=${!local.disable_ip2location}
-    NUM_BUCKETS=1000
     EOF
     systemctl start app.service
   EOF1

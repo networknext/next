@@ -79,4 +79,6 @@ const (
 	MaxDatabaseSize = 256 * 1024
 
 	MaxScore = 999
+
+	NumBuckets = MaxScore + 1
 )
