@@ -993,13 +993,13 @@ type SessionInserter struct {
 	publisher     *SessionCruncherPublisher
 }
 
-func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessionCruncherURL string, numBuckets int, batchSize int) *SessionInserter {
+func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessionCruncherURL string, batchSize int) *SessionInserter {
 	inserter := SessionInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
-	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL + "/session_batch", NumBuckets: numBuckets, BatchSize: batchSize})
+	inserter.publisher = CreateSessionCruncherPublisher(ctx, SessionCruncherPublisherConfig{URL: sessionCruncherURL + "/session_batch", BatchSize: batchSize})
 	return &inserter
 }
 
@@ -1626,13 +1626,13 @@ type ServerInserter struct {
 	publisher     *ServerCruncherPublisher
 }
 
-func CreateServerInserter(ctx context.Context, redisClient redis.Cmdable, serverCruncherURL string, numBuckets int, batchSize int) *ServerInserter {
+func CreateServerInserter(ctx context.Context, redisClient redis.Cmdable, serverCruncherURL string, batchSize int) *ServerInserter {
 	inserter := ServerInserter{}
 	inserter.redisClient = redisClient
 	inserter.lastFlushTime = time.Now()
 	inserter.batchSize = batchSize
 	inserter.pipeline = redisClient.Pipeline()
-	inserter.publisher = CreateServerCruncherPublisher(ctx, ServerCruncherPublisherConfig{URL: serverCruncherURL + "/server_batch", NumBuckets: numBuckets, BatchSize: batchSize})
+	inserter.publisher = CreateServerCruncherPublisher(ctx, ServerCruncherPublisherConfig{URL: serverCruncherURL + "/server_batch", BatchSize: batchSize})
 	return &inserter
 }
 
