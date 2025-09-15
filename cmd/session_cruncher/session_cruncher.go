@@ -75,6 +75,8 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
+var channelSize int
+
 var enableRedisTimeSeries bool
 var redisTimeSeriesCluster []string
 var redisTimeSeriesHostname string
@@ -82,6 +84,8 @@ var redisTimeSeriesHostname string
 var service *common.Service
 
 func main() {
+
+	channelSize = envvar.GetInt("CHANNEL_SIZE", 10000)
 
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
@@ -103,8 +107,7 @@ func main() {
 	buckets = make([]Bucket, constants.NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
-		// todo
-		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 10000) // 1000000)
+		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, channelSize)
 		buckets[i].totalSessions = NewSortedSet()
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])

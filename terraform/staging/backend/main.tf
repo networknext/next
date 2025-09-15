@@ -754,6 +754,7 @@ module "session_cruncher" {
     GOOGLE_PROJECT_ID=${local.google_project_id}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
+    CHANNEL_SIZE=1000000
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -789,6 +790,7 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
+    CHANNEL_SIZE=1000000
     EOF
     sudo systemctl start app.service
   EOF1
