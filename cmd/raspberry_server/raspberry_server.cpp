@@ -4,6 +4,8 @@
 */
 
 #include "next.h"
+
+#include "next_config.h"
 #include "next_platform.h"
 #include "next_address.h"
 

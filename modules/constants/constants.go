@@ -11,7 +11,7 @@ const (
 
 	MaxRelays        = 1000
 	NumRelayCounters = 150
-	RelayTimeout     = 10
+	RelayTimeout     = 30
 	RelayHistorySize = 300
 
 	MaxRouteRelays  = 5
@@ -77,4 +77,8 @@ const (
 	SecretKeyBytes = 32
 
 	MaxDatabaseSize = 256 * 1024
+
+	MaxScore = 999
+
+	NumBuckets = MaxScore + 1
 )

@@ -38,13 +38,13 @@ const (
 	SDK_MaxDestRelays           = int(constants.MaxDestRelays)
 	SDK_MaxSessionUpdateRetries = 10
 
-	SDK_ServerInitResponseOK                    = 0
-	SDK_ServerInitResponseUnknownBuyer          = 1
-	SDK_ServerInitResponseUnknownDatacenter     = 2
-	SDK_ServerInitResponseSDKVersionTooOld      = 3
-	SDK_ServerInitResponseSignatureCheckFailed  = 4
-	SDK_ServerInitResponseBuyerNotActive        = 5
-	SDK_ServerInitResponseDatacenterNotEnabled  = 6
+	SDK_ServerInitResponseOK                   = 0
+	SDK_ServerInitResponseUnknownBuyer         = 1
+	SDK_ServerInitResponseUnknownDatacenter    = 2
+	SDK_ServerInitResponseSDKVersionTooOld     = 3
+	SDK_ServerInitResponseSignatureCheckFailed = 4
+	SDK_ServerInitResponseBuyerNotActive       = 5
+	SDK_ServerInitResponseDatacenterNotEnabled = 6
 
 	SDK_PlatformTypeUnknown     = 0
 	SDK_PlatformTypeWindows     = 1

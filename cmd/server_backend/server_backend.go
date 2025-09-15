@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
@@ -24,8 +24,6 @@ import (
 var service *common.Service
 
 var pingKey []byte
-
-var numBuckets int
 
 var channelSize int
 var maxPacketSize int
@@ -114,7 +112,6 @@ func main() {
 
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 
-	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024*1024)
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 1384)
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
@@ -550,7 +547,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, numBuckets, sessionInsertBatchSize)
+	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, sessionInsertBatchSize)
 
 	go func() {
 		for {
@@ -615,7 +612,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			}
 
 			if message.SendToPortal {
-				sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+				sessionInserter.Insert(service.Context, sessionId, userHash, message.BestNextRTT > 0, message.BestScore, &sessionData, &sliceData)
 			}
 
 			if enableRedisTimeSeries {
@@ -646,7 +643,7 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, numBuckets, serverInsertBatchSize)
+	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, serverInsertBatchSize)
 
 	go func() {
 		for {

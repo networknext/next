@@ -1,0 +1,13 @@
+#!/bin/bash
+
+unset -v latest
+for file in cmd/commit/*.go; do
+	[[ $file -nt $latest ]] && latest=$file
+done
+
+if [ ! -f ./dist/commit ] || [ $latest -nt ./dist/commit ]; then
+	mkdir -p ./dist
+	go build -o ./dist/commit cmd/commit/*.go || { echo 'failed to build commit.go' ; exit 1; }
+fi
+
+./dist/commit "$@"

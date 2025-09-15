@@ -2,21 +2,64 @@
 #                                      PROD RELAYS
 # ========================================================================================
 
-variable "vpn_address" { type = string }
-variable "ssh_public_key_file" { type = string }
-variable "ssh_private_key_file" { type = string }
-variable "env" { type = string }
-variable "relay_version" { type = string }
-variable "relay_artifacts_bucket" { type = string }
-variable "relay_backend_url" { type = string }
-variable "relay_backend_public_key" { type = string }
-variable "sellers" { type = map(string) }
-variable "raspberry_buyer_public_key" { type = string }
-variable "raspberry_datacenters" { type = list(string) }
-variable "test_buyer_public_key" { type = string }
-variable "test_datacenters" { type = list(string) }
-variable "rematch_buyer_public_key" { type = string }
-variable "rematch_datacenters" { type = list(string) }
+locals {
+  
+  env                         = "prod"
+  vpn_address                 = "45.79.157.168"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
+  ssh_private_key_file        = "~/secrets/next_ssh"
+  relay_version               = "relay-133"
+  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+  relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
+  relay_backend_url           = "relay.virtualgo.net"
+
+  raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
+
+  raspberry_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+  ]
+
+  test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
+
+  test_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+  ]
+
+  rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
+
+  rematch_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+    "i3d.saopaulo",
+    "latitude.saopaulo",
+    "gcore.saopaulo",
+  ]
+
+  sellers = {
+    "Akamai" = "akamai"
+    "Amazon" = "amazon"
+    "Google" = "google"
+    "Datapacket" = "datapacket"
+    "i3D" = "i3d"
+    "Oneqode" = "oneqode"
+    "GCore" = "gcore"
+    "Hivelocity" = "hivelocity"
+    "ColoCrossing" = "colocrossing"
+    "phoenixNAP" = "phoenixnap"
+    "servers.com" = "serversdotcom"
+    "Velia" = "velia"
+    "Zenlayer" = "zenlayer"
+    "Latitude" = "latitude"
+    "Equinix" = "equinix"
+    "Unity" = "unity"
+    "Azure" = "azure"
+  }
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -77,7 +120,7 @@ module "google_relays" {
   project             = local.google_project
   credentials         = local.google_credentials
   source              = "../../sellers/google"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -102,7 +145,7 @@ module "amazon_relays" {
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
   source              = "./amazon"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -129,7 +172,7 @@ module "akamai_relays" {
   env                 = "prod"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -233,9 +276,19 @@ locals {
 
   latitude_relays = {
 
-    "latitude.saopaulo" = {
-      datacenter_name = "latitude.saopaulo.1"
+    "latitude.saopaulo.a" = {
+      datacenter_name = "latitude.saopaulo"
       public_address  = "189.1.173.223"
+    },
+
+    "latitude.saopaulo.b" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.93"
+    },
+
+    "latitude.saopaulo.c" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.133"
     },
 
   }
@@ -568,7 +621,7 @@ locals {
 }
 
 resource "networknext_seller" sellers {
-  for_each = var.sellers
+  for_each = local.sellers
   name     = each.key
   code     = each.value
 }
@@ -614,7 +667,7 @@ resource "networknext_relay" relays {
   ssh_ip = each.value.ssh_ip
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
-  version = var.relay_version
+  version = local.relay_version
 }
 
 # ----------------------------------------------------------------------------------------
@@ -661,11 +714,11 @@ resource "networknext_buyer" raspberry {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
-  public_key_base64 = var.raspberry_buyer_public_key
+  public_key_base64 = local.raspberry_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
-  for_each = toset(var.raspberry_datacenters)
+  for_each = toset(local.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
@@ -694,11 +747,11 @@ resource "networknext_buyer" test {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
+  public_key_base64 = local.test_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
+  for_each = toset(local.test_datacenters)
   buyer_id = networknext_buyer.test.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
@@ -711,11 +764,10 @@ resource "networknext_buyer_datacenter_settings" test {
 
 resource "networknext_route_shader" rematch {
   name = "rematch"
-  disable_network_next = true     # IMPORTANT: Flip this back to true to enable acceleration!
   force_next = false
-  latency_reduction_threshold = 20
+  latency_reduction_threshold = 10
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 1.0
+  acceptable_packet_loss_instant = 2.5
   acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
@@ -729,11 +781,11 @@ resource "networknext_buyer" rematch {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.rematch.id
-  public_key_base64 = var.rematch_buyer_public_key
+  public_key_base64 = local.rematch_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" rematch {
-  for_each = toset(var.rematch_datacenters)
+  for_each = toset(local.rematch_datacenters)
   buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true

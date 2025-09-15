@@ -3,6 +3,7 @@
     Licensed under the Network Next Source Available License 1.0
 */
 
+#include "next_config.h"
 #include "next_server.h"
 #include "next_queue.h"
 #include "next_hash.h"
@@ -474,6 +475,7 @@ static void next_server_internal_thread_function( void * context );
 next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
 {
 #if !NEXT_DEVELOPMENT
+    #error not development
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 
@@ -659,12 +661,12 @@ next_server_internal_t * next_server_internal_create( void * context, const char
         return NULL;
     }
 
-    const bool datacenter_is_local = datacenter[0] == 'l' &&
-                                     datacenter[1] == 'o' &&
-                                     datacenter[2] == 'c' &&
-                                     datacenter[3] == 'a' &&
-                                     datacenter[4] == 'l' &&
-                                     datacenter[5] == '\0';
+    bool datacenter_is_local = datacenter[0] == 'l' &&
+                               datacenter[1] == 'o' &&
+                               datacenter[2] == 'c' &&
+                               datacenter[3] == 'a' &&
+                               datacenter[4] == 'l' &&
+                               datacenter[5] == '\0';
 
     const char * hostname = next_global_config.server_backend_hostname;
 
@@ -721,17 +723,23 @@ void next_server_internal_destroy( next_server_internal_t * server )
 {
     next_assert( server );
 
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_internal_destroy (begin)" );
+
     next_server_internal_verify_sentinels( server );
 
     if ( server->resolve_hostname_thread )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join resolve hostname thread)" );
         next_platform_thread_join( server->resolve_hostname_thread );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join resolve hostname thread)" );
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
 
     if ( server->autodetect_thread )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join autodetect thread)" );
         next_platform_thread_join( server->autodetect_thread );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join autodetect thread)" );
         next_platform_thread_destroy( server->autodetect_thread );
     }
 
@@ -777,6 +785,8 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_server_internal_verify_sentinels( server );
 
     next_clear_and_free( server->context, server, sizeof(next_server_internal_t) );
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_internal_destroy (end)" );
 }
 
 void next_server_internal_quit( next_server_internal_t * server )
@@ -1097,7 +1107,7 @@ void next_server_internal_update_server_relays( next_server_internal_t * server 
     if ( server->flushing )
         return;
 
-    if ( !server->received_init_response )
+    if ( server->state != NEXT_SERVER_STATE_INITIALIZED )
         return;
 
     const double current_time = next_platform_time();
@@ -1685,43 +1695,61 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
             next_printf( NEXT_LOG_LEVEL_INFO, "server received init response from backend" );
 
+            server->received_init_response = true;
+
             if ( packet.response != NEXT_SERVER_INIT_RESPONSE_OK )
             {
                 switch ( packet.response )
                 {
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_BUYER:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown buyer" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_UNKNOWN_DATACENTER:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. unknown datacenter" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_SDK_VERSION_TOO_OLD:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. sdk version too old" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_SIGNATURE_CHECK_FAILED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. signature check failed" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_BUYER_NOT_ACTIVE:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. buyer not active" );
-                        return;
+                        break;
 
                     case NEXT_SERVER_INIT_RESPONSE_DATACENTER_NOT_ENABLED:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend. datacenter not enabled" );
-                        return;
+                        break;
 
                     default:
                         next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to initialize with backend" );
-                        return;
+                        break;
                 }
+
+                next_printf( NEXT_LOG_LEVEL_INFO, "falling back to direct only mode" );
+
+                server->state = NEXT_SERVER_STATE_DIRECT_ONLY;
+
+                next_server_notify_direct_only_t * notify_direct_only = (next_server_notify_direct_only_t*) next_malloc( server->context, sizeof(next_server_notify_direct_only_t) );
+                next_assert( notify_direct_only );
+                notify_direct_only->type = NEXT_SERVER_NOTIFY_DIRECT_ONLY;
+
+                {
+#if NEXT_SPIKE_TRACKING
+                    next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread queued up NEXT_SERVER_NOTIFY_DIRECT_ONLY at %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING                
+                    next_platform_mutex_guard( &server->notify_mutex );
+                    next_queue_push( server->notify_queue, notify_direct_only );
+                }
+
+                return;
             }
 
             next_printf( NEXT_LOG_LEVEL_INFO, "welcome to network next :)" );
-
-            server->received_init_response = true;
 
             memcpy( server->upcoming_magic, packet.upcoming_magic, 8 );
             memcpy( server->current_magic, packet.current_magic, 8 );
@@ -3199,7 +3227,13 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 
         for ( int i = 0; i < 10; ++i )
         {
-            if ( next_platform_hostname_resolve( hostname, port, &address ) == NEXT_OK )
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "(before resolve hostname attempt #%d)", i + 1 );
+
+            int result = next_platform_hostname_resolve( hostname, port, &address );
+
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "(after resolve hostname attempt #%d)", i + 1 );
+
+            if ( result == NEXT_OK )
             {
                 next_assert( address.type == NEXT_ADDRESS_IPV4 || address.type == NEXT_ADDRESS_IPV6 );
                 success = true;
@@ -3266,7 +3300,9 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( finished )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join resolve hostname thread)" );
         next_platform_thread_join( server->resolve_hostname_thread );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join resolve hostname thread)" );
     }
     else
     {
@@ -3394,7 +3430,9 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     if ( finished )
     {
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join autodetect thread)" );
         next_platform_thread_join( server->autodetect_thread );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join autodetect thread)" );
     }
     else
     {
@@ -4151,12 +4189,17 @@ const next_address_t * next_server_address( next_server_t * server )
 
 void next_server_destroy( next_server_t * server )
 {
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_destroy (begin)" );
+
     next_server_verify_sentinels( server );
 
     if ( server->thread )
     {
         next_server_internal_quit( server->internal );
+
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join server thread)" );
         next_platform_thread_join( server->thread );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join server thread)" );
     }
 
     if ( server->pending_session_manager )
@@ -4180,6 +4223,8 @@ void next_server_destroy( next_server_t * server )
     }
 
     next_clear_and_free( server->context, server, sizeof(next_server_t) );
+
+    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_destroy (end)" );
 }
 
 void next_server_update( next_server_t * server )

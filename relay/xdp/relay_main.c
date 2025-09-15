@@ -504,7 +504,7 @@ int main_update( struct main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, "release", RELAY_VERSION_LENGTH );
+    relay_write_string( &p, RELAY_VERSION, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
@@ -555,19 +555,19 @@ int main_update( struct main_t * main )
     curl_easy_setopt( main->curl, CURLOPT_USERAGENT, "network next relay" );
     curl_easy_setopt( main->curl, CURLOPT_MAXREDIRS, 50L );
     curl_easy_setopt( main->curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-    curl_easy_setopt( main->curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 1000L );
+    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 10000L );
     curl_easy_setopt( main->curl, CURLOPT_WRITEDATA, &update_response_buffer );
     curl_easy_setopt( main->curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+    curl_easy_setopt( main->curl, CURLOPT_DNS_CACHE_TIMEOUT, (long) -1 ); // IMPORTANT: Perform DNS lookup once and hold that IP address forever. Fixes transient DNS issues making relays go offline!
 
     CURLcode ret = curl_easy_perform( main->curl );
 
     curl_slist_free_all( slist );
     slist = NULL;
 
-    if ( ret != 0 )
+    if ( ret != CURLE_OK )
     {
-        printf( "error: could not post relay update\n" );
+        printf( "error: could not post relay update (%s)\n", curl_easy_strerror(ret) );
         fflush( stdout );
         return RELAY_ERROR;
     }

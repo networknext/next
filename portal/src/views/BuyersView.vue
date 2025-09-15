@@ -15,7 +15,7 @@
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer Name"] }} </router-link> </td>
-            <td> {{ item["Accelerated Percent"] }} </td>
+            <td> {{ item["Accelerated Percent"] }}% </td>
           </tr>
         </tbody>
       </table>

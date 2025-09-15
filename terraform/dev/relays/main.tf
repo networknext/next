@@ -2,19 +2,55 @@
 #                                       DEV RELAYS
 # ========================================================================================
 
-variable "vpn_address" { type = string }
-variable "ssh_public_key_file" { type = string }
-variable "ssh_private_key_file" { type = string }
-variable "env" { type = string }
-variable "relay_version" { type = string }
-variable "relay_artifacts_bucket" { type = string }
-variable "relay_backend_url" { type = string }
-variable "relay_backend_public_key" { type = string }
-variable "sellers" { type = map(string) }
-variable "raspberry_buyer_public_key" { type = string }
-variable "raspberry_datacenters" { type = list(string) }
-variable "test_buyer_public_key" { type = string }
-variable "test_datacenters" { type = list(string) }
+locals {
+  
+  env                         = "dev"
+  vpn_address                 = "45.79.157.168"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
+  ssh_private_key_file        = "~/secrets/next_ssh"
+  relay_version               = "relay-release"
+  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+  relay_backend_public_key    = "Z+9puZkCkV03nm4yO49ySF+H181jAlWVy7JPGMlk10I="
+  relay_backend_url           = "relay-dev.virtualgo.net"
+
+  raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
+
+  raspberry_datacenters = [
+    "google.iowa.1",
+    "google.iowa.2",
+    "google.iowa.3",
+    "google.iowa.6"
+  ]
+
+  test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
+
+  test_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+    "unity.saopaulo.1",
+    "unity.saopaulo.2",
+    "unity.saopaulo.3",
+  ]
+
+  sellers = {
+    "Akamai" = "akamai"
+    "Amazon" = "amazon"
+    "Google" = "google"
+    "Datapacket" = "datapacket"
+    "i3D" = "i3d"
+    "Oneqode" = "oneqode"
+    "GCore" = "gcore"
+    "Hivelocity" = "hivelocity"
+    "ColoCrossing" = "colocrossing"
+    "phoenixNAP" = "phoenixnap"
+    "servers.com" = "serversdotcom"
+    "Velia" = "velia"
+    "Zenlayer" = "zenlayer"
+    "Latitude" = "latitude"
+    "Equinix" = "equinix"
+  }  
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -48,19 +84,7 @@ locals {
   google_project     = file("~/secrets/dev-relays-project-id.txt")
   google_relays = {
 
-    "google.iowa.1.a" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.b" = {
-      datacenter_name = "google.iowa.1"
-      type            = "c3-highcpu-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.1.c" = {
+    "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
       type            = "c3-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
@@ -102,24 +126,6 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.virginia.1" = {
-      datacenter_name = "google.virginia.1"
-      type            = "c3-highcpu-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.virginia.2" = {
-      datacenter_name = "google.virginia.2"
-      type            = "c3-highcpu-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.virginia.3" = {
-      datacenter_name = "google.virginia.3"
-      type            = "c3-highcpu-4"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
   }
 }
 
@@ -129,7 +135,7 @@ module "google_relays" {
   project             = local.google_project
   credentials         = local.google_credentials
   source              = "../../sellers/google"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -153,7 +159,7 @@ module "amazon_relays" {
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
   source              = "./amazon"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -173,24 +179,6 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
-    "akamai.atlanta" = {
-      datacenter_name = "akamai.atlanta"
-      type            = "g6-dedicated-4"
-      image           = "linode/ubuntu22.04"
-    },
-
-    "akamai.fremont" = {
-      datacenter_name = "akamai.fremont"
-      type            = "g6-dedicated-4"
-      image           = "linode/ubuntu22.04"
-    }
-    
-    "akamai.dallas" = {
-      datacenter_name = "akamai.dallas"
-      type            = "g6-dedicated-4"
-      image           = "linode/ubuntu22.04"
-    }
-
   }
 }
 
@@ -198,7 +186,7 @@ module "akamai_relays" {
   env                 = "dev"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -572,7 +560,7 @@ locals {
 }
 
 resource "networknext_seller" sellers {
-  for_each = var.sellers
+  for_each = local.sellers
   name     = each.key
   code     = each.value
 }
@@ -618,7 +606,7 @@ resource "networknext_relay" relays {
   ssh_ip = each.value.ssh_ip
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
-  version = var.relay_version
+  version = local.relay_version
 }
 
 # ----------------------------------------------------------------------------------------
@@ -664,11 +652,11 @@ resource "networknext_buyer" raspberry {
   debug = true
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
-  public_key_base64 = var.raspberry_buyer_public_key
+  public_key_base64 = local.raspberry_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
-  for_each = toset(var.raspberry_datacenters)
+  for_each = toset(local.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
@@ -697,11 +685,11 @@ resource "networknext_buyer" test {
   debug = true
   live = true
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
+  public_key_base64 = local.test_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
+  for_each = toset(local.test_datacenters)
   buyer_id = networknext_buyer.test.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true

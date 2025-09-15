@@ -11,12 +11,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
 	"sort"
 	"sync"
 	"syscall"
 	"time"
-	"os/signal"
 
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"

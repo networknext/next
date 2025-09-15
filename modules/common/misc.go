@@ -1,7 +1,6 @@
 package common
 
 import (
-	"os/exec"
 	"bytes"
 	"context"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"hash/fnv"
 	"math/rand"
 	"net"
+	"os/exec"
 	"time"
 
 	"github.com/networknext/next/modules/core"

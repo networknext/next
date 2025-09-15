@@ -4,6 +4,7 @@
 */
 
 #include "next.h"
+
 #include "next_crypto.h"
 #include "next_platform.h"
 

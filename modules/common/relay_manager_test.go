@@ -117,13 +117,13 @@ func TestRelayManager_Local(t *testing.T) {
 
 	// now get active relays, but with a timestamp in the future enough that they should be timed out
 
-	activeRelays = relayManager.GetActiveRelays(currentTime + 30)
+	activeRelays = relayManager.GetActiveRelays(currentTime + 60)
 
 	assert.Equal(t, 0, len(activeRelays))
 
 	// now get relays in the future. all relays should be in the offline status
 
-	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays = relayManager.GetRelays(currentTime+60, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
@@ -235,9 +235,9 @@ func TestRelayManager_Real(t *testing.T) {
 		}
 	}
 
-	// getting costs 30 seconds in the future should result in routes between A and B being timed out
+	// getting costs 60 seconds in the future should result in routes between A and B being timed out
 
-	costs := relayManager.GetCosts(currentTime+30, relayIds, MaxJitter, MaxPacketLoss)
+	costs := relayManager.GetCosts(currentTime+60, relayIds, MaxJitter, MaxPacketLoss)
 
 	assert.Equal(t, len(costs), int(common.TriMatrixLength(numRelays)))
 
@@ -245,15 +245,15 @@ func TestRelayManager_Real(t *testing.T) {
 		assert.Equal(t, uint8(255), costs[i])
 	}
 
-	// getting active relays 30 seconds in the future should result in no active relays (A and B timed out)
+	// getting active relays 60 seconds in the future should result in no active relays (A and B timed out)
 
-	activeRelays := relayManager.GetActiveRelays(currentTime + 30)
+	activeRelays := relayManager.GetActiveRelays(currentTime + 60)
 
 	assert.Equal(t, 0, len(activeRelays))
 
-	// relays should be in the offline state 30 seconds in the future
+	// relays should be in the offline state 60 seconds in the future
 
-	relays := relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays := relayManager.GetRelays(currentTime+60, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
@@ -297,13 +297,13 @@ func TestRelayManager_Real(t *testing.T) {
 		}
 	}
 
-	// 30 seconds in the future, shutting down should become offline
+	// 60 seconds in the future, shutting down should become offline
 
-	activeRelays = relayManager.GetActiveRelays(currentTime + 30)
+	activeRelays = relayManager.GetActiveRelays(currentTime + 60)
 
 	assert.Equal(t, 0, len(activeRelays))
 
-	relays = relayManager.GetRelays(currentTime+30, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
+	relays = relayManager.GetRelays(currentTime+60, databaseRelayIds, databaseRelayNames, databaseRelayAddresses)
 
 	assert.Equal(t, len(relays), databaseNumRelays)
 
@@ -311,7 +311,7 @@ func TestRelayManager_Real(t *testing.T) {
 		assert.Equal(t, relays[i].Status, constants.RelayStatus_Offline)
 	}
 
-	// now restart relay A 30 seconds in the future. we should need to wait another HistorySize number of updates before we see routes between A and B
+	// now restart relay A 60 seconds in the future. we should need to wait another HistorySize number of updates before we see routes between A and B
 
 	for i := 0; i < constants.RelayHistorySize*2; i++ {
 
@@ -321,7 +321,7 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{10}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime+30, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime+60, relayIds[0], relayNames[0], relayAddresses[0], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		// add some samples from relay B -> A
@@ -330,7 +330,7 @@ func TestRelayManager_Real(t *testing.T) {
 			sampleRTT := [1]uint8{1}
 			sampleJitter := [1]uint8{0}
 			samplePacketLoss := [1]uint16{0}
-			relayManager.ProcessRelayUpdate(currentTime+30, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
+			relayManager.ProcessRelayUpdate(currentTime+60, relayIds[1], relayNames[1], relayAddresses[1], 0, "test", 0, 1, sampleRelayId[:], sampleRTT[:], sampleJitter[:], samplePacketLoss[:], counters[:])
 		}
 
 		costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
