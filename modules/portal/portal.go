@@ -1156,12 +1156,13 @@ func (watcher *TopSessionsWatcher) GetSessions(begin int, end int) []uint64 {
 		return nil
 	}
 	watcher.mutex.RLock()
-	sessions := watcher.topSessions
-	watcher.mutex.RUnlock()
-	if end >= len(sessions) {
-		end = len(sessions)
+	if end > len(watcher.topSessions) {
+		end = len(watcher.topSessions)
 	}
-	return sessions[begin:end]
+	sessions := make([]uint64, end - begin)
+	copy(sessions, watcher.topSessions[begin:end])
+	watcher.mutex.RUnlock()
+	return sessions
 }
 
 func (watcher *TopSessionsWatcher) GetTopSessions() []uint64 {
@@ -1838,12 +1839,13 @@ func (watcher *TopServersWatcher) GetServers(begin int, end int) []string {
 		return nil
 	}
 	watcher.mutex.RLock()
-	servers := watcher.topServers
-	watcher.mutex.RUnlock()
-	if end >= len(servers) {
-		end = len(servers)
+	if end > len(watcher.topServers) {
+		end = len(watcher.topServers)
 	}
-	return servers[begin:end]
+	servers := make([]string, end - begin)
+	copy(servers, watcher.topServers[begin:end])
+	watcher.mutex.RUnlock()
+	return servers
 }
 
 func (watcher *TopServersWatcher) GetTopServers() []string {
