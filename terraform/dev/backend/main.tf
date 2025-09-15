@@ -1089,7 +1089,7 @@ module "raspberry_client" {
   default_subnetwork = google_compute_subnetwork.development.id
   service_account    = local.google_service_account
   tags               = ["allow-ssh"]
-  target_size        = ( local.disable_raspberry || local.disable_backend ) ? 0 : 100
+  target_size        = ( local.disable_raspberry || local.disable_backend ) ? 0 : 10
 
   depends_on = [
     module.server_backend,
