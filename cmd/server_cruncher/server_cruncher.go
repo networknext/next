@@ -11,7 +11,7 @@ import (
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/envvar"
+	// "github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
@@ -50,7 +50,8 @@ var numBuckets int
 
 func main() {
 
-	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
+	// todo
+	numBuckets = 1000 // envvar.GetInt("NUM_BUCKETS", 10)
 
 	service = common.CreateService("server_cruncher")
 
@@ -60,7 +61,7 @@ func main() {
 	buckets = make([]Bucket, numBuckets)
 	for i := range buckets {
 		buckets[i].index = i
-		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 1000000)
+		buckets[i].serverUpdateChannel = make(chan []ServerUpdate, 10000) // todo - 1000000)
 		buckets[i].servers = NewSortedSet()
 		StartProcessThread(&buckets[i])
 	}

@@ -83,7 +83,7 @@ var service *common.Service
 
 func main() {
 
-	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
+	numBuckets = 1000 // envvar.GetInt("NUM_BUCKETS", 10)
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
@@ -104,7 +104,8 @@ func main() {
 	buckets = make([]Bucket, numBuckets)
 	for i := range buckets {
 		buckets[i].index = i
-		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
+		// todo
+		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 10000) // 1000000)
 		buckets[i].totalSessions = NewSortedSet()
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])

@@ -897,7 +897,7 @@ func (publisher *SessionCruncherPublisher) sendBatch() {
 	}
 
 	for i := range publisher.batchMessages {
-		batchIndex := int(publisher.batchMessages[i].Score) / ( (constants.MaxScore + 1) / publisher.config.NumBuckets)
+		batchIndex := int(publisher.batchMessages[i].Score) / ( ( constants.MaxScore + 1 ) / publisher.config.NumBuckets)
 		if batchIndex > publisher.config.NumBuckets-1 {
 			batchIndex = publisher.config.NumBuckets - 1
 		}
