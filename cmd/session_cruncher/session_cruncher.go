@@ -348,15 +348,15 @@ func TopSessionsThread() {
 
 	done:
 
+		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
+		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score < sessions[j].score })
+
 		// todo
 		fmt.Printf("=============================================\n" );
 		for i := range sessions {
 			fmt.Printf("%d: %x (%d)\n", i, sessions[i].sessionId, sessions[i].score)
 		}
 		fmt.Printf("=============================================\n" );
-
-		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
-		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score < sessions[j].score })
 
 		newTopSessions := &TopSessions{}
 		newTopSessions.numTopSessions = len(sessions)
