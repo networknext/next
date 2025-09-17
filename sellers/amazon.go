@@ -44,6 +44,9 @@ var prodRelayMap = map[string][]string{
 	"amazon.queretaro.1": {"amazon.queretaro.1", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.losangeles.1": {"amazon.losangeles.1", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.losangeles.2": {"amazon.losangeles.2", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.1": {"amazon.bahrain.1", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.2": {"amazon.bahrain.2", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.3": {"amazon.bahrain.3", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // Exclude regions
