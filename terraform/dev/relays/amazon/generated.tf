@@ -28,24 +28,8 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
-  alias                    = "il-central-1"
-  region                   = "il-central-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
   alias                    = "ca-central-1"
   region                   = "ca-central-1"
-}
-
-provider "aws" { 
-  shared_config_files      = var.config
-  shared_credentials_files = var.credentials
-  profile                  = var.profile
-  alias                    = "mx-central-1"
-  region                   = "mx-central-1"
 }
 
 provider "aws" { 
@@ -202,30 +186,12 @@ module "region_me_central_1" {
   }
 }
 
-module "region_il_central_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.il-central-1
-  }
-}
-
 module "region_ca_central_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.ca-central-1
-  }
-}
-
-module "region_mx_central_1" { 
-  source              = "./region"
-  vpn_address         = var.vpn_address
-  ssh_public_key_file = var.ssh_public_key_file
-  providers = {
-    aws = aws.mx-central-1
   }
 }
 
@@ -1425,9 +1391,7 @@ locals {
   regions = [
     "ap-south-1",
     "me-central-1",
-    "il-central-1",
     "ca-central-1",
-    "mx-central-1",
     "eu-central-1",
     "us-west-1",
     "us-west-2",

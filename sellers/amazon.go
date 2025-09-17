@@ -41,7 +41,14 @@ var prodRelayMap = map[string][]string{
 	"amazon.virginia.6": {"amazon.virginia.6", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.dallas.1": {"amazon.dallas.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.miami.1": {"amazon.miami.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.queretaro.1": {"amazon.queretaro.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.queretaro.1": {"amazon.queretaro.1", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+}
+
+// Exclude regions
+
+var excludedRegions = map[string]bool{
+	"il-central-1": true,
+	"mx-central-1": true,
 }
 
 // ===========================================================================================================================================
@@ -344,7 +351,7 @@ func main() {
 	fmt.Printf("\nExcluded regions:\n\n")
 
 	for i := range regionsResponse.Regions {
-		if regionsResponse.Regions[i].Excluded {
+		if regionsResponse.Regions[i].Excluded || excludedRegions[regionsResponse.Regions[i].RegionName] {
 			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 	}
@@ -396,7 +403,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -411,7 +418,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -439,7 +446,7 @@ terraform {
 		fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -558,7 +565,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -573,7 +580,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -601,7 +608,7 @@ terraform {
 		fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
 			}
 		}
