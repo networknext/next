@@ -263,12 +263,30 @@ locals {
 
     "google.dammam.2" = {
       datacenter_name = "google.dammam.2"
-      type            = "c4-highcpu-4"
+      type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.dammam.3" = {
       datacenter_name = "google.dammam.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.telaviv.1" = {
+      datacenter_name = "google.telaviv.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.telaviv.2" = {
+      datacenter_name = "google.telaviv.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.telaviv.3" = {
+      datacenter_name = "google.telaviv.3"
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
