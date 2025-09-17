@@ -183,7 +183,7 @@ locals {
       seller_code = "akamai"
     }
 
-    "akamai.frankfurt.1" = {
+    "akamai.frankfurt.2" = {
       zone        = "de-fra-2"
       native_name = "de-fra-2"
       latitude    = 50.11

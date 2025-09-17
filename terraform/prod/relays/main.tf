@@ -202,7 +202,7 @@ locals {
 
     "akamai.frankfurt.1" = {
       datacenter_name = "akamai.frankfurt.1"
-      type            = "g7-premium-16"
+      type            = "g6-dedicated-16"
       image           = "linode/ubuntu22.04"
     },
 

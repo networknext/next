@@ -27,7 +27,7 @@ var datacenterMap = map[string]*Datacenter{
 	"ap-south":     {"singapore.1", 1.3521, 103.8198},
 	"sg-sin-2":     {"singapore.2", 1.3521, 103.8198},
 	"eu-central":   {"frankfurt.1", 50.1109, 8.6821},
-	"de-fra-2":     {"frankfurt.1", 50.1109, 8.6821},
+	"de-fra-2":     {"frankfurt.2", 50.1109, 8.6821},
 	"ap-northeast": {"tokyo.1", 35.6762, 139.6503},
 	"jp-tyo-3":     {"tokyo.2", 35.6762, 139.6503},
 	"jp-osa":       {"osaka", 34.6937, 135.5023},
