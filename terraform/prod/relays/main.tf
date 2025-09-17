@@ -6,7 +6,7 @@ locals {
   
   env                         = "prod"
   vpn_address                 = "45.79.157.168"
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-133"
   relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
@@ -143,6 +143,60 @@ locals {
 
     "google.frankfurt.3" = {
       datacenter_name = "google.frankfurt.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.1" = {
+      datacenter_name = "google.dallas.1"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.2" = {
+      datacenter_name = "google.dallas.2"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.3" = {
+      datacenter_name = "google.dallas.3"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.1" = {
+      datacenter_name = "google.losangeles.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.2" = {
+      datacenter_name = "google.losangeles.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.3" = {
+      datacenter_name = "google.losangeles.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.1" = {
+      datacenter_name = "google.virginia.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.2" = {
+      datacenter_name = "google.virginia.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.3" = {
+      datacenter_name = "google.virginia.3"
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
