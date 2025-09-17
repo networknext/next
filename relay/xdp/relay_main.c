@@ -450,7 +450,7 @@ int main_update( struct main_t * main )
 
     uint8_t update_version = 1;
 
-    uint8_t update_data[100*1024];
+    static uint8_t update_data[1024*1024];
 
     uint8_t * p = update_data;
 
