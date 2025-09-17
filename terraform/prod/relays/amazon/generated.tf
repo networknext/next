@@ -1187,6 +1187,9 @@ locals {
   relays = {
 
     "amazon.buenosaires.1" = { datacenter_name = "amazon.buenosaires.1" },
+    "amazon.frankfurt.1" = { datacenter_name = "amazon.frankfurt.1" },
+    "amazon.frankfurt.2" = { datacenter_name = "amazon.frankfurt.2" },
+    "amazon.frankfurt.3" = { datacenter_name = "amazon.frankfurt.3" },
     "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
     "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
     "amazon.saopaulo.1" = { datacenter_name = "amazon.saopaulo.1" },
@@ -1207,6 +1210,45 @@ module "relay_amazon_buenosaires_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_frankfurt_1" {
+	  source            = "./relay"
+	  name              = "amazon.frankfurt.1"
+	  zone              = local.datacenter_map["amazon.frankfurt.1"].zone
+	  region            = local.datacenter_map["amazon.frankfurt.1"].region
+	  type              = "m5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-central-1
+	  }
+	}
+	module "relay_amazon_frankfurt_2" {
+	  source            = "./relay"
+	  name              = "amazon.frankfurt.2"
+	  zone              = local.datacenter_map["amazon.frankfurt.2"].zone
+	  region            = local.datacenter_map["amazon.frankfurt.2"].region
+	  type              = "m5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-central-1
+	  }
+	}
+	module "relay_amazon_frankfurt_3" {
+	  source            = "./relay"
+	  name              = "amazon.frankfurt.3"
+	  zone              = local.datacenter_map["amazon.frankfurt.3"].zone
+	  region            = local.datacenter_map["amazon.frankfurt.3"].region
+	  type              = "m5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-central-1
 	  }
 	}
 	module "relay_amazon_lima_1" {
@@ -1291,6 +1333,51 @@ module "relay_amazon_buenosaires_1" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "amazon.buenosaires.1"
 	      "ssh_ip"           = module.relay_amazon_buenosaires_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.frankfurt.1" = {
+	      "relay_name"       = "amazon.frankfurt.1"
+	      "datacenter_name"  = "amazon.frankfurt.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_frankfurt_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_frankfurt_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-central-1"
+	      "ssh_ip"           = module.relay_amazon_frankfurt_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.frankfurt.2" = {
+	      "relay_name"       = "amazon.frankfurt.2"
+	      "datacenter_name"  = "amazon.frankfurt.2"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_frankfurt_2.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_frankfurt_2.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-central-1"
+	      "ssh_ip"           = module.relay_amazon_frankfurt_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.frankfurt.3" = {
+	      "relay_name"       = "amazon.frankfurt.3"
+	      "datacenter_name"  = "amazon.frankfurt.3"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_frankfurt_3.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_frankfurt_3.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-central-1"
+	      "ssh_ip"           = module.relay_amazon_frankfurt_3.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }

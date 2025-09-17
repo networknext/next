@@ -183,11 +183,29 @@ locals {
       seller_code = "akamai"
     }
 
+    "akamai.frankfurt.1" = {
+      zone        = "de-fra-2"
+      native_name = "de-fra-2"
+      latitude    = 50.11
+      longitude   = 8.68
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
     "akamai.singapore.2" = {
       zone        = "sg-sin-2"
       native_name = "sg-sin-2"
       latitude    = 1.35
       longitude   = 103.82
+      seller_name = "Akamai"
+      seller_code = "akamai"
+    }
+
+    "akamai.tokyo.2" = {
+      zone        = "jp-tyo-3"
+      native_name = "jp-tyo-3"
+      latitude    = 35.68
+      longitude   = 139.65
       seller_name = "Akamai"
       seller_code = "akamai"
     }
@@ -246,7 +264,7 @@ locals {
       seller_code = "akamai"
     }
 
-    "akamai.frankfurt" = {
+    "akamai.frankfurt.1" = {
       zone        = "eu-central"
       native_name = "eu-central"
       latitude    = 50.11
@@ -255,7 +273,7 @@ locals {
       seller_code = "akamai"
     }
 
-    "akamai.tokyo" = {
+    "akamai.tokyo.1" = {
       zone        = "ap-northeast"
       native_name = "ap-northeast"
       latitude    = 35.68

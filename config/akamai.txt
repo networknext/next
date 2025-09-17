@@ -18,12 +18,14 @@ us-lax,akamai.losangeles
 gb-lon,akamai.london
 au-mel,akamai.melbourne
 in-bom-2,akamai.mumbai.2
+de-fra-2,akamai.frankfurt.1
 sg-sin-2,akamai.singapore.2
+jp-tyo-3,akamai.tokyo.2
 us-central,akamai.dallas
 us-west,akamai.fremont
 us-southeast,akamai.atlanta
 us-east,akamai.newyork
 eu-west,akamai.london
 ap-south,akamai.singapore.1
-eu-central,akamai.frankfurt
-ap-northeast,akamai.tokyo
+eu-central,akamai.frankfurt.1
+ap-northeast,akamai.tokyo.1
