@@ -44,6 +44,7 @@ var datacenterMap = map[string]*Datacenter{
 	"northamerica-northeast2": {"toronto", 43.6532, -79.3832},
 	"southamerica-east1":      {"saopaulo", -23.5558, -46.6396},
 	"southamerica-west1":      {"santiago", -33.4489, -70.6693},
+	"northamerica-south1":     {"queretaro", 23.6345, -102.5528},
 	"us-central1":             {"iowa", 41.8780, -93.0977},
 	"us-east4":                {"virginia", 37.4316, -78.6569},
 	"us-east5":                {"ohio", 39.9612, -82.9988},

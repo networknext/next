@@ -70,6 +70,9 @@ northamerica-northeast1-c,google.montreal.3
 northamerica-northeast2-a,google.toronto.1
 northamerica-northeast2-b,google.toronto.2
 northamerica-northeast2-c,google.toronto.3
+northamerica-south1-a,google.queretaro.1
+northamerica-south1-b,google.queretaro.2
+northamerica-south1-c,google.queretaro.3
 southamerica-east1-a,google.saopaulo.1
 southamerica-east1-b,google.saopaulo.2
 southamerica-east1-c,google.saopaulo.3

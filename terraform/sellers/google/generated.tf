@@ -723,6 +723,36 @@ locals {
       seller_code = "google"
     }
 
+    "google.queretaro.1" = {
+      zone        = "northamerica-south1-a"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-a"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.queretaro.2" = {
+      zone        = "northamerica-south1-b"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-b"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.queretaro.3" = {
+      zone        = "northamerica-south1-c"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-c"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.saopaulo.1" = {
       zone        = "southamerica-east1-a"
       region      = "southamerica-east1"
