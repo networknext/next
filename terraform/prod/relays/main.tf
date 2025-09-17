@@ -200,6 +200,24 @@ locals {
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+
+    "google.queretaro.1" = {
+      datacenter_name = "google.queretaro.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.queretaro.2" = {
+      datacenter_name = "google.queretaro.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.queretaro.3" = {
+      datacenter_name = "google.queretaro.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
   }
 }
 
@@ -265,7 +283,27 @@ locals {
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
+
+    "akamai.dallas" = {
+      datacenter_name = "akamai.dallas"
+      type            = "g6-dedicated-16"
+      image           = "linode/ubuntu22.04"
+    },
     
+    // todo: requested access
+    /*
+    "akamai.washington" = {
+      datacenter_name = "akamai.washington"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+    */
+
+    "akamai.losangeles" = {
+      datacenter_name = "akamai.losangeles"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },    
   }
 }
 
