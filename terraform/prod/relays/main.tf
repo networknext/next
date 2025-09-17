@@ -275,19 +275,19 @@ locals {
 
     "google.telaviv.1" = {
       datacenter_name = "google.telaviv.1"
-      type            = "c4-highcpu-4"
+      type            = "c4-highmem-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.telaviv.2" = {
       datacenter_name = "google.telaviv.2"
-      type            = "c4-highcpu-4"
+      type            = "c3-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
     "google.telaviv.3" = {
       datacenter_name = "google.telaviv.3"
-      type            = "c4-highcpu-4"
+      type            = "c3-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
   }
