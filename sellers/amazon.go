@@ -33,6 +33,15 @@ var prodRelayMap = map[string][]string{
 	"amazon.frankfurt.1": {"amazon.frankfurt.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.frankfurt.2": {"amazon.frankfurt.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.frankfurt.3": {"amazon.frankfurt.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.3": {"amazon.virginia.3", "c3.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.4": {"amazon.virginia.4", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.5": {"amazon.virginia.5", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.6": {"amazon.virginia.6", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.dallas.1": {"amazon.dallas.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.miami.1": {"amazon.miami.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.queretaro.1": {"amazon.queratoro.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
@@ -70,6 +79,7 @@ var datacenterMap = map[string]*Datacenter{
 	"use2":  {"ohio", 40.4173, -82.9071},
 	"usw1":  {"sanjose", 37.3387, -121.8853},
 	"usw2":  {"oregon", 45.8399, -119.7006},
+	"mxc1":  {"mexico", 23.6345, -102.5528},
 
 	// local zones (AZID)
 
@@ -88,15 +98,15 @@ var datacenterMap = map[string]*Datacenter{
 	"bos1": {"boston", 42.3601, -71.0589},
 	"bue1": {"buenosaires", -34.6037, -58.3816},
 	"chi1": {"chicago", 41.8781, -87.6298},
-	"dfw1": {"dallas", 32.7767, -96.7970},
+	"dfw2": {"dallas", 32.7767, -96.7970},
 	"iah1": {"houston", 29.7604, -95.3698},
 	"lim1": {"lima", -12.0464, -77.0428},
 	"mci1": {"kansas", 39.0997, -94.5786},
-	"mia1": {"miami", 25.7617, -80.1918},
+	"mia2": {"miami", 25.7617, -80.1918},
 	"msp1": {"minneapolis", 44.9778, -93.2650},
 	"nyc1": {"newyork", 40.7128, -74.0060},
 	"phl1": {"philadelphia", 39.9526, -75.1652},
-	"qro1": {"mexico", 23.6345, -102.5528},
+	"qro1": {"queretaro", 23.6345, -102.5528},
 	"scl1": {"santiago", -33.4489, -70.6693},
 	"den1": {"denver", 39.7392, -104.9903},
 	"las1": {"lasvegas", 36.1716, -115.1391},
@@ -528,15 +538,15 @@ terraform {
 		}
 
 		header := `
-	terraform {
-	  required_providers {
-	    aws = {
-	      source  = "hashicorp/aws"
-	      version = "~> 4.0"
-	    }
-	  }
-	}
-	`
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.0"
+    }
+  }
+}
+`
 		fmt.Fprintf(file, header)
 
 		format_string := "\nprovider \"aws\" { \n" +
