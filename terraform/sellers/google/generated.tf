@@ -633,6 +633,66 @@ locals {
       seller_code = "google"
     }
 
+    "google.doha.1" = {
+      zone        = "me-central1-a"
+      region      = "me-central1"
+      native_name = "me-central1-a"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.doha.2" = {
+      zone        = "me-central1-b"
+      region      = "me-central1"
+      native_name = "me-central1-b"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.doha.3" = {
+      zone        = "me-central1-c"
+      region      = "me-central1"
+      native_name = "me-central1-c"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.1" = {
+      zone        = "me-central2-a"
+      region      = "me-central2"
+      native_name = "me-central2-a"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.2" = {
+      zone        = "me-central2-b"
+      region      = "me-central2"
+      native_name = "me-central2-b"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.3" = {
+      zone        = "me-central2-c"
+      region      = "me-central2"
+      native_name = "me-central2-c"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.telaviv.1" = {
       zone        = "me-west1-a"
       region      = "me-west1"

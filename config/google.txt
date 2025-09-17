@@ -61,6 +61,12 @@ europe-west8-c,google.milan.3
 europe-west9-a,google.paris.1
 europe-west9-b,google.paris.2
 europe-west9-c,google.paris.3
+me-central1-a,google.doha.1
+me-central1-b,google.doha.2
+me-central1-c,google.doha.3
+me-central2-a,google.dammam.1
+me-central2-b,google.dammam.2
+me-central2-c,google.dammam.3
 me-west1-a,google.telaviv.1
 me-west1-b,google.telaviv.2
 me-west1-c,google.telaviv.3

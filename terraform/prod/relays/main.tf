@@ -38,6 +38,24 @@ locals {
     "i3d.saopaulo",
     "latitude.saopaulo",
     "gcore.saopaulo",
+    "google.losangeles.1",
+    "google.losangeles.2",
+    "google.losangeles.3",
+    "google.dallas.1",
+    "google.dallas.2",
+    "google.dallas.3",
+    "google.virginia.1",
+    "google.virginia.2",
+    "google.virginia.3",
+    "google.frankfurt.1",
+    "google.frankfurt.2",
+    "google.frankfurt.3",
+    "google.doha.1",
+    "google.doha.2",
+    "google.doha.3",
+    "google.dammam.1",
+    "google.dammam.2",
+    "google.dammam.3",
   ]
 
   sellers = {
@@ -215,6 +233,42 @@ locals {
 
     "google.queretaro.3" = {
       datacenter_name = "google.queretaro.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.doha.1" = {
+      datacenter_name = "google.doha.1"
+      type            = "c3-highmem-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.doha.2" = {
+      datacenter_name = "google.doha.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.doha.3" = {
+      datacenter_name = "google.doha.3"
+      type            = "e2-standard-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dammam.1" = {
+      datacenter_name = "google.dammam.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dammam.2" = {
+      datacenter_name = "google.dammam.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dammam.3" = {
+      datacenter_name = "google.dammam.3"
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },

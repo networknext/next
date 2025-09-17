@@ -53,6 +53,8 @@ var datacenterMap = map[string]*Datacenter{
 	"us-west2":                {"losangeles", 34.0522, -118.2437},
 	"us-west3":                {"saltlakecity", 40.7608, -111.8910},
 	"us-west4":                {"lasvegas", 36.1716, -115.1391},
+	"me-central1":             {"doha", 25.2854, 51.5310},
+	"me-central2":             {"dammam", 26.4207, 50.0888},
 }
 
 type Datacenter struct {
