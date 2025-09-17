@@ -1186,6 +1186,9 @@ locals {
 
   relays = {
 
+    "amazon.buenosaires.1" = { datacenter_name = "amazon.buenosaires.1" },
+    "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
+    "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
     "amazon.saopaulo.1" = { datacenter_name = "amazon.saopaulo.1" },
     "amazon.saopaulo.2" = { datacenter_name = "amazon.saopaulo.2" },
     "amazon.saopaulo.3" = { datacenter_name = "amazon.saopaulo.3" },
@@ -1193,7 +1196,46 @@ locals {
 
 }
 
-module "relay_amazon_saopaulo_1" {
+module "relay_amazon_buenosaires_1" {
+	  source            = "./relay"
+	  name              = "amazon.buenosaires.1"
+	  zone              = local.datacenter_map["amazon.buenosaires.1"].zone
+	  region            = local.datacenter_map["amazon.buenosaires.1"].region
+	  type              = "r5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_lima_1" {
+	  source            = "./relay"
+	  name              = "amazon.lima.1"
+	  zone              = local.datacenter_map["amazon.lima.1"].zone
+	  region            = local.datacenter_map["amazon.lima.1"].region
+	  type              = "r5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_santiago_1" {
+	  source            = "./relay"
+	  name              = "amazon.santiago.1"
+	  zone              = local.datacenter_map["amazon.santiago.1"].zone
+	  region            = local.datacenter_map["amazon.santiago.1"].region
+	  type              = "t3.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_saopaulo_1" {
 	  source            = "./relay"
 	  name              = "amazon.saopaulo.1"
 	  zone              = local.datacenter_map["amazon.saopaulo.1"].zone
@@ -1237,6 +1279,51 @@ module "relay_amazon_saopaulo_1" {
 	  description = "Data for each amazon relay setup by Terraform"
 
 	  value = {
+
+	    "amazon.buenosaires.1" = {
+	      "relay_name"       = "amazon.buenosaires.1"
+	      "datacenter_name"  = "amazon.buenosaires.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_buenosaires_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_buenosaires_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.buenosaires.1"
+	      "ssh_ip"           = module.relay_amazon_buenosaires_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.lima.1" = {
+	      "relay_name"       = "amazon.lima.1"
+	      "datacenter_name"  = "amazon.lima.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_lima_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_lima_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.lima.1"
+	      "ssh_ip"           = module.relay_amazon_lima_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.santiago.1" = {
+	      "relay_name"       = "amazon.santiago.1"
+	      "datacenter_name"  = "amazon.santiago.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_santiago_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_santiago_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.santiago.1"
+	      "ssh_ip"           = module.relay_amazon_santiago_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
 
 	    "amazon.saopaulo.1" = {
 	      "relay_name"       = "amazon.saopaulo.1"

@@ -27,6 +27,12 @@ var prodRelayMap = map[string][]string{
 	"amazon.saopaulo.1": {"amazon.saopaulo.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.saopaulo.2": {"amazon.saopaulo.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.saopaulo.3": {"amazon.saopaulo.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.buenosaires.1": {"amazon.buenosaires.1", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.lima.1": {"amazon.lima.1", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.santiago.1": {"amazon.santiago.1", "t3.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.1": {"amazon.frankfurt.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.2": {"amazon.frankfurt.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.3": {"amazon.frankfurt.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================

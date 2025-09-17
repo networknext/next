@@ -6,7 +6,7 @@ locals {
   
   env                         = "prod"
   vpn_address                 = "45.79.157.168"
-  ssh_public_key_file         = "~/secrets/next_ssh.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-133"
   relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
@@ -111,6 +111,41 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    "google.santiago.1" = {
+      datacenter_name = "google.santiago.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.santiago.2" = {
+      datacenter_name = "google.santiago.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.santiago.3" = {
+      datacenter_name = "google.santiago.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.1" = {
+      datacenter_name = "google.frankfurt.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.2" = {
+      datacenter_name = "google.frankfurt.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.3" = {
+      datacenter_name = "google.frankfurt.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
   }
 }
 
