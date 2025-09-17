@@ -41,7 +41,7 @@ var prodRelayMap = map[string][]string{
 	"amazon.virginia.6": {"amazon.virginia.6", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.dallas.1": {"amazon.dallas.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.miami.1": {"amazon.miami.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	"amazon.queretaro.1": {"amazon.querataro.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.queretaro.1": {"amazon.queretaro.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // ===========================================================================================================================================
@@ -645,6 +645,20 @@ terraform {
 		for i := range prodRelayNames {
 			k := prodRelayNames[i]
 			v := prodRelayMap[k]
+
+			// todo
+			region, ok := datacenterToRegion[v[0]]
+			if !ok {
+				fmt.Printf("missing datacenter to region for '%s'\n", v[0])
+				fmt.Printf("========================\n" )
+				for k,_ := range datacenterToRegion {
+					fmt.Printf("%s\n", k)
+				}
+				fmt.Printf("========================\n" )
+				os.Exit(1)
+			}
+			_ = region
+
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
 

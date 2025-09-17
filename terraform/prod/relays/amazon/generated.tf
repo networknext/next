@@ -1459,7 +1459,7 @@ locals {
     "amazon.frankfurt.3" = { datacenter_name = "amazon.frankfurt.3" },
     "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
     "amazon.miami.1" = { datacenter_name = "amazon.miami.1" },
-    "amazon.queretaro.1" = { datacenter_name = "amazon.querataro.1" },
+    "amazon.queretaro.1" = { datacenter_name = "amazon.queretaro.1" },
     "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
     "amazon.saopaulo.1" = { datacenter_name = "amazon.saopaulo.1" },
     "amazon.saopaulo.2" = { datacenter_name = "amazon.saopaulo.2" },
@@ -1568,14 +1568,14 @@ module "relay_amazon_buenosaires_1" {
 	module "relay_amazon_queretaro_1" {
 	  source            = "./relay"
 	  name              = "amazon.queretaro.1"
-	  zone              = local.datacenter_map["amazon.querataro.1"].zone
-	  region            = local.datacenter_map["amazon.querataro.1"].region
+	  zone              = local.datacenter_map["amazon.queretaro.1"].zone
+	  region            = local.datacenter_map["amazon.queretaro.1"].region
 	  type              = "c6i.xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_.security_group_id
+	  security_group_id = module.region_us_east_1.security_group_id
 	  vpn_address       = var.vpn_address
 	  providers = {
-	    aws = aws.
+	    aws = aws.us-east-1
 	  }
 	}
 	module "relay_amazon_santiago_1" {
@@ -1821,15 +1821,15 @@ module "relay_amazon_buenosaires_1" {
 
 	    "amazon.queretaro.1" = {
 	      "relay_name"       = "amazon.queretaro.1"
-	      "datacenter_name"  = "amazon.querataro.1"
+	      "datacenter_name"  = "amazon.queretaro.1"
 	      "seller_name"      = "Amazon"
 	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_querataro_1.public_address
+	      "public_ip"        = module.relay_amazon_queretaro_1.public_address
 	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_querataro_1.internal_address
+	      "internal_ip"      = module.relay_amazon_queretaro_1.internal_address
 	      "internal_port"    = 40000
-	      "internal_group"   = ""
-	      "ssh_ip"           = module.relay_amazon_querataro_1.public_address
+	      "internal_group"   = "amazon.queretaro.1"
+	      "ssh_ip"           = module.relay_amazon_queretaro_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
