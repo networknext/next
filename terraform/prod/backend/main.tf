@@ -779,7 +779,6 @@ module "autodetect" {
     ./bootstrap.sh -t ${var.tag} -b ${local.google_artifacts_bucket} -a autodetect.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    AUTODETECT_PATTERNS=maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore
     EOF
     sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
     sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
