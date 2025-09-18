@@ -53,13 +53,16 @@ var prodRelayMap = map[string][]string{
 	"amazon.telaviv.1": {"amazon.telaviv.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.telaviv.2": {"amazon.telaviv.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.telaviv.3": {"amazon.telaviv.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.mexico.1": {"amazon.mexico.1", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.mexico.2": {"amazon.mexico.2", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.mexico.3": {"amazon.mexico.3", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // Exclude regions
 
 var excludedRegions = map[string]bool{
-//	"il-central-1": true,
-	"mx-central-1": true,
+  // "il-central-1": true,
+	// "mx-central-1": true,
 }
 
 // ===========================================================================================================================================

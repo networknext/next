@@ -361,8 +361,7 @@ locals {
       type            = "g6-dedicated-16"
       image           = "linode/ubuntu22.04"
     },
-    
-    // todo: requested access
+
     /*
     "akamai.washington" = {
       datacenter_name = "akamai.washington"
@@ -445,6 +444,36 @@ locals {
       ssh_address = "79.127.137.166"
       public_address = "79.127.137.166"
     },
+
+    "datapacket.miami" = {
+      datacenter_name = "datapacket.miami"
+      ssh_address = "152.233.22.15"
+      public_address = "152.233.22.15"
+    },
+
+    "datapacket.losangeles" = {
+      datacenter_name = "datapacket.losangeles"
+      ssh_address = "79.127.232.205"
+      public_address = "79.127.232.205"
+    }
+
+    "datapacket.dallas" = {
+      datacenter_name = "datapacket.dallas"
+      ssh_address = "212.102.40.186"
+      public_address = "212.102.40.186"
+    }
+
+    "datapacket.istanbul" = {
+      datacenter_name = "datapacket.istanbul"
+      ssh_address = "169.150.215.57"
+      public_address = "169.150.215.57"
+    }
+
+    "datapacket.ashburn" = {
+      datacenter_name = "datapacket.ashburn"
+      ssh_address = "79.127.223.30"
+      public_address = "79.127.223.30"
+    }
 
   }
 }

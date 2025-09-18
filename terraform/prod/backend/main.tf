@@ -356,10 +356,10 @@ output "redis_time_series_address" {
 resource "google_redis_instance" "redis" {
   name                    = "redis"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 5
+  memory_size_gb          = 10
   region                  = local.google_region
   redis_version           = "REDIS_7_2"
-  redis_configs           = { "maxmemory-gb" = "4", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  redis_configs           = { "maxmemory-gb" = "9", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
 }
 

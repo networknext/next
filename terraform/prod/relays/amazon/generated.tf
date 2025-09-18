@@ -44,6 +44,14 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
+  alias                    = "mx-central-1"
+  region                   = "mx-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
   alias                    = "eu-central-1"
   region                   = "eu-central-1"
 }
@@ -209,6 +217,15 @@ module "region_ca_central_1" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.ca-central-1
+  }
+}
+
+module "region_mx_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.mx-central-1
   }
 }
 
@@ -1443,6 +1460,7 @@ locals {
     "me-central-1",
     "il-central-1",
     "ca-central-1",
+    "mx-central-1",
     "eu-central-1",
     "us-west-1",
     "us-west-2",
@@ -1478,6 +1496,9 @@ locals {
     "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
     "amazon.losangeles.1" = { datacenter_name = "amazon.losangeles.1" },
     "amazon.losangeles.2" = { datacenter_name = "amazon.losangeles.2" },
+    "amazon.mexico.1" = { datacenter_name = "amazon.mexico.1" },
+    "amazon.mexico.2" = { datacenter_name = "amazon.mexico.2" },
+    "amazon.mexico.3" = { datacenter_name = "amazon.mexico.3" },
     "amazon.miami.1" = { datacenter_name = "amazon.miami.1" },
     "amazon.queretaro.1" = { datacenter_name = "amazon.queretaro.1" },
     "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
@@ -1641,6 +1662,45 @@ module "relay_amazon_bahrain_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.us-west-2
+	  }
+	}
+	module "relay_amazon_mexico_1" {
+	  source            = "./relay"
+	  name              = "amazon.mexico.1"
+	  zone              = local.datacenter_map["amazon.mexico.1"].zone
+	  region            = local.datacenter_map["amazon.mexico.1"].region
+	  type              = "m6i.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_mx_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.mx-central-1
+	  }
+	}
+	module "relay_amazon_mexico_2" {
+	  source            = "./relay"
+	  name              = "amazon.mexico.2"
+	  zone              = local.datacenter_map["amazon.mexico.2"].zone
+	  region            = local.datacenter_map["amazon.mexico.2"].region
+	  type              = "m6i.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_mx_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.mx-central-1
+	  }
+	}
+	module "relay_amazon_mexico_3" {
+	  source            = "./relay"
+	  name              = "amazon.mexico.3"
+	  zone              = local.datacenter_map["amazon.mexico.3"].zone
+	  region            = local.datacenter_map["amazon.mexico.3"].region
+	  type              = "m6i.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_mx_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.mx-central-1
 	  }
 	}
 	module "relay_amazon_miami_1" {
@@ -2044,6 +2104,51 @@ module "relay_amazon_bahrain_1" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "amazon.losangeles.2"
 	      "ssh_ip"           = module.relay_amazon_losangeles_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.mexico.1" = {
+	      "relay_name"       = "amazon.mexico.1"
+	      "datacenter_name"  = "amazon.mexico.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_mexico_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_mexico_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "mx-central-1"
+	      "ssh_ip"           = module.relay_amazon_mexico_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.mexico.2" = {
+	      "relay_name"       = "amazon.mexico.2"
+	      "datacenter_name"  = "amazon.mexico.2"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_mexico_2.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_mexico_2.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "mx-central-1"
+	      "ssh_ip"           = module.relay_amazon_mexico_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.mexico.3" = {
+	      "relay_name"       = "amazon.mexico.3"
+	      "datacenter_name"  = "amazon.mexico.3"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_mexico_3.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_mexico_3.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "mx-central-1"
+	      "ssh_ip"           = module.relay_amazon_mexico_3.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
