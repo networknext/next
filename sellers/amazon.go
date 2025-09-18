@@ -47,12 +47,18 @@ var prodRelayMap = map[string][]string{
 	"amazon.bahrain.1": {"amazon.bahrain.1", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.bahrain.2": {"amazon.bahrain.2", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.bahrain.3": {"amazon.bahrain.3", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.uae.1": {"amazon.uae.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.uae.2": {"amazon.uae.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.uae.3": {"amazon.uae.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.telaviv.1": {"amazon.telaviv.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.telaviv.2": {"amazon.telaviv.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.telaviv.3": {"amazon.telaviv.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 }
 
 // Exclude regions
 
 var excludedRegions = map[string]bool{
-	"il-central-1": true,
+//	"il-central-1": true,
 	"mx-central-1": true,
 }
 
@@ -92,6 +98,7 @@ var datacenterMap = map[string]*Datacenter{
 	"usw1":  {"sanjose", 37.3387, -121.8853},
 	"usw2":  {"oregon", 45.8399, -119.7006},
 	"mxc1":  {"mexico", 23.6345, -102.5528},
+	"ilc1":  {"telaviv", 32.0853, 34.7818},
 
 	// local zones (AZID)
 
@@ -392,7 +399,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -554,7 +561,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }

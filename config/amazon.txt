@@ -48,6 +48,9 @@ euw2-az3,amazon.london.3
 euw3-az1,amazon.paris.1
 euw3-az2,amazon.paris.2
 euw3-az3,amazon.paris.3
+ilc1-az1,amazon.telaviv.1
+ilc1-az2,amazon.telaviv.2
+ilc1-az3,amazon.telaviv.3
 mec1-az1,amazon.uae.1
 mec1-az2,amazon.uae.2
 mec1-az3,amazon.uae.3

@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -22,6 +22,14 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "me-central-1"
   region                   = "me-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "il-central-1"
+  region                   = "il-central-1"
 }
 
 provider "aws" { 
@@ -183,6 +191,15 @@ module "region_me_central_1" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.me-central-1
+  }
+}
+
+module "region_il_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.il-central-1
   }
 }
 
@@ -902,6 +919,39 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.telaviv.1" = {
+      azid        = "ilc1-az1"
+      zone        = "il-central-1a"
+      region      = "il-central-1"
+      native_name = "ilc1-az1 (il-central-1a)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.2" = {
+      azid        = "ilc1-az2"
+      zone        = "il-central-1b"
+      region      = "il-central-1"
+      native_name = "ilc1-az2 (il-central-1b)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.3" = {
+      azid        = "ilc1-az3"
+      zone        = "il-central-1c"
+      region      = "il-central-1"
+      native_name = "ilc1-az3 (il-central-1c)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.uae.1" = {
       azid        = "mec1-az1"
       zone        = "me-central-1a"
@@ -1391,6 +1441,7 @@ locals {
   regions = [
     "ap-south-1",
     "me-central-1",
+    "il-central-1",
     "ca-central-1",
     "eu-central-1",
     "us-west-1",

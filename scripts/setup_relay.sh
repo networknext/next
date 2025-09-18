@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# run once only
-
-if [[ -f /etc/setup_relay_completed ]]; then
-  echo "relay already setup"
-  exit 0
-fi
-
 # if we have not finished initializing the relay, wait for it!
 
 while [[ ! -f /etc/init_relay_completed ]]

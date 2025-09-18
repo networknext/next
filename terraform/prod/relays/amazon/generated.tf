@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -22,6 +22,14 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "me-central-1"
   region                   = "me-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "il-central-1"
+  region                   = "il-central-1"
 }
 
 provider "aws" { 
@@ -183,6 +191,15 @@ module "region_me_central_1" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.me-central-1
+  }
+}
+
+module "region_il_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.il-central-1
   }
 }
 
@@ -902,6 +919,39 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.telaviv.1" = {
+      azid        = "ilc1-az1"
+      zone        = "il-central-1a"
+      region      = "il-central-1"
+      native_name = "ilc1-az1 (il-central-1a)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.2" = {
+      azid        = "ilc1-az2"
+      zone        = "il-central-1b"
+      region      = "il-central-1"
+      native_name = "ilc1-az2 (il-central-1b)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.3" = {
+      azid        = "ilc1-az3"
+      zone        = "il-central-1c"
+      region      = "il-central-1"
+      native_name = "ilc1-az3 (il-central-1c)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.uae.1" = {
       azid        = "mec1-az1"
       zone        = "me-central-1a"
@@ -1391,6 +1441,7 @@ locals {
   regions = [
     "ap-south-1",
     "me-central-1",
+    "il-central-1",
     "ca-central-1",
     "eu-central-1",
     "us-west-1",
@@ -1433,6 +1484,12 @@ locals {
     "amazon.saopaulo.1" = { datacenter_name = "amazon.saopaulo.1" },
     "amazon.saopaulo.2" = { datacenter_name = "amazon.saopaulo.2" },
     "amazon.saopaulo.3" = { datacenter_name = "amazon.saopaulo.3" },
+    "amazon.telaviv.1" = { datacenter_name = "amazon.telaviv.1" },
+    "amazon.telaviv.2" = { datacenter_name = "amazon.telaviv.2" },
+    "amazon.telaviv.3" = { datacenter_name = "amazon.telaviv.3" },
+    "amazon.uae.1" = { datacenter_name = "amazon.uae.1" },
+    "amazon.uae.2" = { datacenter_name = "amazon.uae.2" },
+    "amazon.uae.3" = { datacenter_name = "amazon.uae.3" },
     "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
     "amazon.virginia.2" = { datacenter_name = "amazon.virginia.2" },
     "amazon.virginia.3" = { datacenter_name = "amazon.virginia.3" },
@@ -1662,6 +1719,84 @@ module "relay_amazon_bahrain_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.sa-east-1
+	  }
+	}
+	module "relay_amazon_telaviv_1" {
+	  source            = "./relay"
+	  name              = "amazon.telaviv.1"
+	  zone              = local.datacenter_map["amazon.telaviv.1"].zone
+	  region            = local.datacenter_map["amazon.telaviv.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_il_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.il-central-1
+	  }
+	}
+	module "relay_amazon_telaviv_2" {
+	  source            = "./relay"
+	  name              = "amazon.telaviv.2"
+	  zone              = local.datacenter_map["amazon.telaviv.2"].zone
+	  region            = local.datacenter_map["amazon.telaviv.2"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_il_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.il-central-1
+	  }
+	}
+	module "relay_amazon_telaviv_3" {
+	  source            = "./relay"
+	  name              = "amazon.telaviv.3"
+	  zone              = local.datacenter_map["amazon.telaviv.3"].zone
+	  region            = local.datacenter_map["amazon.telaviv.3"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_il_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.il-central-1
+	  }
+	}
+	module "relay_amazon_uae_1" {
+	  source            = "./relay"
+	  name              = "amazon.uae.1"
+	  zone              = local.datacenter_map["amazon.uae.1"].zone
+	  region            = local.datacenter_map["amazon.uae.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-central-1
+	  }
+	}
+	module "relay_amazon_uae_2" {
+	  source            = "./relay"
+	  name              = "amazon.uae.2"
+	  zone              = local.datacenter_map["amazon.uae.2"].zone
+	  region            = local.datacenter_map["amazon.uae.2"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-central-1
+	  }
+	}
+	module "relay_amazon_uae_3" {
+	  source            = "./relay"
+	  name              = "amazon.uae.3"
+	  zone              = local.datacenter_map["amazon.uae.3"].zone
+	  region            = local.datacenter_map["amazon.uae.3"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-central-1
 	  }
 	}
 	module "relay_amazon_virginia_1" {
@@ -1999,6 +2134,96 @@ module "relay_amazon_bahrain_1" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "sa-east-1"
 	      "ssh_ip"           = module.relay_amazon_saopaulo_3.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.telaviv.1" = {
+	      "relay_name"       = "amazon.telaviv.1"
+	      "datacenter_name"  = "amazon.telaviv.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_telaviv_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_telaviv_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "il-central-1"
+	      "ssh_ip"           = module.relay_amazon_telaviv_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.telaviv.2" = {
+	      "relay_name"       = "amazon.telaviv.2"
+	      "datacenter_name"  = "amazon.telaviv.2"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_telaviv_2.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_telaviv_2.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "il-central-1"
+	      "ssh_ip"           = module.relay_amazon_telaviv_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.telaviv.3" = {
+	      "relay_name"       = "amazon.telaviv.3"
+	      "datacenter_name"  = "amazon.telaviv.3"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_telaviv_3.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_telaviv_3.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "il-central-1"
+	      "ssh_ip"           = module.relay_amazon_telaviv_3.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.uae.1" = {
+	      "relay_name"       = "amazon.uae.1"
+	      "datacenter_name"  = "amazon.uae.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_uae_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_uae_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "me-central-1"
+	      "ssh_ip"           = module.relay_amazon_uae_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.uae.2" = {
+	      "relay_name"       = "amazon.uae.2"
+	      "datacenter_name"  = "amazon.uae.2"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_uae_2.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_uae_2.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "me-central-1"
+	      "ssh_ip"           = module.relay_amazon_uae_2.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.uae.3" = {
+	      "relay_name"       = "amazon.uae.3"
+	      "datacenter_name"  = "amazon.uae.3"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_uae_3.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_uae_3.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "me-central-1"
+	      "ssh_ip"           = module.relay_amazon_uae_3.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
