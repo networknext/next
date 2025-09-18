@@ -30,7 +30,7 @@ func main() {
 
 	cache = make(map[string]string)
 
-	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore|datacamp,datacamp|velia,velia|uk2group,100tb|hivelocity,hivelocity|")
+	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore|datacamp,datacamp|velia,velia|uk2group,100tb|hivelocity,hivelocity|servers.com,serversdotcom|")
 	patterns = strings.Split(patternString, "|")
 
 	re = regexp.MustCompile(`^unity\.([a-z]+)[\.]?(.*)?$`)
