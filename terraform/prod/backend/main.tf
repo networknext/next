@@ -745,7 +745,7 @@ module "api" {
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = local.disable_backend ? 0 : 1
-  max_size                 = local.disable_backend ? 0 : 16
+  max_size                 = local.disable_backend ? 0 : 4
   target_cpu               = 60
   domain                   = "api.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
@@ -797,7 +797,7 @@ module "autodetect" {
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = local.disable_backend ? 0 : 1
-  max_size                 = local.disable_backend ? 0 : 16
+  max_size                 = local.disable_backend ? 0 : 4
   target_cpu               = 60
   domain                   = "autodetect.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.autodetect.id
