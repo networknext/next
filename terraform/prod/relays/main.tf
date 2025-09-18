@@ -475,6 +475,12 @@ locals {
       public_address = "79.127.223.30"
     }
 
+    "datapacket.frankfurt" = {
+      datacenter_name = "datapacket.frankfurt"
+      ssh_address = "89.222.124.57"
+      public_address = "89.222.124.57"
+    }
+
   }
 }
 
