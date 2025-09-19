@@ -4,9 +4,9 @@ variable "relays" { type = map(map(string)) }
 
 locals {
 
-  seller_name = "100TB"
+  seller_name = "UK2Group"
 
-  seller_code = "100tb"
+  seller_code = "uk2group"
 
   ssh_user = "root"
 
@@ -32,7 +32,7 @@ locals {
 }
 
 output "relays" {
-  description = "All relays for 100tb"
+  description = "All relays for uk2group"
   value = {
     for k, v in var.relays : k => zipmap( 
       [
@@ -68,7 +68,7 @@ output "relays" {
 }
 
 output "datacenters" {
-  description = "All datacenters for 100tb"
+  description = "All datacenters for uk2group"
   value = local.datacenter_map
 }
 

@@ -49,7 +49,7 @@ locals {
     "datacamp.istanbul",
     "gcore.istanbul",
 
-    "100tb.frankfurt",
+    "uk2group.frankfurt",
     "gcore.frankfurt",
     "i3d.frankfurt",
     "google.frankfurt.1",
@@ -63,7 +63,7 @@ locals {
     "google.losangeles.2",
     "google.losangeles.3",
 
-    "100tb.dallas",
+    "uk2group.dallas",
     "serversdotcom.dallas",
     "google.dallas.1",
     "google.dallas.2",
@@ -97,8 +97,9 @@ locals {
     "Equinix" = "equinix"
     "Unity" = "unity"
     "Azure" = "azure"
-    "100TB" = "100tb"
+    "UK2Group" = "uk2group"
     "OVH" = "ovh"
+    "Datacamp" = "datacamp"
   }
 }
 
@@ -686,22 +687,22 @@ module "oneqode_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# 100TB RELAYS
-# ============
+# ===============
+# UK2GROUP RELAYS
+# ===============
 
 locals {
 
-  100tb_relays = {
+  uk2group_relays = {
 
     /*
-    "100tb.dallas" = {
-      datacenter_name = "100tb.dallas"
+    "uk2group.dallas" = {
+      datacenter_name = "uk2group.dallas"
       public_address  = ""
     },
 
-    "100tb.frankfurt" = {
-      datacenter_name = "100tb.frankfurt"
+    "uk2group.frankfurt" = {
+      datacenter_name = "uk2group.frankfurt"
       public_address  = ""
     },
     */
@@ -709,8 +710,8 @@ locals {
   }
 }
 
-module "100tb_relays" {
-  relays = local.100tb_relays
+module "uk2group_relays" {
+  relays = local.uk2group_relays
   source = "../../sellers/100tb"
 }
 
@@ -731,6 +732,41 @@ locals {
     },
     */
 
+  }
+}
+
+module "ovh_relays" {
+  relays = local.ovh_relays
+  source = "../../sellers/ovh"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ===============
+# DATACAMP RELAYS
+# ===============
+
+locals {
+
+  datacamp_relays = {
+
+    /*
+    "datacamp.ashburn" = {
+      datacenter_name = "datacamp.ashburn"
+      public_address  = ""
+    },
+    */
+
+    "datacamp.istanbul" = {
+      datacenter_name = "datacamp.istanbul"
+      public_address  = ""
+    },
+
+    "datacamp.losangeles" = {
+      datacenter_name = "datacamp.losangeles"
+      public_address  = ""
+    },
+    */
   }
 }
 
@@ -918,7 +954,9 @@ locals {
       keys(module.equinix_relays.relays),
       keys(module.unity_relays.relays),
       keys(module.azure_relays.relays),
-      keys(module.100tb_relays.relays),
+      keys(module.uk2group_relays.relays),
+      keys(module.ovh_relays.relays),
+      keys(module.datacamp_relays.relays),
     )
   )
 
@@ -940,7 +978,9 @@ locals {
     module.equinix_relays.relays,
     module.unity_relays.relays,
     module.azure_relays.relays,
-    module.100tb_relays.relays,
+    module.uk2group_relays.relays,
+    module.ovh_relays.relays,
+    module.datacamp_relays.relays,
   )
 
   datacenters = merge(
@@ -961,7 +1001,9 @@ locals {
     module.equinix_relays.datacenters,
     module.unity_relays.datacenters,
     module.azure_relays.datacenters,
-    module.100tb_relays.datacenters,
+    module.uk2group_relays.datacenters,
+    module.ovh_relays.datacenters,
+    module.datacamp_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
