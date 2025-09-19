@@ -668,7 +668,6 @@ terraform {
 			k := prodRelayNames[i]
 			v := prodRelayMap[k]
 
-			// todo
 			region, ok := datacenterToRegion[v[0]]
 			if !ok {
 				fmt.Printf("missing datacenter to region for '%s'\n", v[0])
