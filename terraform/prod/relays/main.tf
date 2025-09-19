@@ -48,6 +48,7 @@ locals {
 
     "datacamp.istanbul",
     "gcore.istanbul",
+
     "velia.frankfurt",
     "uk2group.frankfurt",
     "gcore.frankfurt",
@@ -503,6 +504,12 @@ locals {
       datacenter_name = "datapacket.frankfurt"
       ssh_address = "89.222.124.57"
       public_address = "89.222.124.57"
+    }
+
+    "datapacket.santiago" = {
+      datacenter_name = "datapacket.santiago"
+      ssh_address = "79.127.209.147"
+      public_address = "79.127.209.147"
     }
 
   }

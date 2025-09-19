@@ -937,8 +937,8 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = local.disable_backend ? 0 : 4
-  max_size                   = local.disable_backend ? 0 : 8
+  min_size                   = local.disable_backend ? 0 : 6
+  max_size                   = local.disable_backend ? 0 : 12
   target_cpu                 = 60
   tier_1                     = false
 
