@@ -562,7 +562,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-1"
+  machine_type               = "n1-standard-2"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -736,7 +736,7 @@ module "api" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-standard-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
@@ -1000,7 +1000,7 @@ module "portal" {
   config                   = "${local.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-standard-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
