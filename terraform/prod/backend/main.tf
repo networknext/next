@@ -898,7 +898,7 @@ module "server_backend" {
     ENV=prod
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=8
+    UDP_NUM_THREADS=4
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
