@@ -56,6 +56,7 @@ locals {
     "google.dammam.1",
     "google.dammam.2",
     "google.dammam.3",
+    "latitude.ashburn",
   ]
 
   sellers = {
@@ -537,8 +538,8 @@ locals {
       public_address  = "103.88.235.133"
     },
 
-    "latitude.virginia" = {
-      datacenter_name = "latitude.virginia"
+    "latitude.ashburn" = {
+      datacenter_name = "latitude.ashburn"
       public_address  = "103.106.59.205"
     },
 
