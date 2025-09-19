@@ -32,31 +32,51 @@ locals {
   rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
 
   rematch_datacenters = [
+
+    "latitude.saopaulo",
     "google.saopaulo.1",
     "google.saopaulo.2",
     "google.saopaulo.3",
-    "i3d.saopaulo",
-    "latitude.saopaulo",
-    "gcore.saopaulo",
-    "google.losangeles.1",
-    "google.losangeles.2",
-    "google.losangeles.3",
-    "google.dallas.1",
-    "google.dallas.2",
-    "google.dallas.3",
-    "google.virginia.1",
-    "google.virginia.2",
-    "google.virginia.3",
-    "google.frankfurt.1",
-    "google.frankfurt.2",
-    "google.frankfurt.3",
+
+    "i3d.dubai",
     "google.doha.1",
     "google.doha.2",
     "google.doha.3",
     "google.dammam.1",
     "google.dammam.2",
     "google.dammam.3",
+
+    "datacamp.istanbul",
+    "gcore.istanbul",
+
+    "100tb.frankfurt",
+    "gcore.frankfurt",
+    "i3d.frankfurt",
+    "google.frankfurt.1",
+    "google.frankfurt.2",
+    "google.frankfurt.3",
+
+    "i3d.losangeles",
+    "datacamp.losangeles",
+    "hivelocity.losangeles",
+    "google.losangeles.1",
+    "google.losangeles.2",
+    "google.losangeles.3",
+
+    "100tb.dallas",
+    "serversdotcom.dallas",
+    "google.dallas.1",
+    "google.dallas.2",
+    "google.dallas.3",
+
     "latitude.ashburn",
+    "i3d.ashburn",
+    "gcore.ashburn",
+    "ovh.ashburn",
+    "datacamp.ashburn",
+    "google.virginia.1",
+    "google.virginia.2",
+    "google.virginia.3",
   ]
 
   sellers = {
@@ -77,6 +97,7 @@ locals {
     "Equinix" = "equinix"
     "Unity" = "unity"
     "Azure" = "azure"
+    "100TB" = "100tb"
   }
 }
 
@@ -664,6 +685,36 @@ module "oneqode_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ============
+# 100TB RELAYS
+# ============
+
+locals {
+
+  100tb_relays = {
+
+    /*
+    "100tb.dallas" = {
+      datacenter_name = "100tb.dallas"
+      public_address  = ""
+    },
+
+    "100tb.frankfurt" = {
+      datacenter_name = "100tb.frankfurt"
+      public_address  = ""
+    },
+    */
+
+  }
+}
+
+module "100tb_relays" {
+  relays = local.100tb_relays
+  source = "../../sellers/100tb"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =================
 # HIVELOCITY RELAYS
 # =================
@@ -841,6 +892,7 @@ locals {
       keys(module.equinix_relays.relays),
       keys(module.unity_relays.relays),
       keys(module.azure_relays.relays),
+      keys(module.100tb_relays.relays),
     )
   )
 
@@ -862,6 +914,7 @@ locals {
     module.equinix_relays.relays,
     module.unity_relays.relays,
     module.azure_relays.relays,
+    module.100tb_relays.relays,
   )
 
   datacenters = merge(
@@ -882,6 +935,7 @@ locals {
     module.equinix_relays.datacenters,
     module.unity_relays.datacenters,
     module.azure_relays.datacenters,
+    module.100tb_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
