@@ -48,7 +48,7 @@ locals {
 
     "datacamp.istanbul",
     "gcore.istanbul",
-
+    "velia.frankfurt",
     "uk2group.frankfurt",
     "gcore.frankfurt",
     "i3d.frankfurt",
