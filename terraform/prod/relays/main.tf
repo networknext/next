@@ -46,10 +46,10 @@ locals {
     "google.dammam.2",
     "google.dammam.3",
 
-    "datacamp.istanbul",
+//    "datacamp.istanbul",
     "gcore.istanbul",
 
-    "uk2group.frankfurt",
+//    "uk2group.frankfurt",
     "gcore.frankfurt",
     "i3d.frankfurt",
     "google.frankfurt.1",
@@ -57,13 +57,13 @@ locals {
     "google.frankfurt.3",
 
     "i3d.losangeles",
-    "datacamp.losangeles",
+//    "datacamp.losangeles",
     "hivelocity.losangeles",
     "google.losangeles.1",
     "google.losangeles.2",
     "google.losangeles.3",
 
-    "uk2group.dallas",
+//    "uk2group.dallas",
     "serversdotcom.dallas",
     "google.dallas.1",
     "google.dallas.2",
@@ -72,8 +72,8 @@ locals {
     "latitude.ashburn",
     "i3d.ashburn",
     "gcore.ashburn",
-    "ovh.ashburn",
-    "datacamp.ashburn",
+//    "ovh.ashburn",
+//    "datacamp.ashburn",
     "google.virginia.1",
     "google.virginia.2",
     "google.virginia.3",
@@ -712,7 +712,7 @@ locals {
 
 module "uk2group_relays" {
   relays = local.uk2group_relays
-  source = "../../sellers/100tb"
+  source = "../../sellers/uk2group"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -755,7 +755,6 @@ locals {
       datacenter_name = "datacamp.ashburn"
       public_address  = ""
     },
-    */
 
     "datacamp.istanbul" = {
       datacenter_name = "datacamp.istanbul"
@@ -770,9 +769,9 @@ locals {
   }
 }
 
-module "ovh_relays" {
-  relays = local.ovh_relays
-  source = "../../sellers/ovh"
+module "datacamp_relays" {
+  relays = local.datacamp_relays
+  source = "../../sellers/datacamp"
 }
 
 # ----------------------------------------------------------------------------------------

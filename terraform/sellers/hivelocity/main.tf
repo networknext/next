@@ -52,18 +52,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    "hivelocity.losangeles.1" = {
+    "hivelocity.losangeles" = {
       latitude    = 34.0549
       longitude   = -118.2426
-      native_name = "LA1"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "hivelocity.losangeles.2" = {
-      latitude    = 34.0549
-      longitude   = -118.2426
-      native_name = "LA2"
+      native_name = "LA1 and LA2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },

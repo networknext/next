@@ -12,7 +12,7 @@ locals {
 
   datacenter_map = {
 
-    "100tb.dallas" = {
+    "uk2group.dallas" = {
       latitude    = 32.7767
       longitude   = -96.7970
       native_name = ""
@@ -20,7 +20,7 @@ locals {
       seller_code = local.seller_code
     },
 
-    "100tb.frankfurt" = {
+    "uk2group.frankfurt" = {
       latitude    = 50.1109
       longitude   = 8.6821
       native_name = ""

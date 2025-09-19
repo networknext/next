@@ -1338,10 +1338,6 @@ func ExtractDatabase(config string) (*Database, error) {
 			return nil, fmt.Errorf("datacenter %s doesn't have a seller\n", datacenter.Name)
 		}
 
-		if !strings.Contains(datacenter.Name, seller_row.seller_code) {
-			return nil, fmt.Errorf("datacenter '%s' does not contain the seller code '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.seller_code)
-		}
-
 		database.DatacenterMap[datacenter.Id] = &datacenter
 
 		fmt.Printf("datacenter %d: %s [%x] (%.1f,%.1f)\n", i, datacenter.Name, datacenter.Id, datacenter.Latitude, datacenter.Longitude)
