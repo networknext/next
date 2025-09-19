@@ -13,7 +13,6 @@ import (
 	"net"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/networknext/next/modules/core"
@@ -1333,7 +1332,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenter.Longitude = row.longitude
 		datacenter.SellerId = row.seller_id
 
-		seller_row, seller_exists := sellerIndex[row.seller_id]
+		_, seller_exists := sellerIndex[row.seller_id]
 		if !seller_exists {
 			return nil, fmt.Errorf("datacenter %s doesn't have a seller\n", datacenter.Name)
 		}
