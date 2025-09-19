@@ -898,7 +898,7 @@ module "server_backend" {
     ENV=prod
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=4
+    UDP_NUM_THREADS=8
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -926,7 +926,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c3-highcpu-44"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -937,10 +937,10 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = local.disable_backend ? 0 : 12
-  max_size                   = local.disable_backend ? 0 : 24
-  target_cpu                 = 60
-  tier_1                     = false
+  min_size                   = local.disable_backend ? 0 : 3
+  max_size                   = local.disable_backend ? 0 : 6
+  target_cpu                 = 25
+  tier_1                     = true
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
