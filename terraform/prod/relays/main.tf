@@ -537,6 +537,26 @@ locals {
       public_address  = "103.88.235.133"
     },
 
+    "latitude.virginia" = {
+      datacenter_name = "latitude.virginia"
+      public_address  = "103.106.59.205"
+    },
+
+    "latitude.miami" = {
+      datacenter_name = "latitude.miami"
+      public_address  = "69.67.150.47"
+    },
+
+    "latitude.losangeles" = {
+      datacenter_name = "latitude.losangeles"
+      public_address  = "67.213.124.239"
+    },
+
+    "latitude.santiago" = {
+      datacenter_name = "latitude.santiago"
+      public_address  = "45.250.252.203"
+    },
+
   }
 }
 
