@@ -98,6 +98,7 @@ locals {
     "Unity" = "unity"
     "Azure" = "azure"
     "100TB" = "100tb"
+    "OVH" = "ovh"
   }
 }
 
@@ -711,6 +712,31 @@ locals {
 module "100tb_relays" {
   relays = local.100tb_relays
   source = "../../sellers/100tb"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==========
+# OVH RELAYS
+# ==========
+
+locals {
+
+  ovh_relays = {
+
+    /*
+    "ovh.ashburn" = {
+      datacenter_name = "ovh.ashburn"
+      public_address  = ""
+    },
+    */
+
+  }
+}
+
+module "ovh_relays" {
+  relays = local.ovh_relays
+  source = "../../sellers/ovh"
 }
 
 # ----------------------------------------------------------------------------------------
