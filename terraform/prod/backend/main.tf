@@ -613,7 +613,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-highcpu-4"
+  machine_type             = "n1-standard-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
@@ -621,7 +621,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size              = local.disable_backend ? 0 : 6
+  target_size              = local.disable_backend ? 0 : 3
   domain                   = "relay.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
