@@ -12,7 +12,7 @@ locals {
 
   datacenter_map = {
 
-    "ovh.amsterdam" = {
+    "ovh.ashburn" = {
       latitude    = 39.0438
       longitude   = -77.4874
       native_name = ""
