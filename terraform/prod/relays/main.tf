@@ -315,6 +315,105 @@ locals {
       type            = "c3-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+
+    "google.paris.1" = {
+      datacenter_name = "google.paris.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.paris.2" = {
+      datacenter_name = "google.paris.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.paris.3" = {
+      datacenter_name = "google.paris.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.1" = {
+      datacenter_name = "google.netherlands.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.2" = {
+      datacenter_name = "google.netherlands.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.3" = {
+      datacenter_name = "google.netherlands.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.milan.2" = {
+      datacenter_name = "google.milan.2"
+      type            = "c4-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.milan.3" = {
+      datacenter_name = "google.milan.3"
+      type            = "c4-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.belgium.2" = {
+      datacenter_name = "google.belgium.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.belgium.3" = {
+      datacenter_name = "google.belgium.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.belgium.4" = {
+      datacenter_name = "google.belgium.4"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.1" = {
+      datacenter_name = "google.london.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.2" = {
+      datacenter_name = "google.london.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.3" = {
+      datacenter_name = "google.london.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.madrid.1" = {
+      datacenter_name = "google.madrid.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.madrid.2" = {
+      datacenter_name = "google.madrid.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
   }
 }
 
@@ -708,14 +807,14 @@ locals {
 
   uk2group_relays = {
 
+    "uk2group.frankfurt" = {
+      datacenter_name = "uk2group.frankfurt"
+      public_address  = "46.23.74.129"
+    },
+
     /*
     "uk2group.dallas" = {
       datacenter_name = "uk2group.dallas"
-      public_address  = ""
-    },
-
-    "uk2group.frankfurt" = {
-      datacenter_name = "uk2group.frankfurt"
       public_address  = ""
     },
     */
@@ -738,12 +837,10 @@ locals {
 
   ovh_relays = {
 
-    /*
     "ovh.ashburn" = {
       datacenter_name = "ovh.ashburn"
-      public_address  = ""
+      public_address  = "40.160.32.142"
     },
-    */
 
   }
 }
