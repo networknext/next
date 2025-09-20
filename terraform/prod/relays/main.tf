@@ -512,6 +512,12 @@ locals {
       public_address = "79.127.209.147"
     }
 
+    "datapacket.lima" = {
+      datacenter_name = "datapacket.lima"
+      ssh_address = "79.127.252.114"
+      public_address = "79.127.252.114"
+    }
+
   }
 }
 
