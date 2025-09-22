@@ -88,6 +88,11 @@ locals {
     "google.tokyo.3",
 
     "serversaustralia.sydney",
+    "google.sydney.1",
+    "google.sydney.2",
+    "google.sydney.3",
+
+    "gcore.johannesburg",
   ]
 
   sellers = {
@@ -988,12 +993,10 @@ locals {
 
   serversdotcom_relays = {
 
-    /*
     "serversdotcom.dallas" = {
       datacenter_name = "serversdotcom.dallas"
-      public_address  = "185.152.67.2"
+      public_address  = "64.58.117.12"
     },
-    */
 
   }
 }

@@ -1,3 +1,6 @@
+africa-south1-a,google.johannesburg.1
+africa-south1-b,google.johannesburg.2
+africa-south1-c,google.johannesburg.3
 asia-east1-a,google.taiwan.1
 asia-east1-b,google.taiwan.2
 asia-east1-c,google.taiwan.3

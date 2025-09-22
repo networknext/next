@@ -3,6 +3,36 @@ locals {
 
   datacenter_map = {
 
+    "google.johannesburg.1" = {
+      zone        = "africa-south1-a"
+      region      = "africa-south1"
+      native_name = "africa-south1-a"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.johannesburg.2" = {
+      zone        = "africa-south1-b"
+      region      = "africa-south1"
+      native_name = "africa-south1-b"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.johannesburg.3" = {
+      zone        = "africa-south1-c"
+      region      = "africa-south1"
+      native_name = "africa-south1-c"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.taiwan.1" = {
       zone        = "asia-east1-a"
       region      = "asia-east1"
