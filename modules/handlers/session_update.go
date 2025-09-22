@@ -192,7 +192,12 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.FallbackToDirect {
 		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			core.Warn("fallback to direct [%016x]", state.Request.SessionId)
+			datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
+			if datacenter != nil {
+				core.Warn("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
+			} else {
+				core.Warn("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)				
+			}
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true
 			if state.FallbackToDirectChannel != nil {
