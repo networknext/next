@@ -86,6 +86,8 @@ locals {
     "google.tokyo.1",
     "google.tokyo.2",
     "google.tokyo.3",
+
+    "serversaustralia.sydney",
   ]
 
   sellers = {
@@ -109,6 +111,7 @@ locals {
     "UK2Group" = "uk2group"
     "OVH" = "ovh"
     "Datacamp" = "datacamp"
+    "ServersAustralia" = "serversaustralia"
   }
 }
 
@@ -1031,6 +1034,31 @@ module "serversdotcom_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# =======================
+# SERVER AUSTRALIA RELAYS
+# =======================
+
+locals {
+
+  serversaustralia_relays = {
+
+    /*
+    "serversaustralia.sydney" = {
+      datacenter_name = "serversaustralia.sydney"
+      public_address  = ""
+    },
+    */
+
+  }
+}
+
+module "serversaustralia_relays" {
+  relays = local.serversaustralia_relays
+  source = "../../sellers/serversaustralia"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # ============
 # VELIA RELAYS
 # ============
@@ -1111,6 +1139,7 @@ locals {
       keys(module.uk2group_relays.relays),
       keys(module.ovh_relays.relays),
       keys(module.datacamp_relays.relays),
+      keys(module.serversaustralia_relays.relays),
     )
   )
 
@@ -1135,6 +1164,7 @@ locals {
     module.uk2group_relays.relays,
     module.ovh_relays.relays,
     module.datacamp_relays.relays,
+    module.serversaustralia_relays.relays,
   )
 
   datacenters = merge(
@@ -1158,6 +1188,7 @@ locals {
     module.uk2group_relays.datacenters,
     module.ovh_relays.datacenters,
     module.datacamp_relays.datacenters,
+    module.serversaustralia_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
