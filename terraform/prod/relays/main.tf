@@ -93,6 +93,9 @@ locals {
     "google.sydney.3",
 
     "gcore.johannesburg",
+    "google.johannesburg.1",
+    "google.johannesburg.2",
+    "google.johannesburg.3",
   ]
 
   sellers = {
@@ -862,12 +865,10 @@ locals {
       public_address  = "46.23.74.129"
     },
 
-    /*
     "uk2group.dallas" = {
       datacenter_name = "uk2group.dallas"
-      public_address  = ""
+      public_address  = "206.217.211.37"
     },
-    */
 
   }
 }

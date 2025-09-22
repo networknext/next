@@ -597,6 +597,8 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		upgradePortalSessionData(service.Database(), sessions[i], &upgradedSessions[i])
 	}
 
+	// todo: was this causing empty pages in the portal?
+	/*
 	// IMPORTANT: Remove any outliers in the sessions for this page (sessions that just went on next can sometimes pop up temporarily in the wrong page, exclude these)
 	if len(upgradedSessions) > 2 {
 		minScore := upgradedSessions[0].Score
@@ -609,6 +611,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		upgradedSessions = filteredSessions
 	}
+	*/
 
 	// Sometimes the score is out of date between redis and the session cruncher. Sort the sessions page here to fix it
 	sort.SliceStable(upgradedSessions, func(i, j int) bool { return upgradedSessions[i].Score < upgradedSessions[j].Score })
