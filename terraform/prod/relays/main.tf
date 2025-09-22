@@ -358,13 +358,11 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    /*
     "google.milan.3" = {
       datacenter_name = "google.milan.3"
       type            = "c4-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-    */
 
     "google.belgium.2" = {
       datacenter_name = "google.belgium.2"
@@ -714,6 +712,37 @@ locals {
     "gcore.saopaulo" = {
       datacenter_name = "gcore.saopaulo"
       public_address  = "92.38.150.8"
+      ssh_user        = "root"
+    },
+
+    "gcore.frankfurt" = {
+      datacenter_name = "gcore.frankfurt"
+      public_address  = "93.114.56.87"
+      ssh_user        = "ubuntu"
+    },
+
+    "gcore.istanbul.a" = {
+      datacenter_name = "gcore.istanbul"
+      public_address  = "213.156.152.90"
+      ssh_user        = "ubuntu"
+    },
+
+    "gcore.istanbul.b" = {
+      datacenter_name = "gcore.istanbul"
+      public_address  = "213.156.152.107"
+      ssh_user        = "ubuntu"    
+    },
+
+    "gcore.ashburn.b" = {
+      datacenter_name = "gcore.ashburn"
+      public_address  = "5.188.124.81"
+      ssh_user        = "root"
+    },
+
+    "gcore.ashburn.c" = {
+      datacenter_name = "gcore.ashburn"
+      public_address  = "5.188.124.74"
+      ssh_user        = "root"
     },
 
   }
@@ -893,6 +922,11 @@ module "datacamp_relays" {
 locals {
 
   hivelocity_relays = {
+
+    "hivelocity.losangeles" = {
+      datacenter_name = "hivelocity.losangeles"
+      public_address  = "107.155.127.112"
+    },
 
     /*
     "hivelocity.chicago" = {

@@ -8,7 +8,7 @@ locals {
 
   seller_code = "ovh"
 
-  ssh_user = "root"
+  ssh_user = "ubuntu"
 
   datacenter_map = {
 
