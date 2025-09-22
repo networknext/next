@@ -110,7 +110,6 @@ locals {
     "Azure" = "azure"
     "UK2Group" = "uk2group"
     "OVH" = "ovh"
-    "Datacamp" = "datacamp"
     "ServersAustralia" = "serversaustralia"
   }
 }
@@ -892,40 +891,6 @@ module "ovh_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ===============
-# DATACAMP RELAYS
-# ===============
-
-locals {
-
-  datacamp_relays = {
-
-    /*
-    "datacamp.ashburn" = {
-      datacenter_name = "datacamp.ashburn"
-      public_address  = ""
-    },
-
-    "datacamp.istanbul" = {
-      datacenter_name = "datacamp.istanbul"
-      public_address  = ""
-    },
-
-    "datacamp.losangeles" = {
-      datacenter_name = "datacamp.losangeles"
-      public_address  = ""
-    },
-    */
-  }
-}
-
-module "datacamp_relays" {
-  relays = local.datacamp_relays
-  source = "../../sellers/datacamp"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # =================
 # HIVELOCITY RELAYS
 # =================
@@ -1138,7 +1103,6 @@ locals {
       keys(module.azure_relays.relays),
       keys(module.uk2group_relays.relays),
       keys(module.ovh_relays.relays),
-      keys(module.datacamp_relays.relays),
       keys(module.serversaustralia_relays.relays),
     )
   )
@@ -1163,7 +1127,6 @@ locals {
     module.azure_relays.relays,
     module.uk2group_relays.relays,
     module.ovh_relays.relays,
-    module.datacamp_relays.relays,
     module.serversaustralia_relays.relays,
   )
 
@@ -1187,7 +1150,6 @@ locals {
     module.azure_relays.datacenters,
     module.uk2group_relays.datacenters,
     module.ovh_relays.datacenters,
-    module.datacamp_relays.datacenters,
     module.serversaustralia_relays.datacenters,
   )
 
