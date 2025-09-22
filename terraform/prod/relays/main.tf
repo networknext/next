@@ -625,6 +625,12 @@ locals {
       public_address = "79.127.252.114"
     }
 
+    "datapacket.bogota" = {
+      datacenter_name = "datapacket.bogota"
+      ssh_address = "169.150.228.9"
+      public_address = "169.150.228.9"
+    }
+
   }
 }
 
