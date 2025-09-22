@@ -20,6 +20,14 @@ locals {
       seller_code = local.seller_code
     },
 
+    "ovh.frankfurt" = {
+      latitude    = 50.1109
+      longitude   = 8.6821
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
   }
 }
 

@@ -306,7 +306,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	if !exists {
 
-		core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (1)", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId)
+		core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (1) [%s]", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId, from.String())
 		responsePacket.Response = packets.SDK_ServerInitResponseDatacenterNotEnabled
 		handler.Events[SDK_HandlerEvent_DatacenterNotEnabled] = true
 
@@ -314,7 +314,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 		datacenterSettings, exists := buyerSettings[requestPacket.DatacenterId]
 		if !exists || !datacenterSettings.EnableAcceleration {
-			core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (2)", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId)
+			core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (2) [%s]", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId, from.String())
 			responsePacket.Response = packets.SDK_ServerInitResponseDatacenterNotEnabled
 			handler.Events[SDK_HandlerEvent_DatacenterNotEnabled] = true
 		}

@@ -46,19 +46,21 @@ locals {
     "google.dammam.2",
     "google.dammam.3",
 
-    "datacamp.istanbul",
+    "datapacket.istanbul",
     "gcore.istanbul",
 
     "velia.frankfurt",
     "uk2group.frankfurt",
     "gcore.frankfurt",
     "i3d.frankfurt",
+    "datapacket.frankfurt",
+    "ovh.frankfurt",
     "google.frankfurt.1",
     "google.frankfurt.2",
     "google.frankfurt.3",
 
     "i3d.losangeles",
-    "datacamp.losangeles",
+    "datapacket.losangeles",
     "hivelocity.losangeles",
     "google.losangeles.1",
     "google.losangeles.2",
@@ -74,10 +76,16 @@ locals {
     "i3d.ashburn",
     "gcore.ashburn",
     "ovh.ashburn",
-    "datacamp.ashburn",
+    "datapacket.ashburn",
     "google.virginia.1",
     "google.virginia.2",
     "google.virginia.3",
+
+    "i3d.singapore",
+
+    "google.tokyo.1",
+    "google.tokyo.2",
+    "google.tokyo.3",
   ]
 
   sellers = {
@@ -925,15 +933,18 @@ locals {
 
     "hivelocity.losangeles" = {
       datacenter_name = "hivelocity.losangeles"
-      public_address  = "107.155.127.112"
+      public_address  = "107.155.127.114"
     },
 
-    /*
-    "hivelocity.chicago" = {
-      datacenter_name = "hivelocity.chicago"
-      public_address  = "185.152.67.2"
+    "hivelocity.ashburn" = {
+      datacenter_name = "hivelocity.ashburn"
+      public_address  = "91.191.213.138"
     },
-    */
+
+    "hivelocity.miami" = {
+      datacenter_name = "hivelocity.miami"
+      public_address  = "162.254.151.130"
+    },
 
   }
 }

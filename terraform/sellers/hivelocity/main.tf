@@ -60,6 +60,14 @@ locals {
       seller_code = local.seller_code
     },
 
+    "hivelocity.ashburn" = {
+      latitude    = 39.0438
+      longitude   = -77.4874
+      native_name = "ASH"
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
     "hivelocity.miami" = {
       latitude    = 25.7617
       longitude   = -80.1918
