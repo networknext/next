@@ -757,13 +757,7 @@ locals {
       ssh_user        = "ubuntu"    
     },
 
-    "gcore.ashburn.b" = {
-      datacenter_name = "gcore.ashburn"
-      public_address  = "5.188.124.81"
-      ssh_user        = "root"
-    },
-
-    "gcore.ashburn.c" = {
+    "gcore.ashburn" = {
       datacenter_name = "gcore.ashburn"
       public_address  = "5.188.124.74"
       ssh_user        = "root"
