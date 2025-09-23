@@ -1036,12 +1036,10 @@ locals {
 
   velia_relays = {
 
-    /*
-    "velia.stlouis" = {
-      datacenter_name = "velia.stlouis"
-      public_address  = "185.152.67.2"
+    "velia.frankfurt" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.208.81"
     },
-    */
 
   }
 }
@@ -1307,8 +1305,8 @@ resource "networknext_route_shader" rematch {
   force_next = false
   latency_reduction_threshold = 10
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 2.5
-  acceptable_packet_loss_sustained = 0.25
+  acceptable_packet_loss_instant = 0.25
+  acceptable_packet_loss_sustained = 0.1
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5
