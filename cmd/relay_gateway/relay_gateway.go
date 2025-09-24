@@ -212,7 +212,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
-			core.Error("[%s] failed to decrypt relay update", request.RemoteAddr)
+			core.Error("[%s] failed to decrypt relay update (%d bytes)", request.RemoteAddr, encryptedBytes)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
