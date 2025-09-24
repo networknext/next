@@ -6,7 +6,7 @@ locals {
   
   env                         = "prod"
   vpn_address                 = "45.79.157.168"
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-140"
   relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
@@ -577,9 +577,14 @@ locals {
       public_address   = "193.118.46.254"
     },
 
-    "zenlayer.london" = {
+    "zenlayer.london.a" = {
       datacenter_name  = "zenlayer.london"
       public_address   = "98.98.142.118"
+    },
+
+    "zenlayer.london.b" = {
+      datacenter_name  = "zenlayer.london"
+      public_address   = "98.98.142.126"
     },
 
     "zenlayer.istanbul" = {
@@ -610,6 +615,16 @@ locals {
     "zenlayer.buenosaires" = {
       datacenter_name  = "zenlayer.buenosaires"
       public_address   = "98.98.173.226"
+    },
+
+    "zenlayer.losangeles.a" = {
+      datacenter_name  = "zenlayer.losangeles"
+      public_address   = "128.14.73.78"
+    },
+
+    "zenlayer.losangeles.b" = {
+      datacenter_name  = "zenlayer.losangeles"
+      public_address   = "128.14.73.82"
     },
 
   }
@@ -716,6 +731,14 @@ locals {
       public_address = "169.150.228.9"
     }
 
+    /*
+    "datapacket.london" = {
+      datacenter_name = "datapacket.london"
+      ssh_address = "169.150.228.9"
+      public_address = "169.150.228.9"
+    }
+    */
+
   }
 }
 
@@ -791,6 +814,11 @@ locals {
       datacenter_name = "latitude.santiago"
       public_address  = "45.250.252.203"
     },
+
+    "latitude.london" = {
+      datacenter_name = "latitude.london"
+      public_address  = "103.50.32.156"
+    }
 
   }
 }
@@ -936,11 +964,20 @@ locals {
       public_address  = "46.23.74.129"
     },
 
-    "uk2group.dallas" = {
+    "uk2group.dallas.a" = {
       datacenter_name = "uk2group.dallas"
       public_address  = "206.217.211.37"
     },
 
+    "uk2group.dallas.b" = {
+      datacenter_name = "uk2group.dallas"
+      public_address  = "206.217.211.40"
+    },
+
+    "uk2group.dallas.c" = {
+      datacenter_name = "uk2group.dallas"
+      public_address  = "206.217.211.48"
+    },
   }
 }
 
