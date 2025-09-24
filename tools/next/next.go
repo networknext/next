@@ -303,22 +303,6 @@ func main() {
 		},
 	}
 
-	var upgradeCommand = &ffcli.Command{
-		Name:       "upgrade",
-		ShortUsage: "next upgrade [regex...]",
-		ShortHelp:  "Upgrade the specified relay(s)",
-		Exec: func(_ context.Context, args []string) error {
-			regexes := []string{".*"}
-			if len(args) > 0 {
-				regexes = args
-			}
-
-			upgradeRelays(env, regexes)
-
-			return nil
-		},
-	}
-
 	var rebootCommand = &ffcli.Command{
 		Name:       "reboot",
 		ShortUsage: "next reboot [regex...]",
@@ -452,7 +436,6 @@ func main() {
 		startCommand,
 		stopCommand,
 		loadCommand,
-		upgradeCommand,
 		rebootCommand,
 		costCommand,
 		optimizeCommand,
@@ -2566,26 +2549,6 @@ func stopRelays(env Environment, regexes []string) {
 	}
 }
 
-func upgradeRelays(env Environment, regexes []string) {
-	script := UpgradeRelayScript
-	for _, regex := range regexes {
-		relays := getRelayInfo(env, regex)
-		if len(relays) == 0 {
-			fmt.Printf("no relays matched the regex '%s'\n", regex)
-			continue
-		}
-		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("upgrading relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
-		}
-	}
-}
-
 func rebootRelays(env Environment, regexes []string) {
 	script := RebootRelayScript
 	for _, regex := range regexes {
@@ -2594,15 +2557,21 @@ func rebootRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				wait.Add(1)
+				fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(script)
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
 	}
 }
 
@@ -2613,15 +2582,21 @@ func loadRelays(env Environment, regexes []string, version string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version, time.Now().Unix()))
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				wait.Add(1)
+				fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version, time.Now().Unix()))
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
 	}
 }
 
