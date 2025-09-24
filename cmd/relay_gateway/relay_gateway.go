@@ -243,7 +243,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayName := relay.Name
 
-		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
+		core.Log("[%s] received update for %s [%016x] (%d bytes)", request.RemoteAddr, relayName, relayId, encryptedBytes)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
