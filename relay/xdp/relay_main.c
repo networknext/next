@@ -334,10 +334,6 @@ struct session_stats main_update_timeouts( struct main_t * main )
 
 int main_update( struct main_t * main )
 {
-    // todo
-    printf( "main update\n" );
-    fflush( stdout );
-
     // update timeouts
 
     struct session_stats stats = main_update_timeouts( main );
@@ -377,10 +373,6 @@ int main_update( struct main_t * main )
 
     // pump stats messages from ping thread
 
-    // todo
-    printf( "before pump stats messages\n" );
-    fflush( stdout );
-
     while ( true )
     {
         relay_platform_mutex_acquire( main->stats_mutex );
@@ -401,10 +393,6 @@ int main_update( struct main_t * main )
     counters[RELAY_COUNTER_RELAY_PING_PACKET_SENT] += main->pings_sent;
     counters[RELAY_COUNTER_PACKETS_SENT] += main->pings_sent;
     counters[RELAY_COUNTER_BYTES_SENT] += main->bytes_sent;
-
-    // todo
-    printf( "after pump stats messages\n" );
-    fflush( stdout );
 
     // derived relay statistics from counters
 
@@ -460,10 +448,6 @@ int main_update( struct main_t * main )
 
     // build relay update data
 
-    // todo
-    printf( "build relay update data\n" );
-    fflush( stdout );
-
     uint8_t update_version = 1;
 
     static uint8_t update_data[10*1024*1024];
@@ -482,10 +466,6 @@ int main_update( struct main_t * main )
 
     relay_write_uint64( &p, local_timestamp );             // IMPORTANT: local timestamp must not move
     relay_write_uint64( &p, main->start_time );
-
-    // todo
-    printf( "there are %d relays\n" );
-    fflush( stdout );
 
     relay_write_uint32( &p, main->ping_stats.num_relays );
     for ( int i = 0; i < main->ping_stats.num_relays; ++i )
@@ -532,17 +512,9 @@ int main_update( struct main_t * main )
         relay_write_uint64( &p, counters[i] );
     }
 
-    // todo
-    printf( "after build relay update data\n" );
-    fflush( stdout );
-
     // encrypt data after relay address
 
     const int encrypt_buffer_length = (int) ( p - encrypt_buffer );
-
-    // todo
-    printf( "encrypting %d bytes\n", encrypt_buffer_length );
-    fflush( stdout );
 
     uint8_t nonce[crypto_box_NONCEBYTES];
     relay_platform_random_bytes( nonce, crypto_box_NONCEBYTES );
@@ -562,15 +534,7 @@ int main_update( struct main_t * main )
 
     const int update_data_length = p - update_data;
 
-    // todo
-    printf( "encrypted %d bytes\n", update_data_length );
-    fflush( stdout );
-
     // post relay update to the backend
-
-    // todo
-    printf( "posting to backend\n" );
-    fflush( stdout );
 
     struct curl_slist * slist = curl_slist_append( NULL, "Content-Type:application/octet-stream" );
 
@@ -598,10 +562,6 @@ int main_update( struct main_t * main )
 
     CURLcode ret = curl_easy_perform( main->curl );
 
-    // todo
-    printf( "after post to backend\n" );
-    fflush( stdout );
-
     curl_slist_free_all( slist );
     slist = NULL;
 
@@ -625,10 +585,6 @@ int main_update( struct main_t * main )
 
     curl_off_t response_size;
     curl_easy_getinfo( main->curl, CURLINFO_SIZE_DOWNLOAD_T, &response_size );
-
-    // todo
-    printf( "parsing response (%d bytes)\n", (int) response_size );
-    fflush( stdout );
 
     const uint8_t * q = update_response_buffer.data;
 
@@ -655,10 +611,6 @@ int main_update( struct main_t * main )
     main->current_timestamp = backend_timestamp;
 
     int num_relays = relay_read_uint32( &q );
-
-    // todo
-    printf( "response has %d relays\n", num_relays );
-    fflush( stdout );
 
     if ( num_relays > MAX_RELAYS )
     {
@@ -745,10 +697,6 @@ int main_update( struct main_t * main )
     uint8_t ping_key[RELAY_PING_KEY_BYTES];
     relay_read_bytes( &q, ping_key, RELAY_PING_KEY_BYTES );
 
-    // todo
-    printf( "finished parsing response\n" );
-    fflush( stdout );
-
 #ifdef COMPILE_WITH_BPF
 
     // update bpf relay state
@@ -794,10 +742,6 @@ int main_update( struct main_t * main )
 
     // find new relays
 
-    // todo
-    printf( "before find new relays (%d)\n", relay_ping_set.num_relays );
-    fflush( stdout );
-
     message->new_relays.num_relays = 0;
     for ( int i = 0; i < relay_ping_set.num_relays; i++ )
     {
@@ -826,15 +770,7 @@ int main_update( struct main_t * main )
         }
     }
 
-    // todo
-    printf( "after find new relays\n" );
-    fflush( stdout );
-
     // find relays to delete
-
-    // todo
-    printf( "before delete relays\n" );
-    fflush( stdout );
 
     // todo
     /*
@@ -870,10 +806,6 @@ int main_update( struct main_t * main )
         }
     }
 
-    // todo
-    printf( "after delete relays\n" );
-    fflush( stdout );
-
     // send the control message to the ping thread
 
     message->current_timestamp = backend_timestamp;
@@ -895,10 +827,6 @@ int main_update( struct main_t * main )
     memcpy( &main->relay_ping_set, &relay_ping_set, sizeof(struct relay_set) );
     // todo
     // memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
-
-    // todo
-    printf( "main update (end)\n" );
-    fflush( stdout );
 
     return RELAY_OK;
 }
