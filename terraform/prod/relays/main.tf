@@ -1118,6 +1118,16 @@ locals {
       public_address  = "37.61.208.81"
     },
 
+    "velia.frankfurt.b" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.218.237" # wT6EDcvT2TNN
+    },
+
+    "velia.frankfurt.c" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.219.29" # x36amWkWmmVJ
+    },
+
   }
 }
 

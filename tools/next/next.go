@@ -2522,15 +2522,21 @@ func startRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("starting relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(StartRelayScript)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				wait.Add(1)
+				fmt.Printf("starting relay %s\n", relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(StartRelayScript)
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
 	}
 }
 
@@ -2542,15 +2548,21 @@ func stopRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("stopping relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				wait.Add(1)
+				fmt.Printf("stopping relay %s\n", relays[index].RelayName)
+				con := NewSSHConn(relays[index].SSH_User, relays[index].SSH_IP, fmt.Sprintf("%d", relays[index].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(script)
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
 	}
 }
 

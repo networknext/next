@@ -450,7 +450,7 @@ int main_update( struct main_t * main )
 
     uint8_t update_version = 1;
 
-    static uint8_t update_data[1024*1024];
+    static uint8_t update_data[10*1024*1024];
 
     uint8_t * p = update_data;
 
@@ -546,7 +546,7 @@ int main_update( struct main_t * main )
     char update_url[1024];
     snprintf( update_url, sizeof(update_url), "%s/relay_update", main->relay_backend_url );
 
-    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 1024 * 1024L );
+    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 10 * 1024 * 1024L );
     curl_easy_setopt( main->curl, CURLOPT_URL, update_url );
     curl_easy_setopt( main->curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( main->curl, CURLOPT_POSTFIELDS, update_data );
