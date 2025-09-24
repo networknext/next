@@ -143,6 +143,14 @@ locals {
       seller_code = local.seller_code
     },
 
+    "zenlayer.dubai" = {
+      latitude    = 25.2048
+      longitude   = 55.2708
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
     "zenlayer.telaviv" = {
       latitude    = 32.0853
       longitude   = 34.7818
@@ -191,6 +199,14 @@ locals {
       seller_code = local.seller_code
     },
 
+    "zenlayer.bogota" = {
+      latitude    = 4.7110
+      longitude   = -74.0721
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
     "zenlayer.mexico" = {
       latitude    = 23.6345
       longitude   = -102.5528
@@ -207,9 +223,33 @@ locals {
       seller_code = local.seller_code
     },
 
-    "zenlayer.washingtondc" = {
-      latitude    = 38.9072
-      longitude   = -77.0369
+    "zenlayer.ashburn" = {
+      latitude    = 39.0438
+      longitude   = -77.4874
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "zenlayer.dallas" = {
+      latitude    = 32.7767
+      longitude   = -96.7970
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "zenlayer.miami" = {
+      latitude    = 25.7617
+      longitude   = -80.1918
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
+    "zenlayer.buenosaires" = {
+      latitude    = -34.6037
+      longitude   = -58.3816
       native_name = ""
       seller_name = local.seller_name
       seller_code = local.seller_code

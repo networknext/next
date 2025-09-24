@@ -515,6 +515,14 @@ locals {
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },    
+
+    /*
+    "akamai.london" = {
+      datacenter_name = "akamai.london"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+    */
   }
 }
 
@@ -539,6 +547,69 @@ locals {
     "zenlayer.saopaulo" = {
       datacenter_name = "zenlayer.saopaulo"
       public_address  = "128.14.222.42"
+    },
+
+    "zenlayer.bogota" = {
+      datacenter_name  = "zenlayer.bogota"
+      public_address   = "107.151.192.238"
+      internal_address = "10.131.48.2"
+    },
+
+    "zenlayer.lima" = {
+      datacenter_name = "zenlayer.lima"
+      public_address   = "198.44.168.157"
+      internal_address = "10.131.64.2"
+    },
+
+    "zenlayer.riyadh" = {
+      datacenter_name  = "zenlayer.riyadh"
+      public_address   = "162.128.75.95"
+      internal_address = "10.130.112.2"
+    },
+
+    "zenlayer.frankfurt" = {
+      datacenter_name  = "zenlayer.frankfurt"
+      public_address   = "193.118.46.254"
+    },
+
+    "zenlayer.frankfurt" = {
+      datacenter_name  = "zenlayer.frankfurt"
+      public_address   = "193.118.46.254"
+    },
+
+    "zenlayer.london" = {
+      datacenter_name  = "zenlayer.london"
+      public_address   = "98.98.142.118"
+    },
+
+    "zenlayer.istanbul" = {
+      datacenter_name  = "zenlayer.istanbul"
+      public_address   = "104.166.176.246"
+    },
+
+    "zenlayer.dubai" = {
+      datacenter_name  = "zenlayer.dubai"
+      public_address   = "193.118.56.2"
+    },
+
+    "zenlayer.ashburn" = {
+      datacenter_name  = "zenlayer.ashburn"
+      public_address   = "128.14.84.78"
+    },
+
+    "zenlayer.miami" = {
+      datacenter_name  = "zenlayer.miami"
+      public_address   = "128.14.216.30"
+    },
+
+    "zenlayer.dallas" = {
+      datacenter_name  = "zenlayer.dallas"
+      public_address   = "98.96.193.162"
+    },
+
+    "zenlayer.buenosaires" = {
+      datacenter_name  = "zenlayer.buenosaires"
+      public_address   = "98.98.173.226"
     },
 
   }
@@ -615,10 +686,16 @@ locals {
       public_address = "79.127.223.30"
     }
 
-    "datapacket.frankfurt" = {
+    "datapacket.frankfurt.a" = {
       datacenter_name = "datapacket.frankfurt"
       ssh_address = "89.222.124.57"
       public_address = "89.222.124.57"
+    }
+
+    "datapacket.frankfurt.b" = {
+      datacenter_name = "datapacket.frankfurt"
+      ssh_address = "89.222.124.31"
+      public_address = "89.222.124.31"
     }
 
     "datapacket.santiago" = {
@@ -1036,7 +1113,7 @@ locals {
 
   velia_relays = {
 
-    "velia.frankfurt" = {
+    "velia.frankfurt.a" = {
       datacenter_name = "velia.frankfurt"
       public_address  = "37.61.208.81"
     },

@@ -2,6 +2,9 @@ afs1-az1,amazon.johannesburg.1
 afs1-az2,amazon.johannesburg.2
 afs1-az3,amazon.johannesburg.3
 afs1-los1-az1,amazon.nigeria.1
+ape1-az1,amazon.hongkong.1
+ape1-az2,amazon.hongkong.2
+ape1-az3,amazon.hongkong.3
 apne1-az1,amazon.tokyo.1
 apne1-az2,amazon.tokyo.2
 apne1-az4,amazon.tokyo.4
@@ -26,6 +29,12 @@ apse2-az1,amazon.sydney.1
 apse2-az2,amazon.sydney.2
 apse2-az3,amazon.sydney.3
 apse2-per1-az1,amazon.perth.1
+apse3-az1,amazon.jakarta.1
+apse3-az2,amazon.jakarta.2
+apse3-az3,amazon.jakarta.3
+apse4-az1,amazon.melbourne.1
+apse4-az2,amazon.melbourne.2
+apse4-az3,amazon.melbourne.3
 cac1-az1,amazon.montreal.1
 cac1-az2,amazon.montreal.2
 cac1-az4,amazon.montreal.4
@@ -39,6 +48,12 @@ eun1-az2,amazon.stockholm.2
 eun1-az3,amazon.stockholm.3
 eun1-cph1-az1,amazon.copenhagen.1
 eun1-hel1-az1,amazon.finland.1
+eus1-az1,amazon.milan.1
+eus1-az2,amazon.milan.2
+eus1-az3,amazon.milan.3
+eus2-az1,amazon.spain.1
+eus2-az2,amazon.spain.2
+eus2-az3,amazon.spain.3
 euw1-az1,amazon.ireland.1
 euw1-az2,amazon.ireland.2
 euw1-az3,amazon.ireland.3

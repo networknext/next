@@ -8,6 +8,10 @@ do
   sleep 10
 done
 
+# apt update and upgrade is sometimes necessary
+
+sudo apt update -y && sudo apt upgrade -y
+
 # IMPORTANT: if we are not running a 6.5 kernel, upgrade the kernel. we need ubuntu 22.04 LTS with linux kernel 6.5 for xdp relay to work
 
 major=$(uname -r | awk -F '.' '{print $1}')
