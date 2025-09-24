@@ -33,7 +33,8 @@ struct main_t
     int session_map_fd;
     int whitelist_map_fd;
     struct relay_set relay_ping_set;
-    struct relay_hash relay_ping_hash;
+    // todo: disable hash table for now. bug in it?
+    // struct relay_hash relay_ping_hash;
     struct relay_queue_t * control_queue;
     struct relay_platform_mutex_t * control_mutex;
     struct relay_queue_t * stats_queue;

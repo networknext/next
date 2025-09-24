@@ -795,13 +795,27 @@ int main_update( struct main_t * main )
     // find new relays
 
     // todo
-    printf( "before find new relays\n" );
+    printf( "before find new relays (%d)\n", relay_ping_set.num_relays );
     fflush( stdout );
 
     message->new_relays.num_relays = 0;
     for ( int i = 0; i < relay_ping_set.num_relays; i++ )
     {
+        /*
         if ( !relay_hash_exists( &main->relay_ping_hash, relay_ping_set.id[i] ) )
+        */
+
+        bool found = false;
+        for ( int j = 0; j < main->relay_ping_set.num_relays; j++ )
+        {
+            if ( main->relay_ping_set.id[j] == relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->new_relays.num_relays;
             message->new_relays.id      [index] = relay_ping_set.id[i];
@@ -822,13 +836,30 @@ int main_update( struct main_t * main )
     printf( "before delete relays\n" );
     fflush( stdout );
 
+    // todo
+    /*
     struct relay_hash relay_ping_hash;
     relay_hash_initialize( &relay_ping_hash, (uint64_t*)relay_ping_set.id, relay_ping_set.num_relays );
+    */
 
     message->delete_relays.num_relays = 0;
     for ( int i = 0; i < main->relay_ping_set.num_relays; i++ )
     {
-        if ( !relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] ) )
+        /*
+        relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] );
+        */
+
+        bool found = false;
+        for ( int j = 0; j < relay_ping_set.num_relays; j++ )
+        {
+            if ( relay_ping_set.id[j] == main->relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->delete_relays.num_relays;
             message->delete_relays.id      [index] = main->relay_ping_set.id[i];
@@ -862,7 +893,8 @@ int main_update( struct main_t * main )
     // stash relay ping set and hash for next update
 
     memcpy( &main->relay_ping_set, &relay_ping_set, sizeof(struct relay_set) );
-    memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
+    // todo
+    // memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
 
     // todo
     printf( "main update (end)\n" );
