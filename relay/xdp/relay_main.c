@@ -624,7 +624,7 @@ int main_update( struct main_t * main )
     // parse response from relay backend
 
     curl_off_t response_size;
-    curl_easy_getinfo( curl, CURLINFO_SIZE_DOWNLOAD_T, &response_size );
+    curl_easy_getinfo( main->curl, CURLINFO_SIZE_DOWNLOAD_T, &response_size );
 
     // todo
     printf( "parsing response (%d bytes)\n", (int) response_size );
