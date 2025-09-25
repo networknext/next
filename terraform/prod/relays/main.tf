@@ -42,9 +42,6 @@ locals {
     "google.doha.1",
     "google.doha.2",
     "google.doha.3",
-    "google.dammam.1",
-    "google.dammam.2",
-    "google.dammam.3",
 
     "datapacket.istanbul",
     "gcore.istanbul",
@@ -760,6 +757,41 @@ locals {
     "i3d.saopaulo" = {
       datacenter_name = "i3d.saopaulo"
       public_address  = "185.50.104.109"
+    },
+
+    "i3d.ashburn.a" = {
+      datacenter_name = "i3d.ashburn"
+      public_address  = "162.244.55.38"
+    },
+
+    "i3d.ashburn.b" = {
+      datacenter_name = "i3d.ashburn"
+      public_address  = "162.244.55.42"
+    },
+
+    "i3d.dubai.a" = {
+      datacenter_name = "i3d.dubai"
+      public_address  = "185.179.202.102"
+    },
+
+    "i3d.dubai.b" = {
+      datacenter_name = "i3d.dubai"
+      public_address  = "185.179.202.104"
+    },
+
+    "i3d.frankfurt" = {
+      datacenter_name = "i3d.frankfurt"
+      public_address  = "188.122.68.101"
+    },
+
+    "i3d.losangeles" = {
+      datacenter_name = "i3d.losangeles"
+      public_address  = "162.245.204.237"
+    },
+
+    "i3d.dallas" = {
+      datacenter_name = "i3d.dallas"
+      public_address  = "138.128.136.133"
     },
 
   }
