@@ -940,7 +940,6 @@ module "server_backend" {
   min_size                   = local.disable_backend ? 0 : 3
   max_size                   = local.disable_backend ? 0 : 6
   target_cpu                 = 50
-  tier_1                     = true
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
