@@ -6,7 +6,7 @@ locals {
   
   env                         = "prod"
   vpn_address                 = "45.79.157.168"
-  ssh_public_key_file         = "~/secrets/next_ssh.pub"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-140"
   relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
@@ -175,6 +175,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.santiago.2" = {
       datacenter_name = "google.santiago.2"
       type            = "c2-standard-4"
@@ -186,6 +187,7 @@ locals {
       type            = "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.frankfurt.1" = {
       datacenter_name = "google.frankfurt.1"
@@ -265,6 +267,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.queretaro.2" = {
       datacenter_name = "google.queretaro.2"
       type            = "c4-highcpu-4"
@@ -276,6 +279,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.doha.1" = {
       datacenter_name = "google.doha.1"
@@ -301,6 +305,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.dammam.2" = {
       datacenter_name = "google.dammam.2"
       type            = "c2-standard-4"
@@ -312,6 +317,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.telaviv.1" = {
       datacenter_name = "google.telaviv.1"
@@ -319,6 +325,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.telaviv.2" = {
       datacenter_name = "google.telaviv.2"
       type            = "c3-standard-4"
@@ -330,6 +337,7 @@ locals {
       type            = "c3-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.paris.1" = {
       datacenter_name = "google.paris.1"
@@ -337,6 +345,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.paris.2" = {
       datacenter_name = "google.paris.2"
       type            = "c4-highcpu-4"
@@ -348,6 +357,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.netherlands.1" = {
       datacenter_name = "google.netherlands.1"
@@ -355,6 +365,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.netherlands.2" = {
       datacenter_name = "google.netherlands.2"
       type            = "c4-highcpu-4"
@@ -366,6 +377,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.milan.2" = {
       datacenter_name = "google.milan.2"
@@ -373,11 +385,13 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.milan.3" = {
       datacenter_name = "google.milan.3"
       type            = "c4-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.belgium.2" = {
       datacenter_name = "google.belgium.2"
@@ -385,6 +399,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.belgium.3" = {
       datacenter_name = "google.belgium.3"
       type            = "c4-highcpu-4"
@@ -396,6 +411,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.london.1" = {
       datacenter_name = "google.london.1"
@@ -403,6 +419,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.london.2" = {
       datacenter_name = "google.london.2"
       type            = "c4-highcpu-4"
@@ -414,6 +431,7 @@ locals {
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.madrid.1" = {
       datacenter_name = "google.madrid.1"
@@ -421,11 +439,13 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.madrid.2" = {
       datacenter_name = "google.madrid.2"
       type            = "c4-highcpu-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
   }
 }
@@ -1031,6 +1051,11 @@ locals {
     "ovh.ashburn" = {
       datacenter_name = "ovh.ashburn"
       public_address  = "40.160.32.142"
+    },
+    
+    "ovh.frankfurt" = {
+      datacenter_name = "ovh.frankfurt"
+      public_address  = "51.89.11.27"
     },
 
   }
