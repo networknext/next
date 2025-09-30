@@ -501,11 +501,13 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
+    /*
     "akamai.frankfurt.1" = {
       datacenter_name = "akamai.frankfurt.1"
       type            = "g6-dedicated-16"
       image           = "linode/ubuntu22.04"
     },
+    */
 
     "akamai.frankfurt.2" = {
       datacenter_name = "akamai.frankfurt.2"
@@ -748,13 +750,11 @@ locals {
       public_address = "169.150.228.9"
     }
 
-    /*
     "datapacket.london" = {
       datacenter_name = "datapacket.london"
-      ssh_address = "169.150.228.9"
-      public_address = "169.150.228.9"
+      ssh_address = "138.199.51.243"
+      public_address = "138.199.51.243"
     }
-    */
 
   }
 }
@@ -1484,10 +1484,10 @@ resource "networknext_buyer_datacenter_settings" test {
 resource "networknext_route_shader" rematch {
   name = "rematch"
   force_next = false
-  latency_reduction_threshold = 20
+  latency_reduction_threshold = 10
   acceptable_latency = 0
   acceptable_packet_loss_instant = 1.0
-  acceptable_packet_loss_sustained = 0.1
+  acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5
