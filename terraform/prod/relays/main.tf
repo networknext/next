@@ -716,8 +716,8 @@ locals {
 
     "datapacket.ashburn" = {
       datacenter_name = "datapacket.ashburn"
-      ssh_address = "79.127.223.30"
-      public_address = "79.127.223.30"
+      ssh_address = "79.127.223.38"
+      public_address = "79.127.223.38"
     }
 
     "datapacket.frankfurt.a" = {
