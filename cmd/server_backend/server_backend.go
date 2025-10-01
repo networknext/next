@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	_ "embed"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -26,8 +24,6 @@ import (
 var service *common.Service
 
 var pingKey []byte
-
-var numBuckets int
 
 var channelSize int
 var maxPacketSize int
@@ -116,7 +112,6 @@ func main() {
 
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 
-	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
 	channelSize = envvar.GetInt("CHANNEL_SIZE", 10*1024*1024)
 	maxPacketSize = envvar.GetInt("UDP_MAX_PACKET_SIZE", 1384)
 	serverBackendAddress = envvar.GetAddress("SERVER_BACKEND_ADDRESS", core.ParseAddress("127.0.0.1:40000"))
@@ -322,57 +317,11 @@ func main() {
 	service.WaitForShutdown()
 }
 
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool, string) {
-	return RunCommand("bash", []string{"-c", command})
-}
-
 func updateShuttingDown() {
 
 	// grab google cloud instance name from metadata
 
-	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -388,7 +337,7 @@ func updateShuttingDown() {
 	// grab google cloud zone from metadata
 
 	var zone string
-	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -421,7 +370,7 @@ func updateShuttingDown() {
 
 			case <-ticker.C:
 
-				_, output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
+				_, output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances server-backend --region %s", region))
 
 				lines := strings.Split(output, "\n")
 
@@ -598,7 +547,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, numBuckets, sessionInsertBatchSize)
+	sessionInserter = portal.CreateSessionInserter(service.Context, redisClient, sessionCruncherURL, sessionInsertBatchSize)
 
 	go func() {
 		for {
@@ -663,7 +612,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			}
 
 			if message.SendToPortal {
-				sessionInserter.Insert(service.Context, sessionId, userHash, message.Next, message.BestScore, &sessionData, &sliceData)
+				sessionInserter.Insert(service.Context, sessionId, userHash, message.BestNextRTT > 0, message.BestScore, &sessionData, &sliceData)
 			}
 
 			if enableRedisTimeSeries {
@@ -694,7 +643,7 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 		redisClient = common.CreateRedisClient(redisPortalHostname)
 	}
 
-	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, numBuckets, serverInsertBatchSize)
+	serverInserter := portal.CreateServerInserter(service.Context, redisClient, serverCruncherURL, serverInsertBatchSize)
 
 	go func() {
 		for {

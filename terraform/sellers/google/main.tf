@@ -66,6 +66,7 @@ resource "google_compute_address" "public" {
   name         = "${replace(each.key, ".", "-")}-public"
   region       = local.datacenter_map[each.value.datacenter_name].region
   address_type = "EXTERNAL"
+  network_tier = "PREMIUM"
   lifecycle {
     create_before_destroy = true
   }

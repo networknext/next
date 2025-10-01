@@ -10,7 +10,7 @@ It works by monitoring player connections and sending game traffic down an optim
 
 You decide when to accelerate your players. Set acceptable latency, jitter and packet loss values and only accelerate players that are above them. You can also set how much latency reduction is required for acceleration.
 
-Network Next is source available and free to use when you host the software yourself.
+Network Next is source available and free to use when you host the software for your own game.
 
 Network Next, Inc. also offers a hosted solution with commercial support. Please [contact us](mailto:glenn@networknext.com) for details.
 

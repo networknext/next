@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +32,8 @@ var relayBackendAddress string
 
 var mutex sync.Mutex
 var relayBackendAddresses []string
+
+var httpClient *http.Client
 
 func main() {
 
@@ -105,6 +105,10 @@ func main() {
 		pingKey[30],
 		pingKey[31],
 	)
+
+	httpClient = &http.Client{
+		Timeout: 5 * time.Second,
+	}
 
 	TrackRelayBackendInstances(service)
 
@@ -208,7 +212,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		err = crypto.Box_Decrypt(relayPublicKey, relayBackendPrivateKey, nonce, encryptedData, encryptedBytes)
 		if err != nil {
-			core.Error("[%s] failed to decrypt relay update", request.RemoteAddr)
+			core.Error("[%s] failed to decrypt relay update (%d bytes)", request.RemoteAddr, encryptedBytes)
 			writer.WriteHeader(http.StatusBadRequest) // 400
 			return
 		}
@@ -239,7 +243,7 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		relayName := relay.Name
 
-		core.Debug("[%s] received update for %s [%016x]", request.RemoteAddr, relayName, relayId)
+		core.Log("[%s] received update for %s [%016x] (%d bytes)", request.RemoteAddr, relayName, relayId, encryptedBytes)
 
 		var responsePacket packets.RelayUpdateResponsePacket
 
@@ -326,12 +330,13 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 		}
 
 		for i := range addresses {
+			core.Debug("forwarding relay update to %s", addresses[i])
 			go func(index int) {
 				url := fmt.Sprintf("http://%s/relay_update", addresses[index])
 				buffer := bytes.NewBuffer(body[:packetBytes-(crypto.Box_MacSize+crypto.Box_NonceSize)])
 				forward_request, err := http.NewRequest("POST", url, buffer)
 				if err == nil {
-					response, err := http.DefaultClient.Do(forward_request)
+					response, err := httpClient.Do(forward_request)
 					if err != nil && response != nil {
 						io.Copy(io.Discard, response.Body)
 						response.Body.Close()
@@ -342,55 +347,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 	}
 }
 
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool, string) {
-	return RunCommand("bash", []string{"-c", command})
-}
-
 func TrackRelayBackendInstances(service *common.Service) {
 
 	// grab google cloud instance name from metadata
 
-	result, instanceName := Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -406,7 +367,7 @@ func TrackRelayBackendInstances(service *common.Service) {
 	// grab google cloud zone from metadata
 
 	var zone string
-	result, zone = Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
+	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
 	if !result {
 		return // not in google cloud
 	}
@@ -439,7 +400,10 @@ func TrackRelayBackendInstances(service *common.Service) {
 
 			case <-ticker.C:
 
-				_, list_output := Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
+				core.Debug("=====================================")
+				core.Debug("updating relay backend VMs")
+
+				_, list_output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
 
 				list_lines := strings.Split(list_output, "\n")
 
@@ -455,12 +419,15 @@ func TrackRelayBackendInstances(service *common.Service) {
 					}
 				}
 
+				core.Debug("instance ids: %v", instanceIds)
+				core.Debug("zones: %v", zones)
+
 				addresses := make([]string, len(instanceIds))
 				waitGroup := sync.WaitGroup{}
 				waitGroup.Add(len(addresses))
 				for i := range instanceIds {
 					go func(index int) {
-						_, describe_output := Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
+						_, describe_output := common.Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
 						describe_lines := strings.Split(describe_output, "\n")
 						address := ""
 						for j := range describe_lines {
@@ -475,11 +442,13 @@ func TrackRelayBackendInstances(service *common.Service) {
 				}
 				waitGroup.Wait()
 
+				core.Debug("addresses: %v", addresses)
+
 				ok := make([]bool, len(addresses))
 				waitGroup.Add(len(addresses))
 				for i := range addresses {
 					go func(index int) {
-						ok[index], _ = Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 1", addresses[index]))
+						ok[index], _ = common.Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
 						waitGroup.Done()
 					}(i)
 				}
@@ -491,6 +460,10 @@ func TrackRelayBackendInstances(service *common.Service) {
 						verified = append(verified, addresses[i])
 					}
 				}
+
+				core.Debug("verified: %v", verified)
+
+				core.Debug("=====================================")
 
 				mutex.Lock()
 				relayBackendAddresses = verified

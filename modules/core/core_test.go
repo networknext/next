@@ -4856,7 +4856,7 @@ func TestAdvancedBasicPacketFilter(t *testing.T) {
 
 func TestSessionScore(t *testing.T) {
 
-	// biggest next improvement should be 0 (lowest score)
+	// biggest next improvement possible should be 0 (lowest score)
 
 	assert.True(t, core.GetSessionScore(true, 254, 0) == uint32(0))
 
@@ -4875,6 +4875,12 @@ func TestSessionScore(t *testing.T) {
 	// lowest direct RTT values are last
 
 	assert.True(t, core.GetSessionScore(false, 0, 0) == uint32(999))
+
+	// make sure low direct rtt values have distinct scores
+
+	for i := 1; i < 300; i++ {
+		assert.True(t, core.GetSessionScore(false, int32(i), 0) == uint32(999-i))
+	}
 
 	// test random direct sessions
 

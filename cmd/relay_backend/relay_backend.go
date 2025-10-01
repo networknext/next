@@ -60,7 +60,7 @@ var routeMatrixData []byte
 var delayMutex sync.RWMutex
 var delayCompleted bool
 
-var startTime time.Time
+var startTime int64
 
 var counterNames [constants.NumRelayCounters]string
 
@@ -133,7 +133,7 @@ func main() {
 
 	relayInserterBatchSize = envvar.GetInt("RELAY_INSERTER_BATCH_SIZE", 1024)
 
-	startTime = time.Now()
+	startTime = time.Now().Unix()
 
 	lastTimeSeriesUpdateTime = make(map[uint64]int64, constants.MaxRelays)
 
@@ -181,8 +181,6 @@ func main() {
 	core.Debug("enable relay to relay ping analytics: %v", enableRelayToRelayPingAnalytics)
 
 	core.Debug("initial delay: %d", initialDelay)
-
-	core.Debug("start time: %s", startTime.String())
 
 	var redisClient redis.Cmdable
 	if len(redisPortalCluster) > 0 {
@@ -287,8 +285,7 @@ func main() {
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
 	service.Router.HandleFunc("/route_matrix", routeMatrixHandler)
 	service.Router.HandleFunc("/relay_counters/{relay_name}", relayCountersHandler(service, relayManager))
-	service.Router.HandleFunc("/cost_matrix_html", costMatrixHtmlHandler(service, relayManager))
-	service.Router.HandleFunc("/routes/{src}/{dest}", routesHandler(service, relayManager))
+	service.Router.HandleFunc("/relay_history/{src}/{dest}", relayHistoryHandler(service, relayManager))
 	service.Router.HandleFunc("/relay_manager", relayManagerHandler(service, relayManager))
 	service.Router.HandleFunc("/costs", costsHandler(service, relayManager))
 	service.Router.HandleFunc("/active_relays", activeRelaysHandler(service, relayManager))
@@ -605,6 +602,73 @@ func activeRelaysHandler(service *common.Service, relayManager *common.RelayMana
 	}
 }
 
+func relayHistoryHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		routeMatrixMutex.RLock()
+		data := routeMatrixData
+		routeMatrixMutex.RUnlock()
+
+		var routeMatrix common.RouteMatrix
+		err := routeMatrix.Read(data)
+		if err != nil {
+			fmt.Fprintf(w, "error: could not read route matrix: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		vars := mux.Vars(r)
+
+		src := vars["src"]
+		dest := vars["dest"]
+
+		src_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == src {
+				src_index = i
+				break
+			}
+		}
+
+		dest_index := -1
+		for i := range routeMatrix.RelayNames {
+			if routeMatrix.RelayNames[i] == dest {
+				dest_index = i
+				break
+			}
+		}
+
+		if src_index == -1 {
+			fmt.Printf("error: could not find source relay '%s'\n", src)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if dest_index == -1 {
+			fmt.Printf("error: could not find source relay '%s'\n", dest)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if src_index == dest_index {
+			fmt.Printf("error: no history between same relays\n")
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		sourceRelayId := routeMatrix.RelayIds[src_index]
+		destRelayId := routeMatrix.RelayIds[dest_index]
+
+		rtt, jitter, packetLoss := relayManager.GetHistory(sourceRelayId, destRelayId)
+
+		fmt.Fprintf(w, "history: %s -> %s\n", src, dest)
+		fmt.Fprintf(w, "%v\n", rtt)
+		fmt.Fprintf(w, "%v\n", jitter)
+		fmt.Fprintf(w, "%v\n", packetLoss)
+	}
+}
+
 func costsHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		costMatrixMutex.RLock()
@@ -654,157 +718,6 @@ func relayManagerHandler(service *common.Service, relayManager *common.RelayMana
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-	}
-}
-
-func routesHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		src := vars["src"]
-		dest := vars["dest"]
-		routeMatrixMutex.RLock()
-		data := routeMatrixData
-		routeMatrixMutex.RUnlock()
-		routeMatrix := common.RouteMatrix{}
-		err := routeMatrix.Read(data)
-		if err != nil {
-			w.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintf(w, "no route matrix\n")
-			return
-		}
-		src_index := -1
-		for i := range routeMatrix.RelayNames {
-			if routeMatrix.RelayNames[i] == src {
-				src_index = i
-				break
-			}
-		}
-		dest_index := -1
-		for i := range routeMatrix.RelayNames {
-			if routeMatrix.RelayNames[i] == dest {
-				dest_index = i
-				break
-			}
-		}
-		if src_index == -1 || dest_index == -1 || src_index == dest_index {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		const htmlHeader = `<!DOCTYPE html>
-		<html lang="en">
-		<head>
-		  <meta charset="utf-8">
-		  <title>Routes</title>
-		  <style>
-			table, th, td {
-		      border: 1px solid black;
-		      border-collapse: collapse;
-		      text-align: center;
-		      padding: 10px;
-		    }
-			*{
-		    font-family:Courier;
-		  }	  
-		  </style>
-		</head>
-		<body>`
-		fmt.Fprintf(w, "%s\n", htmlHeader)
-		fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
-		fmt.Fprintf(w, "<table>\n")
-		fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
-		index := core.TriMatrixIndex(src_index, dest_index)
-		entry := routeMatrix.RouteEntries[index]
-		for i := 0; i < int(entry.NumRoutes); i++ {
-			routeRelays := ""
-			numRouteRelays := int(entry.RouteNumRelays[i])
-			for j := 0; j < numRouteRelays; j++ {
-				routeRelayIndex := entry.RouteRelays[i][j]
-				routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
-				routeRelays += routeRelayName
-				if j != numRouteRelays-1 {
-					routeRelays += " - "
-				}
-			}
-			fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
-		}
-		fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
-		fmt.Fprintf(w, "</table>\n")
-		const htmlFooter = `</body></html>`
-		fmt.Fprintf(w, "%s\n", htmlFooter)
-	}
-}
-
-func costMatrixHtmlHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		costMatrixMutex.RLock()
-		data := costMatrixData
-		costMatrixMutex.RUnlock()
-		costMatrix := common.CostMatrix{}
-		err := costMatrix.Read(data)
-		if err != nil {
-			w.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintf(w, "no cost matrix: %v\n", err)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html")
-		const htmlHeader = `<!DOCTYPE html>
-		<html lang="en">
-		<head>
-		  <meta charset="utf-8">
-		  <title>Cost Matrix</title>
-		  <style>
-			table, th, td {
-		      border: 1px solid black;
-		      border-collapse: collapse;
-		      text-align: center;
-		      padding: 10px;
-		    }
-			cost{
-         	  color: white;
-      		}
-			*{
-		    font-family:Courier;
-		    }	  
-		  </style>
-		</head>
-		<body>`
-		fmt.Fprintf(w, "%s\n", htmlHeader)
-		fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
-		fmt.Fprintf(w, "<tr><td></td>")
-		for i := range costMatrix.RelayNames {
-			fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
-		}
-		fmt.Fprintf(w, "</tr>\n")
-		for i := range costMatrix.RelayNames {
-			fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
-			for j := range costMatrix.RelayNames {
-				if i == j {
-					fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
-					continue
-				}
-				nope := false
-				costString := ""
-				index := core.TriMatrixIndex(i, j)
-				cost := costMatrix.Costs[index]
-				if cost >= 0 && cost < 255 {
-					costString = fmt.Sprintf("%d", cost)
-				} else {
-					nope = true
-				}
-				clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
-
-				if nope {
-					fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
-				} else {
-					fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
-				}
-			}
-			fmt.Fprintf(w, "</tr>\n")
-		}
-		fmt.Fprintf(w, "</table>\n")
-		const htmlFooter = `</body></html>`
-		fmt.Fprintf(w, "%s\n", htmlFooter)
 	}
 }
 
@@ -966,7 +879,7 @@ func sendTrafficToMe(service *common.Service) func() bool {
 		routeMatrixMutex.RLock()
 		hasRouteMatrix := routeMatrixData != nil
 		routeMatrixMutex.RUnlock()
-		return hasRouteMatrix
+		return hasRouteMatrix && time.Now().Unix() > startTime+int64(initialDelay)
 	}
 }
 
@@ -990,7 +903,8 @@ func initialDelayCompleted() bool {
 func UpdateInitialDelayState(service *common.Service) {
 	go func() {
 		for {
-			if int(time.Since(startTime).Seconds()) >= initialDelay {
+			currentTime := int64(time.Now().Unix())
+			if currentTime-startTime >= int64(initialDelay) {
 				core.Debug("initial delay completed")
 				delayMutex.Lock()
 				delayCompleted = true
@@ -1006,7 +920,7 @@ func relaysHandler(w http.ResponseWriter, r *http.Request) {
 	relaysMutex.RLock()
 	responseData := relaysCSVData
 	relaysMutex.RUnlock()
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/plain")
 	buffer := bytes.NewBuffer(responseData)
 	buffer.WriteTo(w)
 }
@@ -1167,6 +1081,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					BinFileData:        relayData.DatabaseBinFile,
 					CostMatrixSize:     uint32(len(costMatrixDataNew)),
 					OptimizeTime:       uint32(optimizeDuration.Milliseconds()),
+					Costs:              costs,
 				}
 
 				// write route matrix data

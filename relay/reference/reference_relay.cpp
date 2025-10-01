@@ -201,8 +201,6 @@
 
 // -------------------------------------------------------------------------------------
 
-static char relay_version[RELAY_VERSION_LENGTH];
-
 extern int relay_platform_init();
 
 extern void relay_platform_term();
@@ -3865,15 +3863,6 @@ void clean_shutdown_handler( int signal )
 
 int main_update( main_t * main )
 {
-    // this is the debug relay. please do not use it in production!
-
-    relay_version[0] = 'd';
-    relay_version[1] = 'e';
-    relay_version[2] = 'b';
-    relay_version[3] = 'u';
-    relay_version[4] = 'g';
-    relay_version[5] = '\0';
-
     // pump relay stats messages
 
     relay_stats_message_t relay_thread_stats[RELAY_MAX_THREADS];
@@ -3952,8 +3941,8 @@ int main_update( main_t * main )
         float jitter = main->ping_stats.relay_jitter[i];
         float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
 
-        int integer_rtt = int( rtt + 0.5f );
-        int integer_jitter = int( jitter + 0.5f );
+        int integer_rtt = ceil( rtt );
+        int integer_jitter = ceil( jitter );
         int integer_packet_loss = int( packet_loss + 0.5f );
 
         clamp( integer_rtt, 0, 255 );
@@ -4004,7 +3993,7 @@ int main_update( main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, relay_version, RELAY_VERSION_LENGTH );
+    relay_write_string( &p, RELAY_VERSION, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
@@ -5824,11 +5813,15 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 
 // ========================================================================================================================================
 
+#ifndef RELAY_VERSION
+#define RELAY_VERSION "relay-debug"
+#endif // #ifndef RELAY_VERSION
+
 int main()
 {
     uint64_t start_time = time( NULL );
 
-    printf( "Network Next Relay (debug)\n" );
+    printf( "Network Next Relay (%s)\n", RELAY_VERSION );
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
@@ -6417,6 +6410,7 @@ int main()
         while ( seconds <= 60 && main_update( &main ) == RELAY_OK )
         {
             printf( "Shutting down in %d seconds\n", 60 - seconds );
+            fflush( stdout );
             relay_platform_sleep( 1.0 );
             seconds++;
         }
@@ -6424,6 +6418,7 @@ int main()
         if ( seconds < 60 )
         {
             printf( "Sleeping for extra 30 seconds for safety...\n" );
+            fflush( stdout );
             relay_platform_sleep( 30.0 );
         }
 

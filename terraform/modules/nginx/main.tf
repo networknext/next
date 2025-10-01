@@ -41,7 +41,7 @@ resource "google_compute_target_https_proxy" "service" {
 }
 
 resource "google_compute_global_address" "service" {
-  name = var.service_name
+  name         = var.service_name
 }
 
 resource "google_compute_url_map" "service" {
@@ -68,7 +68,7 @@ resource "google_compute_url_map" "service" {
 resource "google_compute_global_forwarding_rule" "service" {
   name                  = var.service_name
   ip_protocol           = "TCP"
-  load_balancing_scheme = "EXTERNAL"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = 443
   target                = google_compute_target_https_proxy.service.id
   ip_address            = google_compute_global_address.service.id
@@ -78,7 +78,7 @@ resource "google_compute_backend_service" "service" {
   name                    = var.service_name
   protocol                = "HTTP"
   port_name               = "http"
-  load_balancing_scheme   = "EXTERNAL"
+  load_balancing_scheme   = "EXTERNAL_MANAGED"
   timeout_sec             = 10
   health_checks           = [google_compute_health_check.service_lb.id]
   backend {
@@ -186,29 +186,6 @@ resource "google_compute_region_instance_group_manager" "service" {
 output "address" {
   description = "The IP address of the external http load balancer"
   value = google_compute_global_address.service.address
-}
-
-# ----------------------------------------------------------------------------------------
-
-resource "google_compute_url_map" "http-redirect" {
-  name = "http-redirect"
-  default_url_redirect {
-    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"  // 301 redirect
-    strip_query            = false
-    https_redirect         = true  // this is the magic
-  }
-}
-
-resource "google_compute_target_http_proxy" "http-redirect" {
-  name    = "http-redirect"
-  url_map = google_compute_url_map.http-redirect.self_link
-}
-
-resource "google_compute_global_forwarding_rule" "http-redirect" {
-  name       = "http-redirect"
-  target     = google_compute_target_http_proxy.http-redirect.self_link
-  ip_address = google_compute_global_address.service.address
-  port_range = "80"
 }
 
 # ----------------------------------------------------------------------------------------

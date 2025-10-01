@@ -3,6 +3,36 @@ locals {
 
   datacenter_map = {
 
+    "google.johannesburg.1" = {
+      zone        = "africa-south1-a"
+      region      = "africa-south1"
+      native_name = "africa-south1-a"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.johannesburg.2" = {
+      zone        = "africa-south1-b"
+      region      = "africa-south1"
+      native_name = "africa-south1-b"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.johannesburg.3" = {
+      zone        = "africa-south1-c"
+      region      = "africa-south1"
+      native_name = "africa-south1-c"
+      latitude    = -26.21
+      longitude   = 28.03
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.taiwan.1" = {
       zone        = "asia-east1-a"
       region      = "asia-east1"
@@ -633,6 +663,66 @@ locals {
       seller_code = "google"
     }
 
+    "google.doha.1" = {
+      zone        = "me-central1-a"
+      region      = "me-central1"
+      native_name = "me-central1-a"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.doha.2" = {
+      zone        = "me-central1-b"
+      region      = "me-central1"
+      native_name = "me-central1-b"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.doha.3" = {
+      zone        = "me-central1-c"
+      region      = "me-central1"
+      native_name = "me-central1-c"
+      latitude    = 25.29
+      longitude   = 51.53
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.1" = {
+      zone        = "me-central2-a"
+      region      = "me-central2"
+      native_name = "me-central2-a"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.2" = {
+      zone        = "me-central2-b"
+      region      = "me-central2"
+      native_name = "me-central2-b"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dammam.3" = {
+      zone        = "me-central2-c"
+      region      = "me-central2"
+      native_name = "me-central2-c"
+      latitude    = 26.42
+      longitude   = 50.09
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.telaviv.1" = {
       zone        = "me-west1-a"
       region      = "me-west1"
@@ -719,6 +809,36 @@ locals {
       native_name = "northamerica-northeast2-c"
       latitude    = 43.65
       longitude   = -79.38
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.queretaro.1" = {
+      zone        = "northamerica-south1-a"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-a"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.queretaro.2" = {
+      zone        = "northamerica-south1-b"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-b"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.queretaro.3" = {
+      zone        = "northamerica-south1-c"
+      region      = "northamerica-south1"
+      native_name = "northamerica-south1-c"
+      latitude    = 23.63
+      longitude   = -102.55
       seller_name = "Google"
       seller_code = "google"
     }

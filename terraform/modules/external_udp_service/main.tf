@@ -39,7 +39,7 @@ variable "initial_delay" {
 
 resource "google_compute_address" "service" {
   name         = var.service_name
-  network_tier = "STANDARD"
+  network_tier = "PREMIUM"
 }
 
 resource "google_compute_forwarding_rule" "service" {
@@ -48,10 +48,10 @@ resource "google_compute_forwarding_rule" "service" {
   project               = var.project
   ip_address            = google_compute_address.service.id
   port_range            = var.port
-  network_tier          = "STANDARD"
   load_balancing_scheme = "EXTERNAL"
   ip_protocol           = "UDP"
   backend_service       = google_compute_region_backend_service.service.id
+  network_tier          = "PREMIUM"
 }
 
 resource "google_compute_region_backend_service" "service" {
@@ -128,7 +128,9 @@ resource "google_compute_health_check" "service_vm" {
 }
 
 resource "google_compute_region_instance_group_manager" "service" {
+  provider = google-beta
   name     = var.service_name
+  project  = var.project
   region   = var.region
   distribution_policy_zones = var.zones
   named_port {
@@ -156,6 +158,7 @@ resource "google_compute_region_instance_group_manager" "service" {
     max_surge_fixed                = 10
     max_unavailable_fixed          = 0
     replacement_method             = "SUBSTITUTE"
+    min_ready_sec                  = var.initial_delay
   }
 }
 

@@ -13,7 +13,6 @@ import (
 	"net"
 	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/networknext/next/modules/core"
@@ -587,6 +586,7 @@ func (database *Database) String() string {
 		PublicAddress   string
 		InternalAddress string
 		InternalGroup   string
+		Version         string
 		PublicKey       string
 		PrivateKey      string
 	}
@@ -598,6 +598,7 @@ func (database *Database) String() string {
 		row := RelayRow{
 			Id:            fmt.Sprintf("%016x", v.Id),
 			Name:          v.Name,
+			Version:       v.Version,
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
 			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
@@ -706,7 +707,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 	<html lang="en">
 	<head>
 	  <meta charset="utf-8">
-	  <meta http-equiv="refresh" content="1">
 	  <title>Database</title>
 	  <style>
 		table, th, td {
@@ -871,9 +871,9 @@ func (database *Database) WriteHTML(w io.Writer) {
 
 	fmt.Fprintf(w, "<br><br>Relays:<br><br>")
 	fmt.Fprintf(w, "<table>\n")
-	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Id", "Name", "Public Address", "Internal Address", "Internal Group", "Public Key", "Private Key")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Id", "Name", "Public Address", "Internal Address", "Internal Group", "Public Key")
 	for i := range relays {
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", relays[i].Id, relays[i].Name, relays[i].PublicAddress, relays[i].InternalAddress, relays[i].InternalGroup, relays[i].PublicKey, relays[i].PrivateKey)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", relays[i].Id, relays[i].Name, relays[i].PublicAddress, relays[i].InternalAddress, relays[i].InternalGroup, relays[i].PublicKey)
 	}
 	fmt.Fprintf(w, "</table>\n")
 
@@ -1332,13 +1332,9 @@ func ExtractDatabase(config string) (*Database, error) {
 		datacenter.Longitude = row.longitude
 		datacenter.SellerId = row.seller_id
 
-		seller_row, seller_exists := sellerIndex[row.seller_id]
+		_, seller_exists := sellerIndex[row.seller_id]
 		if !seller_exists {
 			return nil, fmt.Errorf("datacenter %s doesn't have a seller\n", datacenter.Name)
-		}
-
-		if !strings.Contains(datacenter.Name, seller_row.seller_code) {
-			return nil, fmt.Errorf("datacenter '%s' does not contain the seller code '%s' as a substring. are you sure this datacenter has the right seller?\n", datacenter.Name, seller_row.seller_code)
 		}
 
 		database.DatacenterMap[datacenter.Id] = &datacenter

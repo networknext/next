@@ -303,22 +303,6 @@ func main() {
 		},
 	}
 
-	var upgradeCommand = &ffcli.Command{
-		Name:       "upgrade",
-		ShortUsage: "next upgrade [regex...]",
-		ShortHelp:  "Upgrade the specified relay(s)",
-		Exec: func(_ context.Context, args []string) error {
-			regexes := []string{".*"}
-			if len(args) > 0 {
-				regexes = args
-			}
-
-			upgradeRelays(env, regexes)
-
-			return nil
-		},
-	}
-
 	var rebootCommand = &ffcli.Command{
 		Name:       "reboot",
 		ShortUsage: "next reboot [regex...]",
@@ -452,7 +436,6 @@ func main() {
 		startCommand,
 		stopCommand,
 		loadCommand,
-		upgradeCommand,
 		rebootCommand,
 		costCommand,
 		optimizeCommand,
@@ -2407,7 +2390,7 @@ project "server"
 
 	StopRelayScript = `sudo systemctl stop relay && sudo systemctl disable relay`
 
-	LoadRelayScript = `$( sudo systemctl stop relay || true ) && sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s -O relay --no-cache && chmod +x relay && sudo mv relay /app/relay && sudo systemctl start relay && exit`
+	LoadRelayScript = `sudo journalctl --vacuum-size 10M && rm -rf relay && wget https://storage.googleapis.com/%s/%s?ts=%d -O relay --no-cache && chmod +x relay && sudo mv relay /app/relay && exit`
 
 	UpgradeRelayScript = `sudo journalctl --vacuum-size 10M && sudo systemctl stop relay; sudo DEBIAN_FRONTEND=noninteractive apt update -y && sudo DEBIAN_FRONTEND=noninteractive apt upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt dist-upgrade -y && sudo DEBIAN_FRONTEND=noninteractive apt autoremove -y && sudo reboot`
 
@@ -2516,25 +2499,34 @@ func setupRelays(env Environment, regexes []string) {
 }
 
 func startRelays(env Environment, regexes []string) {
+	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("starting relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(StartRelayScript)
+			wait.Add(1)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				fmt.Printf("starting relay %s\n", relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(StartRelayScript)
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
+		fmt.Printf("\n")
 	}
 }
 
 func stopRelays(env Environment, regexes []string) {
+	quiet = true
 	script := StopRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -2542,35 +2534,22 @@ func stopRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("stopping relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
+			wait.Add(1)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				fmt.Printf("stopping relay %s\n", relays[index].RelayName)
+				con := NewSSHConn(relays[index].SSH_User, relays[index].SSH_IP, fmt.Sprintf("%d", relays[index].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(script)
+				wait.Done()
+			}(i)
 		}
-	}
-}
-
-func upgradeRelays(env Environment, regexes []string) {
-	script := UpgradeRelayScript
-	for _, regex := range regexes {
-		relays := getRelayInfo(env, regex)
-		if len(relays) == 0 {
-			fmt.Printf("no relays matched the regex '%s'\n", regex)
-			continue
-		}
-		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("upgrading relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
-		}
+		wait.Wait()
+		fmt.Printf("\n")
 	}
 }
 
@@ -2582,34 +2561,49 @@ func rebootRelays(env Environment, regexes []string) {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(script)
+			wait.Add(1)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				fmt.Printf("rebooting relay %s\n", relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(script)
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
+		fmt.Printf("\n")
 	}
 }
 
 func loadRelays(env Environment, regexes []string, version string) {
+	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
 			fmt.Printf("no relays matched the regex '%s'\n", regex)
 			continue
 		}
+		var wait sync.WaitGroup
 		for i := range relays {
-			if relays[i].SSH_IP == "0.0.0.0" {
-				fmt.Printf("relay %s does not have an SSH address :(\n", relays[i].RelayName)
-				continue
-			}
-			fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
-			con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
-			con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version))
+			wait.Add(1)
+			go func(index int) {
+				if relays[index].SSH_IP == "0.0.0.0" {
+					fmt.Printf("relay %s does not have an SSH address :(\n", relays[index].RelayName)
+					return
+				}
+				fmt.Printf("loading %s onto %s\n", version, relays[i].RelayName)
+				con := NewSSHConn(relays[i].SSH_User, relays[i].SSH_IP, fmt.Sprintf("%d", relays[i].SSH_Port), env.SSHKeyFile)
+				con.ConnectAndIssueCmd(fmt.Sprintf(LoadRelayScript, env.RelayArtifactsBucketName, version, time.Now().Unix()))
+				wait.Done()
+			}(i)
 		}
+		wait.Wait()
+		fmt.Printf("\n")
 	}
 }
 
@@ -2871,6 +2865,7 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 		DestRelays:         costMatrix.DestRelays,
 		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
+		Costs:              costMatrix.Costs,
 	}
 
 	routeMatrixData, err := routeMatrix.Write()
@@ -3020,6 +3015,8 @@ func ping() {
 
 // -------------------------------------------------------------------------------------------
 
+var quiet bool
+
 func runCommand(command string, args []string) bool {
 	cmd := exec.Command(command, args...)
 	cmd.Stdout = os.Stdout
@@ -3034,9 +3031,15 @@ func runCommand(command string, args []string) bool {
 
 func runCommandEnv(command string, args []string, env map[string]string) bool {
 	cmd := exec.Command(command, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	if !quiet {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+	} else {
+		var buffer bytes.Buffer
+		cmd.Stdout = &buffer
+		cmd.Stderr = &buffer
+	}
 	finalEnv := os.Environ()
 	for k, v := range env {
 		finalEnv = append(finalEnv, fmt.Sprintf("%s=%s", k, v))

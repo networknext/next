@@ -23,13 +23,17 @@ blocks:
       jobs:
         - name: "Build Components"
           commands:
+            - |
+              if [ -z "$SEMAPHORE_GIT_TAG_NAME" ]; then
+                export SEMAPHORE_GIT_TAG_NAME relay-debug
+              fi
             - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
             - mkdir dist
-            - make -j ./dist/relay-debug ./dist/libnext.so
+            - make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j ./dist/relay-debug ./dist/libnext.so
             - artifact push workflow ./dist/relay-debug --force
             - artifact push workflow ./dist/libnext.so --force
-            - artifact push workflow deploy/bootstrap.sh --force
+            - artifact push workflow tools/build_artifact/bootstrap.sh --force
             - artifact push workflow config/google.txt --force
             - artifact push workflow config/amazon.txt --force
             - artifact push workflow config/akamai.txt --force
@@ -82,6 +86,10 @@ blocks:
       jobs:
         - name: "XDP"
           commands:
+            - |
+              if [ -z "$SEMAPHORE_GIT_TAG_NAME" ]; then
+                export SEMAPHORE_GIT_TAG_NAME relay-release
+              fi
             - checkout
             - uname -r
             - sudo DEBIAN_FRONTEND=noninteractive apt update -y
@@ -98,7 +106,7 @@ blocks:
             - sudo ldconfig
             - popd
             - pushd .
-            - cd relay/xdp && make -j build
+            - cd relay/xdp && make RELAY_VERSION=$SEMAPHORE_GIT_TAG_NAME -j build
             - mv relay relay-release
             - artifact push workflow relay-release --force
             - make relay_xdp.o
@@ -121,7 +129,7 @@ blocks:
             - tar -zcvf portal.tar.gz *
             - artifact push workflow portal.tar.gz --force
             - cd ../..
-            - artifact push workflow deploy/nginx.conf --force
+            - artifact push workflow tools/build_artifact/nginx.conf --force
 
   - name: "Build Artifacts (Golang)"
 
@@ -241,12 +249,18 @@ promotions:
 
   - name: "SDK Tests"
     pipeline_file: sdk-tests.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Functional Tests"
     pipeline_file: functional-tests.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Happy Path"
     pipeline_file: happy-path.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'test'"
 
   - name: "Upload Artifacts"
     pipeline_file: upload-artifacts.yml
@@ -255,6 +269,8 @@ promotions:
 
   - name: "Upload Config"
     pipeline_file: upload-config.yml
+    auto_promote:
+      when: "result = 'passed' and tag =~ 'config'"
 
   - name: "Upload Relay"
     pipeline_file: upload-relay.yml

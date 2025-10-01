@@ -161,7 +161,7 @@ int main_run( struct main_t * main )
         {
             printf( "Shutting down in %d seconds\n", 60 - seconds );
             fflush( stdout );
-            relay_platform_sleep( 60.0 );
+            relay_platform_sleep( 1.0 );
             seconds++;
         }
 
@@ -450,7 +450,7 @@ int main_update( struct main_t * main )
 
     uint8_t update_version = 1;
 
-    uint8_t update_data[100*1024];
+    static uint8_t update_data[10*1024*1024];
 
     uint8_t * p = update_data;
 
@@ -472,13 +472,13 @@ int main_update( struct main_t * main )
     {
         relay_write_uint64( &p, main->ping_stats.relay_ids[i] );
 
-        float rtt = main->ping_stats.relay_rtt[i];
-        float jitter = main->ping_stats.relay_jitter[i];
-        float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
+        const float rtt = main->ping_stats.relay_rtt[i];
+        const float jitter = main->ping_stats.relay_jitter[i];
+        const float packet_loss = main->ping_stats.relay_packet_loss[i] / 100.0f * 65535.0f;
 
-        int integer_rtt = (int) ( rtt + 0.5f );
-        int integer_jitter = (int) ( jitter + 0.5f );
-        int integer_packet_loss = (int) ( packet_loss + 0.5f );
+        int integer_rtt = (int) ceil( rtt );
+        int integer_jitter = (int) ceil( jitter );
+        int integer_packet_loss = (int) ceil( packet_loss );
 
         clamp( &integer_rtt, 0, 255 );
         clamp( &integer_jitter, 0, 255 );
@@ -504,7 +504,7 @@ int main_update( struct main_t * main )
     uint64_t relay_flags = main->shutting_down ? SHUTTING_DOWN : 0;
     relay_write_uint64( &p, relay_flags );
 
-    relay_write_string( &p, "release", RELAY_VERSION_LENGTH );
+    relay_write_string( &p, RELAY_VERSION, RELAY_VERSION_LENGTH );
 
     relay_write_uint32( &p, RELAY_NUM_COUNTERS );
     for ( int i = 0; i < RELAY_NUM_COUNTERS; ++i )
@@ -546,7 +546,7 @@ int main_update( struct main_t * main )
     char update_url[1024];
     snprintf( update_url, sizeof(update_url), "%s/relay_update", main->relay_backend_url );
 
-    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 1024000L );
+    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 10 * 1024 * 1024L );
     curl_easy_setopt( main->curl, CURLOPT_URL, update_url );
     curl_easy_setopt( main->curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( main->curl, CURLOPT_POSTFIELDS, update_data );
@@ -555,19 +555,19 @@ int main_update( struct main_t * main )
     curl_easy_setopt( main->curl, CURLOPT_USERAGENT, "network next relay" );
     curl_easy_setopt( main->curl, CURLOPT_MAXREDIRS, 50L );
     curl_easy_setopt( main->curl, CURLOPT_HTTP_VERSION, (long)CURL_HTTP_VERSION_2TLS );
-    curl_easy_setopt( main->curl, CURLOPT_TCP_KEEPALIVE, 1L );
-    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 1000L );
+    curl_easy_setopt( main->curl, CURLOPT_TIMEOUT_MS, 10000L );
     curl_easy_setopt( main->curl, CURLOPT_WRITEDATA, &update_response_buffer );
     curl_easy_setopt( main->curl, CURLOPT_WRITEFUNCTION, &curl_buffer_write_function );
+    curl_easy_setopt( main->curl, CURLOPT_DNS_CACHE_TIMEOUT, (long) -1 ); // IMPORTANT: Perform DNS lookup once and hold that IP address forever. Fixes transient DNS issues making relays go offline!
 
     CURLcode ret = curl_easy_perform( main->curl );
 
     curl_slist_free_all( slist );
     slist = NULL;
 
-    if ( ret != 0 )
+    if ( ret != CURLE_OK )
     {
-        printf( "error: could not post relay update\n" );
+        printf( "error: could not post relay update (%s)\n", curl_easy_strerror(ret) );
         fflush( stdout );
         return RELAY_ERROR;
     }
@@ -582,6 +582,9 @@ int main_update( struct main_t * main )
     }
 
     // parse response from relay backend
+
+    curl_off_t response_size;
+    curl_easy_getinfo( main->curl, CURLINFO_SIZE_DOWNLOAD_T, &response_size );
 
     const uint8_t * q = update_response_buffer.data;
 
@@ -742,7 +745,21 @@ int main_update( struct main_t * main )
     message->new_relays.num_relays = 0;
     for ( int i = 0; i < relay_ping_set.num_relays; i++ )
     {
+        /*
         if ( !relay_hash_exists( &main->relay_ping_hash, relay_ping_set.id[i] ) )
+        */
+
+        bool found = false;
+        for ( int j = 0; j < main->relay_ping_set.num_relays; j++ )
+        {
+            if ( main->relay_ping_set.id[j] == relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->new_relays.num_relays;
             message->new_relays.id      [index] = relay_ping_set.id[i];
@@ -755,13 +772,30 @@ int main_update( struct main_t * main )
 
     // find relays to delete
 
+    // todo
+    /*
     struct relay_hash relay_ping_hash;
     relay_hash_initialize( &relay_ping_hash, (uint64_t*)relay_ping_set.id, relay_ping_set.num_relays );
+    */
 
     message->delete_relays.num_relays = 0;
     for ( int i = 0; i < main->relay_ping_set.num_relays; i++ )
     {
-        if ( !relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] ) )
+        /*
+        relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] );
+        */
+
+        bool found = false;
+        for ( int j = 0; j < relay_ping_set.num_relays; j++ )
+        {
+            if ( relay_ping_set.id[j] == main->relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->delete_relays.num_relays;
             message->delete_relays.id      [index] = main->relay_ping_set.id[i];
@@ -791,7 +825,8 @@ int main_update( struct main_t * main )
     // stash relay ping set and hash for next update
 
     memcpy( &main->relay_ping_set, &relay_ping_set, sizeof(struct relay_set) );
-    memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
+    // todo
+    // memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
 
     return RELAY_OK;
 }

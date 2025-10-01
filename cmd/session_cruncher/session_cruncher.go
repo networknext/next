@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/networknext/next/modules/common"
+	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
 	"github.com/networknext/next/modules/envvar"
@@ -74,7 +75,8 @@ type MapPoints struct {
 var mapDataMutex sync.Mutex
 var mapData []byte
 
-var numBuckets int
+var channelSize int
+
 var enableRedisTimeSeries bool
 var redisTimeSeriesCluster []string
 var redisTimeSeriesHostname string
@@ -83,7 +85,8 @@ var service *common.Service
 
 func main() {
 
-	numBuckets = envvar.GetInt("NUM_BUCKETS", 10)
+	channelSize = envvar.GetInt("CHANNEL_SIZE", 10000)
+
 	enableRedisTimeSeries = envvar.GetBool("ENABLE_REDIS_TIME_SERIES", false)
 	redisTimeSeriesCluster = envvar.GetStringArray("REDIS_TIME_SERIES_CLUSTER", []string{})
 	redisTimeSeriesHostname = envvar.GetString("REDIS_TIME_SERIES_HOSTNAME", "127.0.0.1:6379")
@@ -101,10 +104,10 @@ func main() {
 	service.Router.HandleFunc("/top_sessions", topSessionsHandler).Methods("GET")
 	service.Router.HandleFunc("/map_data", mapDataHandler).Methods("GET")
 
-	buckets = make([]Bucket, numBuckets)
+	buckets = make([]Bucket, constants.NumBuckets)
 	for i := range buckets {
 		buckets[i].index = i
-		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, 1000000)
+		buckets[i].sessionUpdateChannel = make(chan []SessionUpdate, channelSize)
 		buckets[i].totalSessions = NewSortedSet()
 		buckets[i].mapEntries = make(map[uint64]MapEntry, 10000)
 		StartProcessThread(&buckets[i])
@@ -217,7 +220,7 @@ func UpdateAcceleratedPercent(service *common.Service) {
 
 func TestThread() {
 	for {
-		for index := 0; index < numBuckets; index++ {
+		for index := 0; index < constants.NumBuckets; index++ {
 			batch := make([]SessionUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
 				batch[i].sessionId = rand.Uint64()
@@ -235,8 +238,8 @@ func GetBucketIndex(score uint32) int {
 	index := int(score)
 	if index < 0 {
 		index = 0
-	} else if index > numBuckets-1 {
-		index = numBuckets - 1
+	} else if index > constants.NumBuckets-1 {
+		index = constants.NumBuckets - 1
 	}
 	return index
 }
@@ -302,21 +305,21 @@ func TopSessionsThread() {
 
 		core.Debug("-------------------------------------------------------------------")
 
-		totalSessions := make([]*SortedSet, numBuckets)
-		mapEntries := make([]map[uint64]MapEntry, numBuckets)
+		totalSessions := make([]*SortedSet, constants.NumBuckets)
+		mapEntries := make([]map[uint64]MapEntry, constants.NumBuckets)
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			buckets[i].mutex.Lock()
 		}
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			totalSessions[i] = buckets[i].totalSessions
 			mapEntries[i] = buckets[i].mapEntries
 			buckets[i].totalSessions = NewSortedSet()
 			buckets[i].mapEntries = make(map[uint64]MapEntry, TopSessionsCount)
 		}
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			buckets[i].mutex.Unlock()
 		}
 
@@ -333,7 +336,7 @@ func TopSessionsThread() {
 
 		sessions := make([]Session, 0, TopSessionsCount)
 
-		for i := 0; i < numBuckets; i++ {
+		for i := 0; i < constants.NumBuckets; i++ {
 			bucketTotalSessions := totalSessions[i].GetByRankRange(1, -1)
 			for j := range bucketTotalSessions {
 				if _, exists := totalSessionsMap[bucketTotalSessions[j].Key]; !exists {
@@ -348,7 +351,7 @@ func TopSessionsThread() {
 
 	done:
 
-		sort.Slice(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
+		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].sessionId < sessions[j].sessionId })
 		sort.SliceStable(sessions, func(i, j int) bool { return sessions[i].score < sessions[j].score })
 
 		newTopSessions := &TopSessions{}
@@ -408,7 +411,7 @@ func sessionBatchHandler(w http.ResponseWriter, r *http.Request) {
 	body = body[8:]
 
 	index := 0
-	for j := 0; j < numBuckets; j++ {
+	for j := 0; j < constants.NumBuckets; j++ {
 		var numUpdates uint32
 		encoding.ReadUint32(body[:], &index, &numUpdates)
 		batch := make([]SessionUpdate, numUpdates)

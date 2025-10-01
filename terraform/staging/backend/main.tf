@@ -236,7 +236,7 @@ resource "google_compute_firewall" "allow_udp_all" {
 resource "cloudflare_record" "api_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "api-staging"
-  value   = module.api.address
+  content = module.api.address
   type    = "A"
   proxied = false
 }
@@ -244,7 +244,7 @@ resource "cloudflare_record" "api_domain" {
 resource "cloudflare_record" "server_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "server-staging"
-  value   = module.server_backend.address
+  content = module.server_backend.address
   type    = "A"
   proxied = false
 }
@@ -252,7 +252,7 @@ resource "cloudflare_record" "server_backend_domain" {
 resource "cloudflare_record" "relay_backend_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "relay-staging"
-  value   = module.relay_gateway.address
+  content = module.relay_gateway.address
   type    = "A"
   proxied = false
 }
@@ -260,7 +260,7 @@ resource "cloudflare_record" "relay_backend_domain" {
 resource "cloudflare_record" "portal_domain" {
   zone_id = var.cloudflare_zone_id
   name    = "portal-staging"
-  value   = module.portal.address
+  content = module.portal.address
   type    = "A"
   proxied = false
 }
@@ -634,7 +634,7 @@ module "relay_backend" {
     MAGIC_URL="http://${module.magic_backend.address}/magic"
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
-    INITIAL_DELAY=180s
+    INITIAL_DELAY=180
     ENABLE_GOOGLE_PUBSUB=true
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
@@ -749,12 +749,12 @@ module "session_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a session_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    NUM_BUCKETS=1000
     ENABLE_REDIS_TIME_SERIES=true
     REDIS_TIME_SERIES_HOSTNAME="${module.redis_time_series.address}:6379"
     GOOGLE_PROJECT_ID=${local.google_project_id}
     DATABASE_URL="${var.google_database_bucket}/staging.bin"
     DATABASE_PATH="/app/database.bin"
+    CHANNEL_SIZE=1000000
     EOF
     sudo gsutil cp ${var.google_database_bucket}/staging.bin /app/database.bin
     sudo systemctl start app.service
@@ -790,7 +790,7 @@ module "server_cruncher" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_cruncher.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    NUM_BUCKETS=1000
+    CHANNEL_SIZE=1000000
     EOF
     sudo systemctl start app.service
   EOF1
@@ -825,7 +825,6 @@ module "server_backend" {
     sudo ./bootstrap.sh -t ${var.tag} -b ${var.google_artifacts_bucket} -a server_backend.tar.gz
     cat <<EOF > /app/app.env
     ENV=staging
-    NUM_BUCKETS=1000
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
     UDP_NUM_THREADS=8

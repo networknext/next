@@ -437,7 +437,7 @@ func Test_ServerInitHandler_SDKTooOld_SDK(t *testing.T) {
 	}
 }
 
-func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
+func Test_ServerInitHandler_DatacenterNotEnabled_SDK(t *testing.T) {
 
 	t.Parallel()
 
@@ -489,11 +489,11 @@ func Test_ServerInitHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
-	// run the packet through the handler, we should see the datacenter is unknown
+	// run the packet through the handler, we should see the datacenter is not enabled for the buyer
 
 	SDK_PacketHandler(&harness.handler, harness.conn, &harness.from, packetData)
 
-	assert.True(t, harness.handler.Events[SDK_HandlerEvent_UnknownDatacenter])
+	assert.True(t, harness.handler.Events[SDK_HandlerEvent_DatacenterNotEnabled])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_ProcessServerInitRequestPacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentServerInitResponsePacket])
 	assert.True(t, harness.handler.Events[SDK_HandlerEvent_SentAnalyticsServerInitMessage])
@@ -562,6 +562,12 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 	harness.handler.Database.DatacenterMap[localDatacenterId] = localDatacenter
 
+	// make sure the "local" datacenter is enabled for the buyer
+
+	harness.handler.Database.BuyerDatacenterSettings[buyerId] = make(map[uint64]*database.BuyerDatacenterSettings)
+
+	harness.handler.Database.BuyerDatacenterSettings[buyerId][localDatacenterId] = &database.BuyerDatacenterSettings{BuyerId: buyerId, DatacenterId: localDatacenterId, EnableAcceleration: true}
+
 	// construct a valid, signed server init request packet
 
 	requestId := uint64(0x12345)
@@ -570,7 +576,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 		Version:        packets.SDKVersion{1, 0, 0},
 		BuyerId:        buyerId,
 		RequestId:      requestId,
-		DatacenterId:   common.DatacenterId("local"),
+		DatacenterId:   localDatacenterId,
 		DatacenterName: "local",
 	}
 

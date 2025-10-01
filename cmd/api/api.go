@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -52,6 +53,8 @@ var buyerCountersWatcher *common.RedisCountersWatcher
 
 var enableRedisTimeSeries bool
 
+var relayBackendURL string
+
 func main() {
 
 	service = common.CreateService("api")
@@ -76,6 +79,8 @@ func main() {
 	enableAdmin := envvar.GetBool("ENABLE_ADMIN", true)
 	enablePortal := envvar.GetBool("ENABLE_PORTAL", true)
 	enableDatabase := envvar.GetBool("ENABLE_DATABASE", true)
+	enableDebug := envvar.GetBool("ENABLE_DEBUG", false)
+	relayBackendURL = envvar.GetString("RELAY_BACKEND_URL", "http://127.0.0.1:30001")
 
 	if privateKey == "" {
 		core.Error("You must specify API_PRIVATE_KEY!")
@@ -95,12 +100,27 @@ func main() {
 	core.Debug("enable admin: %v", enableAdmin)
 	core.Debug("enable portal: %v", enablePortal)
 	core.Debug("enable database: %v", enableDatabase)
+	core.Debug("enable debug: %v", enableDebug)
 
-	service.Router.HandleFunc("/ping", isAdminAuthorized(pingHandler))
+	if enableDebug {
+
+		service.UpdateRouteMatrix(nil, nil)
+
+		service.Router.HandleFunc("/debug/relays", debugRelaysHandler)
+		service.Router.HandleFunc("/debug/cost_matrix", debugCostMatrixHandler)
+		service.Router.HandleFunc("/debug/routes/{src}/{dest}", debugRoutesHandler)
+		service.Router.HandleFunc("/debug/relay_counters/{relay_name}", debugRelayCountersHandler)
+		service.Router.HandleFunc("/debug/relay_history/{src}/{dest}", debugRelayHistoryHandler)
+		service.Router.HandleFunc("/debug/relay_backend", debugRelayBackendHandler)
+		service.Router.HandleFunc("/debug/sessions", debugSessionsHandler)
+
+	}
 
 	if enableAdmin {
 
 		controller = admin.CreateController(pgsqlConfig)
+
+		service.Router.HandleFunc("/ping", isAdminAuthorized(pingHandler))
 
 		service.Router.HandleFunc("/admin/database", isAdminAuthorized(adminDatabaseHandler)).Methods("GET")
 		service.Router.HandleFunc("/admin/commit", isAdminAuthorized(adminCommitHandler)).Methods("PUT")
@@ -551,23 +571,40 @@ type PortalSessionsResponse struct {
 }
 
 func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
+
 	vars := mux.Vars(r)
+
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
 	}
-	response := PortalSessionsResponse{}
+
+	// Get the "top sessions" (around 10k max) with the biggest improvement as an array of session ids
+	// This lets us scale the portal up to any number of sessions. We'll only ever display the top ~10k in the portal session list.
 	sessionIds := topSessionsWatcher.GetTopSessions()
+
+	// Apply a very simple pagination algorithm to narrow session ids down to a single page of ~100 session ids
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessionIds))
 	sessionIds = sessionIds[begin:end]
+
+	// Get basic session data for each of the ~100 session ids in the current page
 	sessions := portal.GetSessionList(service.Context, redisPortalClient, sessionIds)
-	response.Sessions = make([]PortalSessionData, len(sessions))
+
+	// Upgrade the session data for the page being displayed with data from redis per-session
+	// This fills the per-session data in with additional data that's stored elsewhere
+	upgradedSessions := make([]PortalSessionData, len(sessions))
+	for i := range upgradedSessions {
+		upgradePortalSessionData(service.Database(), sessions[i], &upgradedSessions[i])
+	}
+
+	// Sometimes the score is out of date between redis and the session cruncher. Sort the sessions page here to fix it
+	sort.SliceStable(upgradedSessions, func(i, j int) bool { return upgradedSessions[i].Score < upgradedSessions[j].Score })
+
+	// Fill out the HTTP response struct and fire it back as JSON
+	response := PortalSessionsResponse{}
+	response.Sessions = upgradedSessions
 	response.OutputPage = outputPage
 	response.NumPages = numPages
-	database := service.Database()
-	for i := range response.Sessions {
-		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
-	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
@@ -2570,6 +2607,220 @@ func databaseBuyerDatacenterSettingsHandler(w http.ResponseWriter, r *http.Reque
 	response := database.GetBuyerDatacenterSettings()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+func proxy(targetURL string, w http.ResponseWriter, r *http.Request) {
+
+	request, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer response.Body.Close()
+
+	for name, values := range response.Header {
+		for _, value := range values {
+			w.Header().Add(name, value)
+		}
+	}
+
+	w.WriteHeader(response.StatusCode)
+
+	_, _ = io.Copy(w, response.Body)
+}
+
+func debugRelaysHandler(w http.ResponseWriter, r *http.Request) {
+	proxy(fmt.Sprintf("%s/relays", relayBackendURL), w, r)
+}
+
+func debugRelayCountersHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	proxy(fmt.Sprintf("%s/relay_counters/%s", relayBackendURL, vars["relay_name"]), w, r)
+}
+
+func debugRelayHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	proxy(fmt.Sprintf("%s/relay_history/%s/%s", relayBackendURL, vars["src"], vars["dest"]), w, r)
+}
+
+func debugRoutesHandler(w http.ResponseWriter, r *http.Request) {
+
+	routeMatrix, _ := service.RouteMatrixAndDatabase()
+
+	vars := mux.Vars(r)
+
+	src := vars["src"]
+	dest := vars["dest"]
+
+	src_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == src {
+			src_index = i
+			break
+		}
+	}
+
+	dest_index := -1
+	for i := range routeMatrix.RelayNames {
+		if routeMatrix.RelayNames[i] == dest {
+			dest_index = i
+			break
+		}
+	}
+
+	if src_index == -1 || dest_index == -1 || src_index == dest_index {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Routes</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		*{
+	    font-family:Courier;
+	  }	  
+	  </style>
+	</head>
+	<body>`
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+	fmt.Fprintf(w, "route matrix: %s - %s<br><br>\n", src, dest)
+	fmt.Fprintf(w, "<table>\n")
+	fmt.Fprintf(w, "<tr><td><b>Route Cost</b></td><td><b>Route Hash</b></td><td><b>Route Relays</b></td></tr>\n")
+	index := core.TriMatrixIndex(src_index, dest_index)
+	entry := routeMatrix.RouteEntries[index]
+	for i := 0; i < int(entry.NumRoutes); i++ {
+		routeRelays := ""
+		numRouteRelays := int(entry.RouteNumRelays[i])
+		for j := 0; j < numRouteRelays; j++ {
+			routeRelayIndex := entry.RouteRelays[i][j]
+			routeRelayName := routeMatrix.RelayNames[routeRelayIndex]
+			routeRelays += routeRelayName
+			if j != numRouteRelays-1 {
+				routeRelays += " - "
+			}
+		}
+		fmt.Fprintf(w, "<tr><td>%d</td><td>%0x</td><td>%s</td></tr>", entry.RouteCost[i], entry.RouteHash[i], routeRelays)
+	}
+	fmt.Fprintf(w, "<tr><td>%d</td><td></td><td>%s</td></tr>", entry.DirectCost, "direct")
+	fmt.Fprintf(w, "</table>\n")
+	const htmlFooter = `</body></html>`
+	fmt.Fprintf(w, "%s\n", htmlFooter)
+}
+
+func debugCostMatrixHandler(w http.ResponseWriter, r *http.Request) {
+
+	routeMatrix, _ := service.RouteMatrixAndDatabase()
+
+	if routeMatrix == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	costMatrix := routeMatrix.GetCostMatrix()
+
+	w.Header().Set("Content-Type", "text/html")
+
+	const htmlHeader = `<!DOCTYPE html>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8">
+	  <title>Cost Matrix</title>
+	  <style>
+		table, th, td {
+	      border: 1px solid black;
+	      border-collapse: collapse;
+	      text-align: center;
+	      padding: 10px;
+	    }
+		cost{
+     	  color: white;
+  		}
+		*{
+	    font-family:Courier;
+	    }	  
+	  </style>
+	</head>
+	<body>`
+	fmt.Fprintf(w, "%s\n", htmlHeader)
+	fmt.Fprintf(w, "cost matrix:<br><br><table>\n")
+	fmt.Fprintf(w, "<tr><td></td>")
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<td><b>%s</b></td>", costMatrix.RelayNames[i])
+	}
+	fmt.Fprintf(w, "</tr>\n")
+	for i := range costMatrix.RelayNames {
+		fmt.Fprintf(w, "<tr><td><b>%s</b></td>", costMatrix.RelayNames[i])
+		for j := range costMatrix.RelayNames {
+			if i == j {
+				fmt.Fprint(w, "<td bgcolor=\"lightgrey\"></td>")
+				continue
+			}
+			nope := false
+			costString := ""
+			index := core.TriMatrixIndex(i, j)
+			cost := costMatrix.Costs[index]
+			if cost >= 0 && cost < 255 {
+				costString = fmt.Sprintf("%d", cost)
+			} else {
+				nope = true
+			}
+			clickable := fmt.Sprintf("class=\"clickable\" onclick=\"window.location='/debug/routes/%s/%s'\"", costMatrix.RelayNames[i], costMatrix.RelayNames[j])
+
+			if nope {
+				fmt.Fprintf(w, "<td %s bgcolor=\"red\"></td>", clickable)
+			} else {
+				fmt.Fprintf(w, "<td %s bgcolor=\"green\"><cost>%s</cost></td>", clickable, costString)
+			}
+		}
+		fmt.Fprintf(w, "</tr>\n")
+	}
+	fmt.Fprintf(w, "</table>\n")
+	const htmlFooter = `</body></html>`
+	fmt.Fprintf(w, "%s\n", htmlFooter)
+}
+
+func debugRelayBackendHandler(w http.ResponseWriter, r *http.Request) {
+	proxy(fmt.Sprintf("%s/status", relayBackendURL), w, r)
+}
+
+func debugSessionsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain")
+	var sessionUpdate float64
+	var nextSessionUpdate float64
+	if enableRedisTimeSeries {
+		adminCountersWatcher.Lock()
+		sessionUpdate = adminCountersWatcher.GetFloatValue("session_update")
+		nextSessionUpdate = adminCountersWatcher.GetFloatValue("next_session_update")
+		adminCountersWatcher.Unlock()
+	}
+	sessions := int(math.Ceil(sessionUpdate * 10.0 / 60.0))
+	accelerated := int(math.Ceil(nextSessionUpdate * 10.0 / 60.0))
+	fmt.Fprintf(w, "%d sessions\n%d accelerated\n", sessions, accelerated)
+	if sessions == 0 {
+		fmt.Fprintf(w, "no sessions!\n")
+	}
+	if accelerated == 0 {
+		fmt.Fprintf(w, "no accelerated sessions!\n")
+	}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

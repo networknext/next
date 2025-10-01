@@ -1,0 +1,13 @@
+#!/bin/bash
+
+unset -v latest
+for file in cmd/deploy/*.go; do
+	[[ $file -nt $latest ]] && latest=$file
+done
+
+if [ ! -f ./dist/deploy ] || [ $latest -nt ./dist/deploy ]; then
+	mkdir -p ./dist
+	go build -o ./dist/deploy cmd/deploy/*.go || { echo 'failed to build deploy.go' ; exit 1; }
+fi
+
+./dist/deploy "$@"

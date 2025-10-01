@@ -1,3 +1,6 @@
+africa-south1-a,google.johannesburg.1
+africa-south1-b,google.johannesburg.2
+africa-south1-c,google.johannesburg.3
 asia-east1-a,google.taiwan.1
 asia-east1-b,google.taiwan.2
 asia-east1-c,google.taiwan.3
@@ -61,6 +64,12 @@ europe-west8-c,google.milan.3
 europe-west9-a,google.paris.1
 europe-west9-b,google.paris.2
 europe-west9-c,google.paris.3
+me-central1-a,google.doha.1
+me-central1-b,google.doha.2
+me-central1-c,google.doha.3
+me-central2-a,google.dammam.1
+me-central2-b,google.dammam.2
+me-central2-c,google.dammam.3
 me-west1-a,google.telaviv.1
 me-west1-b,google.telaviv.2
 me-west1-c,google.telaviv.3
@@ -70,6 +79,9 @@ northamerica-northeast1-c,google.montreal.3
 northamerica-northeast2-a,google.toronto.1
 northamerica-northeast2-b,google.toronto.2
 northamerica-northeast2-c,google.toronto.3
+northamerica-south1-a,google.queretaro.1
+northamerica-south1-b,google.queretaro.2
+northamerica-south1-c,google.queretaro.3
 southamerica-east1-a,google.saopaulo.1
 southamerica-east1-b,google.saopaulo.2
 southamerica-east1-c,google.saopaulo.3

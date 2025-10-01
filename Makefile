@@ -1,6 +1,8 @@
 # Network Next Makefile
 
-CXX_FLAGS := -g -Wall -Wextra
+RELAY_VERSION := "relay-debug"
+
+CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=\"$(RELAY_VERSION)\"
 
 OS := $(shell uname -s | tr A-Z a-z)
 ifeq ($(OS),darwin)
@@ -68,7 +70,7 @@ dist/%: cmd/%/*.go $(shell find modules -name '*.go')
 # Build artifacts
 
 dist/%.tar.gz: dist/%
-	@go run tools/artifact/artifact.go $@
+	@go run tools/build_artifact/build_artifact.go $@
 	@echo $@
 
 # Format code

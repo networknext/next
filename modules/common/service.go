@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -12,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"runtime"
 	"sort"
@@ -39,52 +37,6 @@ var (
 	commitHash    string
 	tag           string
 )
-
-func RunCommand(command string, args []string) (bool, string) {
-
-	cmd := exec.Command(command, args...)
-
-	stdoutReader, err := cmd.StdoutPipe()
-	if err != nil {
-		return false, ""
-	}
-
-	var wait sync.WaitGroup
-	var mutex sync.Mutex
-
-	output := ""
-
-	stdoutScanner := bufio.NewScanner(stdoutReader)
-	wait.Add(1)
-	go func() {
-		for stdoutScanner.Scan() {
-			mutex.Lock()
-			output += stdoutScanner.Text() + "\n"
-			mutex.Unlock()
-		}
-		wait.Done()
-	}()
-
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Start()
-	if err != nil {
-		return false, output
-	}
-
-	wait.Wait()
-
-	err = cmd.Wait()
-	if err != nil {
-		return false, output
-	}
-
-	return true, output
-}
-
-func Bash(command string) (bool, string) {
-	return RunCommand("bash", []string{"-c", command})
-}
 
 func DownloadFromStorage(url string, outputPath string) {
 	Bash(fmt.Sprintf("gcloud storage cp %s %s", url, outputPath))

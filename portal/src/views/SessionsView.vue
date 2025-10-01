@@ -109,7 +109,7 @@ async function getData(page) {
       const platform = getPlatformName(v.platform_type)
       const user_hash = parse_uint64(v.user_hash)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
-      const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
+      const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
         "User Hash":user_hash,

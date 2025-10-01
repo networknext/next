@@ -2,21 +2,122 @@
 #                                      PROD RELAYS
 # ========================================================================================
 
-variable "vpn_address" { type = string }
-variable "ssh_public_key_file" { type = string }
-variable "ssh_private_key_file" { type = string }
-variable "env" { type = string }
-variable "relay_version" { type = string }
-variable "relay_artifacts_bucket" { type = string }
-variable "relay_backend_url" { type = string }
-variable "relay_backend_public_key" { type = string }
-variable "sellers" { type = map(string) }
-variable "raspberry_buyer_public_key" { type = string }
-variable "raspberry_datacenters" { type = list(string) }
-variable "test_buyer_public_key" { type = string }
-variable "test_datacenters" { type = list(string) }
-variable "rematch_buyer_public_key" { type = string }
-variable "rematch_datacenters" { type = list(string) }
+locals {
+  
+  env                         = "prod"
+  vpn_address                 = "45.79.157.168"
+  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_private_key_file        = "~/secrets/next_ssh"
+  relay_version               = "relay-140"
+  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+  relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
+  relay_backend_url           = "relay.virtualgo.net"
+
+  raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
+
+  raspberry_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+  ]
+
+  test_buyer_public_key       = "AzcqXbdP3Txq3rHIjRBS4BfG7OoKV9PAZfB0rY7a+ArdizBzFAd2vQ=="
+
+  test_datacenters = [
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+  ]
+
+  rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
+
+  rematch_datacenters = [
+
+    "latitude.saopaulo",
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+
+    "i3d.dubai",
+    "google.doha.1",
+    "google.doha.2",
+    "google.doha.3",
+
+    "datapacket.istanbul",
+    "gcore.istanbul",
+
+    "velia.frankfurt",
+    "uk2group.frankfurt",
+    "gcore.frankfurt",
+    "i3d.frankfurt",
+    "datapacket.frankfurt",
+    "ovh.frankfurt",
+    "google.frankfurt.1",
+    "google.frankfurt.2",
+    "google.frankfurt.3",
+
+    "i3d.losangeles",
+    "datapacket.losangeles",
+    "hivelocity.losangeles",
+    "google.losangeles.1",
+    "google.losangeles.2",
+    "google.losangeles.3",
+
+    "uk2group.dallas",
+    "serversdotcom.dallas",
+    "google.dallas.1",
+    "google.dallas.2",
+    "google.dallas.3",
+
+    "latitude.ashburn",
+    "i3d.ashburn",
+    "gcore.ashburn",
+    "ovh.ashburn",
+    "datapacket.ashburn",
+    "google.virginia.1",
+    "google.virginia.2",
+    "google.virginia.3",
+
+    "i3d.singapore",
+
+    "google.tokyo.1",
+    "google.tokyo.2",
+    "google.tokyo.3",
+
+    "serversaustralia.sydney",
+    "google.sydney.1",
+    "google.sydney.2",
+    "google.sydney.3",
+
+    "gcore.johannesburg",
+    "google.johannesburg.1",
+    "google.johannesburg.2",
+    "google.johannesburg.3",
+  ]
+
+  sellers = {
+    "Akamai" = "akamai"
+    "Amazon" = "amazon"
+    "Google" = "google"
+    "Datapacket" = "datapacket"
+    "i3D" = "i3d"
+    "Oneqode" = "oneqode"
+    "GCore" = "gcore"
+    "Hivelocity" = "hivelocity"
+    "ColoCrossing" = "colocrossing"
+    "phoenixNAP" = "phoenixnap"
+    "servers.com" = "serversdotcom"
+    "Velia" = "velia"
+    "Zenlayer" = "zenlayer"
+    "Latitude" = "latitude"
+    "Equinix" = "equinix"
+    "Unity" = "unity"
+    "Azure" = "azure"
+    "UK2Group" = "uk2group"
+    "OVH" = "ovh"
+    "ServersAustralia" = "serversaustralia"
+  }
+}
 
 # ----------------------------------------------------------------------------------------
 
@@ -68,6 +169,284 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    "google.santiago.1" = {
+      datacenter_name = "google.santiago.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.santiago.2" = {
+      datacenter_name = "google.santiago.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.santiago.3" = {
+      datacenter_name = "google.santiago.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.frankfurt.1" = {
+      datacenter_name = "google.frankfurt.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.2" = {
+      datacenter_name = "google.frankfurt.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.frankfurt.3" = {
+      datacenter_name = "google.frankfurt.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.1" = {
+      datacenter_name = "google.dallas.1"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.2" = {
+      datacenter_name = "google.dallas.2"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dallas.3" = {
+      datacenter_name = "google.dallas.3"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.1" = {
+      datacenter_name = "google.losangeles.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.2" = {
+      datacenter_name = "google.losangeles.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.losangeles.3" = {
+      datacenter_name = "google.losangeles.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.1" = {
+      datacenter_name = "google.virginia.1"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.2" = {
+      datacenter_name = "google.virginia.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.virginia.3" = {
+      datacenter_name = "google.virginia.3"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.queretaro.1" = {
+      datacenter_name = "google.queretaro.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.queretaro.2" = {
+      datacenter_name = "google.queretaro.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.queretaro.3" = {
+      datacenter_name = "google.queretaro.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.doha.1" = {
+      datacenter_name = "google.doha.1"
+      type            = "c3-highmem-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.doha.2" = {
+      datacenter_name = "google.doha.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.doha.3" = {
+      datacenter_name = "google.doha.3"
+      type            = "e2-standard-8"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dammam.1" = {
+      datacenter_name = "google.dammam.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.dammam.2" = {
+      datacenter_name = "google.dammam.2"
+      type            = "c2-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.dammam.3" = {
+      datacenter_name = "google.dammam.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.telaviv.1" = {
+      datacenter_name = "google.telaviv.1"
+      type            = "c4-highmem-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.telaviv.2" = {
+      datacenter_name = "google.telaviv.2"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.telaviv.3" = {
+      datacenter_name = "google.telaviv.3"
+      type            = "c3-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.paris.1" = {
+      datacenter_name = "google.paris.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.paris.2" = {
+      datacenter_name = "google.paris.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.paris.3" = {
+      datacenter_name = "google.paris.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.netherlands.1" = {
+      datacenter_name = "google.netherlands.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.netherlands.2" = {
+      datacenter_name = "google.netherlands.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.netherlands.3" = {
+      datacenter_name = "google.netherlands.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.milan.2" = {
+      datacenter_name = "google.milan.2"
+      type            = "c4-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.milan.3" = {
+      datacenter_name = "google.milan.3"
+      type            = "c4-standard-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.belgium.2" = {
+      datacenter_name = "google.belgium.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.belgium.3" = {
+      datacenter_name = "google.belgium.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.belgium.4" = {
+      datacenter_name = "google.belgium.4"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.london.1" = {
+      datacenter_name = "google.london.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.london.2" = {
+      datacenter_name = "google.london.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.london.3" = {
+      datacenter_name = "google.london.3"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
+    "google.madrid.1" = {
+      datacenter_name = "google.madrid.1"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    /*
+    "google.madrid.2" = {
+      datacenter_name = "google.madrid.2"
+      type            = "c4-highcpu-4"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+    */
+
   }
 }
 
@@ -77,7 +456,7 @@ module "google_relays" {
   project             = local.google_project
   credentials         = local.google_credentials
   source              = "../../sellers/google"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -102,7 +481,7 @@ module "amazon_relays" {
   credentials         = local.amazon_credentials
   profile             = local.amazon_profile
   source              = "./amazon"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -121,7 +500,48 @@ locals {
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
-    
+
+    /*
+    "akamai.frankfurt.1" = {
+      datacenter_name = "akamai.frankfurt.1"
+      type            = "g6-dedicated-16"
+      image           = "linode/ubuntu22.04"
+    },
+    */
+
+    "akamai.frankfurt.2" = {
+      datacenter_name = "akamai.frankfurt.2"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+
+    "akamai.dallas" = {
+      datacenter_name = "akamai.dallas"
+      type            = "g6-dedicated-16"
+      image           = "linode/ubuntu22.04"
+    },
+
+    /*
+    "akamai.washington" = {
+      datacenter_name = "akamai.washington"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+    */
+
+    "akamai.losangeles" = {
+      datacenter_name = "akamai.losangeles"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },    
+
+    /*
+    "akamai.london" = {
+      datacenter_name = "akamai.london"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+    */
   }
 }
 
@@ -129,7 +549,7 @@ module "akamai_relays" {
   env                 = "prod"
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
-  vpn_address         = var.vpn_address
+  vpn_address         = local.vpn_address
   ssh_public_key_file = "~/secrets/next_ssh.pub"
 }
 
@@ -146,6 +566,84 @@ locals {
     "zenlayer.saopaulo" = {
       datacenter_name = "zenlayer.saopaulo"
       public_address  = "128.14.222.42"
+    },
+
+    "zenlayer.bogota" = {
+      datacenter_name  = "zenlayer.bogota"
+      public_address   = "107.151.192.238"
+      internal_address = "10.131.48.2"
+    },
+
+    "zenlayer.lima" = {
+      datacenter_name = "zenlayer.lima"
+      public_address   = "198.44.168.157"
+      internal_address = "10.131.64.2"
+    },
+
+    "zenlayer.riyadh" = {
+      datacenter_name  = "zenlayer.riyadh"
+      public_address   = "162.128.75.95"
+      internal_address = "10.130.112.2"
+    },
+
+    "zenlayer.frankfurt" = {
+      datacenter_name  = "zenlayer.frankfurt"
+      public_address   = "193.118.46.254"
+    },
+
+    "zenlayer.frankfurt" = {
+      datacenter_name  = "zenlayer.frankfurt"
+      public_address   = "193.118.46.254"
+    },
+
+    "zenlayer.london.a" = {
+      datacenter_name  = "zenlayer.london"
+      public_address   = "98.98.142.118"
+    },
+
+    "zenlayer.london.b" = {
+      datacenter_name  = "zenlayer.london"
+      public_address   = "98.98.142.126"
+    },
+
+    "zenlayer.istanbul" = {
+      datacenter_name  = "zenlayer.istanbul"
+      public_address   = "104.166.176.246"
+    },
+
+    "zenlayer.dubai" = {
+      datacenter_name  = "zenlayer.dubai"
+      public_address   = "193.118.56.2"
+    },
+
+    "zenlayer.ashburn" = {
+      datacenter_name  = "zenlayer.ashburn"
+      public_address   = "128.14.84.78"
+    },
+
+    "zenlayer.miami" = {
+      datacenter_name  = "zenlayer.miami"
+      public_address   = "128.14.216.30"
+    },
+
+    "zenlayer.dallas" = {
+      datacenter_name  = "zenlayer.dallas"
+      public_address   = "98.96.193.162"
+    },
+
+    "zenlayer.buenosaires" = {
+      datacenter_name  = "zenlayer.buenosaires"
+      public_address   = "98.98.173.226"
+    },
+
+    "zenlayer.losangeles.a" = {
+      datacenter_name  = "zenlayer.losangeles"
+      public_address   = "128.14.73.78"
+    },
+
+    "zenlayer.losangeles.b" = {
+      datacenter_name  = "zenlayer.losangeles"
+      public_address   = "128.14.73.82"
     },
 
   }
@@ -166,12 +664,8 @@ locals {
 
   azure_relays = {
 
-    "azure.saopaulo.1" = {
-      datacenter_name  = "azure.saopaulo.1"
-      public_address   = "20.206.244.28"
-      internal_address = "10.1.0.4"
-    },
-
+    // ...
+    
   }
 }
 
@@ -196,6 +690,72 @@ locals {
       public_address = "79.127.137.166"
     },
 
+    "datapacket.miami" = {
+      datacenter_name = "datapacket.miami"
+      ssh_address = "152.233.22.15"
+      public_address = "152.233.22.15"
+    },
+
+    "datapacket.losangeles" = {
+      datacenter_name = "datapacket.losangeles"
+      ssh_address = "79.127.232.205"
+      public_address = "79.127.232.205"
+    }
+
+    "datapacket.dallas" = {
+      datacenter_name = "datapacket.dallas"
+      ssh_address = "212.102.40.186"
+      public_address = "212.102.40.186"
+    }
+
+    "datapacket.istanbul" = {
+      datacenter_name = "datapacket.istanbul"
+      ssh_address = "169.150.215.57"
+      public_address = "169.150.215.57"
+    }
+
+    "datapacket.ashburn" = {
+      datacenter_name = "datapacket.ashburn"
+      ssh_address = "79.127.223.38"
+      public_address = "79.127.223.38"
+    }
+
+    "datapacket.frankfurt.a" = {
+      datacenter_name = "datapacket.frankfurt"
+      ssh_address = "89.222.124.57"
+      public_address = "89.222.124.57"
+    }
+
+    "datapacket.frankfurt.b" = {
+      datacenter_name = "datapacket.frankfurt"
+      ssh_address = "89.222.124.31"
+      public_address = "89.222.124.31"
+    }
+
+    "datapacket.santiago" = {
+      datacenter_name = "datapacket.santiago"
+      ssh_address = "79.127.209.147"
+      public_address = "79.127.209.147"
+    }
+
+    "datapacket.lima" = {
+      datacenter_name = "datapacket.lima"
+      ssh_address = "79.127.252.114"
+      public_address = "79.127.252.114"
+    }
+
+    "datapacket.bogota" = {
+      datacenter_name = "datapacket.bogota"
+      ssh_address = "169.150.228.9"
+      public_address = "169.150.228.9"
+    }
+
+    "datapacket.london" = {
+      datacenter_name = "datapacket.london"
+      ssh_address = "138.199.51.243"
+      public_address = "138.199.51.243"
+    }
+
   }
 }
 
@@ -219,6 +779,41 @@ locals {
       public_address  = "185.50.104.109"
     },
 
+    "i3d.ashburn.a" = {
+      datacenter_name = "i3d.ashburn"
+      public_address  = "162.244.55.38"
+    },
+
+    "i3d.ashburn.b" = {
+      datacenter_name = "i3d.ashburn"
+      public_address  = "162.244.55.42"
+    },
+
+    "i3d.dubai.a" = {
+      datacenter_name = "i3d.dubai"
+      public_address  = "185.179.202.102"
+    },
+
+    "i3d.dubai.b" = {
+      datacenter_name = "i3d.dubai"
+      public_address  = "185.179.202.104"
+    },
+
+    "i3d.frankfurt" = {
+      datacenter_name = "i3d.frankfurt"
+      public_address  = "188.122.68.101"
+    },
+
+    "i3d.losangeles" = {
+      datacenter_name = "i3d.losangeles"
+      public_address  = "162.245.204.237"
+    },
+
+    "i3d.dallas" = {
+      datacenter_name = "i3d.dallas"
+      public_address  = "138.128.136.133"
+    },
+
   }
 }
 
@@ -237,10 +832,45 @@ locals {
 
   latitude_relays = {
 
-    "latitude.saopaulo" = {
-      datacenter_name = "latitude.saopaulo.1"
+    "latitude.saopaulo.a" = {
+      datacenter_name = "latitude.saopaulo"
       public_address  = "189.1.173.223"
     },
+
+    "latitude.saopaulo.b" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.93"
+    },
+
+    "latitude.saopaulo.c" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "103.88.235.133"
+    },
+
+    "latitude.ashburn" = {
+      datacenter_name = "latitude.ashburn"
+      public_address  = "103.106.59.205"
+    },
+
+    "latitude.miami" = {
+      datacenter_name = "latitude.miami"
+      public_address  = "69.67.150.47"
+    },
+
+    "latitude.losangeles" = {
+      datacenter_name = "latitude.losangeles"
+      public_address  = "67.213.124.239"
+    },
+
+    "latitude.santiago" = {
+      datacenter_name = "latitude.santiago"
+      public_address  = "45.250.252.203"
+    },
+
+    "latitude.london" = {
+      datacenter_name = "latitude.london"
+      public_address  = "103.50.32.156"
+    }
 
   }
 }
@@ -263,6 +893,31 @@ locals {
     "gcore.saopaulo" = {
       datacenter_name = "gcore.saopaulo"
       public_address  = "92.38.150.8"
+      ssh_user        = "root"
+    },
+
+    "gcore.frankfurt" = {
+      datacenter_name = "gcore.frankfurt"
+      public_address  = "93.114.56.87"
+      ssh_user        = "ubuntu"
+    },
+
+    "gcore.istanbul.a" = {
+      datacenter_name = "gcore.istanbul"
+      public_address  = "213.156.152.90"
+      ssh_user        = "ubuntu"
+    },
+
+    "gcore.istanbul.b" = {
+      datacenter_name = "gcore.istanbul"
+      public_address  = "213.156.152.107"
+      ssh_user        = "ubuntu"    
+    },
+
+    "gcore.ashburn" = {
+      datacenter_name = "gcore.ashburn"
+      public_address  = "5.188.124.74"
+      ssh_user        = "root"
     },
 
   }
@@ -348,6 +1003,71 @@ module "oneqode_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+# ===============
+# UK2GROUP RELAYS
+# ===============
+
+locals {
+
+  uk2group_relays = {
+
+    "uk2group.frankfurt" = {
+      datacenter_name = "uk2group.frankfurt"
+      public_address  = "46.23.74.129"
+    },
+
+    "uk2group.dallas.a" = {
+      datacenter_name = "uk2group.dallas"
+      public_address  = "206.217.211.37"
+    },
+
+    "uk2group.dallas.b" = {
+      datacenter_name = "uk2group.dallas"
+      public_address  = "206.217.211.40"
+    },
+
+    "uk2group.dallas.c" = {
+      datacenter_name = "uk2group.dallas"
+      public_address  = "206.217.211.48"
+    },
+  }
+}
+
+module "uk2group_relays" {
+  relays = local.uk2group_relays
+  source = "../../sellers/uk2group"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# ==========
+# OVH RELAYS
+# ==========
+
+locals {
+
+  ovh_relays = {
+
+    "ovh.ashburn" = {
+      datacenter_name = "ovh.ashburn"
+      public_address  = "40.160.32.142"
+    },
+    
+    "ovh.frankfurt" = {
+      datacenter_name = "ovh.frankfurt"
+      public_address  = "51.89.11.27"
+    },
+
+  }
+}
+
+module "ovh_relays" {
+  relays = local.ovh_relays
+  source = "../../sellers/ovh"
+}
+
+# ----------------------------------------------------------------------------------------
+
 # =================
 # HIVELOCITY RELAYS
 # =================
@@ -356,12 +1076,20 @@ locals {
 
   hivelocity_relays = {
 
-    /*
-    "hivelocity.chicago" = {
-      datacenter_name = "hivelocity.chicago"
-      public_address  = "185.152.67.2"
+    "hivelocity.losangeles" = {
+      datacenter_name = "hivelocity.losangeles"
+      public_address  = "107.155.127.114"
     },
-    */
+
+    "hivelocity.ashburn" = {
+      datacenter_name = "hivelocity.ashburn"
+      public_address  = "91.191.213.138"
+    },
+
+    "hivelocity.miami" = {
+      datacenter_name = "hivelocity.miami"
+      public_address  = "162.254.151.130"
+    },
 
   }
 }
@@ -431,12 +1159,10 @@ locals {
 
   serversdotcom_relays = {
 
-    /*
     "serversdotcom.dallas" = {
       datacenter_name = "serversdotcom.dallas"
-      public_address  = "185.152.67.2"
+      public_address  = "64.58.117.12"
     },
-    */
 
   }
 }
@@ -444,6 +1170,31 @@ locals {
 module "serversdotcom_relays" {
   relays = local.serversdotcom_relays
   source = "../../sellers/serversdotcom"
+}
+
+# ----------------------------------------------------------------------------------------
+
+# =======================
+# SERVER AUSTRALIA RELAYS
+# =======================
+
+locals {
+
+  serversaustralia_relays = {
+
+    /*
+    "serversaustralia.sydney" = {
+      datacenter_name = "serversaustralia.sydney"
+      public_address  = ""
+    },
+    */
+
+  }
+}
+
+module "serversaustralia_relays" {
+  relays = local.serversaustralia_relays
+  source = "../../sellers/serversaustralia"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -456,12 +1207,20 @@ locals {
 
   velia_relays = {
 
-    /*
-    "velia.stlouis" = {
-      datacenter_name = "velia.stlouis"
-      public_address  = "185.152.67.2"
+    "velia.frankfurt.a" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.208.81"
     },
-    */
+
+    "velia.frankfurt.b" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.218.237" 
+    },
+
+    "velia.frankfurt.c" = {
+      datacenter_name = "velia.frankfurt"
+      public_address  = "37.61.219.29"
+    },
 
   }
 }
@@ -525,6 +1284,9 @@ locals {
       keys(module.equinix_relays.relays),
       keys(module.unity_relays.relays),
       keys(module.azure_relays.relays),
+      keys(module.uk2group_relays.relays),
+      keys(module.ovh_relays.relays),
+      keys(module.serversaustralia_relays.relays),
     )
   )
 
@@ -546,6 +1308,9 @@ locals {
     module.equinix_relays.relays,
     module.unity_relays.relays,
     module.azure_relays.relays,
+    module.uk2group_relays.relays,
+    module.ovh_relays.relays,
+    module.serversaustralia_relays.relays,
   )
 
   datacenters = merge(
@@ -566,13 +1331,16 @@ locals {
     module.equinix_relays.datacenters,
     module.unity_relays.datacenters,
     module.azure_relays.datacenters,
+    module.uk2group_relays.datacenters,
+    module.ovh_relays.datacenters,
+    module.serversaustralia_relays.datacenters,
   )
 
   datacenter_names = distinct([for k, relay in local.relays : relay.datacenter_name])
 }
 
 resource "networknext_seller" sellers {
-  for_each = var.sellers
+  for_each = local.sellers
   name     = each.key
   code     = each.value
 }
@@ -618,7 +1386,7 @@ resource "networknext_relay" relays {
   ssh_ip = each.value.ssh_ip
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
-  version = var.relay_version
+  version = local.relay_version
 }
 
 # ----------------------------------------------------------------------------------------
@@ -665,11 +1433,11 @@ resource "networknext_buyer" raspberry {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.raspberry.id
-  public_key_base64 = var.raspberry_buyer_public_key
+  public_key_base64 = local.raspberry_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" raspberry {
-  for_each = toset(var.raspberry_datacenters)
+  for_each = toset(local.raspberry_datacenters)
   buyer_id = networknext_buyer.raspberry.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
@@ -698,11 +1466,11 @@ resource "networknext_buyer" test {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.test.id
-  public_key_base64 = var.test_buyer_public_key
+  public_key_base64 = local.test_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" test {
-  for_each = toset(var.test_datacenters)
+  for_each = toset(local.test_datacenters)
   buyer_id = networknext_buyer.test.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
@@ -716,8 +1484,8 @@ resource "networknext_buyer_datacenter_settings" test {
 resource "networknext_route_shader" rematch {
   name = "rematch"
   force_next = false
-  latency_reduction_threshold = 20
-  acceptable_latency = 50
+  latency_reduction_threshold = 10
+  acceptable_latency = 0
   acceptable_packet_loss_instant = 1.0
   acceptable_packet_loss_sustained = 0.25
   bandwidth_envelope_up_kbps = 1024
@@ -732,11 +1500,11 @@ resource "networknext_buyer" rematch {
   debug = false
   live = true
   route_shader_id = networknext_route_shader.rematch.id
-  public_key_base64 = var.rematch_buyer_public_key
+  public_key_base64 = local.rematch_buyer_public_key
 }
 
 resource "networknext_buyer_datacenter_settings" rematch {
-  for_each = toset(var.rematch_datacenters)
+  for_each = toset(local.rematch_datacenters)
   buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true

@@ -63,18 +63,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    "latitude.mexico.1" = {
+    "latitude.mexico" = {
       latitude    = 23.6345
       longitude   = -102.5528
-      native_name = "MEX"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.mexico.2" = {
-      latitude    = 23.6345
-      longitude   = -102.5528
-      native_name = "MEX2"
+      native_name = "MEX and MEX2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },
@@ -87,18 +79,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    "latitude.saopaulo.1" = {
+    "latitude.saopaulo" = {
       latitude    = -23.5558
       longitude   = -46.6396
-      native_name = "SAO"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.saopaulo.2" = {
-      latitude    = -23.5558
-      longitude   = -46.6396
-      native_name = "SAO2"
+      native_name = "SAO and SAO2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },
@@ -111,18 +95,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    "latitude.santiago.1" = {
+    "latitude.santiago" = {
       latitude    = -33.4489
       longitude   = -70.6693
-      native_name = "SAN"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.santiago.2" = {
-      latitude    = -33.4489
-      longitude   = -70.6693
-      native_name = "SAN2"
+      native_name = "SAN and SAN2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },
@@ -143,18 +119,10 @@ locals {
       seller_code = local.seller_code
     },
 
-    "latitude.tokyo.1" = {
+    "latitude.tokyo" = {
       latitude    = 35.6764
       longitude   = 139.6500
-      native_name = "TYO"
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
-    "latitude.tokyo.2" = {
-      latitude    = 35.6764
-      longitude   = 139.6500
-      native_name = "TYO2"
+      native_name = "TYO and TYO2"
       seller_name = local.seller_name
       seller_code = local.seller_code
     },

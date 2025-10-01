@@ -412,6 +412,14 @@ locals {
       seller_code = local.seller_code
     },
 
+    "datapacket.lima" = {
+      latitude    = -12.0467,
+      longitude   = -77.0431,
+      native_name = ""
+      seller_name = local.seller_name
+      seller_code = local.seller_code
+    },
+
   }
 
 }

@@ -167,10 +167,9 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		The lowest scores are the best scores, so we check if the new score is lower than the current best score.
 	*/
 
-	score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
-
 	if state.Request.SliceNumber >= 1 {
-		if uint32(score) < state.Input.BestScore {
+		score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
+		if uint32(score) <= state.Input.BestScore {
 			state.Input.BestScore = uint32(score)
 			state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)
 			state.Input.BestNextRTT = uint32(state.Request.NextRTT)
@@ -182,7 +181,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			}
 		}
 	} else {
-		state.Input.BestScore = uint32(999)
+		state.Input.BestScore = uint32(constants.MaxScore)
 	}
 
 	/*
@@ -193,7 +192,12 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 
 	if state.Request.FallbackToDirect {
 		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			core.Warn("fallback to direct [%016x]", state.Request.SessionId)
+			datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
+			if datacenter != nil {
+				core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
+			} else {
+				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)				
+			}
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true
 			if state.FallbackToDirectChannel != nil {
