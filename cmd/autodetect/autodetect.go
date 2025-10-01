@@ -30,7 +30,7 @@ func main() {
 
 	cache = make(map[string]string)
 
-	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore")
+	patternString := envvar.GetString("AUTODETECT_PATTERNS", "maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore|datacamp,datapacket|velia,velia|uk2group,uk2group|hivelocity,hivelocity|servers.com,serversdotcom|ovh,ovh|serversaustralia,serversaustralia|")
 	patterns = strings.Split(patternString, "|")
 
 	re = regexp.MustCompile(`^unity\.([a-z]+)[\.]?(.*)?$`)
@@ -75,23 +75,39 @@ func autodetectHandler(w http.ResponseWriter, r *http.Request) {
 
 	// not in cache, run whois autodetect logic then add result to cache
 
-	cmd := exec.Command("whois", "-h", "whois.radb.net", serverAddress)
-	output, err := cmd.Output()
-	if err != nil {
-		core.Error("error running whois command: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	outputString := strings.ToLower(string(output))
-
 	seller := ""
-	for i := range patterns {
-		values := strings.Split(patterns[i], ",")
-		if len(values) == 2 {
-			if strings.Contains(outputString, values[0]) {
-				seller = values[1]
+
+	for iteration := 0; iteration < 2; iteration++ {
+
+		var cmd *exec.Cmd
+		if iteration == 0 {
+			cmd = exec.Command("whois", serverAddress)
+		} else {
+			cmd = exec.Command("whois", "-h", "whois.radb.net", serverAddress)
+		}
+
+		output, err := cmd.Output()
+
+		if err != nil {
+			core.Error("error running whois command: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		outputString := strings.ToLower(string(output))
+
+		for i := range patterns {
+			values := strings.Split(patterns[i], ",")
+			if len(values) == 2 {
+				if strings.Contains(outputString, values[0]) {
+					seller = values[1]
+					break
+				}
 			}
+		}
+
+		if seller != "" {
+			break
 		}
 	}
 

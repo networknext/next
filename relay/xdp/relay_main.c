@@ -450,7 +450,7 @@ int main_update( struct main_t * main )
 
     uint8_t update_version = 1;
 
-    uint8_t update_data[100*1024];
+    static uint8_t update_data[10*1024*1024];
 
     uint8_t * p = update_data;
 
@@ -546,7 +546,7 @@ int main_update( struct main_t * main )
     char update_url[1024];
     snprintf( update_url, sizeof(update_url), "%s/relay_update", main->relay_backend_url );
 
-    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 1024000L );
+    curl_easy_setopt( main->curl, CURLOPT_BUFFERSIZE, 10 * 1024 * 1024L );
     curl_easy_setopt( main->curl, CURLOPT_URL, update_url );
     curl_easy_setopt( main->curl, CURLOPT_NOPROGRESS, 1L );
     curl_easy_setopt( main->curl, CURLOPT_POSTFIELDS, update_data );
@@ -582,6 +582,9 @@ int main_update( struct main_t * main )
     }
 
     // parse response from relay backend
+
+    curl_off_t response_size;
+    curl_easy_getinfo( main->curl, CURLINFO_SIZE_DOWNLOAD_T, &response_size );
 
     const uint8_t * q = update_response_buffer.data;
 
@@ -742,7 +745,21 @@ int main_update( struct main_t * main )
     message->new_relays.num_relays = 0;
     for ( int i = 0; i < relay_ping_set.num_relays; i++ )
     {
+        /*
         if ( !relay_hash_exists( &main->relay_ping_hash, relay_ping_set.id[i] ) )
+        */
+
+        bool found = false;
+        for ( int j = 0; j < main->relay_ping_set.num_relays; j++ )
+        {
+            if ( main->relay_ping_set.id[j] == relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->new_relays.num_relays;
             message->new_relays.id      [index] = relay_ping_set.id[i];
@@ -755,13 +772,30 @@ int main_update( struct main_t * main )
 
     // find relays to delete
 
+    // todo
+    /*
     struct relay_hash relay_ping_hash;
     relay_hash_initialize( &relay_ping_hash, (uint64_t*)relay_ping_set.id, relay_ping_set.num_relays );
+    */
 
     message->delete_relays.num_relays = 0;
     for ( int i = 0; i < main->relay_ping_set.num_relays; i++ )
     {
-        if ( !relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] ) )
+        /*
+        relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] );
+        */
+
+        bool found = false;
+        for ( int j = 0; j < relay_ping_set.num_relays; j++ )
+        {
+            if ( relay_ping_set.id[j] == main->relay_ping_set.id[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             const int index = message->delete_relays.num_relays;
             message->delete_relays.id      [index] = main->relay_ping_set.id[i];
@@ -791,7 +825,8 @@ int main_update( struct main_t * main )
     // stash relay ping set and hash for next update
 
     memcpy( &main->relay_ping_set, &relay_ping_set, sizeof(struct relay_set) );
-    memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
+    // todo
+    // memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
 
     return RELAY_OK;
 }

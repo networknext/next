@@ -1,13 +1,13 @@
 
-	terraform {
-	  required_providers {
-	    aws = {
-	      source  = "hashicorp/aws"
-	      version = "~> 4.0"
-	    }
-	  }
-	}
-	
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
 provider "aws" { 
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
@@ -20,8 +20,48 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
+  alias                    = "eu-south-1"
+  region                   = "eu-south-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "eu-south-2"
+  region                   = "eu-south-2"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "me-central-1"
+  region                   = "me-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "il-central-1"
+  region                   = "il-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
   alias                    = "ca-central-1"
   region                   = "ca-central-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "mx-central-1"
+  region                   = "mx-central-1"
 }
 
 provider "aws" { 
@@ -46,6 +86,14 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "us-west-2"
   region                   = "us-west-2"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "af-south-1"
+  region                   = "af-south-1"
 }
 
 provider "aws" { 
@@ -100,6 +148,14 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
+  alias                    = "me-south-1"
+  region                   = "me-south-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
   alias                    = "ap-northeast-1"
   region                   = "ap-northeast-1"
 }
@@ -110,6 +166,14 @@ provider "aws" {
   profile                  = var.profile
   alias                    = "sa-east-1"
   region                   = "sa-east-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "ap-east-1"
+  region                   = "ap-east-1"
 }
 
 provider "aws" { 
@@ -132,8 +196,32 @@ provider "aws" {
   shared_config_files      = var.config
   shared_credentials_files = var.credentials
   profile                  = var.profile
+  alias                    = "ap-southeast-3"
+  region                   = "ap-southeast-3"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "ap-southeast-4"
+  region                   = "ap-southeast-4"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
   alias                    = "us-east-1"
   region                   = "us-east-1"
+}
+
+provider "aws" { 
+  shared_config_files      = var.config
+  shared_credentials_files = var.credentials
+  profile                  = var.profile
+  alias                    = "ap-southeast-5"
+  region                   = "ap-southeast-5"
 }
 
 provider "aws" { 
@@ -153,12 +241,57 @@ module "region_ap_south_1" {
   }
 }
 
+module "region_eu_south_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.eu-south-1
+  }
+}
+
+module "region_eu_south_2" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.eu-south-2
+  }
+}
+
+module "region_me_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.me-central-1
+  }
+}
+
+module "region_il_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.il-central-1
+  }
+}
+
 module "region_ca_central_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.ca-central-1
+  }
+}
+
+module "region_mx_central_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.mx-central-1
   }
 }
 
@@ -186,6 +319,15 @@ module "region_us_west_2" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.us-west-2
+  }
+}
+
+module "region_af_south_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.af-south-1
   }
 }
 
@@ -243,6 +385,15 @@ module "region_ap_northeast_2" {
   }
 }
 
+module "region_me_south_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.me-south-1
+  }
+}
+
 module "region_ap_northeast_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
@@ -258,6 +409,15 @@ module "region_sa_east_1" {
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.sa-east-1
+  }
+}
+
+module "region_ap_east_1" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.ap-east-1
   }
 }
 
@@ -279,12 +439,39 @@ module "region_ap_southeast_2" {
   }
 }
 
+module "region_ap_southeast_3" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.ap-southeast-3
+  }
+}
+
+module "region_ap_southeast_4" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.ap-southeast-4
+  }
+}
+
 module "region_us_east_1" { 
   source              = "./region"
   vpn_address         = var.vpn_address
   ssh_public_key_file = var.ssh_public_key_file
   providers = {
     aws = aws.us-east-1
+  }
+}
+
+module "region_ap_southeast_5" { 
+  source              = "./region"
+  vpn_address         = var.vpn_address
+  ssh_public_key_file = var.ssh_public_key_file
+  providers = {
+    aws = aws.ap-southeast-5
   }
 }
 
@@ -300,6 +487,83 @@ module "region_us_east_2" {
 locals {
 
   datacenter_map = {
+
+    "amazon.johannesburg.1" = {
+      azid        = "afs1-az1"
+      zone        = "af-south-1a"
+      region      = "af-south-1"
+      native_name = "afs1-az1 (af-south-1a)"
+      latitude    = -33.92
+      longitude   = 18.42
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.johannesburg.2" = {
+      azid        = "afs1-az2"
+      zone        = "af-south-1b"
+      region      = "af-south-1"
+      native_name = "afs1-az2 (af-south-1b)"
+      latitude    = -33.92
+      longitude   = 18.42
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.johannesburg.3" = {
+      azid        = "afs1-az3"
+      zone        = "af-south-1c"
+      region      = "af-south-1"
+      native_name = "afs1-az3 (af-south-1c)"
+      latitude    = -33.92
+      longitude   = 18.42
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.nigeria.1" = {
+      azid        = "afs1-los1-az1"
+      zone        = "af-south-1-los-1a"
+      region      = "af-south-1"
+      native_name = "afs1-los1-az1 (af-south-1-los-1a)"
+      latitude    = 6.52
+      longitude   = 3.38
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.hongkong.1" = {
+      azid        = "ape1-az1"
+      zone        = "ap-east-1a"
+      region      = "ap-east-1"
+      native_name = "ape1-az1 (ap-east-1a)"
+      latitude    = 22.32
+      longitude   = 114.17
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.hongkong.2" = {
+      azid        = "ape1-az2"
+      zone        = "ap-east-1b"
+      region      = "ap-east-1"
+      native_name = "ape1-az2 (ap-east-1b)"
+      latitude    = 22.32
+      longitude   = 114.17
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.hongkong.3" = {
+      azid        = "ape1-az3"
+      zone        = "ap-east-1c"
+      region      = "ap-east-1"
+      native_name = "ape1-az3 (ap-east-1c)"
+      latitude    = 22.32
+      longitude   = 114.17
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
 
     "amazon.tokyo.1" = {
       azid        = "apne1-az1"
@@ -565,6 +829,72 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.jakarta.1" = {
+      azid        = "apse3-az1"
+      zone        = "ap-southeast-3a"
+      region      = "ap-southeast-3"
+      native_name = "apse3-az1 (ap-southeast-3a)"
+      latitude    = -6.21
+      longitude   = 106.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.jakarta.2" = {
+      azid        = "apse3-az2"
+      zone        = "ap-southeast-3b"
+      region      = "ap-southeast-3"
+      native_name = "apse3-az2 (ap-southeast-3b)"
+      latitude    = -6.21
+      longitude   = 106.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.jakarta.3" = {
+      azid        = "apse3-az3"
+      zone        = "ap-southeast-3c"
+      region      = "ap-southeast-3"
+      native_name = "apse3-az3 (ap-southeast-3c)"
+      latitude    = -6.21
+      longitude   = 106.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.melbourne.1" = {
+      azid        = "apse4-az1"
+      zone        = "ap-southeast-4a"
+      region      = "ap-southeast-4"
+      native_name = "apse4-az1 (ap-southeast-4a)"
+      latitude    = -37.81
+      longitude   = 144.96
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.melbourne.2" = {
+      azid        = "apse4-az2"
+      zone        = "ap-southeast-4b"
+      region      = "ap-southeast-4"
+      native_name = "apse4-az2 (ap-southeast-4b)"
+      latitude    = -37.81
+      longitude   = 144.96
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.melbourne.3" = {
+      azid        = "apse4-az3"
+      zone        = "ap-southeast-4c"
+      region      = "ap-southeast-4"
+      native_name = "apse4-az3 (ap-southeast-4c)"
+      latitude    = -37.81
+      longitude   = 144.96
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.montreal.1" = {
       azid        = "cac1-az1"
       zone        = "ca-central-1a"
@@ -708,6 +1038,72 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.milan.1" = {
+      azid        = "eus1-az1"
+      zone        = "eu-south-1a"
+      region      = "eu-south-1"
+      native_name = "eus1-az1 (eu-south-1a)"
+      latitude    = 45.46
+      longitude   = 9.19
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.milan.2" = {
+      azid        = "eus1-az2"
+      zone        = "eu-south-1b"
+      region      = "eu-south-1"
+      native_name = "eus1-az2 (eu-south-1b)"
+      latitude    = 45.46
+      longitude   = 9.19
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.milan.3" = {
+      azid        = "eus1-az3"
+      zone        = "eu-south-1c"
+      region      = "eu-south-1"
+      native_name = "eus1-az3 (eu-south-1c)"
+      latitude    = 45.46
+      longitude   = 9.19
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.spain.1" = {
+      azid        = "eus2-az1"
+      zone        = "eu-south-2a"
+      region      = "eu-south-2"
+      native_name = "eus2-az1 (eu-south-2a)"
+      latitude    = 41.60
+      longitude   = -0.91
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.spain.2" = {
+      azid        = "eus2-az2"
+      zone        = "eu-south-2b"
+      region      = "eu-south-2"
+      native_name = "eus2-az2 (eu-south-2b)"
+      latitude    = 41.60
+      longitude   = -0.91
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.spain.3" = {
+      azid        = "eus2-az3"
+      zone        = "eu-south-2c"
+      region      = "eu-south-2"
+      native_name = "eus2-az3 (eu-south-2c)"
+      latitude    = 41.60
+      longitude   = -0.91
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.ireland.1" = {
       azid        = "euw1-az1"
       zone        = "eu-west-1c"
@@ -803,6 +1199,149 @@ locals {
       native_name = "euw3-az3 (eu-west-3c)"
       latitude    = 48.86
       longitude   = 2.35
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.1" = {
+      azid        = "ilc1-az1"
+      zone        = "il-central-1a"
+      region      = "il-central-1"
+      native_name = "ilc1-az1 (il-central-1a)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.2" = {
+      azid        = "ilc1-az2"
+      zone        = "il-central-1b"
+      region      = "il-central-1"
+      native_name = "ilc1-az2 (il-central-1b)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.telaviv.3" = {
+      azid        = "ilc1-az3"
+      zone        = "il-central-1c"
+      region      = "il-central-1"
+      native_name = "ilc1-az3 (il-central-1c)"
+      latitude    = 32.09
+      longitude   = 34.78
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.uae.1" = {
+      azid        = "mec1-az1"
+      zone        = "me-central-1a"
+      region      = "me-central-1"
+      native_name = "mec1-az1 (me-central-1a)"
+      latitude    = 23.42
+      longitude   = 53.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.uae.2" = {
+      azid        = "mec1-az2"
+      zone        = "me-central-1b"
+      region      = "me-central-1"
+      native_name = "mec1-az2 (me-central-1b)"
+      latitude    = 23.42
+      longitude   = 53.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.uae.3" = {
+      azid        = "mec1-az3"
+      zone        = "me-central-1c"
+      region      = "me-central-1"
+      native_name = "mec1-az3 (me-central-1c)"
+      latitude    = 23.42
+      longitude   = 53.85
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.bahrain.1" = {
+      azid        = "mes1-az1"
+      zone        = "me-south-1a"
+      region      = "me-south-1"
+      native_name = "mes1-az1 (me-south-1a)"
+      latitude    = 26.07
+      longitude   = 50.56
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.bahrain.2" = {
+      azid        = "mes1-az2"
+      zone        = "me-south-1b"
+      region      = "me-south-1"
+      native_name = "mes1-az2 (me-south-1b)"
+      latitude    = 26.07
+      longitude   = 50.56
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.bahrain.3" = {
+      azid        = "mes1-az3"
+      zone        = "me-south-1c"
+      region      = "me-south-1"
+      native_name = "mes1-az3 (me-south-1c)"
+      latitude    = 26.07
+      longitude   = 50.56
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.oman.1" = {
+      azid        = "mes1-mct1-az1"
+      zone        = "me-south-1-mct-1a"
+      region      = "me-south-1"
+      native_name = "mes1-mct1-az1 (me-south-1-mct-1a)"
+      latitude    = 23.59
+      longitude   = 58.38
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.mexico.1" = {
+      azid        = "mxc1-az1"
+      zone        = "mx-central-1a"
+      region      = "mx-central-1"
+      native_name = "mxc1-az1 (mx-central-1a)"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.mexico.2" = {
+      azid        = "mxc1-az2"
+      zone        = "mx-central-1b"
+      region      = "mx-central-1"
+      native_name = "mxc1-az2 (mx-central-1b)"
+      latitude    = 23.63
+      longitude   = -102.55
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.mexico.3" = {
+      azid        = "mxc1-az3"
+      zone        = "mx-central-1c"
+      region      = "mx-central-1"
+      native_name = "mxc1-az3 (mx-central-1c)"
+      latitude    = 23.63
+      longitude   = -102.55
       seller_name = "Amazon"
       seller_code = "amazon"
     }
@@ -928,6 +1467,17 @@ locals {
       seller_code = "amazon"
     }
 
+    "amazon.dallas.1" = {
+      azid        = "use1-dfw2-az1"
+      zone        = "us-east-1-dfw-2a"
+      region      = "us-east-1"
+      native_name = "use1-dfw2-az1 (us-east-1-dfw-2a)"
+      latitude    = 32.78
+      longitude   = -96.80
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
     "amazon.lima.1" = {
       azid        = "use1-lim1-az1"
       zone        = "us-east-1-lim-1a"
@@ -946,6 +1496,17 @@ locals {
       native_name = "use1-mci1-az1 (us-east-1-mci-1a)"
       latitude    = 39.10
       longitude   = -94.58
+      seller_name = "Amazon"
+      seller_code = "amazon"
+    }
+
+    "amazon.miami.1" = {
+      azid        = "use1-mia2-az1"
+      zone        = "us-east-1-mia-2a"
+      region      = "us-east-1"
+      native_name = "use1-mia2-az1 (us-east-1-mia-2a)"
+      latitude    = 25.76
+      longitude   = -80.19
       seller_name = "Amazon"
       seller_code = "amazon"
     }
@@ -972,7 +1533,7 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.mexico.1" = {
+    "amazon.queretaro.1" = {
       azid        = "use1-qro1-az1"
       zone        = "us-east-1-qro-1a"
       region      = "us-east-1"
@@ -1163,21 +1724,32 @@ locals {
 
   regions = [
     "ap-south-1",
+    "eu-south-1",
+    "eu-south-2",
+    "me-central-1",
+    "il-central-1",
     "ca-central-1",
+    "mx-central-1",
     "eu-central-1",
     "us-west-1",
     "us-west-2",
+    "af-south-1",
     "eu-north-1",
     "eu-west-3",
     "eu-west-2",
     "eu-west-1",
     "ap-northeast-3",
     "ap-northeast-2",
+    "me-south-1",
     "ap-northeast-1",
     "sa-east-1",
+    "ap-east-1",
     "ap-southeast-1",
     "ap-southeast-2",
+    "ap-southeast-3",
+    "ap-southeast-4",
     "us-east-1",
+    "ap-southeast-5",
     "us-east-2",
   ]
 }
@@ -1186,14 +1758,198 @@ locals {
 
   relays = {
 
+    "amazon.bahrain.1" = { datacenter_name = "amazon.bahrain.1" },
+    "amazon.buenosaires.1" = { datacenter_name = "amazon.buenosaires.1" },
+    "amazon.dallas.1" = { datacenter_name = "amazon.dallas.1" },
+    "amazon.frankfurt.1" = { datacenter_name = "amazon.frankfurt.1" },
+    "amazon.ireland.1" = { datacenter_name = "amazon.ireland.1" },
+    "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
+    "amazon.london.1" = { datacenter_name = "amazon.london.1" },
+    "amazon.losangeles.1" = { datacenter_name = "amazon.losangeles.1" },
+    "amazon.miami.1" = { datacenter_name = "amazon.miami.1" },
+    "amazon.oman.1" = { datacenter_name = "amazon.oman.1" },
+    "amazon.paris.1" = { datacenter_name = "amazon.paris.1" },
+    "amazon.queretaro.1" = { datacenter_name = "amazon.queretaro.1" },
+    "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
     "amazon.saopaulo.1" = { datacenter_name = "amazon.saopaulo.1" },
-    "amazon.saopaulo.2" = { datacenter_name = "amazon.saopaulo.2" },
-    "amazon.saopaulo.3" = { datacenter_name = "amazon.saopaulo.3" },
+    "amazon.spain.1" = { datacenter_name = "amazon.spain.1" },
+    "amazon.telaviv.1" = { datacenter_name = "amazon.telaviv.1" },
+    "amazon.uae.1" = { datacenter_name = "amazon.uae.1" },
+    "amazon.virginia.1" = { datacenter_name = "amazon.virginia.1" },
   }
 
 }
 
-module "relay_amazon_saopaulo_1" {
+module "relay_amazon_bahrain_1" {
+	  source            = "./relay"
+	  name              = "amazon.bahrain.1"
+	  zone              = local.datacenter_map["amazon.bahrain.1"].zone
+	  region            = local.datacenter_map["amazon.bahrain.1"].region
+	  type              = "c5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_south_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-south-1
+	  }
+	}
+	module "relay_amazon_buenosaires_1" {
+	  source            = "./relay"
+	  name              = "amazon.buenosaires.1"
+	  zone              = local.datacenter_map["amazon.buenosaires.1"].zone
+	  region            = local.datacenter_map["amazon.buenosaires.1"].region
+	  type              = "r5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_dallas_1" {
+	  source            = "./relay"
+	  name              = "amazon.dallas.1"
+	  zone              = local.datacenter_map["amazon.dallas.1"].zone
+	  region            = local.datacenter_map["amazon.dallas.1"].region
+	  type              = "c6i.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_frankfurt_1" {
+	  source            = "./relay"
+	  name              = "amazon.frankfurt.1"
+	  zone              = local.datacenter_map["amazon.frankfurt.1"].zone
+	  region            = local.datacenter_map["amazon.frankfurt.1"].region
+	  type              = "m5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-central-1
+	  }
+	}
+	module "relay_amazon_ireland_1" {
+	  source            = "./relay"
+	  name              = "amazon.ireland.1"
+	  zone              = local.datacenter_map["amazon.ireland.1"].zone
+	  region            = local.datacenter_map["amazon.ireland.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_west_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-west-1
+	  }
+	}
+	module "relay_amazon_lima_1" {
+	  source            = "./relay"
+	  name              = "amazon.lima.1"
+	  zone              = local.datacenter_map["amazon.lima.1"].zone
+	  region            = local.datacenter_map["amazon.lima.1"].region
+	  type              = "r5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_london_1" {
+	  source            = "./relay"
+	  name              = "amazon.london.1"
+	  zone              = local.datacenter_map["amazon.london.1"].zone
+	  region            = local.datacenter_map["amazon.london.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_west_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-west-2
+	  }
+	}
+	module "relay_amazon_losangeles_1" {
+	  source            = "./relay"
+	  name              = "amazon.losangeles.1"
+	  zone              = local.datacenter_map["amazon.losangeles.1"].zone
+	  region            = local.datacenter_map["amazon.losangeles.1"].region
+	  type              = "c5.2xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_west_2.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-west-2
+	  }
+	}
+	module "relay_amazon_miami_1" {
+	  source            = "./relay"
+	  name              = "amazon.miami.1"
+	  zone              = local.datacenter_map["amazon.miami.1"].zone
+	  region            = local.datacenter_map["amazon.miami.1"].region
+	  type              = "c6i.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_oman_1" {
+	  source            = "./relay"
+	  name              = "amazon.oman.1"
+	  zone              = local.datacenter_map["amazon.oman.1"].zone
+	  region            = local.datacenter_map["amazon.oman.1"].region
+	  type              = "t3.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_south_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-south-1
+	  }
+	}
+	module "relay_amazon_paris_1" {
+	  source            = "./relay"
+	  name              = "amazon.paris.1"
+	  zone              = local.datacenter_map["amazon.paris.1"].zone
+	  region            = local.datacenter_map["amazon.paris.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_eu_west_3.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.eu-west-3
+	  }
+	}
+	module "relay_amazon_queretaro_1" {
+	  source            = "./relay"
+	  name              = "amazon.queretaro.1"
+	  zone              = local.datacenter_map["amazon.queretaro.1"].zone
+	  region            = local.datacenter_map["amazon.queretaro.1"].region
+	  type              = "c5.2xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_santiago_1" {
+	  source            = "./relay"
+	  name              = "amazon.santiago.1"
+	  zone              = local.datacenter_map["amazon.santiago.1"].zone
+	  region            = local.datacenter_map["amazon.santiago.1"].region
+	  type              = "t3.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
+	  }
+	}
+	module "relay_amazon_saopaulo_1" {
 	  source            = "./relay"
 	  name              = "amazon.saopaulo.1"
 	  zone              = local.datacenter_map["amazon.saopaulo.1"].zone
@@ -1206,30 +1962,56 @@ module "relay_amazon_saopaulo_1" {
 	    aws = aws.sa-east-1
 	  }
 	}
-	module "relay_amazon_saopaulo_2" {
+	module "relay_amazon_spain_1" {
 	  source            = "./relay"
-	  name              = "amazon.saopaulo.2"
-	  zone              = local.datacenter_map["amazon.saopaulo.2"].zone
-	  region            = local.datacenter_map["amazon.saopaulo.2"].region
-	  type              = "m5a.xlarge"
+	  name              = "amazon.spain.1"
+	  zone              = local.datacenter_map["amazon.spain.1"].zone
+	  region            = local.datacenter_map["amazon.spain.1"].region
+	  type              = "c5.xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_sa_east_1.security_group_id
+	  security_group_id = module.region_eu_south_2.security_group_id
 	  vpn_address       = var.vpn_address
 	  providers = {
-	    aws = aws.sa-east-1
+	    aws = aws.eu-south-2
 	  }
 	}
-	module "relay_amazon_saopaulo_3" {
+	module "relay_amazon_telaviv_1" {
 	  source            = "./relay"
-	  name              = "amazon.saopaulo.3"
-	  zone              = local.datacenter_map["amazon.saopaulo.3"].zone
-	  region            = local.datacenter_map["amazon.saopaulo.3"].region
-	  type              = "m5a.xlarge"
+	  name              = "amazon.telaviv.1"
+	  zone              = local.datacenter_map["amazon.telaviv.1"].zone
+	  region            = local.datacenter_map["amazon.telaviv.1"].region
+	  type              = "c5.xlarge"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_sa_east_1.security_group_id
+	  security_group_id = module.region_il_central_1.security_group_id
 	  vpn_address       = var.vpn_address
 	  providers = {
-	    aws = aws.sa-east-1
+	    aws = aws.il-central-1
+	  }
+	}
+	module "relay_amazon_uae_1" {
+	  source            = "./relay"
+	  name              = "amazon.uae.1"
+	  zone              = local.datacenter_map["amazon.uae.1"].zone
+	  region            = local.datacenter_map["amazon.uae.1"].region
+	  type              = "c5.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_me_central_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.me-central-1
+	  }
+	}
+	module "relay_amazon_virginia_1" {
+	  source            = "./relay"
+	  name              = "amazon.virginia.1"
+	  zone              = local.datacenter_map["amazon.virginia.1"].zone
+	  region            = local.datacenter_map["amazon.virginia.1"].region
+	  type              = "m5a.xlarge"
+	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+	  security_group_id = module.region_us_east_1.security_group_id
+	  vpn_address       = var.vpn_address
+	  providers = {
+	    aws = aws.us-east-1
 	  }
 	}
 	output "relays" {
@@ -1237,6 +2019,201 @@ module "relay_amazon_saopaulo_1" {
 	  description = "Data for each amazon relay setup by Terraform"
 
 	  value = {
+
+	    "amazon.bahrain.1" = {
+	      "relay_name"       = "amazon.bahrain.1"
+	      "datacenter_name"  = "amazon.bahrain.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_bahrain_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_bahrain_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "me-south-1"
+	      "ssh_ip"           = module.relay_amazon_bahrain_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.buenosaires.1" = {
+	      "relay_name"       = "amazon.buenosaires.1"
+	      "datacenter_name"  = "amazon.buenosaires.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_buenosaires_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_buenosaires_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.buenosaires.1"
+	      "ssh_ip"           = module.relay_amazon_buenosaires_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.dallas.1" = {
+	      "relay_name"       = "amazon.dallas.1"
+	      "datacenter_name"  = "amazon.dallas.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_dallas_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_dallas_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.dallas.1"
+	      "ssh_ip"           = module.relay_amazon_dallas_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.frankfurt.1" = {
+	      "relay_name"       = "amazon.frankfurt.1"
+	      "datacenter_name"  = "amazon.frankfurt.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_frankfurt_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_frankfurt_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-central-1"
+	      "ssh_ip"           = module.relay_amazon_frankfurt_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.ireland.1" = {
+	      "relay_name"       = "amazon.ireland.1"
+	      "datacenter_name"  = "amazon.ireland.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_ireland_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_ireland_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-west-1"
+	      "ssh_ip"           = module.relay_amazon_ireland_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.lima.1" = {
+	      "relay_name"       = "amazon.lima.1"
+	      "datacenter_name"  = "amazon.lima.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_lima_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_lima_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.lima.1"
+	      "ssh_ip"           = module.relay_amazon_lima_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.london.1" = {
+	      "relay_name"       = "amazon.london.1"
+	      "datacenter_name"  = "amazon.london.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_london_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_london_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-west-2"
+	      "ssh_ip"           = module.relay_amazon_london_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.losangeles.1" = {
+	      "relay_name"       = "amazon.losangeles.1"
+	      "datacenter_name"  = "amazon.losangeles.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_losangeles_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_losangeles_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.losangeles.1"
+	      "ssh_ip"           = module.relay_amazon_losangeles_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.miami.1" = {
+	      "relay_name"       = "amazon.miami.1"
+	      "datacenter_name"  = "amazon.miami.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_miami_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_miami_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.miami.1"
+	      "ssh_ip"           = module.relay_amazon_miami_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.oman.1" = {
+	      "relay_name"       = "amazon.oman.1"
+	      "datacenter_name"  = "amazon.oman.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_oman_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_oman_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.oman.1"
+	      "ssh_ip"           = module.relay_amazon_oman_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.paris.1" = {
+	      "relay_name"       = "amazon.paris.1"
+	      "datacenter_name"  = "amazon.paris.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_paris_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_paris_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "eu-west-3"
+	      "ssh_ip"           = module.relay_amazon_paris_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.queretaro.1" = {
+	      "relay_name"       = "amazon.queretaro.1"
+	      "datacenter_name"  = "amazon.queretaro.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_queretaro_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_queretaro_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.queretaro.1"
+	      "ssh_ip"           = module.relay_amazon_queretaro_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.santiago.1" = {
+	      "relay_name"       = "amazon.santiago.1"
+	      "datacenter_name"  = "amazon.santiago.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_santiago_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_santiago_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "amazon.santiago.1"
+	      "ssh_ip"           = module.relay_amazon_santiago_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
 
 	    "amazon.saopaulo.1" = {
 	      "relay_name"       = "amazon.saopaulo.1"
@@ -1253,32 +2230,62 @@ module "relay_amazon_saopaulo_1" {
 	      "ssh_user"         = "ubuntu"
 	    }
 
-	    "amazon.saopaulo.2" = {
-	      "relay_name"       = "amazon.saopaulo.2"
-	      "datacenter_name"  = "amazon.saopaulo.2"
+	    "amazon.spain.1" = {
+	      "relay_name"       = "amazon.spain.1"
+	      "datacenter_name"  = "amazon.spain.1"
 	      "seller_name"      = "Amazon"
 	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_saopaulo_2.public_address
+	      "public_ip"        = module.relay_amazon_spain_1.public_address
 	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_saopaulo_2.internal_address
+	      "internal_ip"      = module.relay_amazon_spain_1.internal_address
 	      "internal_port"    = 40000
-	      "internal_group"   = "sa-east-1"
-	      "ssh_ip"           = module.relay_amazon_saopaulo_2.public_address
+	      "internal_group"   = "eu-south-2"
+	      "ssh_ip"           = module.relay_amazon_spain_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }
 
-	    "amazon.saopaulo.3" = {
-	      "relay_name"       = "amazon.saopaulo.3"
-	      "datacenter_name"  = "amazon.saopaulo.3"
+	    "amazon.telaviv.1" = {
+	      "relay_name"       = "amazon.telaviv.1"
+	      "datacenter_name"  = "amazon.telaviv.1"
 	      "seller_name"      = "Amazon"
 	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_saopaulo_3.public_address
+	      "public_ip"        = module.relay_amazon_telaviv_1.public_address
 	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_saopaulo_3.internal_address
+	      "internal_ip"      = module.relay_amazon_telaviv_1.internal_address
 	      "internal_port"    = 40000
-	      "internal_group"   = "sa-east-1"
-	      "ssh_ip"           = module.relay_amazon_saopaulo_3.public_address
+	      "internal_group"   = "il-central-1"
+	      "ssh_ip"           = module.relay_amazon_telaviv_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.uae.1" = {
+	      "relay_name"       = "amazon.uae.1"
+	      "datacenter_name"  = "amazon.uae.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_uae_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_uae_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "me-central-1"
+	      "ssh_ip"           = module.relay_amazon_uae_1.public_address
+	      "ssh_port"         = 22
+	      "ssh_user"         = "ubuntu"
+	    }
+
+	    "amazon.virginia.1" = {
+	      "relay_name"       = "amazon.virginia.1"
+	      "datacenter_name"  = "amazon.virginia.1"
+	      "seller_name"      = "Amazon"
+	      "seller_code"      = "amazon"
+	      "public_ip"        = module.relay_amazon_virginia_1.public_address
+	      "public_port"      = 40000
+	      "internal_ip"      = module.relay_amazon_virginia_1.internal_address
+	      "internal_port"    = 40000
+	      "internal_group"   = "us-east-1"
+	      "ssh_ip"           = module.relay_amazon_virginia_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	    }

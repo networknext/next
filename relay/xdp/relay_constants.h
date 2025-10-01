@@ -24,7 +24,7 @@
 
 #define RELAY_MAX_UPDATE_ATTEMPTS                                                               30
 
-#define RELAY_RESPONSE_MAX_BYTES                                                       1024 * 1024
+#define RELAY_RESPONSE_MAX_BYTES                                              ( 10 * 1024 * 1024 )
 
 #define RELAY_HASH_SIZE                                                         ( MAX_RELAYS * 3 )
 

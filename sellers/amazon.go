@@ -25,8 +25,79 @@ var devRelayMap = map[string][]string{
 
 var prodRelayMap = map[string][]string{
 	"amazon.saopaulo.1": {"amazon.saopaulo.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
 	"amazon.saopaulo.2": {"amazon.saopaulo.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	"amazon.saopaulo.3": {"amazon.saopaulo.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.buenosaires.1": {"amazon.buenosaires.1", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.lima.1": {"amazon.lima.1", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.santiago.1": {"amazon.santiago.1", "t3.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.1": {"amazon.frankfurt.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.frankfurt.2": {"amazon.frankfurt.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.3": {"amazon.frankfurt.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.virginia.1": {"amazon.virginia.1", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.virginia.2": {"amazon.virginia.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.3": {"amazon.virginia.3", "c3.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.4": {"amazon.virginia.4", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.5": {"amazon.virginia.5", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.virginia.6": {"amazon.virginia.6", "r5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.dallas.1": {"amazon.dallas.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.miami.1": {"amazon.miami.1", "c6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.queretaro.1": {"amazon.queretaro.1", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.losangeles.1": {"amazon.losangeles.1", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.losangeles.2": {"amazon.losangeles.2", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.1": {"amazon.bahrain.1", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.bahrain.2": {"amazon.bahrain.2", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.3": {"amazon.bahrain.3", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.uae.1": {"amazon.uae.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.uae.2": {"amazon.uae.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.uae.3": {"amazon.uae.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.telaviv.1": {"amazon.telaviv.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.telaviv.2": {"amazon.telaviv.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.telaviv.3": {"amazon.telaviv.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	/*
+	"amazon.mexico.1": {"amazon.mexico.1", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.mexico.2": {"amazon.mexico.2", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.mexico.3": {"amazon.mexico.3", "m6i.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.london.1": {"amazon.london.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.london.2": {"amazon.london.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.london.3": {"amazon.london.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.ireland.1": {"amazon.ireland.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.ireland.2": {"amazon.ireland.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.ireland.3": {"amazon.ireland.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.oman.1": {"amazon.oman.1", "t3.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.spain.1": {"amazon.spain.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.spain.2": {"amazon.spain.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.spain.3": {"amazon.spain.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+	"amazon.paris.1": {"amazon.paris.1", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.paris.2": {"amazon.paris.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.paris.3": {"amazon.paris.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
+}
+
+// Exclude regions
+
+var excludedRegions = map[string]bool{
+  // "il-central-1": true,
+	// "mx-central-1": true,
 }
 
 // ===========================================================================================================================================
@@ -64,6 +135,8 @@ var datacenterMap = map[string]*Datacenter{
 	"use2":  {"ohio", 40.4173, -82.9071},
 	"usw1":  {"sanjose", 37.3387, -121.8853},
 	"usw2":  {"oregon", 45.8399, -119.7006},
+	"mxc1":  {"mexico", 23.6345, -102.5528},
+	"ilc1":  {"telaviv", 32.0853, 34.7818},
 
 	// local zones (AZID)
 
@@ -82,15 +155,15 @@ var datacenterMap = map[string]*Datacenter{
 	"bos1": {"boston", 42.3601, -71.0589},
 	"bue1": {"buenosaires", -34.6037, -58.3816},
 	"chi1": {"chicago", 41.8781, -87.6298},
-	"dfw1": {"dallas", 32.7767, -96.7970},
+	"dfw2": {"dallas", 32.7767, -96.7970},
 	"iah1": {"houston", 29.7604, -95.3698},
 	"lim1": {"lima", -12.0464, -77.0428},
 	"mci1": {"kansas", 39.0997, -94.5786},
-	"mia1": {"miami", 25.7617, -80.1918},
+	"mia2": {"miami", 25.7617, -80.1918},
 	"msp1": {"minneapolis", 44.9778, -93.2650},
 	"nyc1": {"newyork", 40.7128, -74.0060},
 	"phl1": {"philadelphia", 39.9526, -75.1652},
-	"qro1": {"mexico", 23.6345, -102.5528},
+	"qro1": {"queretaro", 23.6345, -102.5528},
 	"scl1": {"santiago", -33.4489, -70.6693},
 	"den1": {"denver", 39.7392, -104.9903},
 	"las1": {"lasvegas", 36.1716, -115.1391},
@@ -328,7 +401,7 @@ func main() {
 	fmt.Printf("\nExcluded regions:\n\n")
 
 	for i := range regionsResponse.Regions {
-		if regionsResponse.Regions[i].Excluded {
+		if regionsResponse.Regions[i].Excluded || excludedRegions[regionsResponse.Regions[i].RegionName] {
 			fmt.Printf("  %s\n", regionsResponse.Regions[i].RegionName)
 		}
 	}
@@ -364,7 +437,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 4.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -380,7 +453,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -395,7 +468,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -423,7 +496,7 @@ terraform {
 		fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -522,15 +595,15 @@ terraform {
 		}
 
 		header := `
-	terraform {
-	  required_providers {
-	    aws = {
-	      source  = "hashicorp/aws"
-	      version = "~> 4.0"
-	    }
-	  }
-	}
-	`
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+`
 		fmt.Fprintf(file, header)
 
 		format_string := "\nprovider \"aws\" { \n" +
@@ -542,7 +615,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, regionsResponse.Regions[i].RegionName, regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -557,7 +630,7 @@ terraform {
 			"}\n"
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, format_string, strings.ReplaceAll(regionsResponse.Regions[i].RegionName, "-", "_"), regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -585,7 +658,7 @@ terraform {
 		fmt.Fprintf(file, "  }\n\n  regions = [\n")
 
 		for i := range regionsResponse.Regions {
-			if !regionsResponse.Regions[i].Excluded {
+			if !regionsResponse.Regions[i].Excluded && !excludedRegions[regionsResponse.Regions[i].RegionName] {
 				fmt.Fprintf(file, "    \"%s\",\n", regionsResponse.Regions[i].RegionName)
 			}
 		}
@@ -629,6 +702,19 @@ terraform {
 		for i := range prodRelayNames {
 			k := prodRelayNames[i]
 			v := prodRelayMap[k]
+
+			region, ok := datacenterToRegion[v[0]]
+			if !ok {
+				fmt.Printf("missing datacenter to region for '%s'\n", v[0])
+				fmt.Printf("========================\n" )
+				for k,_ := range datacenterToRegion {
+					fmt.Printf("%s\n", k)
+				}
+				fmt.Printf("========================\n" )
+				os.Exit(1)
+			}
+			_ = region
+
 			fmt.Fprintf(file, relay_module, strings.ReplaceAll(k, ".", "_"), k, v[0], v[0], v[1], v[2], strings.ReplaceAll(datacenterToRegion[v[0]], "-", "_"), datacenterToRegion[v[0]])
 		}
 

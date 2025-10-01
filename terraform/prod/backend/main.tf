@@ -356,10 +356,10 @@ output "redis_time_series_address" {
 resource "google_redis_instance" "redis" {
   name                    = "redis"
   tier                    = "STANDARD_HA"
-  memory_size_gb          = 5
+  memory_size_gb          = 10
   region                  = local.google_region
   redis_version           = "REDIS_7_2"
-  redis_configs           = { "maxmemory-gb" = "4", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
+  redis_configs           = { "maxmemory-gb" = "9", "activedefrag" = "yes", "maxmemory-policy" = "allkeys-lru" }
   authorized_network      = google_compute_network.production.id
 }
 
@@ -672,7 +672,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-4"
+  machine_type               = "n1-highcpu-4"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -736,7 +736,7 @@ module "api" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-highcpu-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
@@ -745,7 +745,7 @@ module "api" {
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = local.disable_backend ? 0 : 1
-  max_size                 = local.disable_backend ? 0 : 16
+  max_size                 = local.disable_backend ? 0 : 4
   target_cpu               = 60
   domain                   = "api.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
@@ -779,7 +779,6 @@ module "autodetect" {
     ./bootstrap.sh -t ${var.tag} -b ${local.google_artifacts_bucket} -a autodetect.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
-    AUTODETECT_PATTERNS=maxihost,latitude|latitude,latitude|i3d,i3d|gcore,gcore|g-core,gcore
     EOF
     sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
     sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
@@ -788,7 +787,7 @@ module "autodetect" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-highcpu-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
@@ -796,8 +795,8 @@ module "autodetect" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = local.disable_backend ? 0 : 1
-  max_size                 = local.disable_backend ? 0 : 16
+  min_size                 = local.disable_backend ? 0 : 2
+  max_size                 = local.disable_backend ? 0 : 4
   target_cpu               = 60
   domain                   = "autodetect.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.autodetect.id
@@ -899,7 +898,7 @@ module "server_backend" {
     ENV=prod
     UDP_PORT=40000
     UDP_BIND_ADDRESS="##########:40000"
-    UDP_NUM_THREADS=8
+    UDP_NUM_THREADS=2
     UDP_SOCKET_READ_BUFFER=104857600
     UDP_SOCKET_WRITE_BUFFER=104857600
     GOOGLE_PROJECT_ID=${local.google_project_id}
@@ -927,7 +926,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "c3-highcpu-8"
+  machine_type               = "c3-highcpu-4"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -939,9 +938,8 @@ module "server_backend" {
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
   min_size                   = local.disable_backend ? 0 : 3
-  max_size                   = local.disable_backend ? 0 : 8
-  target_cpu                 = 60
-  tier_1                     = false
+  max_size                   = local.disable_backend ? 0 : 6
+  target_cpu                 = 50
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
@@ -1001,7 +999,7 @@ module "portal" {
   config                   = "${local.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-1"
+  machine_type             = "n1-highcpu-2"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones

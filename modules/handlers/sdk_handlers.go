@@ -285,19 +285,19 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	buyer, exists := handler.Database.BuyerMap[requestPacket.BuyerId]
 	if !exists {
-		core.Debug("unknown buyer: %016x", requestPacket.BuyerId)
+		core.Warn("unknown buyer: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK_ServerInitResponseUnknownBuyer
 		handler.Events[SDK_HandlerEvent_UnknownBuyer] = true
 	}
 
 	if !buyer.Live {
-		core.Debug("buyer not live: %016x", requestPacket.BuyerId)
+		core.Warn("buyer not live: %016x", requestPacket.BuyerId)
 		responsePacket.Response = packets.SDK_ServerInitResponseBuyerNotActive
 		handler.Events[SDK_HandlerEvent_BuyerNotLive] = true
 	}
 
 	if !requestPacket.Version.AtLeast(packets.SDKVersion{1, 0, 0}) {
-		core.Debug("sdk version is too old: %s", requestPacket.Version.String())
+		core.Warn("sdk version is too old: %s", requestPacket.Version.String())
 		responsePacket.Response = packets.SDK_ServerInitResponseSDKVersionTooOld
 		handler.Events[SDK_HandlerEvent_SDKTooOld] = true
 	}
@@ -306,7 +306,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	if !exists {
 
-		core.Debug("datacenter '%s' [%016x] is not enabled for buyer %016x (1)", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId)
+		core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (1) [%s]", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId, from.String())
 		responsePacket.Response = packets.SDK_ServerInitResponseDatacenterNotEnabled
 		handler.Events[SDK_HandlerEvent_DatacenterNotEnabled] = true
 
@@ -314,7 +314,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 		datacenterSettings, exists := buyerSettings[requestPacket.DatacenterId]
 		if !exists || !datacenterSettings.EnableAcceleration {
-			core.Debug("datacenter '%s' [%016x] is not enabled for buyer %016x (2)", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId)
+			core.Warn("datacenter '%s' [%016x] is not enabled for buyer %016x (2) [%s]", requestPacket.DatacenterName, requestPacket.DatacenterId, requestPacket.BuyerId, from.String())
 			responsePacket.Response = packets.SDK_ServerInitResponseDatacenterNotEnabled
 			handler.Events[SDK_HandlerEvent_DatacenterNotEnabled] = true
 		}
@@ -431,7 +431,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 	_, exists = handler.Database.DatacenterMap[requestPacket.DatacenterId]
 	if !exists {
 		// IMPORTANT: Let the server update succeed, even if the datacenter is unknown
-		core.Debug("unknown datacenter %016x", requestPacket.DatacenterId)
+		core.Warn("unknown datacenter %016x", requestPacket.DatacenterId)
 		handler.Events[SDK_HandlerEvent_UnknownDatacenter] = true
 	}
 

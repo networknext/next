@@ -142,7 +142,7 @@ let optimize_time_opts = custom_graph({
       name: 'Optimize Time',
       stroke: "rgb(94, 201, 255)",
       fill: "rgba(94, 201, 255,0.075)",
-      units: 'ms',
+      units: ' seconds',
     },
   ]
 })
@@ -288,7 +288,7 @@ async function getData() {
       let i = 0
       while (i < res.data.optimize_ms_timestamps.length) {
         optimize_time_timestamps.push(Math.floor(parseInt(res.data.optimize_ms_timestamps[i]) / 1000.0))
-        optimize_time_values.push(res.data.optimize_ms_values[i].toFixed(2))
+        optimize_time_values.push((res.data.optimize_ms_values[i]/1000 ).toFixed(2))
         i++
       }
       data.optimize_time_data = [optimize_time_timestamps, optimize_time_values]
