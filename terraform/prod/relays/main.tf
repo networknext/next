@@ -6,10 +6,10 @@ locals {
   
   env                         = "prod"
   vpn_address                 = "45.79.157.168"
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-140"
-  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+  relay_artifacts_bucket      = "next_network_next_relay_artifacts"
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
   relay_backend_url           = "relay.virtualgo.net"
 
@@ -129,7 +129,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "sloclap_network_next_terraform"
+    bucket  = "next_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
@@ -457,7 +457,7 @@ module "google_relays" {
   credentials         = local.google_credentials
   source              = "../../sellers/google"
   vpn_address         = local.vpn_address
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -482,7 +482,7 @@ module "amazon_relays" {
   profile             = local.amazon_profile
   source              = "./amazon"
   vpn_address         = local.vpn_address
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------
@@ -550,7 +550,7 @@ module "akamai_relays" {
   relays              = local.akamai_relays
   source              = "../../sellers/akamai"
   vpn_address         = local.vpn_address
-  ssh_public_key_file = "~/secrets/next_ssh.pub"
+  ssh_public_key_file         = "~/secrets/next_ssh.pub"
 }
 
 # ----------------------------------------------------------------------------------------

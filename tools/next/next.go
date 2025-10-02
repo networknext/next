@@ -951,9 +951,9 @@ func config(env Environment, regexes []string) {
 			os.Exit(1)
 		}
 
-		dev_terraform_data, err := os.ReadFile("terraform/dev/backend/terraform.tfvars")
+		dev_terraform_data, err := os.ReadFile("terraform/dev/backend/main.tf")
 		if err != nil {
-			fmt.Printf("\nerror: could not read terraform/dev/backend/terraform.tfvars file\n\n")
+			fmt.Printf("\nerror: could not read terraform/dev/backend/main.tf file\n\n")
 			os.Exit(1)
 		}
 
@@ -988,7 +988,7 @@ func config(env Environment, regexes []string) {
 			r := regexp.MustCompile(`test_buyer_public_key\s*=\s*"(.*)"`)
 			matches := r.FindStringSubmatch(devTerraformVars)
 			if len(matches) != 2 {
-				fmt.Printf("\nerror: could not find test_buyer_public_key in terraform/dev/backend/terraform.tfvars\n\n")
+				fmt.Printf("\nerror: could not find test_buyer_public_key in terraform/dev/backend/main.tf\n\n")
 				os.Exit(1)
 			}
 			writeGlobalSecret("global_test_buyer_public_key", matches[1])
@@ -999,7 +999,7 @@ func config(env Environment, regexes []string) {
 			r := regexp.MustCompile(`test_buyer_private_key\s*=\s*"(.*)"`)
 			matches := r.FindStringSubmatch(devTerraformVars)
 			if len(matches) != 2 {
-				fmt.Printf("\nerror: could not find test_buyer_private_key in terraform/dev/backend/terraform.tfvars\n\n")
+				fmt.Printf("\nerror: could not find test_buyer_private_key in terraform/dev/backend/main.tf\n\n")
 				os.Exit(1)
 			}
 			writeGlobalSecret("global_test_buyer_private_key", matches[1])
@@ -1010,7 +1010,7 @@ func config(env Environment, regexes []string) {
 			r := regexp.MustCompile(`raspberry_buyer_public_key\s*=\s*"(.*)"`)
 			matches := r.FindStringSubmatch(devTerraformVars)
 			if len(matches) != 2 {
-				fmt.Printf("\nerror: could not find raspberry_buyer_public_key in terraform/dev/backend/terraform.tfvars\n\n")
+				fmt.Printf("\nerror: could not find raspberry_buyer_public_key in terraform/dev/backend/main.tf\n\n")
 				os.Exit(1)
 			}
 			writeGlobalSecret("global_raspberry_buyer_public_key", matches[1])
@@ -1021,7 +1021,7 @@ func config(env Environment, regexes []string) {
 			r := regexp.MustCompile(`raspberry_buyer_private_key\s*=\s*"(.*)"`)
 			matches := r.FindStringSubmatch(devTerraformVars)
 			if len(matches) != 2 {
-				fmt.Printf("\nerror: could not find raspberry_buyer_private_key in terraform/dev/backend/terraform.tfvars\n\n")
+				fmt.Printf("\nerror: could not find raspberry_buyer_private_key in terraform/dev/backend/main.tf\n\n")
 				os.Exit(1)
 			}
 			writeGlobalSecret("global_raspberry_buyer_private_key", matches[1])
@@ -1462,46 +1462,21 @@ func config(env Environment, regexes []string) {
 			if fileExists(filenames[j]) {
 				fmt.Printf("%s\n", filenames[j])
 				replace(filenames[j], "^\\s*bucket\\s*=\\s*\"[a-zA-Z_]+\"\\s*$", fmt.Sprintf("    bucket  = \"%s_network_next_terraform\"", config.CompanyName))
-			}
-		}
-
-		filenames = []string{
-			fmt.Sprintf("terraform/%s/backend/terraform.tfvars", envs[i]),
-			fmt.Sprintf("terraform/%s/relays/terraform.tfvars", envs[i]),
-		}
-
-		for j := range filenames {
-			if fileExists(filenames[j]) {
-				fmt.Printf("%s\n", filenames[j])
-				replace(filenames[j], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
-				replace(filenames[j], "^\\s*google_database_bucket\\s*=.*$", fmt.Sprintf("google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
-				replace(filenames[j], "^\\s*cloudflare_zone_id\\s*=.*$", fmt.Sprintf("cloudflare_zone_id          = \"%s\"", config.CloudflareZoneId))
-				replace(filenames[j], "^\\s*cloudflare_domain\\s*=.*$", fmt.Sprintf("cloudflare_domain           = \"%s\"", config.CloudflareDomain))
-				replace(filenames[j], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
-				replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$", fmt.Sprintf("ssh_public_key_file         = \"%s.pub\"", config.SSHKey))
-				replace(filenames[j], "^\\s*ssh_private_key_file\\s*=.*$", fmt.Sprintf("ssh_private_key_file        = \"%s\"", config.SSHKey))
-				replace(filenames[j], "^\\s*relay_artifacts_bucket\\s*=.*$", fmt.Sprintf("relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
+				replace(filenames[j], "^\\s*google_artifacts_bucket\\s*=.*$", fmt.Sprintf("  google_artifacts_bucket     = \"gs://%s_network_next_backend_artifacts\"", config.CompanyName))
+				replace(filenames[j], "^\\s*google_database_bucket\\s*=.*$", fmt.Sprintf("  google_database_bucket      = \"gs://%s_network_next_database_files\"", config.CompanyName))
+				replace(filenames[j], "^\\s*cloudflare_zone_id\\s*=.*$", fmt.Sprintf("  cloudflare_zone_id          = \"%s\"", config.CloudflareZoneId))
+				replace(filenames[j], "^\\s*cloudflare_domain\\s*=.*$", fmt.Sprintf("  cloudflare_domain           = \"%s\"", config.CloudflareDomain))
+				replace(filenames[j], "^\\s*ip2location_bucket_name\\s*=.*$", fmt.Sprintf("  ip2location_bucket_name     = \"%s_network_next_%s\"", config.CompanyName, envs[i]))
+				replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$", fmt.Sprintf("  ssh_public_key_file         = \"%s.pub\"", config.SSHKey))
+				replace(filenames[j], "^\\s*ssh_private_key_file\\s*=.*$", fmt.Sprintf("  ssh_private_key_file        = \"%s\"", config.SSHKey))
+				replace(filenames[j], "^\\s*relay_artifacts_bucket\\s*=.*$", fmt.Sprintf("  relay_artifacts_bucket      = \"%s_network_next_relay_artifacts\"", config.CompanyName))
 				if envs[i] != "prod" {
-					replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$", fmt.Sprintf("relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
-				} else {
-					replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$", fmt.Sprintf("relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))
-				}
-			}
-		}
-
-		filenames = []string{
-			fmt.Sprintf("terraform/%s/relays/main.tf", envs[i]),
-		}
-
-		for j := range filenames {
-			if fileExists(filenames[j]) {
-				fmt.Printf("%s\n", filenames[j])
-				if envs[i] != "prod" {
+					replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$", fmt.Sprintf("  relay_backend_url           = \"relay-%s.%s\"", envs[i], config.CloudflareDomain))
 					replace(filenames[j], "^\\s*hostname\\s*=.*$", fmt.Sprintf("  hostname = \"https://api-%s.%s\"", envs[i], config.CloudflareDomain))
 				} else {
+					replace(filenames[j], "^\\s*relay_backend_url\\s*=.*$", fmt.Sprintf("  relay_backend_url           = \"relay.%s\"", config.CloudflareDomain))
 					replace(filenames[j], "^\\s*hostname\\s*=.*$", fmt.Sprintf("  hostname = \"https://api.%s\"", config.CloudflareDomain))
 				}
-				replace(filenames[j], "^\\s*ssh_public_key_file\\s*=.*$", fmt.Sprintf("  ssh_public_key_file = \"%s.pub\"", config.SSHKey))
 			}
 		}
 	}
