@@ -196,7 +196,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			if datacenter != nil {
 				core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
 			} else {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)				
+				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
 			}
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true

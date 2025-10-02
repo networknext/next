@@ -12,7 +12,7 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/envvar"	
+	"github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
