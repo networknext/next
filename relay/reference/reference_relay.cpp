@@ -21,6 +21,10 @@
 #include <sys/sysinfo.h>
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
+#ifndef RELAY_VERSION
+#define RELAY_VERSION "relay-debug"
+#endif // #ifndef RELAY_VERSION
+
 #define RELAY_MAX_THREADS                                                                       64
 
 #define RELAY_MTU                                                                             1200
@@ -5812,10 +5816,6 @@ static relay_platform_thread_return_t RELAY_PLATFORM_THREAD_FUNC ping_thread_fun
 }
 
 // ========================================================================================================================================
-
-#ifndef RELAY_VERSION
-#define RELAY_VERSION "relay-debug"
-#endif // #ifndef RELAY_VERSION
 
 int main()
 {

@@ -43,11 +43,6 @@
                 <td> {{ this.data['connection'] }} </td>
               </tr>
 
-              <tr>
-                <td class="bold">User Hash</td>
-                <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
-              </tr>
-
             </tbody>
           </table>
         </div>
@@ -73,7 +68,7 @@
             <tbody>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align"> Client </td>
                 <td class="right_align"> </td>
               </tr>
 
@@ -96,7 +91,7 @@
             <tbody>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align"> Client </td>
                 <td class="right_align"> </td>
               </tr>
 
@@ -198,11 +193,6 @@
                 </tr>
 
                 <tr>
-                  <td class="bold">User Hash</td>
-                  <td class="fixed"> <router-link :to="'/user/' + this.data['user_hash']"> {{ this.data['user_hash'] }} </router-link> </td>
-                </tr>
-
-                <tr>
                   <td class="bold">Buyer</td>
                   <td> <router-link :to="'/buyer/' + this.data['buyer_code']"> {{ this.data['buyer_name'] }} </router-link> </td>
                 </tr>
@@ -228,7 +218,7 @@
             <tbody>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align bold"> Client </td>
                 <td class="right_align"> </td>
               </tr>
 
@@ -251,7 +241,7 @@
             <tbody>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/user/' + this.data['user_hash']"> Client </router-link></td>
+                <td class="left_align bold"> Client </td>
                 <td class="right_align"> </td>
               </tr>
 
@@ -484,7 +474,6 @@ async function getData(page, session_id) {
       data["isp"] = session_data.isp
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
-      data["user_hash"] = parse_uint64(session_data.user_hash)
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()

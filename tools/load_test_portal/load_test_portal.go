@@ -203,19 +203,6 @@ func RunPollThread(ctx context.Context) {
 
 			start = time.Now()
 
-			minutes := start.Unix() / 60
-
-			userHash := uint64(0x131e)
-
-			userSessionList := portal.GetUserSessionList(ctx, redisClient, userHash, minutes, 100)
-			if userSessionList != nil {
-				fmt.Printf("user session list %d (%.3fms)\n", len(userSessionList), float64(time.Since(start).Milliseconds()))
-			}
-
-			// ------------------------------------------------------------------------------------------
-
-			start = time.Now()
-
 			servers := topServersWatcher.GetTopServers()
 
 			fmt.Printf("top servers: %d (%.3fms)\n", len(servers), float64(time.Since(start).Milliseconds()))
@@ -241,6 +228,8 @@ func RunPollThread(ctx context.Context) {
 			if len(serverAddresses) > 0 {
 
 				start := time.Now()
+
+				minutes := start.Unix() / 60
 
 				serverAddress := serverAddresses[0]
 

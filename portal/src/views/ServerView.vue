@@ -71,7 +71,6 @@
             <thead>
               <tr>
                 <th>Session ID</th>
-                <th>User Hash</th>
                 <th>ISP</th>
                 <th>Direct RTT</th>
                 <th>Accelerated RTT</th>
@@ -81,7 +80,6 @@
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
-                <td class="fixed"> <router-link :to='"/user/" + item.user_hash'> {{ item.user_hash }} </router-link> </td>
                 <td>{{item.isp}}</td>
                 <td>{{item.direct_rtt}}</td>
                 <td >{{item.next_rtt}}</td>
@@ -99,7 +97,6 @@
             <thead>
               <tr>
                 <th>Session ID</th>
-                <th>User Hash</th>
                 <th>ISP</th>
                 <th>Connection</th>
                 <th>Platform</th>
@@ -111,7 +108,6 @@
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
-                <td class="fixed"> <router-link :to='"/user/" + item.user_hash'> {{ item.user_hash }} </router-link> </td>
                 <td>{{item.isp}}</td>
                 <td>{{item.connection}}</td>
                 <td>{{item.platform}}</td>
@@ -200,7 +196,6 @@ async function getData(page, server) {
       while (i < res.data.server_sessions.length) {
         const v = res.data.server_sessions[i]
         const session_id = parse_uint64(v.session_id)
-        const user_hash = parse_uint64(v.user_hash)
         const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
         const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
         const connection = getConnectionName(v.connection_type)
@@ -208,7 +203,6 @@ async function getData(page, server) {
         let start_time = new Date(parseInt(v.start_time*1000)).toLocaleString()
         let row = {
           "session_id":session_id,
-          "user_hash":user_hash,
           "isp":v.isp,
           "buyer":v.buyer_name,
           "buyer_link":"/buyer/" + v.buyer_code,

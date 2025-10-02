@@ -55,8 +55,8 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>User Hash</th>
             <th>ISP</th>
+            <th>Platform</th>
             <th>Datacenter</th>
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
@@ -66,8 +66,8 @@ mess// -------------------------------------------------------------------------
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td class="fixed"> <router-link :to='"/user/" + item["User Hash"]'> {{ item["User Hash"] }} </router-link> </td>
             <td> {{ item["ISP"] }} </td>
+            <td> {{ item["Platform"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
             <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
@@ -107,12 +107,10 @@ async function getData(page) {
       const session_id = parse_uint64(v.session_id)
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
-      const user_hash = parse_uint64(v.user_hash)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
-        "User Hash":user_hash,
         "ISP":v.isp,
         "Connection":connection,
         "Platform":platform,

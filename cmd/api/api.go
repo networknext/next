@@ -325,8 +325,6 @@ func main() {
 		service.Router.HandleFunc("/portal/session_counts", isPortalAuthorized(portalSessionCountsHandler))
 		service.Router.HandleFunc("/portal/sessions", isPortalAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/sessions/{page}", isPortalAuthorized(portalSessionsHandler))
-		service.Router.HandleFunc("/portal/user_sessions/{user_hash}", isPortalAuthorized(portalUserSessionsHandler))
-		service.Router.HandleFunc("/portal/user_sessions/{user_hash}/{page}", isPortalAuthorized(portalUserSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isPortalAuthorized(portalSessionDataHandler))
 
 		service.Router.HandleFunc("/portal/server_count", isPortalAuthorized(portalServerCountHandler))
@@ -503,7 +501,6 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 type PortalSessionData struct {
 	SessionId           uint64   `json:"session_id,string"`
 	Score               uint32   `json:"score"`
-	UserHash            uint64   `json:"user_hash,string"`
 	StartTime           uint64   `json:"start_time,string"`
 	ISP                 string   `json:"isp"`
 	ConnectionType      uint8    `json:"connection_type"`
@@ -526,7 +523,6 @@ type PortalSessionData struct {
 
 func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
 	output.SessionId = input.SessionId
-	output.UserHash = input.UserHash
 	output.StartTime = input.StartTime
 	output.ISP = input.ISP
 	output.ConnectionType = input.ConnectionType
@@ -607,59 +603,6 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	response.NumPages = numPages
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
-type PortalUserSessionsResponse struct {
-	Sessions   []PortalSessionData `json:"sessions"`
-	OutputPage int                 `json:"output_page"`
-	NumPages   int                 `json:"num_pages"`
-}
-
-func portalUserSessionsHandler(w http.ResponseWriter, r *http.Request) {
-
-	vars := mux.Vars(r)
-
-	userHash, err := strconv.ParseUint(vars["user_hash"], 16, 64)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	page, err := strconv.ParseInt(vars["page"], 10, 64)
-	if err != nil {
-		page = 0
-	}
-
-	response := PortalUserSessionsResponse{}
-
-	database := service.Database()
-	if database == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	sessions := portal.GetUserSessionList(service.Context, redisPortalClient, userHash, time.Now().Unix()/60, 1000)
-
-	if sessions == nil {
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(sessions))
-	sessions = sessions[begin:end]
-	response.Sessions = make([]PortalSessionData, len(sessions))
-	response.OutputPage = outputPage
-	response.NumPages = numPages
-
-	for i := range response.Sessions {
-		upgradePortalSessionData(database, sessions[i], &response.Sessions[i])
-	}
-
-	w.WriteHeader(http.StatusOK)
-
-	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(response)
 }
 
