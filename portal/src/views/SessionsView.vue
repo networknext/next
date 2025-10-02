@@ -55,8 +55,9 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>ISP</th>
             <th>Platform</th>
+            <th>Connection</th>
+            <th>ISP</th>
             <th>Datacenter</th>
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
@@ -66,8 +67,9 @@ mess// -------------------------------------------------------------------------
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td> {{ item["ISP"] }} </td>
             <td> {{ item["Platform"] }} </td>
+            <td> {{ item["Connection"] }} </td>
+            <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
             <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
