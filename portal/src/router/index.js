@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import SessionsView from '../views/SessionsView.vue'
 import SessionView from '../views/SessionView.vue'
-import UserView from '../views/UserView.vue'
 import ServersView from '../views/ServersView.vue'
 import ServerView from '../views/ServerView.vue'
 import RelaysView from '../views/RelaysView.vue'
@@ -27,11 +26,6 @@ const routes = [
     path: '/session/:id', 
     name: 'session',
     component: SessionView 
-  },    
-  {
-    path: '/user/:id/:page?', 
-    name: 'user',
-    component: UserView 
   },    
   {
     path: '/servers/:page?',

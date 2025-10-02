@@ -25,7 +25,6 @@ import (
 
 type SessionData struct {
 	SessionId      uint64                           `json:"session_id,string"`
-	UserHash       uint64                           `json:"user_hash,string"`
 	StartTime      uint64                           `json:"start_time,string"`
 	ISP            string                           `json:"isp"`
 	ConnectionType uint8                            `json:"connection_type"`
@@ -42,9 +41,8 @@ type SessionData struct {
 }
 
 func (data *SessionData) Value() string {
-	value := fmt.Sprintf("%x|%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%s|%d|",
+	value := fmt.Sprintf("%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%s|%d|",
 		data.SessionId,
-		data.UserHash,
 		data.StartTime,
 		data.ISP,
 		data.ConnectionType,
@@ -66,71 +64,66 @@ func (data *SessionData) Value() string {
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) < 14 {
+	if len(values) < 13 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
 	if err != nil {
 		return
 	}
-	userHash, err := strconv.ParseUint(values[1], 16, 64)
+	startTime, err := strconv.ParseUint(values[1], 16, 64)
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[2], 16, 64)
+	isp := values[2]
+	connectionType, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	isp := values[3]
-	connectionType, err := strconv.ParseUint(values[4], 10, 32)
+	platformType, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	platformType, err := strconv.ParseUint(values[5], 10, 32)
+	latitude, err := strconv.ParseFloat(values[5], 32)
 	if err != nil {
 		return
 	}
-	latitude, err := strconv.ParseFloat(values[6], 32)
+	longitude, err := strconv.ParseFloat(values[6], 32)
 	if err != nil {
 		return
 	}
-	longitude, err := strconv.ParseFloat(values[7], 32)
+	directRTT, err := strconv.ParseUint(values[7], 10, 32)
 	if err != nil {
 		return
 	}
-	directRTT, err := strconv.ParseUint(values[8], 10, 32)
+	nextRTT, err := strconv.ParseUint(values[8], 10, 32)
 	if err != nil {
 		return
 	}
-	nextRTT, err := strconv.ParseUint(values[9], 10, 32)
+	buyerId, err := strconv.ParseUint(values[9], 16, 64)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[10], 16, 64)
+	datacenterId, err := strconv.ParseUint(values[10], 16, 64)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[11], 16, 64)
+	serverAddress := values[11]
+	numRouteRelays, err := strconv.ParseUint(values[12], 10, 32)
 	if err != nil {
 		return
 	}
-	serverAddress := values[12]
-	numRouteRelays, err := strconv.ParseUint(values[13], 10, 32)
-	if err != nil {
-		return
-	}
-	if len(values) != 14+int(numRouteRelays)+1 {
+	if len(values) != 13+int(numRouteRelays)+1 {
 		return
 	}
 	routeRelays := make([]uint64, numRouteRelays)
 	for i := range routeRelays {
-		routeRelays[i], err = strconv.ParseUint(values[14+i], 16, 64)
+		routeRelays[i], err = strconv.ParseUint(values[13+i], 16, 64)
 		if err != nil {
 			return
 		}
 	}
 	data.SessionId = sessionId
-	data.UserHash = userHash
 	data.StartTime = startTime
 	data.ISP = isp
 	data.ConnectionType = uint8(connectionType)
@@ -149,7 +142,6 @@ func (data *SessionData) Parse(value string) {
 func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
 	data.SessionId = rand.Uint64()
-	data.UserHash = rand.Uint64()
 	data.ISP = "Comcast Internet Company, LLC"
 	data.ConnectionType = uint8(common.RandomInt(0, constants.MaxConnectionType))
 	data.PlatformType = uint8(common.RandomInt(0, constants.MaxPlatformType))
@@ -1000,7 +992,7 @@ func CreateSessionInserter(ctx context.Context, redisClient redis.Cmdable, sessi
 	return &inserter
 }
 
-func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, userHash uint64, next bool, score uint32, sessionData *SessionData, sliceData *SliceData) {
+func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, next bool, score uint32, sessionData *SessionData, sliceData *SliceData) {
 
 	currentTime := time.Now()
 
@@ -1026,9 +1018,6 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, u
 
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.pipeline.RPush(ctx, key, sliceData.Value())
-
-	key = fmt.Sprintf("u-%016x-%d", userHash, minutes)
-	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(sessionData.StartTime), Member: sessionIdString})
 
 	key = fmt.Sprintf("svs-%s-%d", sessionData.ServerAddress, minutes)
 	inserter.pipeline.HSet(ctx, key, sessionIdString, currentTime.Unix())
@@ -1294,84 +1283,6 @@ func GetSessionList(ctx context.Context, redisClient redis.Cmdable, sessionIds [
 	}
 
 	return sessionList
-}
-
-func GetUserSessionList(ctx context.Context, redisClient redis.Cmdable, userHash uint64, minutes int64, max int) []*SessionData {
-
-	if max < 1 {
-		core.Error("invalid max passed in to get user session list: %d", max)
-		return nil
-	}
-
-	// get user session ids in order in the range [0,max)
-
-	pipeline := redisClient.Pipeline()
-
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes-1), 0, int64(max-1))
-	pipeline.ZRevRangeWithScores(ctx, fmt.Sprintf("u-%016x-%d", userHash, minutes), 0, int64(max-1))
-
-	cmds, err := pipeline.Exec(ctx)
-	if err != nil {
-		core.Error("failed to get user sessions: %v", err)
-		return nil
-	}
-
-	redis_user_sessions_a, err := cmds[0].(*redis.ZSliceCmd).Result()
-	if err != nil {
-		core.Error("failed to get redis user sessions a: %v", err)
-		return nil
-	}
-
-	redis_user_sessions_b, err := cmds[1].(*redis.ZSliceCmd).Result()
-	if err != nil {
-		core.Error("failed to get redis user sessions b: %v", err)
-		return nil
-	}
-
-	sessionMap := make(map[uint64]uint64)
-
-	for i := range redis_user_sessions_a {
-		sessionId, _ := strconv.ParseUint(redis_user_sessions_a[i].Member.(string), 16, 64)
-		score := uint64(redis_user_sessions_a[i].Score)
-		sessionMap[sessionId] = score
-	}
-
-	for i := range redis_user_sessions_b {
-		sessionId, _ := strconv.ParseUint(redis_user_sessions_b[i].Member.(string), 16, 64)
-		score := uint64(redis_user_sessions_b[i].Score)
-		sessionMap[sessionId] = score
-	}
-
-	type SessionEntry struct {
-		sessionId uint64
-		score     uint64
-	}
-
-	sessionEntries := make([]SessionEntry, len(sessionMap))
-	index := 0
-	for k, v := range sessionMap {
-		sessionEntries[index].sessionId = k
-		sessionEntries[index].score = v
-		index++
-	}
-
-	sort.Slice(sessionEntries, func(i, j int) bool { return sessionEntries[i].sessionId < sessionEntries[j].sessionId })
-	sort.SliceStable(sessionEntries, func(i, j int) bool { return sessionEntries[i].score > sessionEntries[j].score })
-
-	if len(sessionEntries) > max {
-		sessionEntries = sessionEntries[:max]
-	}
-
-	userSessionIds := make([]uint64, len(sessionEntries))
-	index = 0
-	for i := range sessionEntries {
-		userSessionIds[index] = sessionEntries[i].sessionId
-		index++
-	}
-
-	userSessions := GetSessionList(ctx, redisClient, userSessionIds)
-
-	return userSessions
 }
 
 // ------------------------------------------------------------------------------------------------------------

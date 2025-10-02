@@ -557,8 +557,6 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 
 			sessionId := message.SessionId
 
-			userHash := message.UserHash
-
 			var isp string
 			if enableIP2Location {
 				isp = service.GetISP(message.ClientAddress.IP)
@@ -568,7 +566,6 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 
 			sessionData := portal.SessionData{
 				SessionId:      message.SessionId,
-				UserHash:       message.UserHash,
 				StartTime:      message.StartTime,
 				ISP:            isp,
 				ConnectionType: message.ConnectionType,
@@ -612,7 +609,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			}
 
 			if message.SendToPortal {
-				sessionInserter.Insert(service.Context, sessionId, userHash, message.BestNextRTT > 0, message.BestScore, &sessionData, &sliceData)
+				sessionInserter.Insert(service.Context, sessionId, message.BestNextRTT > 0, message.BestScore, &sessionData, &sliceData)
 			}
 
 			if enableRedisTimeSeries {

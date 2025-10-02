@@ -207,7 +207,6 @@ func RunSessionInsertThreads(threadCount int) {
 				for j := 0; j < 1000; j++ {
 
 					sessionId := uint64(thread*1000000) + uint64(j) + iteration
-					userHash := uint64(j) + iteration
 					next := ((uint64(j) + iteration) % 10) == 0
 
 					sessionData := portal.GenerateRandomSessionData()
@@ -220,7 +219,7 @@ func RunSessionInsertThreads(threadCount int) {
 
 					score := uint32(sessionId % 1000)
 
-					sessionInserter.Insert(context.Background(), sessionId, userHash, next, score, sessionData, sliceData)
+					sessionInserter.Insert(context.Background(), sessionId, next, score, sessionData, sliceData)
 
 					clientRelayData := portal.GenerateRandomClientRelayData()
 					clientRelayInserter.Insert(context.Background(), sessionId, clientRelayData)
