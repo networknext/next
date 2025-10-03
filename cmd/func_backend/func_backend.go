@@ -457,6 +457,8 @@ func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
 
 	costs := backend.relayManager.GetCosts(currentTime, relayIds, 100.0, 0.1)
 
+	relayPrice := make([]byte, len(activeRelays))
+
 	costMatrix := &common.CostMatrix{
 		Version:            common.CostMatrixVersion_Write,
 		RelayIds:           relayIds,
@@ -467,6 +469,7 @@ func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
 		RelayDatacenterIds: relayDatacenterIds,
 		DestRelays:         destRelays,
 		Costs:              costs,
+		RelayPrice:         relayPrice,
 	}
 
 	costMatrixData, err := costMatrix.Write()
