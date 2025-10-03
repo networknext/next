@@ -407,5 +407,7 @@ func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 
 	routeMatrix.Costs = make([]byte, numEntries)
 
+	routeMatrix.RelayPrice = make([]byte, numRelays)
+
 	return routeMatrix
 }
