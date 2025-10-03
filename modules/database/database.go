@@ -42,6 +42,7 @@ type Relay struct {
 	PrivateKey         []byte      `json:"private_key"`
 	MaxSessions        int         `json:"max_sessions"`
 	PortSpeed          int         `json:"port_speed"`
+	BandwidthPrice     int         `json:"bandwidth_price"`
 	Version            string      `json:"version"`
 	Seller             *Seller     `json:"seller"`
 	Datacenter         *Datacenter `json:"datacenter"`
@@ -993,6 +994,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		mrc                int
 		port_speed         int
 		max_sessions       int
+		bandwidth_price    int
 	}
 
 	relayRows := make([]RelayRow, 0)
@@ -1170,7 +1172,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nrelays:\n")
 	for _, row := range relayRows {
-		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d\n", row.relay_id, row.relay_name, row.datacenter_id, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions)
+		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d, %d\n", row.relay_id, row.relay_name, row.datacenter_id, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions, row.bandwidth_price)
 	}
 
 	fmt.Printf("\ndatacenters:\n")
@@ -1396,6 +1398,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		relay.MaxSessions = row.max_sessions
 		relay.PortSpeed = row.port_speed
 		relay.Version = row.version.String
+		relay.BandwidthPrice = row.bandwidth_price
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {
