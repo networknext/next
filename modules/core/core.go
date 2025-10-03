@@ -194,13 +194,14 @@ func AnonymizeAddress(address net.UDPAddr) net.UDPAddr {
 type RouteManager struct {
 	NumRoutes       int
 	RouteCost       [constants.MaxRoutesPerEntry]int32
+	RoutePrice      [constants.MaxRoutesPerEntry]int32
 	RouteHash       [constants.MaxRoutesPerEntry]uint32
 	RouteNumRelays  [constants.MaxRoutesPerEntry]int32
 	RouteRelays     [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
 	RelayDatacenter []uint64
 }
 
-func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
+func (manager *RouteManager) AddRoute(cost int32, price int32, relays ...int32) {
 
 	// no routes above cost 255 are allowed
 	if cost >= 255 {
@@ -222,6 +223,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 
 		manager.NumRoutes = 1
 		manager.RouteCost[0] = cost
+		manager.RoutePrice[0] = price
 		manager.RouteHash[0] = RouteHash(relays...)
 		manager.RouteNumRelays[0] = int32(len(relays))
 		for i := range relays {
@@ -244,6 +246,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 			// cost is greater than existing entries. append.
 
 			manager.RouteCost[manager.NumRoutes] = cost
+			manager.RoutePrice[manager.NumRoutes] = price
 			manager.RouteHash[manager.NumRoutes] = hash
 			manager.RouteNumRelays[manager.NumRoutes] = int32(len(relays))
 			for i := range relays {
@@ -265,6 +268,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 			manager.NumRoutes++
 			for i := manager.NumRoutes - 1; i > insertIndex; i-- {
 				manager.RouteCost[i] = manager.RouteCost[i-1]
+				manager.RoutePrice[i] = manager.RoutePrice[i-1]
 				manager.RouteHash[i] = manager.RouteHash[i-1]
 				manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
 				for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
@@ -272,6 +276,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 				}
 			}
 			manager.RouteCost[insertIndex] = cost
+			manager.RoutePrice[insertIndex] = price
 			manager.RouteHash[insertIndex] = hash
 			manager.RouteNumRelays[insertIndex] = int32(len(relays))
 			for i := range relays {
@@ -305,6 +310,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 
 		for i := manager.NumRoutes - 1; i > insertIndex; i-- {
 			manager.RouteCost[i] = manager.RouteCost[i-1]
+			manager.RoutePrice[i] = manager.RoutePrice[i-1]
 			manager.RouteHash[i] = manager.RouteHash[i-1]
 			manager.RouteNumRelays[i] = manager.RouteNumRelays[i-1]
 			for j := 0; j < int(manager.RouteNumRelays[i]); j++ {
@@ -313,6 +319,7 @@ func (manager *RouteManager) AddRoute(cost int32, relays ...int32) {
 		}
 
 		manager.RouteCost[insertIndex] = cost
+		manager.RoutePrice[insertIndex] = price
 		manager.RouteHash[insertIndex] = hash
 		manager.RouteNumRelays[insertIndex] = int32(len(relays))
 
@@ -343,6 +350,7 @@ type RouteEntry struct {
 	DirectCost     int32
 	NumRoutes      int32
 	RouteCost      [constants.MaxRoutesPerEntry]int32
+	RoutePrice     [constants.MaxRoutesPerEntry]int32
 	RouteHash      [constants.MaxRoutesPerEntry]uint32
 	RouteNumRelays [constants.MaxRoutesPerEntry]int32
 	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
@@ -460,7 +468,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 					directCost := int32(cost[index])
 
 					if directCost < 255 {
-						routeManager.AddRoute(directCost, int32(i), int32(j))
+						routeManager.AddRoute(directCost, int32(relayPrice[i]) + int32(relayPrice[j]), int32(i), int32(j))
 					}
 
 					// add subdivided routes
@@ -477,7 +485,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 							ikj_cost := indirect[i][j][k_index].cost
 							cost := int32(ikj_cost)
 							if cost < directCost {
-								routeManager.AddRoute(cost, int32(i), int32(k), int32(j))
+								routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[k]) + int32(relayPrice[j]), int32(i), int32(k), int32(j))
 							}
 						}
 
@@ -489,7 +497,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 							ixk_cost := indirect[i][k][x_index].cost
 							cost := int32(ixk_cost) + int32(kj_cost)
 							if cost < directCost {
-								routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(j))
+								routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[x]) + int32(relayPrice[k]) + int32(relayPrice[j]), int32(i), int32(x), int32(k), int32(j))
 							}
 						}
 
@@ -500,7 +508,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 							y := indirect[k][j][y_index].relay
 							cost := int32(ik_cost) + int32(kyj_cost)
 							if cost < directCost {
-								routeManager.AddRoute(cost, int32(i), int32(k), int32(y), int32(j))
+								routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[k]) + int32(relayPrice[y]) + int32(relayPrice[j]), int32(i), int32(k), int32(y), int32(j))
 							}
 						}
 
@@ -514,7 +522,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 								y := int(indirect[k][j][y_index].relay)
 								cost := int32(ixk_cost) + int32(kyj_cost)
 								if cost < directCost {
-									routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(y), int32(j))
+									routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[x]) + int32(relayPrice[k]) + int32(relayPrice[y]) + int32(relayPrice[j]), int32(i), int32(x), int32(k), int32(y), int32(j))
 								}
 							}
 						}
@@ -529,6 +537,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, 
 
 					for u := 0; u < numRoutes; u++ {
 						routes[index].RouteCost[u] = routeManager.RouteCost[u]
+						routes[index].RoutePrice[u] = routeManager.RoutePrice[u]
 						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
 						numRelays := int(routes[index].RouteNumRelays[u])
 						for v := 0; v < numRelays; v++ {
@@ -665,7 +674,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 					directCost := int32(cost[index])
 
 					if directCost < 255 {
-						routeManager.AddRoute(directCost, int32(i), int32(j))
+						routeManager.AddRoute(directCost, int32(relayPrice[i]) + int32(relayPrice[j]), int32(i), int32(j))
 					}
 
 					if destinationRelay[i] || destinationRelay[j] {
@@ -683,7 +692,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 							{
 								cost := int32(indirect[i][j][k_index].cost)
 								if cost < directCost {
-									routeManager.AddRoute(int32(cost), int32(i), int32(k), int32(j))
+									routeManager.AddRoute(int32(cost), int32(relayPrice[i]) + int32(relayPrice[k]) + int32(relayPrice[j]), int32(i), int32(k), int32(j))
 								}
 							}
 
@@ -694,7 +703,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 								x := indirect[i][k][x_index].relay
 								cost := int32(indirect[i][k][x_index].cost)
 								if cost < directCost {
-									routeManager.AddRoute(int32(cost)+int32(kj_cost), int32(i), int32(x), int32(k), int32(j))
+									routeManager.AddRoute(int32(cost)+int32(kj_cost), int32(relayPrice[i]) + int32(relayPrice[x]) + int32(relayPrice[k]) + int32(relayPrice[j]), int32(i), int32(x), int32(k), int32(j))
 								}
 							}
 
@@ -705,7 +714,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 								y := indirect[k][j][y_index].relay
 								cost := int32(ik_cost) + int32(kyj_cost)
 								if cost < directCost {
-									routeManager.AddRoute(cost, int32(i), int32(k), int32(y), int32(j))
+									routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[k]) + int32(relayPrice[y]) + int32(relayPrice[j]), int32(i), int32(k), int32(y), int32(j))
 								}
 							}
 
@@ -719,7 +728,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 									y := int(indirect[k][j][y_index].relay)
 									cost := int32(ixk_cost) + int32(kyj_cost)
 									if cost < directCost {
-										routeManager.AddRoute(cost, int32(i), int32(x), int32(k), int32(y), int32(j))
+										routeManager.AddRoute(cost, int32(relayPrice[i]) + int32(relayPrice[x]) + int32(relayPrice[k]) + int32(relayPrice[y]) + int32(relayPrice[j]), int32(i), int32(x), int32(k), int32(y), int32(j))
 									}
 								}
 							}
@@ -735,6 +744,7 @@ func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8,
 
 					for u := 0; u < numRoutes; u++ {
 						routes[index].RouteCost[u] = routeManager.RouteCost[u]
+						routes[index].RoutePrice[u] = routeManager.RoutePrice[u]
 						routes[index].RouteNumRelays[u] = routeManager.RouteNumRelays[u]
 						numRelays := int(routes[index].RouteNumRelays[u])
 						for v := 0; v < numRelays; v++ {
