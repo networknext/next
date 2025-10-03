@@ -558,6 +558,8 @@ func test_optimize() {
 
 				currentTime := time.Now().Unix()
 
+				relayPrice := make([]uint8, NumRelays)
+
 				costs := relayManager.GetCosts(currentTime, relayIds, MaxJitter, MaxPacketLoss)
 
 				costMatrix := &common.CostMatrix{
@@ -599,7 +601,7 @@ func test_optimize() {
 					RelayLongitudes:    relayLongitudes,
 					RelayDatacenterIds: relayDatacenterIds,
 					DestRelays:         destRelays,
-					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, relayDatacenterIds, destRelays),
+					RouteEntries:       core.Optimize2(NumRelays, numSegments, costs, relayPrice, relayDatacenterIds, destRelays),
 					BinFileBytes:       int32(len(binFileData)),
 					BinFileData:        binFileData,
 					Costs:              costs,

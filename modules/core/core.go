@@ -348,7 +348,7 @@ type RouteEntry struct {
 	RouteRelays    [constants.MaxRoutesPerEntry][constants.MaxRouteRelays]int32
 }
 
-func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []uint64) []RouteEntry {
+func Optimize(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, relayDatacenter []uint64) []RouteEntry {
 
 	// build a matrix of indirect routes from relays i -> j that have lower cost than direct, eg. i -> (x) -> j, where x is every other relay
 
@@ -547,7 +547,7 @@ func Optimize(numRelays int, numSegments int, cost []uint8, relayDatacenter []ui
 	return routes
 }
 
-func Optimize2(numRelays int, numSegments int, cost []uint8, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
+func Optimize2(numRelays int, numSegments int, cost []uint8, relayPrice []uint8, relayDatacenter []uint64, destinationRelay []bool) []RouteEntry {
 
 	// Same as "Optimize", but it only optimizes to relays marked as destination relays.
 
