@@ -572,6 +572,7 @@ func test_optimize() {
 					RelayDatacenterIds: relayDatacenterIds,
 					DestRelays:         destRelays,
 					Costs:              costs,
+					RelayPrice:         relayPrice,
 				}
 
 				costMatrixData, err := costMatrix.Write()
@@ -605,6 +606,7 @@ func test_optimize() {
 					BinFileBytes:       int32(len(binFileData)),
 					BinFileData:        binFileData,
 					Costs:              costs,
+					RelayPrice:         relayPrice,
 				}
 
 				routeMatrixData, err := routeMatrix.Write()
