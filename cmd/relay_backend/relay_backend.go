@@ -1020,8 +1020,11 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, float32(maxJitter), maxPacketLoss)
 
-				// todo: get relay price from relay data
 				relayPrice := make([]byte, numRelays)
+				
+				copy(relayPrice, relayData.RelayPrice)
+
+				// todo: if a relay is full, set its price to 255
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
