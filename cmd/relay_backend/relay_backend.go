@@ -1024,8 +1024,6 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				
 				copy(relayPrice, relayData.RelayPrice)
 
-				// todo: if a relay is full, set its price to 255
-
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
 					RelayIds:           relayData.RelayIds,

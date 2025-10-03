@@ -540,6 +540,7 @@ type TestEnvironment struct {
 	relayArray []*TestRelayData
 	relays     map[string]*TestRelayData
 	cost       [][]uint8
+	price      []uint8
 }
 
 func NewTestEnvironment() *TestEnvironment {
@@ -551,6 +552,7 @@ func NewTestEnvironment() *TestEnvironment {
 func (env *TestEnvironment) Clear() {
 	numRelays := len(env.relays)
 	env.cost = make([][]uint8, numRelays)
+	env.price = make([]uint8, numRelays)
 	for i := 0; i < numRelays; i++ {
 		env.cost[i] = make([]uint8, numRelays)
 		for j := 0; j < numRelays; j++ {
@@ -619,6 +621,11 @@ func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string
 		i, j = j, i
 	}
 	env.cost[i][j] = cost
+}
+
+func (env *TestEnvironment) SetPrice(relayName string, price uint8) {
+	i := env.relays[relayName].index
+	env.price[i] = price
 }
 
 func (env *TestEnvironment) GetRelayIndex(relayName string) int {
@@ -808,6 +815,40 @@ func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []core.RouteEntry, so
 	return &route
 }
 
+func (env *TestEnvironment) GetRandomBestRoute_LowestPrice(routeMatrix []core.RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) *TestRouteData {
+	sourceRelayIndex := make([]int32, len(sourceRelays))
+	for i := range sourceRelays {
+		sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
+		if sourceRelayIndex[i] == -1 {
+			panic("bad source relay name")
+		}
+	}
+	destRelayIndex := make([]int32, len(destRelays))
+	for i := range destRelays {
+		destRelayIndex[i] = int32(env.GetRelayIndex(destRelays[i]))
+		if destRelayIndex[i] == -1 {
+			panic("bad dest relay name")
+		}
+	}
+	var bestRouteCost int32
+	var bestRouteNumRelays int32
+	var bestRouteRelays [constants.MaxRouteRelays]int32
+	debug := ""
+	selectThreshold := int32(2)
+	core.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	if bestRouteNumRelays == 0 {
+		return nil
+	}
+	var route TestRouteData
+	route.cost = bestRouteCost
+	route.relays = make([]string, bestRouteNumRelays)
+	for j := 0; j < int(bestRouteNumRelays); j++ {
+		relayIndex := bestRouteRelays[j]
+		route.relays[j] = env.relayArray[relayIndex].name
+	}
+	return &route
+}
+
 func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [constants.MaxRouteRelays]int32) {
 	relayIdToIndex := make(map[uint64]int32)
 	for _, v := range env.relays {
@@ -925,9 +966,7 @@ func TestTheTestEnvironment(t *testing.T) {
 
 	numSegments := numRelays
 
-	relayPrice := make([]uint8, numRelays)
-
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayPrice, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceIndex := env.GetRelayIndex("losangeles")
 	destIndex := env.GetRelayIndex("chicago")
@@ -2185,6 +2224,67 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 	if bestRoute.cost == 17 {
 		assert.Equal(t, []string{"chicago.a", "b", "losangeles.b"}, bestRoute.relays)
 	}
+}
+
+func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles.a", "10.0.0.1")
+	env.AddRelay("losangeles.b", "10.0.0.2")
+	env.AddRelay("chicago.a", "10.0.0.3")
+	env.AddRelay("chicago.b", "10.0.0.4")
+	env.AddRelay("a", "10.0.0.5")
+	env.AddRelay("b", "10.0.0.6")
+
+	env.SetCost("losangeles.a", "chicago.a", 100)
+	env.SetCost("losangeles.a", "chicago.b", 150)
+	env.SetCost("losangeles.a", "a", 10)
+
+	env.SetCost("a", "chicago.a", 20)
+	env.SetCost("a", "chicago.b", 20)
+	env.SetCost("a", "b", 10)
+
+	env.SetCost("b", "chicago.a", 5)
+	env.SetCost("b", "chicago.b", 5)
+
+	env.SetCost("losangeles.b", "chicago.a", 50)
+	env.SetCost("losangeles.b", "chicago.b", 50)
+	env.SetCost("losangeles.b", "a", 10)
+	env.SetCost("losangeles.b", "b", 5)
+
+	env.SetPrice("chicago.b", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	relayPrice := make([]uint8, numRelays)
+
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayPrice, relayDatacenters)
+
+	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
+	sourceRelayCosts := []int32{5, 2}
+
+	destRelayNames := []string{"chicago.a", "chicago.b"}
+
+	maxCost := int32(20)
+
+	bestRoute := env.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+
+	assert.True(t, bestRoute != nil)
+	assert.True(t, bestRoute.cost > 0)
+	assert.True(t, bestRoute.cost <= maxCost)
+
+	fmt.Printf("cost = %d\n", bestRoute.cost)
+
+	assert.True(t, bestRoute.cost == 12+constants.CostBias)
+
+	assert.Equal(t, []string{"losangeles.b", "b", "chicago.a"}, bestRoute.relays)
 }
 
 func TestGetRandomBestRoute_NoRoute(t *testing.T) {
@@ -5224,5 +5324,3 @@ func TestPagination(t *testing.T) {
 	}
 
 }
-
-// todo: add tests for optimize and optimize2 that check route prices
