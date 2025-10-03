@@ -1184,6 +1184,7 @@ func GetCurrentRouteCost(routeMatrix []RouteEntry, routeNumRelays int32, routeRe
 
 type BestRoute struct {
 	Cost          int32
+	Price         int32
 	NumRelays     int32
 	Relays        [constants.MaxRouteRelays]int32
 	NeedToReverse bool
@@ -1232,6 +1233,7 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				}
 
 				bestRoutes[numRoutes].Cost = cost
+				bestRoutes[numRoutes].Price = entry.RoutePrice[k]
 				bestRoutes[numRoutes].NumRelays = entry.RouteNumRelays[k]
 
 				for l := 0; l < len(entry.RouteRelays[0]); l++ {
@@ -1494,9 +1496,101 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 	return
 }
 
+func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (foundRoute bool, routeDiversity int32) {
+
+	foundRoute = false
+	routeDiversity = 0
+
+	if maxCost == -1 {
+		return
+	}
+
+	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
+	if debug != nil {
+		*debug += fmt.Sprintf("best route cost is %d\n", bestRouteCost)
+	}
+
+	if bestRouteCost > maxCost {
+		if debug != nil {
+			*debug += fmt.Sprintf("could not find any next route <= max cost %d\n", maxCost)
+		}
+		*out_bestRouteCost = bestRouteCost
+		return
+	}
+
+	numBestRoutes := 0
+	bestRoutes := make([]BestRoute, 1024)
+	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
+	if numBestRoutes == 0 {
+		if debug != nil {
+			*debug += "could not find any next routes\n"
+		}
+		return
+	}
+
+	bestRoutes = bestRoutes[:numBestRoutes]
+
+	if debug != nil {
+		numClientRelays := 0
+		for i := range sourceRelays {
+			if sourceRelayCost[i] != 255 {
+				numClientRelays++
+			}
+		}
+		*debug += fmt.Sprintf("found %d suitable routes in [%d,%d] from %d/%d client relays\n", numBestRoutes, bestRouteCost, bestRouteCost+threshold, numClientRelays, len(sourceRelays))
+	}
+
+	// find only routes with the lowest price
+
+	filteredBestRoutes := make([]BestRoute, 0, len(bestRoutes))
+
+	lowestPrice := int32(1000000)
+
+	for i := range bestRoutes {
+		if bestRoutes[i].Price < lowestPrice {
+			filteredBestRoutes = filteredBestRoutes[:0]
+			filteredBestRoutes = append(filteredBestRoutes, bestRoutes[i])
+			lowestPrice = bestRoutes[i].Price
+		} else if bestRoutes[i].Price == lowestPrice {
+			filteredBestRoutes = append(filteredBestRoutes, bestRoutes[i])
+		}
+	}
+
+	numBestRoutes = len(filteredBestRoutes)
+
+	// any route with price >= 255 is not selectable for a new route
+
+	if lowestPrice >= 255 {
+		*debug += fmt.Sprintf("lowest price is >= 255, found no selectable routes")
+		return
+	}
+
+	// randomly select between lowest price routes
+
+	randomIndex := math_rand.Intn(numBestRoutes)
+
+	*out_bestRouteCost = filteredBestRoutes[randomIndex].Cost + constants.CostBias
+	*out_bestRouteNumRelays = filteredBestRoutes[randomIndex].NumRelays
+
+	if !filteredBestRoutes[randomIndex].NeedToReverse {
+		copy(out_bestRouteRelays[:], filteredBestRoutes[randomIndex].Relays[:filteredBestRoutes[randomIndex].NumRelays])
+	} else {
+		numRouteRelays := filteredBestRoutes[randomIndex].NumRelays
+		for i := int32(0); i < numRouteRelays; i++ {
+			out_bestRouteRelays[numRouteRelays-1-i] = filteredBestRoutes[randomIndex].Relays[i]
+		}
+	}
+
+	foundRoute = true
+
+	return
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
 func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (hasRoute bool, routeDiversity int32) {
 
-	return GetRandomBestRoute(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
+	return GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
 }
 
 func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, switchThreshold int32, currentRouteNumRelays int32, currentRouteRelays [constants.MaxRouteRelays]int32, out_updatedRouteCost *int32, out_updatedRouteNumRelays *int32, out_updatedRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (routeChanged bool, routeLost bool) {
