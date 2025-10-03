@@ -2205,9 +2205,9 @@ func GeneratePingToken(expireTimestamp uint64, from *net.UDPAddr, to *net.UDPAdd
 
 // ------------------------------------------------------
 
-func GetSessionScore(next bool, directRTT int32, nextRTT int32) uint32 {
+func GetSessionScore(directRTT int32, nextRTT int32) uint32 {
 	var score uint32
-	if next {
+	if nextRTT > 0 {
 		improvement := directRTT - nextRTT
 		if improvement < 0 {
 			improvement = 0
