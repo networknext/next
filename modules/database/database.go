@@ -587,6 +587,7 @@ func (database *Database) String() string {
 		PublicAddress   string
 		InternalAddress string
 		InternalGroup   string
+		BandwidthPrice  string
 		Version         string
 		PublicKey       string
 		PrivateKey      string
@@ -597,12 +598,13 @@ func (database *Database) String() string {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%016x", v.Id),
-			Name:          v.Name,
-			Version:       v.Version,
-			PublicAddress: v.PublicAddress.String(),
-			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
-			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
+			Id:             fmt.Sprintf("%016x", v.Id),
+			Name:           v.Name,
+			Version:        v.Version,
+			PublicAddress:  v.PublicAddress.String(),
+			BandwidthPrice: fmt.Sprintf("%d", v.BandwidthPrice),
+			PublicKey:      base64.StdEncoding.EncodeToString(v.PublicKey),
+			PrivateKey:     base64.StdEncoding.EncodeToString(v.PrivateKey),
 		}
 
 		if v.HasInternalAddress {
