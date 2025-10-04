@@ -2033,6 +2033,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_bahrain_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.buenosaires.1" = {
@@ -2048,6 +2049,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_buenosaires_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.dallas.1" = {
@@ -2063,6 +2065,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_dallas_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.frankfurt.1" = {
@@ -2078,6 +2081,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_frankfurt_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.ireland.1" = {
@@ -2093,6 +2097,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_ireland_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.lima.1" = {
@@ -2108,6 +2113,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_lima_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.london.1" = {
@@ -2123,6 +2129,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_london_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.losangeles.1" = {
@@ -2138,6 +2145,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_losangeles_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.miami.1" = {
@@ -2153,6 +2161,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_miami_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.oman.1" = {
@@ -2168,6 +2177,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_oman_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.paris.1" = {
@@ -2183,6 +2193,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_paris_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.queretaro.1" = {
@@ -2198,6 +2209,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_queretaro_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.santiago.1" = {
@@ -2213,6 +2225,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_santiago_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.saopaulo.1" = {
@@ -2228,6 +2241,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_saopaulo_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.spain.1" = {
@@ -2243,6 +2257,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_spain_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.telaviv.1" = {
@@ -2258,6 +2273,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_telaviv_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.uae.1" = {
@@ -2273,6 +2289,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_uae_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.virginia.1" = {
@@ -2288,6 +2305,7 @@ module "relay_amazon_bahrain_1" {
 	      "ssh_ip"           = module.relay_amazon_virginia_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	

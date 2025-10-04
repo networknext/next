@@ -565,6 +565,7 @@ terraform {
 	      "ssh_ip"           = module.relay_%s.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	`
@@ -740,6 +741,7 @@ terraform {
 	      "ssh_ip"           = module.relay_%s.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	`

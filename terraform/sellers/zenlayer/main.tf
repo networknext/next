@@ -275,6 +275,7 @@ output "relays" {
         "ssh_ip",
         "ssh_port",
         "ssh_user",
+        "zenlayer",
       ], 
       [
         k,
@@ -289,6 +290,7 @@ output "relays" {
         v.public_address,
         22,
         local.ssh_user,
+        1,
       ]
     )
   }
