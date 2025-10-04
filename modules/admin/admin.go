@@ -583,6 +583,7 @@ type RelayData struct {
 	MRC              int    `json:"mrc"`
 	PortSpeed        int    `json:"port_speed"`
 	MaxSessions      int    `json:"max_sessions"`
+	BandwidthPrice   int    `json:"bandwidth_price"`
 	Notes            string `json:"notes"`
 }
 
@@ -620,6 +621,7 @@ INSERT INTO relays
 	mrc,
 	port_speed,
 	max_sessions,
+	bandwidth_price,
 	notes
 )
 VALUES
@@ -640,7 +642,8 @@ VALUES
 	$14,
 	$15,
 	$16,
-	$17
+	$17,
+	$18
 )
 RETURNING relay_id;`
 	result := controller.pgsql.QueryRow(query,
@@ -660,6 +663,7 @@ RETURNING relay_id;`
 		relayData.MRC,
 		relayData.PortSpeed,
 		relayData.MaxSessions,
+		relayData.BandwidthPrice,
 		relayData.Notes,
 	)
 	relayId := uint64(0)
@@ -690,6 +694,7 @@ SELECT
 	mrc,
 	port_speed,
 	max_sessions,
+	bandwidth_price,
 	notes
 FROM
 	relays;`
@@ -718,6 +723,7 @@ FROM
 			&row.MRC,
 			&row.PortSpeed,
 			&row.MaxSessions,
+			&row.BandwidthPrice,
 			&row.Notes,
 		)
 		if err != nil {
@@ -749,6 +755,7 @@ SELECT
 	mrc,
 	port_speed,
 	max_sessions,
+	bandwidth_price,
 	notes
 FROM
 	relays
@@ -778,6 +785,7 @@ WHERE
 			&relay.MRC,
 			&relay.PortSpeed,
 			&relay.MaxSessions,
+			&relay.BandwidthPrice,
 			&relay.Notes,
 		)
 		if err != nil {
@@ -824,9 +832,10 @@ SET
 	mrc = $14,
 	port_speed = $15,
 	max_sessions = $16,
-	notes = $17
+	bandwidth_price = $17,
+	notes = $18
 WHERE
-	relay_id = $18;`
+	relay_id = $19;`
 	_, err := controller.pgsql.Exec(sql,
 		relayData.RelayName,
 		relayData.DatacenterId,
@@ -844,6 +853,7 @@ WHERE
 		relayData.MRC,
 		relayData.PortSpeed,
 		relayData.MaxSessions,
+		relayData.BandwidthPrice,
 		relayData.Notes,
 		relayData.RelayId,
 	)

@@ -12,8 +12,8 @@ import (
 
 const (
 	CostMatrixVersion_Min   = 1 // the minimum version we can read
-	CostMatrixVersion_Max   = 1 // the maximum version we can read
-	CostMatrixVersion_Write = 1 // the version we write
+	CostMatrixVersion_Max   = 2 // the maximum version we can read
+	CostMatrixVersion_Write = 2 // the version we write
 )
 
 type CostMatrix struct {
@@ -26,12 +26,13 @@ type CostMatrix struct {
 	RelayDatacenterIds []uint64
 	DestRelays         []bool
 	Costs              []uint8
+	RelayPrice         []uint8
 }
 
 func (m *CostMatrix) GetMaxSize() int {
 	// IMPORTANT: This must be an upper bound *and* a multiple of 4
 	numRelays := len(m.RelayIds)
-	size := 256 + numRelays*(8+19+constants.MaxRelayNameLength+4+4+8+1) + core.TriMatrixLength(numRelays)
+	size := 256 + numRelays*(8+19+constants.MaxRelayNameLength+4+4+8+1) + core.TriMatrixLength(numRelays) + numRelays + 4
 	size += 4
 	size -= size % 4
 	return size
@@ -73,10 +74,15 @@ func (m *CostMatrix) Serialize(stream encoding.Stream) error {
 	if stream.IsReading() {
 		costSize := core.TriMatrixLength(int(numRelays))
 		m.Costs = make([]uint8, costSize)
+		m.RelayPrice = make([]uint8, numRelays)
 	}
 
 	if len(m.Costs) > 0 {
 		stream.SerializeBytes(m.Costs)
+	}
+
+	if m.Version >= 2 && len(m.RelayPrice) > 0 {
+		stream.SerializeBytes(m.RelayPrice)
 	}
 
 	if stream.IsReading() {
@@ -111,7 +117,7 @@ func GenerateRandomCostMatrix(numRelays int) CostMatrix {
 	}
 
 	costMatrix := CostMatrix{
-		Version: uint32(RandomInt(CostMatrixVersion_Min, CostMatrixVersion_Max)),
+		Version: CostMatrixVersion_Write,
 	}
 
 	costMatrix.RelayIds = make([]uint64, numRelays)
@@ -136,6 +142,11 @@ func GenerateRandomCostMatrix(numRelays int) CostMatrix {
 	costMatrix.Costs = make([]uint8, costSize)
 	for i := 0; i < costSize; i++ {
 		costMatrix.Costs[i] = uint8(RandomInt(0, 255))
+	}
+
+	costMatrix.RelayPrice = make([]uint8, numRelays)
+	for i := 0; i < numRelays; i++ {
+		costMatrix.RelayPrice[i] = uint8(RandomInt(0,255))
 	}
 
 	return costMatrix

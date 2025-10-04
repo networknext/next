@@ -2038,6 +2038,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Name          string
 		PublicAddress string
 		Id            string
+		Price         int
 		Status        string
 		Uptime        string
 		Sessions      int
@@ -2056,6 +2057,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		relay.Name = adminRelaysResponse.Relays[i].RelayName
 		relay.Id = fmt.Sprintf("%x", common.HashString(relayAddress))
 		relay.PublicAddress = relayAddress
+		relay.Price = adminRelaysResponse.Relays[i].BandwidthPrice
 		relay.Status = "offline"
 		relay.Sessions = 0
 		relay.Version = adminRelaysResponse.Relays[i].Version
@@ -2839,8 +2841,9 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 		DestRelays:         costMatrix.DestRelays,
-		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayPrice, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 		Costs:              costMatrix.Costs,
+		RelayPrice:         costMatrix.RelayPrice,
 	}
 
 	routeMatrixData, err := routeMatrix.Write()

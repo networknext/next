@@ -132,6 +132,7 @@ output "relays" {
         "ssh_ip",
         "ssh_port",
         "ssh_user",
+        "bandwidth_price",
       ], 
       [
         k,
@@ -146,6 +147,7 @@ output "relays" {
         google_compute_address.public[k].address,
         22,
         "ubuntu",
+        2,
       ]
     )
   }

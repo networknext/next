@@ -8,7 +8,7 @@ locals {
   vpn_address                 = "45.79.157.168"
   ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
-  relay_version               = "relay-release"
+  relay_version               = "relay-140"
   relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
   relay_backend_public_key    = "Z+9puZkCkV03nm4yO49ySF+H181jAlWVy7JPGMlk10I="
   relay_backend_url           = "relay-dev.virtualgo.net"
@@ -28,9 +28,6 @@ locals {
     "google.saopaulo.1",
     "google.saopaulo.2",
     "google.saopaulo.3",
-    "unity.saopaulo.1",
-    "unity.saopaulo.2",
-    "unity.saopaulo.3",
   ]
 
   sellers = {
@@ -607,6 +604,7 @@ resource "networknext_relay" relays {
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
   version = local.relay_version
+  bandwidth_price = each.value.bandwidth_price
 }
 
 # ----------------------------------------------------------------------------------------

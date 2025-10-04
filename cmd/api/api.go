@@ -557,7 +557,7 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 			output.RouteRelayAddresses[i] = relay.PublicAddress.String()
 		}
 	}
-	output.Score = core.GetSessionScore(input.NextRTT > 0, int32(input.DirectRTT), int32(input.NextRTT))
+	output.Score = core.GetSessionScore(int32(input.DirectRTT), int32(input.NextRTT))
 }
 
 type PortalSessionsResponse struct {

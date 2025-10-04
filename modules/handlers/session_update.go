@@ -168,7 +168,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.SliceNumber >= 1 {
-		score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
+		score := core.GetSessionScore(int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
 		if uint32(score) <= state.Input.BestScore {
 			state.Input.BestScore = uint32(score)
 			state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)

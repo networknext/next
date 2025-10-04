@@ -78,6 +78,7 @@ CREATE TABLE relays (
   mrc integer not null default 0,
   port_speed integer not null default 1000,
   max_sessions integer not null default 0,
+  bandwidth_price integer not null default 0,
   notes varchar not null default '',
   primary key (relay_id),
   constraint fk_datacenter foreign key (datacenter_id) references datacenters(datacenter_id),

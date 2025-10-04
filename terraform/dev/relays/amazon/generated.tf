@@ -1809,6 +1809,7 @@ module "relay_amazon_ohio_1" {
 	      "ssh_ip"           = module.relay_amazon_ohio_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	    "amazon.ohio.2" = {
@@ -1824,6 +1825,7 @@ module "relay_amazon_ohio_1" {
 	      "ssh_ip"           = module.relay_amazon_ohio_2.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
+	      "bandwidth_price"  = 2
 	    }
 
 	

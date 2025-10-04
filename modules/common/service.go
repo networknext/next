@@ -53,6 +53,7 @@ type RelayData struct {
 	RelayLongitudes    []float32
 	RelaySellerIds     []uint64
 	RelayDatacenterIds []uint64
+	RelayPrice         []byte
 	RelayIdToIndex     map[uint64]int
 	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
@@ -692,6 +693,7 @@ func generateRelayData(database *db.Database) *RelayData {
 	relayData.RelayLongitudes = make([]float32, numRelays)
 	relayData.RelaySellerIds = make([]uint64, numRelays)
 	relayData.RelayDatacenterIds = make([]uint64, numRelays)
+	relayData.RelayPrice = make([]byte, numRelays)
 
 	for i := 0; i < numRelays; i++ {
 		relayData.RelayIds[i] = relayData.RelayArray[i].Id
@@ -701,6 +703,7 @@ func generateRelayData(database *db.Database) *RelayData {
 		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)
 		relayData.RelaySellerIds[i] = relayData.RelayArray[i].Seller.Id
 		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.Id
+		relayData.RelayPrice[i] = byte(relayData.RelayArray[i].BandwidthPrice)
 	}
 
 	// build a mapping from relay id to relay index
