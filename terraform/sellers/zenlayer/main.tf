@@ -275,7 +275,7 @@ output "relays" {
         "ssh_ip",
         "ssh_port",
         "ssh_user",
-        "zenlayer",
+        "bandwidth_price",
       ], 
       [
         k,

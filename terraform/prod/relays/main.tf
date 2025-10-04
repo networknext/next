@@ -111,7 +111,6 @@ locals {
     "Zenlayer" = "zenlayer"
     "Latitude" = "latitude"
     "Equinix" = "equinix"
-    "Unity" = "unity"
     "Azure" = "azure"
     "UK2Group" = "uk2group"
     "OVH" = "ovh"
@@ -958,26 +957,6 @@ module "gcore_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# UNITY RELAYS
-# ============
-
-locals {
-
-  unity_relays = {
-
-     //...
- 
-  }
-}
-
-module "unity_relays" {
-  relays = local.unity_relays
-  source = "../../sellers/unity"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # ==============
 # ONEQODE RELAYS
 # ==============
@@ -1282,7 +1261,6 @@ locals {
       keys(module.zenlayer_relays.relays),
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
-      keys(module.unity_relays.relays),
       keys(module.azure_relays.relays),
       keys(module.uk2group_relays.relays),
       keys(module.ovh_relays.relays),
@@ -1306,7 +1284,6 @@ locals {
     module.zenlayer_relays.relays,
     module.latitude_relays.relays,
     module.equinix_relays.relays,
-    module.unity_relays.relays,
     module.azure_relays.relays,
     module.uk2group_relays.relays,
     module.ovh_relays.relays,
@@ -1329,7 +1306,6 @@ locals {
     module.zenlayer_relays.datacenters,
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
-    module.unity_relays.datacenters,
     module.azure_relays.datacenters,
     module.uk2group_relays.datacenters,
     module.ovh_relays.datacenters,
@@ -1387,6 +1363,7 @@ resource "networknext_relay" relays {
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
   version = local.relay_version
+  bandwidth_price = each.value.bandwidth_price
 }
 
 # ----------------------------------------------------------------------------------------
