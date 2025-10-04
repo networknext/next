@@ -107,7 +107,7 @@ output "relays" {
         linode_instance.relay[k].ip_address,
         22,
         "root",
-        2,
+        1,
       ]
     )
   }
