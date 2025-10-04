@@ -621,7 +621,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size              = local.disable_backend ? 0 : 3
+  target_size              = local.disable_backend ? 0 : 1
   domain                   = "relay.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
@@ -684,7 +684,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 500
   connection_drain           = 0
-  target_size                = local.disable_backend ? 0 : 2
+  target_size                = local.disable_backend ? 0 : 1
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
@@ -937,7 +937,7 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = local.disable_backend ? 0 : 3
+  min_size                   = local.disable_backend ? 0 : 1
   max_size                   = local.disable_backend ? 0 : 6
   target_cpu                 = 50
 
