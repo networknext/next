@@ -28,9 +28,6 @@ locals {
     "google.saopaulo.1",
     "google.saopaulo.2",
     "google.saopaulo.3",
-    "unity.saopaulo.1",
-    "unity.saopaulo.2",
-    "unity.saopaulo.3",
   ]
 
   sellers = {
