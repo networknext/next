@@ -604,6 +604,7 @@ resource "networknext_relay" relays {
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
   version = local.relay_version
+  bandwidth_price = each.value.bandwidth_price
 }
 
 # ----------------------------------------------------------------------------------------
