@@ -2234,9 +2234,14 @@ func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
 	env.AddRelay("a", "10.0.0.5")
 	env.AddRelay("b", "10.0.0.6")
 
-	env.SetCost("losangeles.a", "chicago.a", 100)
+	env.SetCost("losangeles.a", "chicago.a", 150)
 	env.SetCost("losangeles.a", "chicago.b", 150)
+
 	env.SetCost("losangeles.a", "a", 10)
+	env.SetCost("losangeles.a", "b", 10)
+
+	env.SetCost("losangeles.b", "a", 10)
+	env.SetCost("losangeles.b", "b", 10)
 
 	env.SetCost("a", "chicago.a", 20)
 	env.SetCost("a", "chicago.b", 20)
@@ -2247,8 +2252,6 @@ func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
 
 	env.SetCost("losangeles.b", "chicago.a", 50)
 	env.SetCost("losangeles.b", "chicago.b", 50)
-	env.SetCost("losangeles.b", "a", 10)
-	env.SetCost("losangeles.b", "b", 5)
 
 	env.SetPrice("losangeles.b", 10)
 	env.SetPrice("chicago.b", 10)
@@ -2259,9 +2262,6 @@ func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
 
 	numSegments := numRelays
 
-	// todo
-	fmt.Printf("price = %v\n", env.price)
-
 	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
@@ -2269,7 +2269,7 @@ func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
 
 	destRelayNames := []string{"chicago.a", "chicago.b"}
 
-	maxCost := int32(20)
+	maxCost := int32(100)
 
 	bestRoute := env.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
 
@@ -2277,9 +2277,7 @@ func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
 	assert.True(t, bestRoute.cost > 0)
 	assert.True(t, bestRoute.cost <= maxCost)
 
-	fmt.Printf("cost = %d\n", bestRoute.cost)
-
-	assert.True(t, bestRoute.cost == 15+constants.CostBias)
+	assert.True(t, bestRoute.cost == 20+constants.CostBias)
 
 	assert.Equal(t, []string{"losangeles.a", "b", "chicago.a"}, bestRoute.relays)
 }

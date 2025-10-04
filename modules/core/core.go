@@ -1547,12 +1547,9 @@ func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int
 	lowestPrice := int32(1000000)
 
 	for i := range bestRoutes {
-		// todo
-		fmt.Printf("route %d: price = %d\n", i, bestRoutes[i].Price)		
 		if bestRoutes[i].Price < lowestPrice {
 			filteredBestRoutes = filteredBestRoutes[:0]
 			filteredBestRoutes = append(filteredBestRoutes, bestRoutes[i])
-			fmt.Printf("add route %v\n", bestRoutes[i])	// todo
 			lowestPrice = bestRoutes[i].Price
 		} else if bestRoutes[i].Price == lowestPrice {
 			filteredBestRoutes = append(filteredBestRoutes, bestRoutes[i])
@@ -1562,9 +1559,6 @@ func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int
 	numBestRoutes = len(filteredBestRoutes)
 
 	// any route with price >= 255 is not selectable for a new route
-
-	// todo
-	fmt.Printf("lowest price is %d\n", lowestPrice)
 
 	if lowestPrice >= 255 {
 		*debug += fmt.Sprintf("lowest price is >= 255, found no selectable routes")
