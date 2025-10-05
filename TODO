@@ -1,0 +1,55 @@
+DONE
+
+	Fix backend not having correct latitude/longitude. It needs to come from SDK in session update request packet.
+
+	Client stores lat/long from client relay response.
+
+	Extend session update request packet so it has latitude/longitude in it from the SDK.
+
+	Read the session update request packet in the backend if SDK 1.2.6 or greater with the lat/long values.
+
+	Switch over post session update messages to include lat/long from the request packet.
+
+	Make the SDK pass up the lat/long in the session update request packet when sent.
+
+	Move to dev branch
+
+TODO
+
+	Server update packet should include delta_time_min/max/avg
+
+	-----
+
+	Session update request packet should include delta_time_min/max/avg
+
+	Session update request packet should also include game_rtt_min/max/avg
+
+	Session update request packet should also include game_jitter_min/max/avg
+
+	Session update request packet should also include game_packet_loss_min/max/avg
+
+	-----
+
+	Update backend to read new data if SDK version is 1.2.6 or greater.
+
+	-----
+
+	Update the avro schema so it has the new data in it.
+
+	-----
+
+	Bring dev back up
+
+	Verify that the big query stuff doesn't explode, even with the old bigquery schema
+
+	Work out how to apply bigquery changes post-spin up, ideally save to .sql file or whatever
+
+	-----
+
+	Update the default avro and pubsub schemas to include the new data
+
+	-----
+
+	There needs to be a unit test to verify that we see the correct lat/longs passed up from the SDK
+
+	-----
