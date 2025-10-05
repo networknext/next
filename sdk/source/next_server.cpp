@@ -2154,6 +2154,9 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         double current_time = next_platform_time();
 
+        session->latitude = packet.latitude;
+        session->longitude = packet.longitude;
+
         next_printf( NEXT_LOG_LEVEL_INFO, "server found %d client relays for session %" PRIx64, packet.num_client_relays, session->session_id );
 
         session->requesting_client_relays = false;

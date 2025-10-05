@@ -101,7 +101,6 @@ type SessionUpdateState struct {
 	SentAnalyticsServerRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage           bool
 	SentAnalyticsSessionSummaryMessage          bool
-	LocatedIP                                   bool
 	WroteResponsePacket                         bool
 	LongSessionUpdate                           bool
 
@@ -1093,8 +1092,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.StartTime = state.Input.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
-	message.Latitude = state.Input.Latitude
-	message.Longitude = state.Input.Longitude
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
 	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
@@ -1350,8 +1349,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DatacenterId = int64(state.Request.DatacenterId)
 	message.BuyerId = int64(state.Request.BuyerId)
 	message.UserHash = int64(state.Request.UserHash)
-	message.Latitude = state.Input.Latitude
-	message.Longitude = state.Input.Longitude
+	message.Latitude = state.Output.Latitude
+	message.Longitude = state.Output.Longitude
 	anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ClientAddress = anonymizedClientAddress.String()
 	message.ServerAddress = state.Request.ServerAddress.String()

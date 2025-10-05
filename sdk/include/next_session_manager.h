@@ -211,6 +211,11 @@ struct next_session_entry_t
     NextClientRelayUpdatePacket client_relay_update_packet;
 
     NEXT_DECLARE_SENTINEL(24)
+
+    float latitude;
+    float longitude;
+
+    NEXT_DECLARE_SENTINEL(25)
 };
 
 inline void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -242,6 +247,7 @@ inline void next_session_entry_initialize_sentinels( next_session_entry_t * entr
     NEXT_INITIALIZE_SENTINEL( entry, 22 )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
+    NEXT_INITIALIZE_SENTINEL( entry, 25 )
     next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );
@@ -279,6 +285,7 @@ inline void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 22 )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
+    NEXT_VERIFY_SENTINEL( entry, 25 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );
