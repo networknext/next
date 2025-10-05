@@ -315,6 +315,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	PacketsOutOfOrderServerToClient uint64
 	JitterClientToServer            float32
 	JitterServerToClient            float32
+	Latitude                        float32
+	Longitude                       float32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -436,6 +438,11 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 
 	stream.SerializeFloat32(&packet.JitterClientToServer)
 	stream.SerializeFloat32(&packet.JitterServerToClient)
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {
+		stream.SerializeFloat32(&packet.Latitude)
+		stream.SerializeFloat32(&packet.Longitude)
+	}
 
 	return stream.Error()
 }

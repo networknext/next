@@ -67,10 +67,6 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
-	// lat/long if we looked it up this update
-	Latitude  float32
-	Longitude float32
-
 	// track start time of handler
 	StartTimestamp     uint64
 	StartTimestampNano uint64
@@ -947,8 +943,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber == 0 {
 		core.Debug("first slice always goes direct")
-		state.Output.Latitude = state.Latitude
-		state.Output.Longitude = state.Longitude
 	}
 
 	/*
@@ -1092,8 +1086,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.StartTime = state.Input.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
+	message.Latitude = state.Request.Latitude
+	message.Longitude = state.Request.Longitude
 	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
@@ -1223,8 +1217,8 @@ func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 		message.BuyerId = int64(state.Request.BuyerId)
 		message.SessionId = int64(state.Output.SessionId)
 		message.UserHash = int64(state.Request.UserHash)
-		message.Latitude = state.Output.Latitude
-		message.Longitude = state.Output.Longitude
+		message.Latitude = state.Request.Latitude
+		message.Longitude = state.Request.Longitude
 		anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
 		message.ClientAddress = anonymizedClientAddress.String()
 		message.ConnectionType = int32(state.Request.ConnectionType)
@@ -1349,8 +1343,8 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DatacenterId = int64(state.Request.DatacenterId)
 	message.BuyerId = int64(state.Request.BuyerId)
 	message.UserHash = int64(state.Request.UserHash)
-	message.Latitude = state.Output.Latitude
-	message.Longitude = state.Output.Longitude
+	message.Latitude = state.Request.Latitude
+	message.Longitude = state.Request.Longitude
 	anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ClientAddress = anonymizedClientAddress.String()
 	message.ServerAddress = state.Request.ServerAddress.String()

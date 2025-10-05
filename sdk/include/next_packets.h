@@ -715,6 +715,8 @@ struct NextBackendSessionUpdateRequestPacket
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
+    float latitude;
+    float longitude;
 
     void Reset()
     {
@@ -858,6 +860,9 @@ struct NextBackendSessionUpdateRequestPacket
 
         serialize_float( stream, jitter_client_to_server );
         serialize_float( stream, jitter_server_to_client );
+
+        serialize_float( stream, latitude );
+        serialize_float( stream, longitude );
 
         return true;
     }

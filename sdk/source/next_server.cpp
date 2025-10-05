@@ -3863,7 +3863,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             memcpy( packet.session_data, session->session_data, session->session_data_bytes );
             memcpy( packet.session_data_signature, session->session_data_signature, NEXT_CRYPTO_SIGN_BYTES );
 
-            session->session_update_request_packet = packet;
+            packet.latitude = session->latitude;
+            packet.longitude = session->longitude;
 
 #if NEXT_DEVELOPMENT
             // This is used by the raspberry pi clients in dev to give a normal distribution of latencies across all sessions, so I can test the portal
@@ -3882,6 +3883,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
                 }
             }
 #endif // #if NEXT_DEVELOPMENT
+
+            session->session_update_request_packet = packet;
 
             uint8_t magic[8];
             memset( magic, 0, sizeof(magic) );
