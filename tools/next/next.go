@@ -223,6 +223,22 @@ func main() {
 		},
 	}
 
+	var hashCommand = &ffcli.Command{
+		Name:       "hash",
+		ShortUsage: "next hash [string]",
+		ShortHelp:  "Hash a string with FNV1a64 hash and print as hex and signed int64",
+		Exec: func(_ context.Context, args []string) error {
+
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+
+			hash(args[0])
+
+			return nil
+		},
+	}
+
 	var sshCommand = &ffcli.Command{
 		Name:       "ssh",
 		ShortUsage: "next ssh [regex...]",
@@ -441,6 +457,7 @@ func main() {
 		optimizeCommand,
 		analyzeCommand,
 		routesCommand,
+		hashCommand,
 	}
 
 	root := &ffcli.Command{
@@ -2148,6 +2165,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 		Native    string
 		Latitude  float64
 		Longitude float64
+		ID        string
 	}
 
 	datacenterRows := make([]DatacenterRow, 0)
@@ -2158,6 +2176,8 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 		row.Native = adminDatacentersResponse.Datacenters[i].NativeName
 		row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
 		row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+		hash := common.HashString(adminDatacentersResponse.Datacenters[i].DatacenterName)
+		row.ID = fmt.Sprintf("%016x (%d)", hash, int64(hash))
 		matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
 		if regexName == "" || (matched && err == nil) {
 			datacenterRows = append(datacenterRows, row)
@@ -2171,7 +2191,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 
 	// find nearby datacenters within 100km, so we can pick up ashburn <-> virginia, sanjose <-> sf <-> siliconvalley
 
-	if regexName != "" {
+	if regexName != "" && len(datacenterRows) != 1 {
 
 		averageLatitude := 0.0
 		averageLongitude := 0.0
@@ -2202,6 +2222,8 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 				row.Native = adminDatacentersResponse.Datacenters[i].NativeName
 				row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
 				row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+				hash := common.HashString(adminDatacentersResponse.Datacenters[i].DatacenterName)
+				row.ID = fmt.Sprintf("%016x (%d)", hash, int64(hash))
 				matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
 				distance := core.HaversineDistance(row.Latitude, row.Longitude, averageLatitude, averageLongitude)
 				if distance <= threshold && (!matched || err != nil) {
@@ -3181,3 +3203,8 @@ func getKeyValue(envFile string, keyName string) string {
 }
 
 // --------------------------------------------------------------------------------------
+
+func hash(s string) {
+	h := common.HashString(s)
+	fmt.Printf("\"%s\" -> %016x (%d)\n\n", s, h, int64(h))
+}

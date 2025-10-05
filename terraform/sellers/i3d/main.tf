@@ -276,14 +276,6 @@ locals {
       seller_code = local.seller_code
     },
 
-    "i3d.istanbul" = {
-      latitude    = 41.0082
-      longitude   = 28.9784
-      native_name = ""
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
     "i3d.kyiv" = {
       latitude    = 50.4504
       longitude   = 30.5245
