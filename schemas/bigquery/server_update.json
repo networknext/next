@@ -52,7 +52,7 @@
     "type": "FLOAT",
     "mode": "NULLABLE",
     "description": "Minimum delta time over the last 10 seconds"
-  }
+  },
   {
     "name": "delta_time_max",
     "type": "FLOAT",
