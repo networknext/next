@@ -26,17 +26,29 @@ DONE
 
 	Plumb the delta_time_min/max/avg from the session update to bigquery (avro)
 
-TODO
-
 	Bring dev back up
 
 	Verify that the big query stuff doesn't explode, even with the old bigquery schema
 
-	Work out how to apply bigquery changes post-spin up, ideally save to .sql file or whatever
+	Update bigquery schemas in-place in dev
+
+TODO
+
+	Update the default bigquery schemas to include the new data
+
+	Verify that the data starts coming in! (it should be zeros...)
 
 	-----
 
-	Update the default bigquery schemas to include the new data
+	Add a new delta time tracker struct
+
+	-----
+
+	Extend the server to track min/max/avg delta time since last server update
+
+	-----
+
+	Extend the client to track min/max/avg delta time since last client update
 
 	-----
 

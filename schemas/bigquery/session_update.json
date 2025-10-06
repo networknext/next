@@ -78,6 +78,24 @@
     "description": "Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second"
   },
   {
+    "name": "delta_time_min",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Minimum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_max",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Maximum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_avg",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Average delta time over the last 10 seconds"
+  },
+  {
     "name": "next",
     "type": "BOOL",
     "mode": "REQUIRED",
