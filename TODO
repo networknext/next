@@ -40,19 +40,17 @@ DONE
 
 	Verify lat/longs are coming up in bigquery in dev.
 
-TODO
-
 	Add a new "next_value_tracker_t" to the SDK to track min/max/avg for values.
 
-	-----
-
 	Unit test it!
-
-	-----
 
 	Extend the server to track min/max/avg delta time since last server update
 
 	Pass up the tracked min/max/avg delta time values in the backend server update request packet
+
+TODO
+
+	Deploy to dev and verify we see server update containing delta time min/max/avg in big query
 
 	-----
 
