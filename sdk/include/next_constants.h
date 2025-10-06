@@ -139,4 +139,6 @@
 
 #define NEXT_CLIENT_RELAY_PING_TIME                                     6
 
+#define NEXT_VALUE_TRACKER_HISTORY                                   1024
+
 #endif // #ifndef NEXT_CONSTANTS_H

@@ -18,6 +18,7 @@
 #include "next_internal_config.h"
 #include "next_platform.h"
 #include "next_relay_manager.h"
+#include "next_value_tracker.h"
 
 #include <atomic>
 #include <stdio.h>

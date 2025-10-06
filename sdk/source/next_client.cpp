@@ -17,6 +17,7 @@
 #include "next_read_write.h"
 #include "next_header.h"
 #include "next_internal_config.h"
+#include "next_value_tracker.h"
 
 #include <atomic>
 #include <stdio.h>
