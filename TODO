@@ -50,17 +50,19 @@ DONE
 
 	Deploy to dev and verify we see server update containing delta time min/max/avg in big query
 
-TODO
-
 	Extend the client to track min/max/avg delta time since last client update
 
 	Extend client stats to pass up delta time stats to server via client stats packet
 
-	Extend server to pass up per-session delta time stats to the backend via session update request packet
+TODO
 
-	-----
+	Extend server to cache per-session delta time min/max/avg when it receives client stats packet
 
-	Verify that we start seeing non-zero client and server delta time values in big query in dev.
+	Server passes up delta time stats to the backend via backend session update request packet
+
+	Deploy to dev
+
+	Verify that we start seeing session delta time min/max/avg values in dev bigquery
 
 	-----
 
@@ -76,6 +78,41 @@ TODO
 
 	-----
 
+	Extend portal messages and redis to pass up delta time min/max/avg to portal
+
+	-----
+
+	Update portal to display "Game Delta Time" (min/max/avg) at the bottom of the session page.
+
+	-----
+
+
+
+
+
+
+FIX BANDWIDTH DISPLAY
+
+	Separate next/direct bandwidth is annoying.
+
+	Simplify bandwidth processing in the SDK so if it sends or receives a packet (whether next or direct), it is included in bandwidth up/down.
+
+	Deprecate the old bigquery schema values for next_bandwidth_up/down, direct_bandwidth_up/down and make them NULLABLE and create new entries bandwidth_up / bandwidth_down (must also be NULLABLE, because new...)
+
+	Extend to pass bandwidth up/down to portal instead of next/direct bandwidth.
+
+	Combine into one graph and show "Up" and "Down".
+
+
+
+
+
+
+FIX OUT OF ORDER PACKETS
+
+	Out of order packets display some weird behavior.
+
+	Disable showing the out of order graph in the portal until it is fixed. Game packet loss (in unreal) can provide the same visibility.
 
 
 
@@ -109,4 +146,15 @@ GAME RTT/JITTER/PL FEATURE
 
 	Functional test to verify that we see client game packet loss min/max/avg passed up from SDK
 
+	-----
+
+	Update portal to display "Game Latency" (min/max/avg)
+
+	-----
+
+	Update portal to display "Game Jitter" (min/max/avg)
+
+	-----
+
+	Update portal to display "Game Packet Loss" (min/max/avg)
 	-----
