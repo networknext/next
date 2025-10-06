@@ -349,9 +349,9 @@ func GenerateRandomSliceData() *SliceData {
 	data.NextKbpsUp = rand.Uint32()
 	data.NextKbpsDown = rand.Uint32()
 	data.Next = common.RandomBool()
-	data.DeltaTimeMin = float32(common.RandomInt(0, 100000)) / 1000000.0
-	data.DeltaTimeMax = float32(common.RandomInt(0, 100000)) / 1000000.0
-	data.DeltaTimeAvg = float32(common.RandomInt(0, 100000)) / 1000000.0
+	data.DeltaTimeMin = 1.0
+	data.DeltaTimeMax = 2.0
+	data.DeltaTimeAvg = 4.0
 	return &data
 }
 
