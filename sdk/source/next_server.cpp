@@ -359,6 +359,10 @@ struct next_server_internal_t
     void * payload_receive_callback_data;
 
     NEXT_DECLARE_SENTINEL(16)
+
+    next_value_tracker_t delta_time_tracker;
+
+    NEXT_DECLARE_SENTINEL(17)
 };
 
 void next_server_internal_initialize_sentinels( next_server_internal_t * server )
@@ -382,6 +386,7 @@ void next_server_internal_initialize_sentinels( next_server_internal_t * server 
     NEXT_INITIALIZE_SENTINEL( server, 14 )
     NEXT_INITIALIZE_SENTINEL( server, 15 )
     NEXT_INITIALIZE_SENTINEL( server, 16 )
+    NEXT_INITIALIZE_SENTINEL( server, 17 )
 }
 
 void next_server_internal_verify_sentinels( next_server_internal_t * server )
@@ -405,6 +410,7 @@ void next_server_internal_verify_sentinels( next_server_internal_t * server )
     NEXT_VERIFY_SENTINEL( server, 14 )
     NEXT_VERIFY_SENTINEL( server, 15 )
     NEXT_VERIFY_SENTINEL( server, 16 )
+    NEXT_VERIFY_SENTINEL( server, 17 )
     if ( server->session_manager )
         next_session_manager_verify_sentinels( server->session_manager );
     if ( server->pending_session_manager )
@@ -716,6 +722,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     server->server_update_last_time = next_platform_time() - NEXT_SECONDS_BETWEEN_SERVER_UPDATES * next_random_float();
 
     server->server_update_first = true;
+
+    next_value_tracker_reset( &server->delta_time_tracker );
 
     return server;
 }
@@ -3684,6 +3692,8 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_address = server->server_address;
         packet.uptime = uint64_t( time(NULL) - server->start_time );
+
+        next_value_tracker_calculate( &server->delta_time_tracker, &packet.delta_time_min, &packet.delta_time_max, &packet.delta_time_avg );
 
         uint8_t magic[8];
         memset( magic, 0, sizeof(magic) );

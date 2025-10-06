@@ -4470,6 +4470,10 @@ void test_value_tracker()
         next_check( min_value == 1.0f );
         next_check( max_value == 1.0f );
         next_check( avg_value == 1.0f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
     }
 
     // add a bunch of samples and we should see min/max/avg
@@ -4485,6 +4489,10 @@ void test_value_tracker()
         next_check( min_value == 0.0f );
         next_check( max_value == 9.0f );
         next_check( avg_value == 4.5f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
     }
 
     // add more samples than history size and it should still work
@@ -4500,6 +4508,10 @@ void test_value_tracker()
         next_check( min_value == 0.0f );
         next_check( max_value == 9.0f );
         next_check( fabs( 4.5f - avg_value ) < 0.1f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
     }
 }
 

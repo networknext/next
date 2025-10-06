@@ -105,6 +105,8 @@ inline void next_value_tracker_calculate( next_value_tracker_t * tracker, float 
         sum += (double) tracker->values[i];
     }
     *avg_value = float( sum / double(tracker->num_samples) );
+
+    next_value_tracker_reset( tracker );
 }
 
 #endif // #ifndef NEXT_VALUE_TRACKER_H
