@@ -4105,6 +4105,7 @@ struct next_server_t
     bool flushing;
     bool flushed;
     bool direct_only;
+    double previous_update_time;
 
     NEXT_DECLARE_SENTINEL(1)
 
@@ -4272,7 +4273,17 @@ void next_server_update( next_server_t * server )
     if ( command )
     {
         command->type = NEXT_SERVER_COMMAND_UPDATE;
-        {    
+        if ( server->previous_update_time != 0.0 )
+        {
+            double current_time = next_platform_time();
+            command->delta_time = current_time - server->previous_update_time;
+            server->previous_update_time = current_time;
+        }
+        else
+        {   
+            command->delta_time = 0.0f;
+        } 
+        {
 #if NEXT_SPIKE_TRACKING
             next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_UPDATE from %s:%d", __FILE__, __LINE__ );
 #endif // #if NEXT_SPIKE_TRACKING
