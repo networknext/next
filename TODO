@@ -32,35 +32,51 @@ DONE
 
 	Update bigquery schemas in-place in dev
 
-TODO
-
 	Update the default bigquery schemas to include the new data
+
+	Make sure any bigquery schema changes don't destroy tables
 
 	Verify that the data starts coming in! (it should be zeros...)
 
+	Verify lat/longs are coming up in bigquery in dev.
+
+TODO
+
+	Add a new "next_value_tracker_t" to the SDK to track min/max/avg for values.
+
 	-----
 
-	Add a new delta time tracker struct
+	Unit test it!
 
 	-----
 
 	Extend the server to track min/max/avg delta time since last server update
 
+	Pass up the tracked min/max/avg delta time values in the backend server update request packet
+
 	-----
 
 	Extend the client to track min/max/avg delta time since last client update
 
-	-----
+	Extend client stats to pass up delta time stats to server via client stats packet
 
-	Functional test to verify that we see the correct lat/longs passed up from the SDK
-
-	-----
-
-	Functional test to verify that we see server delta time min/max/avg passed up from SDK
+	Extend server to pass up per-session delta time stats to the backend via session update request packet
 
 	-----
 
-	Functional test to verify that we see client delta time min/max/avg passed up from SDK
+	Verify that we start seeing non-zero client and server delta time values in big query in dev.
+
+	-----
+
+	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
+
+	-----
+
+	Add a functional test to verify that we see server delta time min/max/avg passed up from SDK
+
+	-----
+
+	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
 
 	-----
 
