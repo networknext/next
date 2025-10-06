@@ -146,7 +146,7 @@ func GenerateRandomCostMatrix(numRelays int) CostMatrix {
 
 	costMatrix.RelayPrice = make([]uint8, numRelays)
 	for i := 0; i < numRelays; i++ {
-		costMatrix.RelayPrice[i] = uint8(RandomInt(0,255))
+		costMatrix.RelayPrice[i] = uint8(RandomInt(0, 255))
 	}
 
 	return costMatrix

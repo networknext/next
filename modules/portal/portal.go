@@ -174,6 +174,9 @@ type SliceData struct {
 	NextPacketLoss   float32 `json:"next_packet_loss"`
 	RealPacketLoss   float32 `json:"real_packet_loss"`
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
+	DeltaTimeMin     float32 `json:"delta_time_min"`
+	DeltaTimeMax     float32 `json:"delta_time_max"`
+	DeltaTimeAvg     float32 `json:"delta_time_avg"`
 	InternalEvents   uint64  `json:"internal_events,string"`
 	SessionEvents    uint64  `json:"session_events,string"`
 	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
@@ -184,7 +187,7 @@ type SliceData struct {
 }
 
 func (data *SliceData) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v",
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v|%.3f|%.3f|%.3f",
 		data.Timestamp,
 		data.SliceNumber,
 		data.DirectRTT,
@@ -204,12 +207,15 @@ func (data *SliceData) Value() string {
 		data.NextKbpsUp,
 		data.NextKbpsDown,
 		data.Next,
+		data.DeltaTimeMin,
+		data.DeltaTimeMax,
+		data.DeltaTimeAvg,
 	)
 }
 
 func (data *SliceData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 19 {
+	if len(values) != 22 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -285,6 +291,19 @@ func (data *SliceData) Parse(value string) {
 		return
 	}
 	next := values[18] == "true"
+	deltaTimeMin, err := strconv.ParseFloat(values[19], 32)
+	if err != nil {
+		return
+	}
+	deltaTimeMax, err := strconv.ParseFloat(values[20], 32)
+	if err != nil {
+		return
+	}
+	deltaTimeAvg, err := strconv.ParseFloat(values[21], 32)
+	if err != nil {
+		return
+	}
+
 	data.Timestamp = timestamp
 	data.SliceNumber = uint32(sliceNumber)
 	data.DirectRTT = uint32(directRTT)
@@ -304,6 +323,9 @@ func (data *SliceData) Parse(value string) {
 	data.NextKbpsUp = uint32(nextKbpsUp)
 	data.NextKbpsDown = uint32(nextKbpsDown)
 	data.Next = next
+	data.DeltaTimeMin = float32(deltaTimeMin)
+	data.DeltaTimeMax = float32(deltaTimeMax)
+	data.DeltaTimeAvg = float32(deltaTimeAvg)
 }
 
 func GenerateRandomSliceData() *SliceData {
@@ -327,6 +349,9 @@ func GenerateRandomSliceData() *SliceData {
 	data.NextKbpsUp = rand.Uint32()
 	data.NextKbpsDown = rand.Uint32()
 	data.Next = common.RandomBool()
+	data.DeltaTimeMin = float32(common.RandomInt(0, 100000)) / 1000000.0
+	data.DeltaTimeMax = float32(common.RandomInt(0, 100000)) / 1000000.0
+	data.DeltaTimeAvg = float32(common.RandomInt(0, 100000)) / 1000000.0
 	return &data
 }
 

@@ -326,8 +326,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	Latitude                        float32
 	Longitude                       float32
 	DeltaTimeMin                    float32
-	DeltaTimeMax					float32
-	DeltaTimeAvg					float32
+	DeltaTimeMax                    float32
+	DeltaTimeAvg                    float32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {

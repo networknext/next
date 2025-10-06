@@ -66,7 +66,17 @@ DONE
 
 	Verify that we start seeing session delta time min/max/avg values in dev bigquery
 
+	Extend portal messages and redis to pass up delta time min/max/avg to portal
+
 TODO
+
+	-----
+
+	Update portal to display "Game Delta Time" (min/max/avg) at the bottom of the session page.
+
+	Verify that we see game delta time!
+
+	-----
 
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
@@ -77,14 +87,6 @@ TODO
 	-----
 
 	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
-
-	-----
-
-	Extend portal messages and redis to pass up delta time min/max/avg to portal
-
-	-----
-
-	Update portal to display "Game Delta Time" (min/max/avg) at the bottom of the session page.
 
 	-----
 

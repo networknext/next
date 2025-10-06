@@ -1119,6 +1119,10 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealOutOfOrder = state.RealOutOfOrder
 
+	message.DeltaTimeMin = state.Request.DeltaTimeMin
+	message.DeltaTimeMax = state.Request.DeltaTimeMax
+	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
+
 	message.NumClientRelays = uint32(state.Request.NumClientRelays)
 	for i := 0; i < int(message.NumClientRelays); i++ {
 		message.ClientRelayId[i] = state.Request.ClientRelayIds[i]

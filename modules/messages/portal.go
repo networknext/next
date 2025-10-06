@@ -116,6 +116,10 @@ type PortalSessionUpdateMessage struct {
 	RealPacketLoss float32
 	RealOutOfOrder float32
 
+	DeltaTimeMin float32
+	DeltaTimeMax float32
+	DeltaTimeAvg float32
+
 	NumClientRelays       uint32
 	ClientRelayId         [constants.MaxClientRelays]uint64
 	ClientRelayRTT        [constants.MaxClientRelays]byte

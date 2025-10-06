@@ -2311,7 +2311,7 @@ func TestGetRandomBestRoute_RelaysFull(t *testing.T) {
 	env.SetCost("losangeles.b", "a", 10)
 	env.SetCost("losangeles.b", "b", 5)
 
-	env.SetPrice("chicago.a", 255)		// IMPORTANT: set both dest relays as full, there is no way to find any route without cost >= 255
+	env.SetPrice("chicago.a", 255) // IMPORTANT: set both dest relays as full, there is no way to find any route without cost >= 255
 	env.SetPrice("chicago.b", 255)
 
 	costMatrix, numRelays := env.GetCostMatrix()
@@ -2899,8 +2899,8 @@ type TestData struct {
 	routeNumRelays int32
 	routeRelays    [constants.MaxRouteRelays]int32
 
-	routeShader        core.RouteShader
-	routeState         core.RouteState
+	routeShader core.RouteShader
+	routeState  core.RouteState
 
 	debug string
 
@@ -5238,7 +5238,7 @@ func TestSessionScore(t *testing.T) {
 	// test random next sessions
 
 	for i := 0; i < 10000; i++ {
-		score := core.GetSessionScore(int32(rand.Intn(5000)-2000), 1 + int32(rand.Intn(5000)-2000))
+		score := core.GetSessionScore(int32(rand.Intn(5000)-2000), 1+int32(rand.Intn(5000)-2000))
 		assert.True(t, score <= 999)
 	}
 }

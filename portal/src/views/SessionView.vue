@@ -53,9 +53,9 @@
         
         <div id="packet_loss_graph" class="graph"/>
 
-        <div id="bandwidth_up_graph" class="graph"/>
+        <div id="bandwidth_graph" class="graph"/>
 
-        <div id="bandwidth_down_graph" class="graph"/>
+        <div id="game_delta_time_graph" class="graph"/>
 
         <div class="d-xxl-none">
 
@@ -373,17 +373,17 @@ let packet_loss_opts = custom_graph({
   ]
 })
 
-let bandwidth_up_opts = custom_graph({
-  title: "Bandwidth Up",
+let bandwidth_opts = custom_graph({
+  title: "Bandwidth",
   series: [
     { 
-      name: 'Direct',
+      name: 'Up',
       stroke: 'rgb(49, 130, 189)',
       fill: 'rgba(49, 130, 189, 0.1)',
       units: 'kbps',
     },
     {
-      name: 'Next',
+      name: 'Down',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: 'kbps',
@@ -391,6 +391,7 @@ let bandwidth_up_opts = custom_graph({
   ]
 })
 
+/*
 let bandwidth_down_opts = custom_graph({
   title: "Bandwidth Down",
   series: [
@@ -408,6 +409,7 @@ let bandwidth_down_opts = custom_graph({
     },
   ]
 })
+*/
 
 function getPlatformName(platformId) {
   switch(platformId) {
@@ -593,19 +595,20 @@ async function getData(page, session_id) {
 
       data.packet_loss_data = [graph_timestamps, packet_loss_real]
 
-      // bandwidth up graph data
+      // bandwidth graph data
   
-      let bandwidth_up_direct = []
-      let bandwidth_up_next = []
+      let bandwidth_up = []
+      let bandwidth_down = []
       i = 0
       while (i < res.data.slice_data.length) {
-        bandwidth_up_direct.push(res.data.slice_data[i].direct_kbps_up)
-        bandwidth_up_next.push(res.data.slice_data[i].next_kbps_up)
+        bandwidth_up.push(res.data.slice_data[i].direct_kbps_up)
+        bandwidth_down.push(res.data.slice_data[i].direct_kbps_down)
         i++
       }
 
-      data.bandwidth_up_data = [graph_timestamps, bandwidth_up_direct, bandwidth_up_next]
+      data.bandwidth_data = [graph_timestamps, bandwidth_up, bandwidth_down]
 
+      /*
       // bandwidth down graph data
   
       let bandwidth_down_direct = []
@@ -618,6 +621,7 @@ async function getData(page, session_id) {
       }
 
       data.bandwidth_down_data = [graph_timestamps, bandwidth_down_direct, bandwidth_down_next]
+      */
 
       // mark data as found
 
@@ -678,8 +682,10 @@ export default {
     this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
-    this.bandwidth_up = new uPlot(bandwidth_up_opts, [[],[]], document.getElementById('bandwidth_up_graph'))
+    this.bandwidth = new uPlot(bandwidth_opts, [[],[]], document.getElementById('bandwidth_graph'))
+    /*
     this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down_graph'))
+    */
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -697,15 +703,15 @@ export default {
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()
-    this.bandwidth_up.destroy()
-    this.bandwidth_down.destroy()
+    this.bandwidth.destroy()
+    // this.bandwidth_down.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.latency = null
     this.jitter = null
     this.packet_loss = null
-    this.bandwidth_up = null
-    this.bandwidth_down = null
+    this.bandwidth = null
+    // this.bandwidth_down = null
     this.observer = null
   },
 
@@ -736,8 +742,8 @@ export default {
           this.latency.setSize({width: graph_width, height: graph_height})
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_up.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_down.setSize({width: graph_width, height: graph_height})
+          this.bandwidth.setSize({width: graph_width, height: graph_height})
+          // this.bandwidth_down.setSize({width: graph_width, height: graph_height})
         }
       }    
 
@@ -785,12 +791,14 @@ export default {
       if (this.packet_loss != null && this.data.packet_loss_data != null) {
         this.packet_loss.setData(this.data.packet_loss_data, true)
       }
-      if (this.bandwidth_up != null && this.data.bandwidth_up_data != null) {
-        this.bandwidth_up.setData(this.data.bandwidth_up_data, true)
+      if (this.bandwidth != null && this.data.bandwidth_data != null) {
+        this.bandwidth.setData(this.data.bandwidth_data, true)
       }
+      /*
       if (this.bandwidth_down != null && this.data.bandwidth_down_data != null) {
         this.bandwidth_down.setData(this.data.bandwidth_down_data, true)
       }
+      */
     },
 
     search() {

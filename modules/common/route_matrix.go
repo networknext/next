@@ -38,7 +38,7 @@ type RouteMatrix struct {
 	OptimizeTime   uint32
 
 	Costs []byte
-	
+
 	RelayPrice []byte
 }
 

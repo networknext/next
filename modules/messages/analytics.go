@@ -109,17 +109,17 @@ type AnalyticsSessionSummaryMessage struct {
 // ----------------------------------------------------------------------------------------
 
 type AnalyticsServerUpdateMessage struct {
-	Timestamp        int64  `avro:"timestamp"`
-	SDKVersion_Major int32  `avro:"sdk_version_major"`
-	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
-	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
-	BuyerId          int64  `avro:"buyer_id"`
-	DatacenterId     int64  `avro:"datacenter_id"`
-	NumSessions      int32  `avro:"num_sessions"`
-	ServerAddress    string `avro:"server_address"`
-	DeltaTimeMin    float32 `avro:"delta_time_min"`
-	DeltaTimeMax    float32 `avro:"delta_time_max"`
-	DeltaTimeAvg    float32 `avro:"delta_time_avg"`
+	Timestamp        int64   `avro:"timestamp"`
+	SDKVersion_Major int32   `avro:"sdk_version_major"`
+	SDKVersion_Minor int32   `avro:"sdk_version_minor"`
+	SDKVersion_Patch int32   `avro:"sdk_version_patch"`
+	BuyerId          int64   `avro:"buyer_id"`
+	DatacenterId     int64   `avro:"datacenter_id"`
+	NumSessions      int32   `avro:"num_sessions"`
+	ServerAddress    string  `avro:"server_address"`
+	DeltaTimeMin     float32 `avro:"delta_time_min"`
+	DeltaTimeMax     float32 `avro:"delta_time_max"`
+	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
 }
 
 // ----------------------------------------------------------------------------------------

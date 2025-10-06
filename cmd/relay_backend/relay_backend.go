@@ -1021,7 +1021,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, float32(maxJitter), maxPacketLoss)
 
 				relayPrice := make([]byte, numRelays)
-				
+
 				copy(relayPrice, relayData.RelayPrice)
 
 				costMatrixNew := &common.CostMatrix{
