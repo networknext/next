@@ -73,7 +73,7 @@ inline void next_value_tracker_add_sample( next_value_tracker_t * tracker, float
     tracker->num_samples++;
 }
 
-inline void next_value_tracker_update( next_value_tracker_t * tracker, float * min_value, float * max_value, float * avg_value )
+inline void next_value_tracker_calculate( next_value_tracker_t * tracker, float * min_value, float * max_value, float * avg_value )
 {
     next_value_tracker_verify_sentinels( tracker );
 

@@ -34,6 +34,7 @@
 #include "next_session_manager.h"
 #include "next_relay_manager.h"
 #include "next_internal_config.h"
+#include "next_value_tracker.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -4446,6 +4447,62 @@ void test_packet_tagging()
     }
 }
 
+void test_value_tracker()
+{
+    // initial values without any samples added should be 0/0/0
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
+    }
+
+    // add just one sample and min/max/avg should be set to that sample value
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        next_value_tracker_add_sample( &tracker, 1.0f );
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 1.0f );
+        next_check( max_value == 1.0f );
+        next_check( avg_value == 1.0f );
+    }
+
+    // add a bunch of samples and we should see min/max/avg
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        for ( int i = 0; i < 100; i++ )
+        {
+            next_value_tracker_add_sample( &tracker, float(i%10) );
+        }
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 9.0f );
+        next_check( avg_value == 4.5f );
+    }
+
+    // add more samples than history size and it should still work
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        for ( int i = 0; i < NEXT_VALUE_TRACKER_HISTORY * 2; i++ )
+        {
+            next_value_tracker_add_sample( &tracker, float(i%10) );
+        }
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 9.0f );
+        next_check( fabs( 4.5f - avg_value ) < 0.1f );
+    }
+}
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -4554,6 +4611,7 @@ void next_run_tests()
         RUN_TEST( test_passthrough_packets );
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_packet_tagging );
+        RUN_TEST( test_value_tracker );
     }
 }
 
