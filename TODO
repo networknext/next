@@ -48,9 +48,9 @@ DONE
 
 	Pass up the tracked min/max/avg delta time values in the backend server update request packet
 
-TODO
-
 	Deploy to dev and verify we see server update containing delta time min/max/avg in big query
+
+TODO
 
 	-----
 

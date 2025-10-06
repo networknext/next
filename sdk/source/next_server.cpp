@@ -3161,6 +3161,8 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 #endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_update_t * cmd = (next_server_command_update_t*) command;
                 next_value_tracker_add_sample( &server->delta_time_tracker, cmd->delta_time );
+
+                printf( "add sample %f\n", cmd->delta_time );
             }
             break;
 
@@ -4282,6 +4284,7 @@ void next_server_update( next_server_t * server )
         else
         {   
             command->delta_time = 0.0f;
+            server->previous_update_time = next_platform_time();
         } 
         {
 #if NEXT_SPIKE_TRACKING
