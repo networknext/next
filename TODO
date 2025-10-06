@@ -64,11 +64,9 @@ DONE
 
 	Deploy to dev
 
-TODO
-
 	Verify that we start seeing session delta time min/max/avg values in dev bigquery
 
-	-----
+TODO
 
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
@@ -149,4 +147,5 @@ GAME RTT/JITTER/PL FEATURE
 	-----
 
 	Update portal to display "Game Packet Loss" (min/max/avg)
+
 	-----

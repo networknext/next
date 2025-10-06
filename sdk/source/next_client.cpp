@@ -1753,7 +1753,6 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 #endif // #if NEXT_SPIKE_TRACKING
 
                 next_client_command_update_t * update_command = (next_client_command_update_t*) entry;
-
                 next_value_tracker_add_sample( &client->delta_time_tracker, update_command->delta_time );
             }
             break;
