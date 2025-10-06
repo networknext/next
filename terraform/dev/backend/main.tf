@@ -474,6 +474,9 @@ resource "google_bigquery_table" "table" {
     type = "DAY"
     field = "timestamp"
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ----------------------------------------------------------------------------------------
