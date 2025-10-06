@@ -19,6 +19,9 @@ type AnalyticsSessionUpdateMessage struct {
 	DirectPacketLoss float32 `avro:"direct_packet_loss"`
 	DirectKbpsUp     int32   `avro:"direct_kbps_up"`
 	DirectKbpsDown   int32   `avro:"direct_kbps_down"`
+	DeltaTimeMin     float32 `avro:"delta_time_min"`
+	DeltaTimeMax     float32 `avro:"delta_time_max"`
+	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
 
 	// next only
 
@@ -114,6 +117,9 @@ type AnalyticsServerUpdateMessage struct {
 	DatacenterId     int64  `avro:"datacenter_id"`
 	NumSessions      int32  `avro:"num_sessions"`
 	ServerAddress    string `avro:"server_address"`
+	DeltaTimeMin    float32 `avro:"delta_time_min"`
+	DeltaTimeMax    float32 `avro:"delta_time_max"`
+	DeltaTimeAvg    float32 `avro:"delta_time_avg"`
 }
 
 // ----------------------------------------------------------------------------------------

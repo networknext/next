@@ -1286,6 +1286,9 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
 	message.DirectKbpsUp = int32(state.Request.DirectKbpsUp)
 	message.DirectKbpsDown = int32(state.Request.DirectKbpsDown)
+	message.DeltaTimeMin = state.Request.DeltaTimeMin
+	message.DeltaTimeMax = state.Request.DeltaTimeMax
+	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
 
 	// next only
 

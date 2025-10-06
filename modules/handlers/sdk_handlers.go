@@ -372,6 +372,9 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.DatacenterId = int64(requestPacket.DatacenterId)
 			message.NumSessions = int32(requestPacket.NumSessions)
 			message.ServerAddress = from.String()
+			message.DeltaTimeMin = requestPacket.DeltaTimeMin
+			message.DeltaTimeMax = requestPacket.DeltaTimeMax
+			message.DeltaTimeAvg = requestPacket.DeltaTimeAvg
 
 			handler.AnalyticsServerUpdateMessageChannel <- &message
 

@@ -137,7 +137,7 @@ func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePack
 func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
 	return packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{1, 0, 0},
+		Version:      packets.SDKVersion{1, 2, 6},
 		BuyerId:      rand.Uint64(),
 		RequestId:    rand.Uint64(),
 		DatacenterId: rand.Uint64(),
@@ -222,7 +222,7 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 3},
+		Version:                         packets.SDKVersion{1, 2, 6},
 		BuyerId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
@@ -258,6 +258,9 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		PacketsOutOfOrderServerToClient: rand.Uint64(),
 		JitterClientToServer:            rand.Float32(),
 		JitterServerToClient:            rand.Float32(),
+		DeltaTimeMin:                    rand.Float32(),
+		DeltaTimeMax:                    rand.Float32(),
+		DeltaTimeAvg:                    rand.Float32(),
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {
