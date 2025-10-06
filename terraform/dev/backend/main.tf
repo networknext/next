@@ -560,7 +560,7 @@ module "magic_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-2"
+  machine_type               = "n1-standard-1"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -610,7 +610,7 @@ module "relay_gateway" {
 
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-2"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
@@ -671,7 +671,7 @@ module "relay_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-8"
+  machine_type               = "n1-standard-2"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -931,7 +931,7 @@ module "server_backend" {
 
   tag                        = var.tag
   extra                      = var.extra
-  machine_type               = "n1-standard-8"
+  machine_type               = "n1-standard-4"
   project                    = local.google_project_id
   region                     = local.google_region
   zones                      = local.google_zones
@@ -1120,7 +1120,7 @@ module "ip2location" {
 
   tag                = var.tag
   extra              = var.extra
-  machine_type       = "n1-standard-2"
+  machine_type       = "n1-standard-1"
   project            = local.google_project_id
   region             = local.google_region
   zones              = local.google_zones
@@ -1143,7 +1143,7 @@ module "portal" {
   config                   = "${local.google_artifacts_bucket}/${var.tag}/nginx.conf"
   tag                      = var.tag
   extra                    = var.extra
-  machine_type             = "n1-standard-2"
+  machine_type             = "n1-standard-1"
   project                  = local.google_project_id
   region                   = local.google_region
   zones                    = local.google_zones
