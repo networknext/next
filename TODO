@@ -20,19 +20,13 @@ DONE
 
 	Update backend to read delta_time_min/max/avg if SDK 1.2.6 or greater
 
-TODO
-
 	Update the avro schema so it has the new delta_time_min/max/avg data in it.
-
-	-----
 
 	Plumb the delta_time_min/max/avg from the server update to bigquery (avro)
 
-	-----
-
 	Plumb the delta_time_min/max/avg from the session update to bigquery (avro)
 
-	-----
+TODO
 
 	Bring dev back up
 
