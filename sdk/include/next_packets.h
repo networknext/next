@@ -198,6 +198,9 @@ struct NextClientStatsPacket
     float next_jitter;
     float next_packet_loss;
     float max_jitter_seen;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
     int num_client_relays;
     uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
     uint8_t client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
@@ -259,6 +262,9 @@ struct NextClientStatsPacket
         serialize_uint64( stream, packets_out_of_order_server_to_client );
         serialize_float( stream, jitter_server_to_client );
         serialize_uint64( stream, client_relay_request_id );
+        serialize_float( stream, delta_time_min );
+        serialize_float( stream, delta_time_max );
+        serialize_float( stream, delta_time_avg );
         return true;
     }
 };

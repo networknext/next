@@ -1968,6 +1968,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.client_relay_request_id = client->client_relay_update_packet.request_id;
 
+        next_value_tracker_calculate( &client->delta_time_tracker, &packet.delta_time_min, &packet.delta_time_max, &packet.delta_time_avg );
+
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
             next_printf( NEXT_LOG_LEVEL_ERROR, "client failed to send stats packet to server" );
