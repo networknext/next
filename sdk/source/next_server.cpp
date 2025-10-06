@@ -29,10 +29,11 @@
 
 #define NEXT_SERVER_COMMAND_UPGRADE_SESSION                         0
 #define NEXT_SERVER_COMMAND_SESSION_EVENT                           1
-#define NEXT_SERVER_COMMAND_FLUSH                                   2
-#define NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK             3
-#define NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK     4
-#define NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK            5
+#define NEXT_SERVER_COMMAND_UPDATE                                  2
+#define NEXT_SERVER_COMMAND_FLUSH                                   3
+#define NEXT_SERVER_COMMAND_SET_PACKET_RECEIVE_CALLBACK             4
+#define NEXT_SERVER_COMMAND_SET_SEND_PACKET_TO_ADDRESS_CALLBACK     5
+#define NEXT_SERVER_COMMAND_SET_PAYLOAD_RECEIVE_CALLBACK            6
 
 struct next_server_command_t
 {
@@ -50,6 +51,11 @@ struct next_server_command_session_event_t : public next_server_command_t
 {
     next_address_t address;
     uint64_t session_events;
+};
+
+struct next_server_command_update_t : public next_server_command_t
+{
+    float delta_time;
 };
 
 struct next_server_command_flush_t : public next_server_command_t
@@ -3148,6 +3154,16 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
             }
             break;
 
+            case NEXT_SERVER_COMMAND_UPDATE:
+            {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "server internal thread receives NEXT_SERVER_COMMAND_UPDATE" );
+#endif // #if NEXT_SPIKE_TRACKING
+                next_server_command_update_t * cmd = (next_server_command_update_t*) command;
+                next_value_tracker_add_sample( &server->delta_time_tracker, cmd->delta_time );
+            }
+            break;
+
             case NEXT_SERVER_COMMAND_FLUSH:
             {
 #if NEXT_SPIKE_TRACKING
@@ -4251,6 +4267,19 @@ void next_server_update( next_server_t * server )
 #if NEXT_SPIKE_TRACKING
     next_printf( NEXT_LOG_LEVEL_SPAM, "next_server_update" );
 #endif // #if NEXT_SPIKE_TRACKING
+
+    next_server_command_update_t * command = (next_server_command_update_t*) next_malloc( server->context, sizeof( next_server_command_update_t ) );
+    if ( command )
+    {
+        command->type = NEXT_SERVER_COMMAND_UPDATE;
+        {    
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "server queues up NEXT_SERVER_COMMAND_UPDATE from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+            next_platform_mutex_guard( &server->internal->command_mutex );
+            next_queue_push( server->internal->command_queue, command );
+        }
+    }
 
     while ( true )
     {
