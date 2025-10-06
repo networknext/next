@@ -52,8 +52,6 @@ DONE
 
 TODO
 
-	-----
-
 	Extend the client to track min/max/avg delta time since last client update
 
 	Extend client stats to pass up delta time stats to server via client stats packet

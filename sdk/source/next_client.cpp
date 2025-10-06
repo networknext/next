@@ -27,8 +27,9 @@
 
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
-#define NEXT_CLIENT_COMMAND_DESTROY                 2
-#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
+#define NEXT_CLIENT_COMMAND_UPDATE                  2
+#define NEXT_CLIENT_COMMAND_DESTROY                 3
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION          4
 
 struct next_client_command_t
 {
@@ -43,6 +44,11 @@ struct next_client_command_open_session_t : public next_client_command_t
 struct next_client_command_close_session_t : public next_client_command_t
 {
     // ...
+};
+
+struct next_client_command_update_t : public next_client_command_t
+{
+    float delta_time;
 };
 
 struct next_client_command_destroy_t : public next_client_command_t
@@ -266,9 +272,13 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(13)
 
-    std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
+    next_value_tracker_t delta_time_tracker;
 
     NEXT_DECLARE_SENTINEL(14)
+
+    std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(15)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -290,6 +300,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 12 )
     NEXT_INITIALIZE_SENTINEL( client, 13 )
     NEXT_INITIALIZE_SENTINEL( client, 14 )
+    NEXT_INITIALIZE_SENTINEL( client, 15 )
 
     next_replay_protection_initialize_sentinels( &client->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &client->special_replay_protection );
@@ -320,6 +331,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 12 )
     NEXT_VERIFY_SENTINEL( client, 13 )
     NEXT_VERIFY_SENTINEL( client, 14 )
+    NEXT_VERIFY_SENTINEL( client, 15 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -492,6 +504,8 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_packet_loss_tracker_reset( &client->packet_loss_tracker );
     next_out_of_order_tracker_reset( &client->out_of_order_tracker );
     next_jitter_tracker_reset( &client->jitter_tracker );
+
+    next_value_tracker_reset( &client->delta_time_tracker );
 
     next_client_internal_verify_sentinels( client );
 
@@ -1718,7 +1732,21 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_out_of_order_tracker_reset( &client->out_of_order_tracker );
                 next_jitter_tracker_reset( &client->jitter_tracker );
 
+                next_value_tracker_reset( &client->delta_time_tracker );
+
                 client->counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION]++;
+            }
+            break;
+
+            case NEXT_CLIENT_COMMAND_UPDATE:
+            {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_UPDATE" );
+#endif // #if NEXT_SPIKE_TRACKING
+
+                next_client_command_update_t * update_command = (next_client_command_update_t*) entry;
+
+                next_value_tracker_add_sample( &client->delta_time_tracker, update_command->delta_time );
             }
             break;
 
@@ -2381,6 +2409,7 @@ struct next_client_t
     uint8_t current_magic[8];
     uint16_t bound_port;
     uint64_t session_id;
+    double previous_update_time;
     next_address_t server_address;
     next_address_t client_external_address;
     next_client_internal_t * internal;
@@ -2615,6 +2644,30 @@ void next_client_update( next_client_t * client )
 #if NEXT_SPIKE_TRACKING
     next_printf( NEXT_LOG_LEVEL_SPAM, "next_client_update" );
 #endif // #if NEXT_SPIKE_TRACKING
+
+    next_client_command_update_t * command = (next_client_command_update_t*) next_malloc( client->context, sizeof( next_client_command_update_t ) );
+    if ( command )
+    {
+        command->type = NEXT_CLIENT_COMMAND_UPDATE;
+        if ( client->previous_update_time != 0.0 )
+        {
+            double current_time = next_platform_time();
+            command->delta_time = current_time - client->previous_update_time;
+            client->previous_update_time = current_time;
+        }
+        else
+        {   
+            command->delta_time = 0.0f;
+            client->previous_update_time = next_platform_time();
+        } 
+        {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client queues up NEXT_SERVER_COMMAND_UPDATE from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+            next_platform_mutex_guard( &client->internal->command_mutex );
+            next_queue_push( client->internal->command_queue, command );
+        }
+    }
 
     while ( true )
     {
