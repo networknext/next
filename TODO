@@ -14,27 +14,23 @@ DONE
 
 	Move to dev branch
 
-TODO
-
 	Server update packet should include delta_time_min/max/avg
-
-	-----
 
 	Session update request packet should include delta_time_min/max/avg
 
-	Session update request packet should also include game_rtt_min/max/avg
+	Update backend to read delta_time_min/max/avg if SDK 1.2.6 or greater
 
-	Session update request packet should also include game_jitter_min/max/avg
+TODO
 
-	Session update request packet should also include game_packet_loss_min/max/avg
-
-	-----
-
-	Update backend to read new data if SDK version is 1.2.6 or greater.
+	Update the avro schema so it has the new delta_time_min/max/avg data in it.
 
 	-----
 
-	Update the avro schema so it has the new data in it.
+	Plumb the delta_time_min/max/avg from the server update to bigquery (avro)
+
+	-----
+
+	Plumb the delta_time_min/max/avg from the session update to bigquery (avro)
 
 	-----
 
@@ -46,10 +42,53 @@ TODO
 
 	-----
 
-	Update the default avro and pubsub schemas to include the new data
+	Update the default bigquery schemas to include the new data
 
 	-----
 
-	There needs to be a unit test to verify that we see the correct lat/longs passed up from the SDK
+	Functional test to verify that we see the correct lat/longs passed up from the SDK
+
+	-----
+
+	Functional test to verify that we see server delta time min/max/avg passed up from SDK
+
+	-----
+
+	Functional test to verify that we see client delta time min/max/avg passed up from SDK
+
+	-----
+
+
+
+
+
+
+
+
+GAME RTT/JITTER/PL FEATURE
+
+	-----
+
+	Session update request packet should also include game_rtt_min/max/avg
+
+	Session update request packet should also include game_jitter_min/max/avg
+
+	Session update request packet should also include game_packet_loss_min/max/avg
+
+	-----
+
+	Update backend to read game_rtt_*, game_jitter_* and game_packet_loss_* if SDK version is 1.2.6 or greater.
+
+	-----
+
+	Functional test to verify that we see client game rtt min/max/avg passed up from SDK
+
+	-----
+
+	Functional test to verify that we see client game jitter min/max/avg passed up from SDK
+
+	-----
+
+	Functional test to verify that we see client game packet loss min/max/avg passed up from SDK
 
 	-----

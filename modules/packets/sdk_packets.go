@@ -137,6 +137,9 @@ type SDK_ServerUpdateRequestPacket struct {
 	NumSessions   uint32
 	ServerAddress net.UDPAddr
 	Uptime        uint64
+	DeltaTimeMin  float32
+	DeltaTimeMax  float32
+	DeltaTimeAvg  float32
 }
 
 func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -147,6 +150,11 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint32(&packet.NumSessions)
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.Uptime)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {
+		stream.SerializeFloat32(&packet.DeltaTimeMin)
+		stream.SerializeFloat32(&packet.DeltaTimeMax)
+		stream.SerializeFloat32(&packet.DeltaTimeAvg)
+	}
 	return stream.Error()
 }
 
@@ -317,6 +325,9 @@ type SDK_SessionUpdateRequestPacket struct {
 	JitterServerToClient            float32
 	Latitude                        float32
 	Longitude                       float32
+	DeltaTimeMin                    float32
+	DeltaTimeMax					float32
+	DeltaTimeAvg					float32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -442,6 +453,9 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {
 		stream.SerializeFloat32(&packet.Latitude)
 		stream.SerializeFloat32(&packet.Longitude)
+		stream.SerializeFloat32(&packet.DeltaTimeMin)
+		stream.SerializeFloat32(&packet.DeltaTimeMax)
+		stream.SerializeFloat32(&packet.DeltaTimeAvg)
 	}
 
 	return stream.Error()

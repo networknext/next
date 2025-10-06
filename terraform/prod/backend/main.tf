@@ -44,19 +44,19 @@ locals {
   disable_raspberry           = true
   disable_ip2location         = false
 
-  google_project_id          = file("~/secrets/prod-project-id.txt")
-  google_project_number      = file("~/secrets/prod-project-number.txt")
-  google_service_account     = file("~/secrets/prod-runtime-service-account.txt")
+  google_project_id           = file("~/secrets/prod-project-id.txt")
+  google_project_number       = file("~/secrets/prod-project-number.txt")
+  google_service_account      = file("~/secrets/prod-runtime-service-account.txt")
 
-  maxmind_license_key        = file("~/secrets/maxmind.txt")
+  maxmind_license_key         = file("~/secrets/maxmind.txt")
 
-  relay_backend_private_key  = file("~/secrets/prod-relay-backend-private-key.txt")
+  relay_backend_private_key   = file("~/secrets/prod-relay-backend-private-key.txt")
 
-  server_backend_private_key = file("~/secrets/prod-server-backend-private-key.txt")
+  server_backend_private_key  = file("~/secrets/prod-server-backend-private-key.txt")
 
-  api_private_key            = file("~/secrets/prod-api-private-key.txt")
+  api_private_key             = file("~/secrets/prod-api-private-key.txt")
 
-  ping_key                   = file("~/secrets/prod-ping-key.txt")
+  ping_key                    = file("~/secrets/prod-ping-key.txt")
 }
 
 # ----------------------------------------------------------------------------------------

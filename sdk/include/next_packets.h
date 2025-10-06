@@ -462,6 +462,9 @@ struct NextBackendServerUpdateRequestPacket
     uint32_t num_sessions;
     next_address_t server_address;
     uint64_t uptime;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
 
     NextBackendServerUpdateRequestPacket()
     {
@@ -474,6 +477,9 @@ struct NextBackendServerUpdateRequestPacket
         num_sessions = 0;
         memset( &server_address, 0, sizeof(next_address_t) );
         uptime = 0;
+        delta_time_min = 0.0f;
+        delta_time_max = 0.0f;
+        delta_time_avg = 0.0f;
     }
 
     template <typename Stream> bool Serialize( Stream & stream )
@@ -487,6 +493,9 @@ struct NextBackendServerUpdateRequestPacket
         serialize_uint32( stream, num_sessions );
         serialize_address( stream, server_address );
         serialize_uint64( stream, uptime );
+        serialize_float( stream, delta_time_min );
+        serialize_float( stream, delta_time_max );
+        serialize_float( stream, delta_time_avg );
         return true;
     }
 };
@@ -717,6 +726,9 @@ struct NextBackendSessionUpdateRequestPacket
     float jitter_server_to_client;
     float latitude;
     float longitude;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
 
     void Reset()
     {
@@ -863,6 +875,10 @@ struct NextBackendSessionUpdateRequestPacket
 
         serialize_float( stream, latitude );
         serialize_float( stream, longitude );
+
+        serialize_float( stream, delta_time_min );
+        serialize_float( stream, delta_time_max );
+        serialize_float( stream, delta_time_avg );
 
         return true;
     }
