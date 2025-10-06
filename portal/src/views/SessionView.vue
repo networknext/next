@@ -391,36 +391,37 @@ let bandwidth_opts = custom_graph({
   ]
 })
 
-/*
-let bandwidth_down_opts = custom_graph({
-  title: "Bandwidth Down",
+let game_delta_time_opts = custom_graph({
+  title: "Game Delta Time",
   series: [
     { 
-      name: 'Direct',
-      stroke: 'rgb(49, 130, 189)',
-      fill: 'rgba(49, 130, 189, 0.1)',
-      units: 'kbps',
+      name: 'Minimum',
+      stroke: "rgb(100,5,5)",
+      units: 'ms',
     },
     {
-      name: 'Next',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
-      units: 'kbps',
+      name: 'Average',
+      stroke: "orange",
+      units: 'ms',
+    },
+    {
+      name: 'Maximum',
+      stroke: "rgb(200,10,10)",
+      units: 'ms',
     },
   ]
 })
-*/
 
 function getPlatformName(platformId) {
   switch(platformId) {
   case 1: return "Windows"
   case 2: return "Mac"
   case 3: return "Linux"
-  case 4: return "Nintendo Switch"
+  case 4: return "Switch"
   case 5: return "PS4"
   case 6: return "iOS"
   case 7: return "Xbox One"
-  case 8: return "Xbox Series X"
+  case 8: return "Series X"
   case 9: return "PS5"
   default:
     return "Unknown"
@@ -431,7 +432,7 @@ function getConnectionName(connectionType) {
   switch(connectionType) {
   case 1: return "Wired"
   case 2: return "Wi-Fi"
-  case 3: return "Cellular"
+  case 3: return "Cell"
   default:
     return "Unknown"
   }
@@ -608,20 +609,20 @@ async function getData(page, session_id) {
 
       data.bandwidth_data = [graph_timestamps, bandwidth_up, bandwidth_down]
 
-      /*
-      // bandwidth down graph data
+      // game delta time graph data
   
-      let bandwidth_down_direct = []
-      let bandwidth_down_next = []
+      let game_delta_time_min = []
+      let game_delta_time_max = []
+      let game_delta_time_avg = []
       i = 0
       while (i < res.data.slice_data.length) {
-        bandwidth_down_direct.push(res.data.slice_data[i].direct_kbps_down)
-        bandwidth_down_next.push(res.data.slice_data[i].next_kbps_down)
+        game_delta_time_min.push(res.data.slice_data[i].delta_time_min * 1000.0)
+        game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
+        game_delta_time_avg.push(res.data.slice_data[i].delta_time_avg * 1000.0)
         i++
       }
 
-      data.bandwidth_down_data = [graph_timestamps, bandwidth_down_direct, bandwidth_down_next]
-      */
+      data.game_delta_time_data = [graph_timestamps, game_delta_time_min, game_delta_time_max, game_delta_time_avg]
 
       // mark data as found
 
@@ -683,9 +684,7 @@ export default {
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
     this.bandwidth = new uPlot(bandwidth_opts, [[],[]], document.getElementById('bandwidth_graph'))
-    /*
-    this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down_graph'))
-    */
+    this.game_delta_time = new uPlot(game_delta_time_opts, [[],[]], document.getElementById('game_delta_time_graph'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -704,14 +703,14 @@ export default {
     this.jitter.destroy()
     this.packet_loss.destroy()
     this.bandwidth.destroy()
-    // this.bandwidth_down.destroy()
+    this.game_delta_time.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.latency = null
     this.jitter = null
     this.packet_loss = null
     this.bandwidth = null
-    // this.bandwidth_down = null
+    this.game_delta_time = null
     this.observer = null
   },
 
@@ -743,7 +742,7 @@ export default {
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
           this.bandwidth.setSize({width: graph_width, height: graph_height})
-          // this.bandwidth_down.setSize({width: graph_width, height: graph_height})
+          this.game_delta_time.setSize({width: graph_width, height: graph_height})
         }
       }    
 
@@ -794,11 +793,9 @@ export default {
       if (this.bandwidth != null && this.data.bandwidth_data != null) {
         this.bandwidth.setData(this.data.bandwidth_data, true)
       }
-      /*
-      if (this.bandwidth_down != null && this.data.bandwidth_down_data != null) {
-        this.bandwidth_down.setData(this.data.bandwidth_down_data, true)
+      if (this.game_delta_time != null && this.data.game_delta_time_data != null) {
+        this.game_delta_time.setData(this.data.game_delta_time_data, true)
       }
-      */
     },
 
     search() {
