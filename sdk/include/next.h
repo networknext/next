@@ -362,6 +362,9 @@ struct next_client_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
 };
 
 // -----------------------------------------
@@ -438,6 +441,9 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0

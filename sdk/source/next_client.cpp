@@ -276,9 +276,15 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(14)
 
-    std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
 
     NEXT_DECLARE_SENTINEL(15)
+
+    std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
+
+    NEXT_DECLARE_SENTINEL(16)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -301,6 +307,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 13 )
     NEXT_INITIALIZE_SENTINEL( client, 14 )
     NEXT_INITIALIZE_SENTINEL( client, 15 )
+    NEXT_INITIALIZE_SENTINEL( client, 16 )
 
     next_replay_protection_initialize_sentinels( &client->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &client->special_replay_protection );
@@ -332,6 +339,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 13 )
     NEXT_VERIFY_SENTINEL( client, 14 )
     NEXT_VERIFY_SENTINEL( client, 15 )
+    NEXT_VERIFY_SENTINEL( client, 16 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -1878,6 +1886,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.next_packet_loss += next_fake_next_packet_loss;
  #endif // #if NEXT_DEVELOPMENT
 
+        client->client_stats.delta_time_min = client->delta_time_min;
+        client->client_stats.delta_time_max = client->delta_time_max;
+        client->client_stats.delta_time_avg = client->delta_time_avg;
+
         if ( !fallback_to_direct )
         {
             const int packets_lost = next_packet_loss_tracker_update( &client->packet_loss_tracker );
@@ -1968,7 +1980,11 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.client_relay_request_id = client->client_relay_update_packet.request_id;
 
-        next_value_tracker_calculate( &client->delta_time_tracker, &packet.delta_time_min, &packet.delta_time_max, &packet.delta_time_avg );
+        next_value_tracker_calculate( &client->delta_time_tracker, &client->delta_time_min, &client->delta_time_max, &client->delta_time_avg );
+
+        packet.delta_time_min = client->delta_time_min;
+        packet.delta_time_max = client->delta_time_max;
+        packet.delta_time_avg = client->delta_time_avg;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {

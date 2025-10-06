@@ -2802,6 +2802,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_packets_lost_server_to_client = packet.packets_lost_server_to_client;
             session->stats_jitter_server_to_client = packet.jitter_server_to_client;
 
+            session->stats_delta_time_min = packet.delta_time_min;
+            session->stats_delta_time_max = packet.delta_time_max;
+            session->stats_delta_time_avg = packet.delta_time_avg;
+
             session->last_client_stats_update = next_platform_time();
         }
 
@@ -3842,6 +3846,11 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             packet.jitter_client_to_server = session->stats_jitter_client_to_server;
             packet.jitter_server_to_client = session->stats_jitter_server_to_client;
+
+            packet.delta_time_min = session->stats_delta_time_min;
+            packet.delta_time_max = session->stats_delta_time_max;
+            packet.delta_time_avg = session->stats_delta_time_avg;
+
             packet.next = session->stats_next;
             packet.next_rtt = session->stats_next_rtt;
             packet.next_jitter = session->stats_next_jitter;
@@ -4787,6 +4796,9 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
             stats->packets_out_of_order_server_to_client = entry->stats_packets_out_of_order_server_to_client;
             stats->jitter_client_to_server = entry->stats_jitter_client_to_server;
             stats->jitter_server_to_client = entry->stats_jitter_server_to_client;
+            stats->delta_time_min = entry->stats_delta_time_min;
+            stats->delta_time_max = entry->stats_delta_time_max;
+            stats->delta_time_avg = entry->stats_delta_time_avg;
             return true;
         }
     }

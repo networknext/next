@@ -51,6 +51,9 @@ struct next_session_entry_t
     float stats_next_rtt;
     float stats_next_jitter;
     float stats_next_packet_loss;
+    float stats_delta_time_min;
+    float stats_delta_time_max;
+    float stats_delta_time_avg;
 
     NEXT_DECLARE_SENTINEL(2)
 

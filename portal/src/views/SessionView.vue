@@ -53,8 +53,6 @@
         
         <div id="packet_loss_graph" class="graph"/>
 
-        <div id="out_of_order_graph" class="graph"/>
-
         <div id="bandwidth_up_graph" class="graph"/>
 
         <div id="bandwidth_down_graph" class="graph"/>
@@ -375,19 +373,6 @@ let packet_loss_opts = custom_graph({
   ]
 })
 
-let out_of_order_opts = custom_graph({
-  title: "Out of Order",
-  percent: true,
-  series: [
-    {
-      name: 'Real',
-      stroke: "#ffcc00",
-      fill: "rgba(10,10,10,0.035)",
-      units: "%",
-    },
-  ]
-})
-
 let bandwidth_up_opts = custom_graph({
   title: "Bandwidth Up",
   series: [
@@ -608,17 +593,6 @@ async function getData(page, session_id) {
 
       data.packet_loss_data = [graph_timestamps, packet_loss_real]
 
-      // out of order graph data
-  
-      let out_of_order_real = []
-      i = 0
-      while (i < res.data.slice_data.length) {
-        out_of_order_real.push(res.data.slice_data[i].real_out_of_order)
-        i++
-      }
-
-      data.out_of_order_data = [graph_timestamps, out_of_order_real]
-
       // bandwidth up graph data
   
       let bandwidth_up_direct = []
@@ -704,7 +678,6 @@ export default {
     this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
-    this.out_of_order = new uPlot(out_of_order_opts, [[]], document.getElementById('out_of_order_graph'))
     this.bandwidth_up = new uPlot(bandwidth_up_opts, [[],[]], document.getElementById('bandwidth_up_graph'))
     this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down_graph'))
 
@@ -724,7 +697,6 @@ export default {
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()
-    this.out_of_order.destroy()
     this.bandwidth_up.destroy()
     this.bandwidth_down.destroy()
     this.observer.disconnect()
@@ -732,7 +704,6 @@ export default {
     this.latency = null
     this.jitter = null
     this.packet_loss = null
-    this.out_of_order = null
     this.bandwidth_up = null
     this.bandwidth_down = null
     this.observer = null
@@ -765,7 +736,6 @@ export default {
           this.latency.setSize({width: graph_width, height: graph_height})
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
-          this.out_of_order.setSize({width: graph_width, height: graph_height})
           this.bandwidth_up.setSize({width: graph_width, height: graph_height})
           this.bandwidth_down.setSize({width: graph_width, height: graph_height})
         }
@@ -814,9 +784,6 @@ export default {
       }
       if (this.packet_loss != null && this.data.packet_loss_data != null) {
         this.packet_loss.setData(this.data.packet_loss_data, true)
-      }
-      if (this.out_of_order != null && this.data.out_of_order_data != null) {
-        this.out_of_order.setData(this.data.out_of_order_data, true)
       }
       if (this.bandwidth_up != null && this.data.bandwidth_up_data != null) {
         this.bandwidth_up.setData(this.data.bandwidth_up_data, true)

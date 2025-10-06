@@ -54,13 +54,17 @@ DONE
 
 	Extend client stats to pass up delta time stats to server via client stats packet
 
-TODO
+	Out of order packets display some weird behavior.
+
+	Disable showing the out of order graph in the portal until it is fixed. Game packet loss (in unreal) can provide the same visibility.
 
 	Extend server to cache per-session delta time min/max/avg when it receives client stats packet
 
 	Server passes up delta time stats to the backend via backend session update request packet
 
 	Deploy to dev
+
+TODO
 
 	Verify that we start seeing session delta time min/max/avg values in dev bigquery
 
@@ -102,18 +106,6 @@ FIX BANDWIDTH DISPLAY
 	Extend to pass bandwidth up/down to portal instead of next/direct bandwidth.
 
 	Combine into one graph and show "Up" and "Down".
-
-
-
-
-
-
-FIX OUT OF ORDER PACKETS
-
-	Out of order packets display some weird behavior.
-
-	Disable showing the out of order graph in the portal until it is fixed. Game packet loss (in unreal) can provide the same visibility.
-
 
 
 
