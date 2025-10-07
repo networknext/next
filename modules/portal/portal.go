@@ -1628,7 +1628,7 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverId uint
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to get server data: %v", err)
+		core.Error("failed to get server data for server id '%s': %v", err)
 		return nil, nil
 	}
 

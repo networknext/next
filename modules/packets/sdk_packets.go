@@ -286,6 +286,7 @@ type SDK_SessionUpdateRequestPacket struct {
 	SessionDataSignature            [SDK_SignatureBytes]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
+	ServerId                        uint64
 	ClientRoutePublicKey            [crypto.Box_PublicKeySize]byte
 	ServerRoutePublicKey            [crypto.Box_PublicKeySize]byte
 	UserHash                        uint64
@@ -359,6 +360,10 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	stream.SerializeAddress(&packet.ClientAddress)
 
 	stream.SerializeAddress(&packet.ServerAddress)
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
+		stream.SerializeUint64(&packet.ServerId)
+	}
 
 	stream.SerializeBytes(packet.ClientRoutePublicKey[:])
 

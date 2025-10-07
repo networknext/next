@@ -224,7 +224,7 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 6},
+		Version:                         packets.SDKVersion{1, 2, 7},
 		BuyerId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
@@ -233,6 +233,7 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK_MaxSessionDataSize)),
 		ClientAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		ServerAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
+		ServerId:                        rand.Uint64(),
 		UserHash:                        rand.Uint64(),
 		HasClientRelayPings:             common.RandomBool(),
 		HasServerRelayPings:             common.RandomBool(),
