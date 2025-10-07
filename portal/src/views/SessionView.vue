@@ -394,21 +394,10 @@ let bandwidth_opts = custom_graph({
 let game_delta_time_opts = custom_graph({
   title: "Game Delta Time",
   series: [
-    { 
-      name: 'Minimum',
-      stroke: "rgb(100,5,5)",
-      units: 'ms',
-    },
-    {
-      name: 'Average',
-      stroke: "orange",
-      fill: "rgba(10,10,10,0.035)",
-      units: 'ms',
-    },
     {
       name: 'Maximum',
-      stroke: "rgb(200,10,10)",
-      fill: "rgba(10,10,10,0.035)",
+      stroke: "orange",
+      fill: "rgba(255, 140, 0,0.035)",
       units: 'ms',
     },
   ]
@@ -613,21 +602,15 @@ async function getData(page, session_id) {
 
       // game delta time graph data
   
-      let game_delta_time_min = []
-      let game_delta_time_avg = []
       let game_delta_time_max = []
       i = 0
       while (i < res.data.slice_data.length) {
-        let delta_time_min = res.data.slice_data[i].delta_time_min != null ? res.data.slice_data[i].delta_time_min : 0.0;
-        let delta_time_avg = res.data.slice_data[i].delta_time_avg != null ? res.data.slice_data[i].delta_time_avg : 0.0;
-        let delta_time_max = res.data.slice_data[i].delta_time_max != null ? res.data.slice_data[i].delta_time_max : 0.0;
-        game_delta_time_min.push(res.data.slice_data[i].delta_time_min * 1000.0)
-        game_delta_time_avg.push(res.data.slice_data[i].delta_time_avg * 1000.0)
+        let delta_time_max = ( res.data.slice_data[i].delta_time_max != null ) ? res.data.slice_data[i].delta_time_max : 0.0;
         game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
         i++
       }
 
-      data.game_delta_time_data = [graph_timestamps, game_delta_time_min, game_delta_time_avg, game_delta_time_max]
+      data.game_delta_time_data = [graph_timestamps, game_delta_time_max]
 
       // mark data as found
 
