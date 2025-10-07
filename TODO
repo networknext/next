@@ -126,7 +126,11 @@ TODO
 
 	Caching issues? Problems?
 
-		
+	-------
+
+	Make sure that we are uploading server_id to the bigquery schemas as needed.
+
+	-------		
 
 
 

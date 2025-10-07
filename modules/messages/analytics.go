@@ -8,6 +8,7 @@ type AnalyticsSessionUpdateMessage struct {
 
 	Timestamp        int64   `avro:"timestamp"`
 	SessionId        int64   `avro:"session_id"`
+	ServerId         int64   `avro:"server_id"`
 	SliceNumber      int32   `avro:"slice_number"`
 	RealPacketLoss   float32 `avro:"real_packet_loss"`
 	RealJitter       float32 `avro:"real_jitter"`

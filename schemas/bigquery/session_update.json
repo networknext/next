@@ -238,5 +238,11 @@
     "type": "BOOL",
     "mode": "REQUIRED",
     "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
-  }
+  },
+  {
+    "name": "server_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Unique identifier of the server"
+  },
 ]

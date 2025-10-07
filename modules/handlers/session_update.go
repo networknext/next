@@ -1280,6 +1280,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
 	message.SessionId = int64(state.Request.SessionId)
+	message.ServerId = int64(common.HashString(state.Request.ServerAddress.String()))
 	message.SliceNumber = int32(state.Request.SliceNumber - 1) // IMPORTANT: Line it up with data coming from the SDK
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
