@@ -397,6 +397,7 @@ let game_delta_time_opts = custom_graph({
     { 
       name: 'Minimum',
       stroke: "rgb(100,5,5)",
+      fill: "rgba(10,10,10,0.035)",
       units: 'ms',
     },
     {
@@ -612,13 +613,13 @@ async function getData(page, session_id) {
       // game delta time graph data
   
       let game_delta_time_min = []
-      let game_delta_time_max = []
       let game_delta_time_avg = []
+      let game_delta_time_max = []
       i = 0
       while (i < res.data.slice_data.length) {
         game_delta_time_min.push(res.data.slice_data[i].delta_time_min * 1000.0)
-        game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
         game_delta_time_avg.push(res.data.slice_data[i].delta_time_avg * 1000.0)
+        game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
         i++
       }
 
