@@ -397,12 +397,12 @@ let game_delta_time_opts = custom_graph({
     { 
       name: 'Minimum',
       stroke: "rgb(100,5,5)",
-      fill: "rgba(10,10,10,0.035)",
       units: 'ms',
     },
     {
       name: 'Average',
       stroke: "orange",
+      fill: "rgba(10,10,10,0.035)",
       units: 'ms',
     },
     {
