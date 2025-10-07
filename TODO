@@ -76,11 +76,19 @@ DONE
 
 	Fix so we can handle missing delta time values.
 
+	Separate next/direct bandwidth is annoying.
+
+	Simplify bandwidth processing in the SDK so if it sends or receives a packet (whether next or direct), it is included in bandwidth up/down.
+
+	Deprecate the old bigquery schema values for next_bandwidth_up/down, direct_bandwidth_up/down and make them NULLABLE and create new entries bandwidth_up / bandwidth_down (must also be NULLABLE, because new...)
+
+	Extend to pass bandwidth up/down to portal instead of next/direct bandwidth.
+
+	Combine into one graph and show "Up" and "Down".
+
+	Fix pubsub avro issue with terraform
+
 TODO
-
-	Fix bigquery issue with terraform
-
-	-----
 
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
@@ -98,60 +106,26 @@ TODO
 
 
 
-
-FIX BANDWIDTH DISPLAY
-
-	Separate next/direct bandwidth is annoying.
-
-	Simplify bandwidth processing in the SDK so if it sends or receives a packet (whether next or direct), it is included in bandwidth up/down.
-
-	Deprecate the old bigquery schema values for next_bandwidth_up/down, direct_bandwidth_up/down and make them NULLABLE and create new entries bandwidth_up / bandwidth_down (must also be NULLABLE, because new...)
-
-	Extend to pass bandwidth up/down to portal instead of next/direct bandwidth.
-
-	Combine into one graph and show "Up" and "Down".
-
-
-
-
-
-
 GAME RTT/JITTER/PL FEATURE
 
 	-----
 
-	Session update request packet should also include game_rtt_min/max/avg
+	Session update request packet should also include game_rtt
 
-	Session update request packet should also include game_jitter_min/max/avg
+	Session update request packet should also include game_jitter
 
-	Session update request packet should also include game_packet_loss_min/max/avg
-
-	-----
-
-	Update backend to read game_rtt_*, game_jitter_* and game_packet_loss_* if SDK version is 1.2.6 or greater.
+	Session update request packet should also include game_packet_loss
 
 	-----
 
-	Functional test to verify that we see client game rtt min/max/avg passed up from SDK
+	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.6 or greater.
 
 	-----
 
-	Functional test to verify that we see client game jitter min/max/avg passed up from SDK
+	Functional test to verify that we see client game rtt, jitter and packet loss passed up from SDK
 
 	-----
 
-	Functional test to verify that we see client game packet loss min/max/avg passed up from SDK
-
-	-----
-
-	Update portal to display "Game Latency" (min/max/avg)
-
-	-----
-
-	Update portal to display "Game Jitter" (min/max/avg)
-
-	-----
-
-	Update portal to display "Game Packet Loss" (min/max/avg)
+	Update portal to display game latency, game jitter and game packet loss.
 
 	-----
