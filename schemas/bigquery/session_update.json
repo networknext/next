@@ -244,5 +244,5 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Unique identifier of the server"
-  },
+  }
 ]
