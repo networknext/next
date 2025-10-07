@@ -3895,7 +3895,6 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
             packet.client_address = session->address;
             packet.server_address = server->server_address;
-            packet.server_id = server->server_id;
 
             memcpy( packet.client_route_public_key, session->client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
             memcpy( packet.server_route_public_key, server->server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );

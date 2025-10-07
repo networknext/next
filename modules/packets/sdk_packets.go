@@ -286,7 +286,6 @@ type SDK_SessionUpdateRequestPacket struct {
 	SessionDataSignature            [SDK_SignatureBytes]byte
 	ClientAddress                   net.UDPAddr
 	ServerAddress                   net.UDPAddr
-	ServerId                        uint64
 	ClientRoutePublicKey            [crypto.Box_PublicKeySize]byte
 	ServerRoutePublicKey            [crypto.Box_PublicKeySize]byte
 	UserHash                        uint64

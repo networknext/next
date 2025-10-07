@@ -787,7 +787,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	serverId, err := strconv.ParseUInt(vars["server_id"], 16, 64)
+	serverId, err := strconv.ParseUint(vars["server_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return

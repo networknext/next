@@ -687,7 +687,6 @@ struct NextBackendSessionUpdateRequestPacket
     uint8_t session_data_signature[NEXT_CRYPTO_SIGN_BYTES];
     next_address_t client_address;
     next_address_t server_address;
-    uint64_t server_id;
     uint8_t client_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint8_t server_route_public_key[NEXT_CRYPTO_BOX_PUBLICKEYBYTES];
     uint64_t user_hash;
@@ -771,8 +770,6 @@ struct NextBackendSessionUpdateRequestPacket
 
         serialize_address( stream, client_address );
         serialize_address( stream, server_address );
-
-        serialize_uint64( stream, server_id );
 
         serialize_bytes( stream, client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         serialize_bytes( stream, server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
