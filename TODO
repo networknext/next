@@ -110,15 +110,15 @@ DONE
 
 	Debug why the the server lookup by server id is sometimes not working
 
-TODO
+	It seems there is a mismatch between server id and server address passed up in session update. Weird?
+
+	Fixed. Was using bind address, not server address =p
 
 	Pass func tests
 
-	---------
+	Prepare prod branch for fast revert if necessary
 
-	It seems there is a mismatch between server id and server address passed up in session update. Weird?
-
-	---------
+TODO
 
 	Deploy to prod
 	
@@ -156,7 +156,7 @@ GAME RTT/JITTER/PL FEATURE
 
 
 
-TIME SPENT IN MATCHMAKING FEATURE
+SESSION VALUES
 
 	What if we provided the customer a way to pass in an optional set of n float values when upgrading?
 

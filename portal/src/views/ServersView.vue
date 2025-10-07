@@ -8,7 +8,7 @@
       <table id="servers_table" class="table table-striped">
         <thead>
           <tr>
-            <th>Server Id</th>
+            <th>Server ID</th>
             <th>Current Sessions</th>
           </tr>
         </thead>
@@ -25,7 +25,7 @@
       <table id="servers_table" class="table table-striped table-hover">
         <thead>
           <tr>
-            <th>Server Id</th>
+            <th>Server ID</th>
             <th>Datacenter</th>
             <th>Current Sessions</th>
             <th>Uptime</th>

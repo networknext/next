@@ -19,7 +19,7 @@
             <tbody>
 
               <tr>
-                <td class="bold">Server Id</td>
+                <td class="bold">Server ID</td>
                 <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
               </tr>
 
@@ -161,7 +161,7 @@
               <tbody>
 
                 <tr>
-                  <td class="bold">Server Id</td>
+                  <td class="bold">Server ID</td>
                   <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
                 </tr>
 
