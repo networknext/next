@@ -3599,6 +3599,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     packet.request_id = server->server_init_request_id;
     packet.buyer_id = server->buyer_id;
+    packet.server_id = server->server_id;
     packet.datacenter_id = server->datacenter_id;
     next_copy_string( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
     packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';

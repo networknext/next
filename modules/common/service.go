@@ -658,7 +658,7 @@ func (service *Service) WaitForShutdown() {
 	}
 	service.ip2location_mutex.Unlock()
 
-	if service.ConnectionDrain {
+	if service.ConnectionDrain && !service.Local {
 		core.Log("connection drain...")
 		time.Sleep(60 * time.Second)
 	}

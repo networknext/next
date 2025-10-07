@@ -413,6 +413,7 @@ struct NextBackendServerInitRequestPacket
         version_patch = NEXT_VERSION_PATCH_INT;
         buyer_id = 0;
         request_id = 0;
+        server_id = 0;
         datacenter_id = 0;
         datacenter_name[0] = '\0';
     }

@@ -270,6 +270,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 		core.Debug("buyer id: %016x", requestPacket.BuyerId)
 		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("server id: %016x", requestPacket.ServerId)
 		core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 		core.Debug("---------------------------------------------------------------------------")
 	}
@@ -355,6 +356,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 		core.Debug("buyer id: %016x", requestPacket.BuyerId)
 		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("server id: %016x", requestPacket.ServerId)
 		core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 		core.Debug("---------------------------------------------------------------------------")
 	}
@@ -449,7 +451,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	if core.DebugLogs {
 		core.Debug("---------------------------------------------------------------------------")
-		core.Debug("received session update request packet from %s", from.String())
+		// todo: pass up server id in session update request packet. don't hash it manually in backend
+		core.Debug("received session update request packet from %s [%x]", from.String(), common.HashString(from.String()))
 		core.Debug("---------------------------------------------------------------------------")
 	}
 
