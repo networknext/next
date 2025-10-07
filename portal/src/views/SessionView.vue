@@ -166,6 +166,11 @@
                 </tr>
 
                 <tr>
+                  <td class="bold">Server</td>
+                  <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
+                </tr>
+
+                <tr>
                   <td class="bold">ISP</td>
                   <td> {{ this.data['isp'] }} </td>
                 </tr>
@@ -408,6 +413,7 @@ async function getData(page, session_id) {
       let session_data = res.data.session_data
 
       data['session_id'] = parse_uint64(session_data.session_id)
+      data['server_id'] = parse_uint64(session_data.server_id)
       data["datacenter_name"] = session_data.datacenter_name
       data["isp"] = session_data.isp
       data["buyer_code"] = session_data.buyer_code
