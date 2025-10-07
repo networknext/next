@@ -120,7 +120,6 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
-        "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt + " ms",
         "Accelerated RTT":next_rtt,
         "Improvement":improvement,
