@@ -18,6 +18,7 @@
 #include "next_header.h"
 #include "next_internal_config.h"
 #include "next_value_tracker.h"
+#include "next_hash.h"
 
 #include <atomic>
 #include <stdio.h>
@@ -2426,6 +2427,7 @@ struct next_client_t
     uint8_t current_magic[8];
     uint16_t bound_port;
     uint64_t session_id;
+    uint64_t server_id;
     double previous_update_time;
     next_address_t server_address;
     next_address_t client_external_address;
@@ -2599,6 +2601,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
 
     client->state = NEXT_CLIENT_STATE_OPEN;
     client->server_address = server_address;
+    client->server_id = next_hash_string( server_address_string );
     client->open_session_sequence++;
 }
 
@@ -3098,6 +3101,13 @@ uint64_t next_client_session_id( next_client_t * client )
     next_client_verify_sentinels( client );
 
     return client->session_id;
+}
+
+uint64_t next_client_server_id( next_client_t * client )
+{
+    next_client_verify_sentinels( client );
+
+    return client->server_id;
 }
 
 const next_client_stats_t * next_client_stats( next_client_t * client )
