@@ -94,11 +94,11 @@ type PortalSessionData struct {
 	NextRTT        uint32  `json:"next_rtt"`
 	BuyerId        string  `json:"buyer_id"`
 	DatacenterId   string  `json:"datacenter_id"`
-	ServerAddress  string  `json:"server_address"`
+	ServerId       uint64  `json:"server_id,string"`
 }
 
 type PortalServerData struct {
-	ServerAddress    string `json:"server_address"`
+	ServerId         uint64 `json:"server_id,string"`
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
@@ -524,34 +524,21 @@ func test_portal() {
 			fmt.Printf("session %016x has %d slices, %d client relay data, %d server relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.ClientRelayData), len(sessionDataResponse.ServerRelayData))
 		}
 
-		serverCountResponse := PortalServerCountResponse{}
+		serversResponse := PortalServersResponse{}
 
-		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
+		Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
 
-		fmt.Printf("servers = %d\n", serverCountResponse.ServerCount)
+		fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
 
-		var serverDataResponse *PortalServerDataResponse
+		serverDataResponse := PortalServerDataResponse{}
 
-		if serverCountResponse.ServerCount > 0 {
+		if len(serversResponse.Servers) > 0 {
 
-			serversResponse := PortalServersResponse{}
+			fmt.Printf("first server id is %016x\n", serversResponse.Servers[0].ServerId)
 
-			Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%016x", serversResponse.Servers[0].ServerId), &serverDataResponse)
 
-			response := PortalServerDataResponse{}
-
-			serverDataResponse = &response
-
-			fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
-
-			if len(serversResponse.Servers) > 0 {
-
-				fmt.Printf("first server address is '%s'\n", serversResponse.Servers[0].ServerAddress)
-
-				Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].ServerAddress), &serverDataResponse)
-
-				fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].ServerAddress, len(serverDataResponse.ServerSessionIds))
-			}
+			fmt.Printf("server %016x has %d sessions\n", serversResponse.Servers[0].ServerId, len(serverDataResponse.ServerSessionIds))
 		}
 
 		relayCountResponse := PortalRelayCountResponse{}
@@ -603,7 +590,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if serverDataResponse == nil || len(serverDataResponse.ServerSessionIds) < 10 {
+		if len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("F\n")
 			ready = false
 		}

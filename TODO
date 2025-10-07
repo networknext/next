@@ -104,27 +104,23 @@ DONE
 
 	Show server id in servers view
 
+	Update routing to map to server by id, not address
+
+	Deploy to dev and verify that I can nav around to servers and see server list and click on them
+
 TODO
 
-	Update routing to map to server by id, not address
+	Debug why the the server lookup by server id is sometimes not working
+
+	-------
+
+	If the SDK does not pass up server id, we need to calculate it from server address. 
+
+	Otherwise, this is useless until SLOCLAP upgrade SDK, which will take a while.
 
 	-------
 
 	Update server "score" so it is top n bits of the server id so it sorts *roughly* in server IP address order.
-
-	-------
-
-
-	-------
-
-
-	-------
-
-	Update session view so it links to server by server_id, and re-add to top summary table with link to server showing server id as text
-
-	-------
-
-	Deploy to dev and verify that I can nav around to servers and see server list and click on them
 
 	-------
 

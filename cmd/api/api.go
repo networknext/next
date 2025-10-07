@@ -327,7 +327,6 @@ func main() {
 		service.Router.HandleFunc("/portal/sessions/{page}", isPortalAuthorized(portalSessionsHandler))
 		service.Router.HandleFunc("/portal/session/{session_id}", isPortalAuthorized(portalSessionDataHandler))
 
-		service.Router.HandleFunc("/portal/server_count", isPortalAuthorized(portalServerCountHandler))
 		service.Router.HandleFunc("/portal/servers/{page}", isPortalAuthorized(portalServersHandler))
 		service.Router.HandleFunc("/portal/server/{server_id}", isPortalAuthorized(portalServerDataHandler))
 		service.Router.HandleFunc("/portal/server/{server_id}/{page}", isPortalAuthorized(portalServerDataHandler))
@@ -711,24 +710,6 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-type PortalServerCountResponse struct {
-	ServerCount int `json:"server_count"`
-}
-
-func portalServerCountHandler(w http.ResponseWriter, r *http.Request) {
-	response := PortalServerCountResponse{}
-	var serverUpdate float64
-	if enableRedisTimeSeries {
-		adminCountersWatcher.Lock()
-		serverUpdate = adminCountersWatcher.GetFloatValue("server_update")
-		adminCountersWatcher.Unlock()
-	}
-	response.ServerCount = int(math.Ceil(serverUpdate * 10.0 / 60.0))
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
 type PortalServerData struct {
 	ServerAddress    string `json:"server_address"`
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
@@ -806,13 +787,11 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	serverIdSigned, err := strconv.ParseInt(vars["server_id"], 16, 64)
+	serverId, err := strconv.ParseUInt(vars["server_id"], 16, 64)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	serverId := uint64(serverIdSigned)
 
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
