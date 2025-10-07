@@ -606,7 +606,7 @@ async function getData(page, session_id) {
       i = 0
       while (i < res.data.slice_data.length) {
         let delta_time_max = ( res.data.slice_data[i].delta_time_max != null ) ? res.data.slice_data[i].delta_time_max : 0.0;
-        game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
+        game_delta_time_max.push(delta_time_max * 1000.0)
         i++
       }
 
