@@ -25,6 +25,7 @@
 
               <tr>
                 <td class="bold">Server</td>
+                <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
               </tr>
 
               <tr>
@@ -65,16 +66,15 @@
             <tbody>
 
               <tr>
-                <td class="left_align"> Client </td>
-                <td class="right_align"> </td>
+                <td class="left_align bold"> Client </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
               </tr>
 
               <tr>
-                <td class="left_align"> Server </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -86,12 +86,11 @@
             <tbody>
 
               <tr>
-                <td class="left_align"> Client </td>
-                <td class="right_align"> </td>
+                <td class="left_align bold"> Client </td>
               </tr>
 
               <tr>
-                <td class="left_align"> Server </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -208,7 +207,6 @@
 
               <tr>
                 <td class="left_align bold"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
@@ -216,7 +214,7 @@
               </tr>
 
               <tr>
-                <td class="left_align bold"> Server </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -232,7 +230,7 @@
               </tr>
 
               <tr>
-                <td class="left_align bold"> Server </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
