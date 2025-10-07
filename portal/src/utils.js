@@ -42,11 +42,11 @@ function getPlatformName(platformId) {
   case 1: return "Windows"
   case 2: return "Mac"
   case 3: return "Linux"
-  case 4: return "Nintendo Switch"
+  case 4: return "Switch"
   case 5: return "PS4"
   case 6: return "iOS"
   case 7: return "Xbox One"
-  case 8: return "Xbox Series X"
+  case 8: return "Series X"
   case 9: return "PS5"
   default:
     return "Unknown"
@@ -57,7 +57,7 @@ function getConnectionName(connectionType) {
   switch(connectionType) {
   case 1: return "Wired"
   case 2: return "Wi-Fi"
-  case 3: return "Cellular"
+  case 3: return "Cell"
   default:
     return "Unknown"
   }
