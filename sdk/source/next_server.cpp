@@ -253,6 +253,7 @@ struct next_server_internal_t
     uint64_t upgrade_sequence;
     double next_resolve_hostname_time;
     next_address_t backend_address;
+    uint64_t server_id;
     next_address_t server_address;
     next_address_t bind_address;
     next_queue_t * command_queue;
@@ -605,6 +606,9 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->bind_address = bind_address;
     server->server_address = server_address;
+    server->server_id = next_hash_string( address_string );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "server id is %" PRIx64, server->server_id );
 
     int result = next_platform_mutex_create( &server->session_mutex );
     if ( result != NEXT_OK )
@@ -3165,8 +3169,6 @@ void next_server_internal_pump_commands( next_server_internal_t * server )
 #endif // #if NEXT_SPIKE_TRACKING
                 next_server_command_update_t * cmd = (next_server_command_update_t*) command;
                 next_value_tracker_add_sample( &server->delta_time_tracker, cmd->delta_time );
-
-                printf( "add sample %f\n", cmd->delta_time );
             }
             break;
 
@@ -3712,6 +3714,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
         packet.buyer_id = server->buyer_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
+        packet.server_id = server->server_id;
         packet.server_address = server->server_address;
         packet.uptime = uint64_t( time(NULL) - server->start_time );
 
