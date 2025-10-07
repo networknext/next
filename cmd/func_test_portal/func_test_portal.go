@@ -213,7 +213,7 @@ func RunSessionInsertThreads(threadCount int) {
 
 					sessionData.SessionId = sessionId
 					sessionData.BuyerId = uint64(common.RandomInt(0, 9))
-					sessionData.ServerAddress = "127.0.0.1:50000"
+					sessionData.ServerId = common.HashString("127.0.0.1:50000")
 
 					sliceData := portal.GenerateRandomSliceData()
 
@@ -250,7 +250,7 @@ func RunServerInsertThreads(threadCount int) {
 
 				serverData := portal.GenerateRandomServerData()
 
-				serverData.ServerAddress = "127.0.0.1:50000"
+				serverData.ServerId = common.HashString("127.0.0.1:50000")
 
 				serverInserter.Insert(context.Background(), serverData)
 

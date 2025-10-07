@@ -329,8 +329,8 @@ func main() {
 
 		service.Router.HandleFunc("/portal/server_count", isPortalAuthorized(portalServerCountHandler))
 		service.Router.HandleFunc("/portal/servers/{page}", isPortalAuthorized(portalServersHandler))
-		service.Router.HandleFunc("/portal/server/{server_address}", isPortalAuthorized(portalServerDataHandler))
-		service.Router.HandleFunc("/portal/server/{server_address}/{page}", isPortalAuthorized(portalServerDataHandler))
+		service.Router.HandleFunc("/portal/server/{server_id}", isPortalAuthorized(portalServerDataHandler))
+		service.Router.HandleFunc("/portal/server/{server_id}/{page}", isPortalAuthorized(portalServerDataHandler))
 
 		service.Router.HandleFunc("/portal/relay_count", isPortalAuthorized(portalRelayCountHandler))
 		service.Router.HandleFunc("/portal/relays", isPortalAuthorized(portalRelaysHandler))
@@ -514,7 +514,7 @@ type PortalSessionData struct {
 	BuyerCode           string   `json:"buyer_code"`
 	DatacenterId        uint64   `json:"datacenter_id,string"`
 	DatacenterName      string   `json:"datacenter_name"`
-	ServerAddress       string   `json:"server_address"`
+	ServerId            uint64   `json:"server_id,string"`
 	NumRouteRelays      int      `json:"num_route_relays"`
 	RouteRelayIds       []uint64 `json:"route_relay_ids,string"`
 	RouteRelayNames     []string `json:"route_relay_names"`
@@ -531,8 +531,8 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 	output.DirectRTT = input.DirectRTT
 	output.NextRTT = input.NextRTT
 	output.BuyerId = input.BuyerId
+	output.ServerId = input.ServerId
 	output.DatacenterId = input.DatacenterId
-	output.ServerAddress = input.ServerAddress
 	if database != nil {
 		buyer := database.GetBuyer(input.BuyerId)
 		if buyer != nil {
@@ -751,7 +751,6 @@ type PortalServersResponse struct {
 }
 
 func upgradePortalServer(database *db.Database, input *portal.ServerData, output *PortalServerData) {
-	output.ServerAddress = input.ServerAddress
 	output.SDKVersion_Major = input.SDKVersion_Major
 	output.SDKVersion_Minor = input.SDKVersion_Minor
 	output.SDKVersion_Patch = input.SDKVersion_Patch
@@ -779,10 +778,10 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		page = 0
 	}
-	serverAddresses := topServersWatcher.GetTopServers()
-	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverAddresses))
-	serverAddresses = serverAddresses[begin:end]
-	servers := portal.GetServerList(service.Context, redisPortalClient, serverAddresses)
+	serverIds := topServersWatcher.GetTopServers()
+	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(serverIds))
+	serverIds = serverIds[begin:end]
+	servers := portal.GetServerList(service.Context, redisPortalClient, serverIds)
 	response := PortalServersResponse{}
 	response.Servers = make([]PortalServerData, len(servers))
 	response.OutputPage = outputPage
@@ -807,7 +806,14 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 
-	serverAddress := vars["server_address"]
+	serverIdSigned, err := strconv.ParseInt(vars["server_id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	serverId := uint64(serverIdSigned)
+
 	page, err := strconv.ParseInt(vars["page"], 10, 64)
 	if err != nil {
 		page = 0
@@ -819,7 +825,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverAddress, time.Now().Unix()/60)
+	serverData, serverSessions := portal.GetServerData(service.Context, redisPortalClient, serverId, time.Now().Unix()/60)
 	if serverData == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return

@@ -1076,6 +1076,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.ClientAddress = core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ServerAddress = state.Request.ServerAddress
+	message.ServerId = common.HashString(state.Request.ServerAddress.String())
 
 	message.SDKVersion_Major = byte(state.Request.Version.Major)
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)

@@ -575,8 +575,8 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 				DirectRTT:      message.BestDirectRTT,
 				NextRTT:        message.BestNextRTT,
 				BuyerId:        message.BuyerId,
+				ServerId:       message.ServerId,
 				DatacenterId:   message.DatacenterId,
-				ServerAddress:  message.ServerAddress.String(),
 			}
 
 			if message.Next {
