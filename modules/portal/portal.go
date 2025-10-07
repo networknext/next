@@ -1411,10 +1411,6 @@ func (inserter *ServerRelayInserter) Flush(ctx context.Context) {
 
 // ------------------------------------------------------------------------------------------------------------
 
-// todo: convert crunching to server id
-
-const MaxServerAddressLength = 64
-
 type ServerCruncherEntry struct {
 	ServerId uint64
 	Score    uint32
@@ -1579,7 +1575,6 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	serverId := serverData.ServerId
 
-	// todo: use top n bits of this mapped to [0,MaxScore] instead
 	score := (uint32(serverId) ^ uint32(serverId>>32)) % uint32(constants.MaxScore+1)
 
 	entry := ServerCruncherEntry{

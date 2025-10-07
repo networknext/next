@@ -360,10 +360,6 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 
 	stream.SerializeAddress(&packet.ServerAddress)
 
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
-		stream.SerializeUint64(&packet.ServerId)
-	}
-
 	stream.SerializeBytes(packet.ClientRoutePublicKey[:])
 
 	stream.SerializeBytes(packet.ServerRoutePublicKey[:])

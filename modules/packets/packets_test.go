@@ -233,7 +233,6 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		SessionDataBytes:                int32(common.RandomInt(0, packets.SDK_MaxSessionDataSize)),
 		ClientAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
 		ServerAddress:                   core.ParseAddress(fmt.Sprintf("127.0.0.1:%d", common.RandomInt(0, 65535))),
-		ServerId:                        rand.Uint64(),
 		UserHash:                        rand.Uint64(),
 		HasClientRelayPings:             common.RandomBool(),
 		HasServerRelayPings:             common.RandomBool(),

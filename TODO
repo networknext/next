@@ -108,21 +108,15 @@ DONE
 
 	Deploy to dev and verify that I can nav around to servers and see server list and click on them
 
-TODO
-
 	Debug why the the server lookup by server id is sometimes not working
 
-	-------
+TODO
 
-	If the SDK does not pass up server id, we need to calculate it from server address. 
+	Pass func tests
 
-	Otherwise, this is useless until SLOCLAP upgrade SDK, which will take a while.
+	Deploy to prod
+	
 
-	-------
-
-	Update server "score" so it is top n bits of the server id so it sorts *roughly* in server IP address order.
-
-	-------
 
 
 

@@ -451,7 +451,6 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	if core.DebugLogs {
 		core.Debug("---------------------------------------------------------------------------")
-		// todo: pass up server id in session update request packet. don't hash it manually in backend
 		core.Debug("received session update request packet from %s [%x]", from.String(), common.HashString(from.String()))
 		core.Debug("---------------------------------------------------------------------------")
 	}
