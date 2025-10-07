@@ -72,12 +72,10 @@
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
                 <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
                 <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -95,7 +93,6 @@
 
               <tr>
                 <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -222,12 +219,10 @@
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
                 <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
                 <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>
@@ -245,7 +240,6 @@
 
               <tr>
                 <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
               </tr>
 
             </tbody>

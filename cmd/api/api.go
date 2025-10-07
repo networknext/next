@@ -518,7 +518,6 @@ type PortalSessionData struct {
 	NumRouteRelays      int      `json:"num_route_relays"`
 	RouteRelayIds       []uint64 `json:"route_relay_ids,string"`
 	RouteRelayNames     []string `json:"route_relay_names"`
-	RouteRelayAddresses []string `json:"route_relay_addresses"`
 }
 
 func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
@@ -548,13 +547,11 @@ func upgradePortalSessionData(database *db.Database, input *portal.SessionData, 
 	output.NumRouteRelays = input.NumRouteRelays
 	output.RouteRelayIds = make([]uint64, output.NumRouteRelays)
 	output.RouteRelayNames = make([]string, output.NumRouteRelays)
-	output.RouteRelayAddresses = make([]string, output.NumRouteRelays)
 	for i := 0; i < output.NumRouteRelays; i++ {
 		output.RouteRelayIds[i] = input.RouteRelays[i]
 		relay := database.GetRelay(input.RouteRelays[i])
 		if relay != nil {
 			output.RouteRelayNames[i] = relay.Name
-			output.RouteRelayAddresses[i] = relay.PublicAddress.String()
 		}
 	}
 	output.Score = core.GetSessionScore(int32(input.DirectRTT), int32(input.NextRTT))
@@ -873,7 +870,6 @@ func portalRelayCountHandler(w http.ResponseWriter, r *http.Request) {
 type PortalRelayData struct {
 	RelayName                           string   `json:"relay_name"`
 	RelayId                             uint64   `json:"relay_id,string"`
-	RelayAddress                        string   `json:"relay_address"`
 	NumSessions                         uint32   `json:"num_sessions"`
 	MaxSessions                         uint32   `json:"max_sessions"`
 	StartTime                           uint64   `json:"start_time,string"`
@@ -902,7 +898,6 @@ type PortalRelayData struct {
 func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
 	output.RelayName = input.RelayName
 	output.RelayId = input.RelayId
-	output.RelayAddress = input.RelayAddress
 	output.NumSessions = input.NumSessions
 	output.MaxSessions = input.MaxSessions
 	output.StartTime = input.StartTime
