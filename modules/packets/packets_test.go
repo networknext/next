@@ -115,7 +115,6 @@ func GenerateRandomServerInitRequestPacket() packets.SDK_ServerInitRequestPacket
 		Version:        packets.SDKVersion{1, 2, 7},
 		BuyerId:        rand.Uint64(),
 		RequestId:      rand.Uint64(),
-		ServerId:       rand.Uint64(),
 		DatacenterId:   rand.Uint64(),
 		DatacenterName: common.RandomString(packets.SDK_MaxDatacenterNameLength),
 	}

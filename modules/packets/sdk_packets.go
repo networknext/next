@@ -95,7 +95,6 @@ type SDK_ServerInitRequestPacket struct {
 	Version        SDKVersion
 	BuyerId        uint64
 	RequestId      uint64
-	ServerId       uint64
 	DatacenterId   uint64
 	DatacenterName string
 }
@@ -104,9 +103,6 @@ func (packet *SDK_ServerInitRequestPacket) Serialize(stream encoding.Stream) err
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
 	stream.SerializeUint64(&packet.RequestId)
-	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
-		stream.SerializeUint64(&packet.ServerId)
-	}
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeString(&packet.DatacenterName, SDK_MaxDatacenterNameLength)
 	return stream.Error()
@@ -154,9 +150,10 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint32(&packet.NumSessions)
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
 		stream.SerializeUint64(&packet.ServerId)
-	} else {
+	} else if stream.IsReading() {
 		var serverAddress net.UDPAddr
 		stream.SerializeAddress(&serverAddress)
+		packet.ServerId = common.HashString(serverAddress.String())
 	}
 	stream.SerializeUint64(&packet.Uptime)
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {

@@ -266,11 +266,10 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	if core.DebugLogs {
 		core.Debug("---------------------------------------------------------------------------")
-		core.Debug("received server init request packet from %s", from.String())
+		core.Debug("received server init request packet from %s [%016x]", from.String(), common.HashString(from.String()))
 		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 		core.Debug("buyer id: %016x", requestPacket.BuyerId)
 		core.Debug("request id: %016x", requestPacket.RequestId)
-		core.Debug("server id: %016x", requestPacket.ServerId)
 		core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 		core.Debug("---------------------------------------------------------------------------")
 	}
@@ -335,8 +334,8 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		message.BuyerId = int64(requestPacket.BuyerId)
 		message.DatacenterId = int64(requestPacket.DatacenterId)
 		message.DatacenterName = requestPacket.DatacenterName
-		message.ServerId = int64(requestPacket.ServerId)
 		message.ServerAddress = from.String()
+		message.ServerId = int64(common.HashString(from.String()))
 
 		handler.AnalyticsServerInitMessageChannel <- &message
 

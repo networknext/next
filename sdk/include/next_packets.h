@@ -402,7 +402,6 @@ struct NextBackendServerInitRequestPacket
     int version_patch;
     uint64_t buyer_id;
     uint64_t request_id;
-    uint64_t server_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
@@ -413,7 +412,6 @@ struct NextBackendServerInitRequestPacket
         version_patch = NEXT_VERSION_PATCH_INT;
         buyer_id = 0;
         request_id = 0;
-        server_id = 0;
         datacenter_id = 0;
         datacenter_name[0] = '\0';
     }
@@ -425,7 +423,6 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, buyer_id );
         serialize_uint64( stream, request_id );
-        serialize_uint64( stream, server_id );
         serialize_uint64( stream, datacenter_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
