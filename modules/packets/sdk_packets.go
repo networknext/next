@@ -135,6 +135,7 @@ type SDK_ServerUpdateRequestPacket struct {
 	RequestId     uint64
 	DatacenterId  uint64
 	NumSessions   uint32
+	ServerId      uint64
 	ServerAddress net.UDPAddr
 	Uptime        uint64
 	DeltaTimeMin  float32
@@ -148,6 +149,9 @@ func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) e
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
+		stream.SerializeUint64(&packet.ServerId)
+	}
 	stream.SerializeAddress(&packet.ServerAddress)
 	stream.SerializeUint64(&packet.Uptime)
 	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {

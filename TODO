@@ -90,9 +90,15 @@ DONE
 
 	Rename "Game Delta Time" to "Client Delta Time"
 
+	Create a new "server_id" which is a 64bit hash of the server IP:port string
+
+	Increase SDK to 1.2.7
+
 TODO
 
-	Create a new "server_id" which is a 64bit hash of the server IP:port string
+	Extend backend to read server id in server update request packet if SDK >= 1.2.7
+
+	-------
 
 	Then identify servers in the portal using this server ID (and log the server ID in the server info logs...)
 
@@ -102,7 +108,7 @@ TODO
 
 	Extend bigquery analytics to also include the server id uint64 alongside server address so it can be looked up both ways.
 
-	Server "score" could just be the top n bits of the server IP address, this would sort *roughly* in server IP address order.
+	Server "score" could just be the top n bits of the server id, this would sort *roughly* in server IP address order.
 
 
 

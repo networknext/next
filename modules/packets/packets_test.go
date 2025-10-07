@@ -137,11 +137,13 @@ func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePack
 func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
 	return packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{1, 2, 6},
-		BuyerId:      rand.Uint64(),
-		RequestId:    rand.Uint64(),
-		DatacenterId: rand.Uint64(),
-		Uptime:       rand.Uint64(),
+		Version:       packets.SDKVersion{1, 2, 7},
+		BuyerId:       rand.Uint64(),
+		RequestId:     rand.Uint64(),
+		DatacenterId:  rand.Uint64(),
+		ServerId:      rand.Uint64(),
+		ServerAddress: common.RandomAddress(),
+		Uptime:        rand.Uint64(),
 	}
 }
 
