@@ -72,7 +72,15 @@ DONE
 
 	Verify that we see game delta time!
 
+	Deploy to prod.
+
+	Fix so we can handle missing delta time values.
+
 TODO
+
+	Fix bigquery issue with terraform
+
+	-----
 
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
