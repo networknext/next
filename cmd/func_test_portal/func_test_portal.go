@@ -530,24 +530,29 @@ func test_portal() {
 
 		fmt.Printf("servers = %d\n", serverCountResponse.ServerCount)
 
-		serversResponse := PortalServersResponse{}
+		var serverDataResponse *PortalServerDataResponse
 
-		Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
+		if serverCountResponse.ServerCount > 0 {
 
-		serverDataResponse := PortalServerDataResponse{}
+			serversResponse := PortalServersResponse{}
 
-		fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
+			Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
 
-		if len(serversResponse.Servers) > 0 {
+			response := PortalServerDataResponse{}
 
-			fmt.Printf("first server address is '%s'\n", serversResponse.Servers[0].ServerAddress)
+			serverDataResponse = &response
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].ServerAddress), &serverDataResponse)
+			fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
 
-			fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].ServerAddress, len(serverDataResponse.ServerSessionIds))
+			if len(serversResponse.Servers) > 0 {
+
+				fmt.Printf("first server address is '%s'\n", serversResponse.Servers[0].ServerAddress)
+
+				Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].ServerAddress), &serverDataResponse)
+
+				fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].ServerAddress, len(serverDataResponse.ServerSessionIds))
+			}
 		}
-
-		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
 
 		relayCountResponse := PortalRelayCountResponse{}
 		Get("http://127.0.0.1:50000/portal/relay_count", &relayCountResponse)
@@ -598,7 +603,7 @@ func test_portal() {
 			ready = false
 		}
 
-		if len(serverDataResponse.ServerSessionIds) < 10 {
+		if serverDataResponse == nil || len(serverDataResponse.ServerSessionIds) < 10 {
 			fmt.Printf("F\n")
 			ready = false
 		}
