@@ -94,21 +94,35 @@ DONE
 
 	Increase SDK to 1.2.7
 
+	Extend backend to read server id in server update request packet if SDK >= 1.2.7
+
 TODO
 
-	Extend backend to read server id in server update request packet if SDK >= 1.2.7
+	Plumb the server id all the way to portal
+
+	Update server "score" so it is top n bits of the server id so it sorts *roughly* in server IP address order.
 
 	-------
 
-	Then identify servers in the portal using this server ID (and log the server ID in the server info logs...)
+	Plumb the server id all the way to bigquery
 
-	Update the portal data to not show any relay or server IPs and also no server IP addresses are ever sent to the portal via APIs.
+	-------
 
-	At this point the portal is completely safe to make public, if a customer chose to.
+	Update portal APIs to return server id instead of server address
 
-	Extend bigquery analytics to also include the server id uint64 alongside server address so it can be looked up both ways.
+	-------
 
-	Server "score" could just be the top n bits of the server id, this would sort *roughly* in server IP address order.
+	Show server id in servers view
+
+	-------
+
+	Update routing to map to servers by id, not address
+
+	-------
+
+	Update session view so it links to server by server_id, and re-add to top summary table with link to server showing server id as text
+
+	-------
 
 
 
