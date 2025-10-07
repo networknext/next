@@ -90,6 +90,10 @@ DONE
 
 TODO
 
+	Rename "Game Delta Time" to "Client Delta Time"
+
+	-----
+
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
 	-----

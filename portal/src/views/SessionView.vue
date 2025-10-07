@@ -55,7 +55,7 @@
 
         <div id="bandwidth_graph" class="graph"/>
 
-        <div id="game_delta_time_graph" class="graph"/>
+        <div id="client_delta_time_graph" class="graph"/>
 
         <div class="d-xxl-none">
 
@@ -391,8 +391,8 @@ let bandwidth_opts = custom_graph({
   ]
 })
 
-let game_delta_time_opts = custom_graph({
-  title: "Game Delta Time",
+let client_delta_time_opts = custom_graph({
+  title: "Client Delta Time",
   series: [
     {
       name: 'Maximum',
@@ -574,17 +574,17 @@ async function getData(page, session_id) {
 
       data.bandwidth_data = [graph_timestamps, bandwidth_up, bandwidth_down]
 
-      // game delta time graph data
+      // client delta time graph data
   
-      let game_delta_time_max = []
+      let client_delta_time_max = []
       i = 0
       while (i < res.data.slice_data.length) {
         let delta_time_max = ( res.data.slice_data[i].delta_time_max != null ) ? res.data.slice_data[i].delta_time_max : 0.0;
-        game_delta_time_max.push(delta_time_max * 1000.0)
+        client_delta_time_max.push(delta_time_max * 1000.0)
         i++
       }
 
-      data.game_delta_time_data = [graph_timestamps, game_delta_time_max]
+      data.client_delta_time_data = [graph_timestamps, client_delta_time_max]
 
       // mark data as found
 
@@ -646,7 +646,7 @@ export default {
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
     this.bandwidth = new uPlot(bandwidth_opts, [[],[]], document.getElementById('bandwidth_graph'))
-    this.game_delta_time = new uPlot(game_delta_time_opts, [[],[]], document.getElementById('game_delta_time_graph'))
+    this.client_delta_time = new uPlot(client_delta_time_opts, [[],[]], document.getElementById('client_delta_time_graph'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -665,14 +665,14 @@ export default {
     this.jitter.destroy()
     this.packet_loss.destroy()
     this.bandwidth.destroy()
-    this.game_delta_time.destroy()
+    this.client_delta_time.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.latency = null
     this.jitter = null
     this.packet_loss = null
     this.bandwidth = null
-    this.game_delta_time = null
+    this.client_delta_time = null
     this.observer = null
   },
 
@@ -704,7 +704,7 @@ export default {
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
           this.bandwidth.setSize({width: graph_width, height: graph_height})
-          this.game_delta_time.setSize({width: graph_width, height: graph_height})
+          this.client_delta_time.setSize({width: graph_width, height: graph_height})
         }
       }    
 
@@ -755,8 +755,8 @@ export default {
       if (this.bandwidth != null && this.data.bandwidth_data != null) {
         this.bandwidth.setData(this.data.bandwidth_data, true)
       }
-      if (this.game_delta_time != null && this.data.game_delta_time_data != null) {
-        this.game_delta_time.setData(this.data.game_delta_time_data, true)
+      if (this.client_delta_time != null && this.data.client_delta_time_data != null) {
+        this.client_delta_time.setData(this.data.client_delta_time_data, true)
       }
     },
 
