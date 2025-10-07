@@ -618,6 +618,9 @@ async function getData(page, session_id) {
       let game_delta_time_max = []
       i = 0
       while (i < res.data.slice_data.length) {
+        let delta_time_min = res.data.slice_data[i].delta_time_min != null ? res.data.slice_data[i].delta_time_min : 0.0;
+        let delta_time_avg = res.data.slice_data[i].delta_time_avg != null ? res.data.slice_data[i].delta_time_avg : 0.0;
+        let delta_time_max = res.data.slice_data[i].delta_time_max != null ? res.data.slice_data[i].delta_time_max : 0.0;
         game_delta_time_min.push(res.data.slice_data[i].delta_time_min * 1000.0)
         game_delta_time_avg.push(res.data.slice_data[i].delta_time_avg * 1000.0)
         game_delta_time_max.push(res.data.slice_data[i].delta_time_max * 1000.0)
