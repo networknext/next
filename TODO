@@ -114,6 +114,12 @@ TODO
 
 	Pass func tests
 
+	---------
+
+	It seems there is a mismatch between server id and server address passed up in session update. Weird?
+
+	---------
+
 	Deploy to prod
 	
 

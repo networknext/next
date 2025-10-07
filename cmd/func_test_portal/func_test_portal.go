@@ -512,7 +512,7 @@ func test_portal() {
 
 		if len(sessionsResponse.Sessions) > 0 {
 
-			sessionId, err := strconv.ParseInt(sessionsResponse.Sessions[0].SessionId, 10, 64)
+			sessionId, err := strconv.ParseUint(sessionsResponse.Sessions[0].SessionId, 10, 64)
 			if err != nil {
 				panic(err)
 			}

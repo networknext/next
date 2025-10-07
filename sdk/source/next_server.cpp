@@ -606,6 +606,8 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     server->bind_address = bind_address;
     server->server_address = server_address;
+
+    next_address_to_string( &server_address, address_string );
     server->server_id = next_hash_string( address_string );
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server id is %016" PRIx64, server->server_id );
