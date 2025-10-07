@@ -19,13 +19,13 @@
             <tbody>
 
               <tr>
-                <td class="bold">Datacenter</td>
-                <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
+                <td class="bold">Server Id</td>
+                <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
               </tr>
 
               <tr>
-                <td class="bold">Server</td>
-                <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
+                <td class="bold">Datacenter</td>
+                <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
               </tr>
 
               <tr>
@@ -161,13 +161,13 @@
               <tbody>
 
                 <tr>
-                  <td class="bold">Datacenter</td>
-                  <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
+                  <td class="bold">Server Id</td>
+                  <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
                 </tr>
 
                 <tr>
-                  <td class="bold">Server</td>
-                  <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
+                  <td class="bold">Datacenter</td>
+                  <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>

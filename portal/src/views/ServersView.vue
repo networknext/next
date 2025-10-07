@@ -57,6 +57,8 @@
 import axios from "axios";
 import update from "@/update.js"
 
+import {parse_uint64} from '@/utils.js'
+
 function nice_uptime(value) {
   if (isNaN(value)) {
     return ''
@@ -85,9 +87,10 @@ async function getData(page) {
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
       const datacenterLink = v.datacenter_name != "" ? "/datacenter/" + v.datacenter_name : ""
+      let server_id = parse_uint64(v.server_id)
       let row = {
-        "Server Id":v.server_id,
-        "Server Link":"server/" + v.server_id,
+        "Server Id":server_id,
+        "Server Link":"server/" + server_id,
         "Buyer":v.buyer_name,
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
