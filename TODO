@@ -120,17 +120,13 @@ DONE
 
 	Deploy to prod
 
-TODO
-
 	What's up with the prod portal, it's very slightly broken?
 
-	Caching issues? Problems?
-
-	-------
+	Caching issues + all server ids were set to 0.
 
 	Make sure that we are uploading server_id to the bigquery schemas as needed.
 
-	-------		
+TODO
 
 
 
@@ -165,6 +161,17 @@ GAME RTT/JITTER/PL FEATURE
 
 
 
+SERVER SLICE FEATURE
+
+	Extend server portal data to have a ServerSlice data modelled after the session slice.
+
+	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
+
+
+
+
+
+
 SESSION VALUES
 
 	What if we provided the customer a way to pass in an optional set of n float values when upgrading?
@@ -172,19 +179,6 @@ SESSION VALUES
 	The values could be 0.0 by default, but if set, we could use them to do things like pass in time spent in matchmaking, skill etc.
 
 	8 values would be plenty.
-
-
-
-
-
-
-SERVER SLICE FEATURE
-
-	This does not require any SDK changes hence it is last
-
-	Extend server portal data to have a ServerSlice data modelled after the session slice.
-
-	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
 
 
 
