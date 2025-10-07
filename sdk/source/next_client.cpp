@@ -1773,7 +1773,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 #endif // #if NEXT_SPIKE_TRACKING
                 if ( client->session_id != 0 && !client->reported )
                 {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %" PRIx64, client->session_id );
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %016" PRIx64, client->session_id );
                     client->reported = true;
                 }
             }
@@ -2765,7 +2765,7 @@ void next_client_update( next_client_t * client )
                 client->session_id = upgraded->session_id;
                 client->client_external_address = upgraded->client_external_address;
                 memcpy( client->current_magic, upgraded->current_magic, 8 );
-                next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %" PRIx64, client->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %016" PRIx64, client->session_id );
             }
             break;
 

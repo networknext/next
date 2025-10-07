@@ -8,13 +8,13 @@
       <table id="servers_table" class="table table-striped">
         <thead>
           <tr>
-            <th>Server Address</th>
+            <th>Server Id</th>
             <th>Current Sessions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Id"] }} </router-link> </td>
             <td> {{ item["Current Sessions"] }} </td>
           </tr>
         </tbody>
@@ -25,7 +25,7 @@
       <table id="servers_table" class="table table-striped table-hover">
         <thead>
           <tr>
-            <th>Server Address</th>
+            <th>Server Id</th>
             <th>Current Sessions</th>
             <th>Uptime</th>
             <th>SDK Version</th>
@@ -35,7 +35,7 @@
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td> <router-link :to='item["Server Link"]'> {{ item["Server Id"] }} </router-link> </td>
             <td> {{ item["Current Sessions"] }} </td>
             <td> {{ item["Uptime"] }} </td>
             <td> {{ item["SDK Version"] }} </td>
@@ -86,8 +86,8 @@ async function getData(page) {
       let v = res.data.servers[i]
       const datacenterLink = v.datacenter_name != "" ? "/datacenter/" + v.datacenter_name : ""
       let row = {
-        "Server Address":v.server_address,
-        "Server Link":"server/" + v.server_address,
+        "Server Id":v.server_id,
+        "Server Link":"server/" + v.server_id,
         "Buyer":v.buyer_name,
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,

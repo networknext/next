@@ -608,7 +608,7 @@ next_server_internal_t * next_server_internal_create( void * context, const char
     server->server_address = server_address;
     server->server_id = next_hash_string( address_string );
 
-    next_printf( NEXT_LOG_LEVEL_INFO, "server id is %" PRIx64, server->server_id );
+    next_printf( NEXT_LOG_LEVEL_INFO, "server id is %016" PRIx64, server->server_id );
 
     int result = next_platform_mutex_create( &server->session_mutex );
     if ( result != NEXT_OK )
@@ -991,7 +991,7 @@ next_session_entry_t * next_server_internal_process_client_to_server_packet( nex
 
     if ( entry->has_pending_route && next_read_header( packet_type, &packet_sequence, &packet_session_id, &packet_session_version, entry->pending_route_private_key, packet_data, packet_bytes ) == NEXT_OK )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %" PRIx64, entry->session_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server promoted pending route for session %016" PRIx64, entry->session_id );
 
         if ( entry->has_current_route )
         {
@@ -1291,7 +1291,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "server requesting client relays for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "server requesting client relays for session %016" PRIx64, entry->session_id );
 
                 entry->client_relay_request_packet.version_major = NEXT_VERSION_MAJOR_INT;
                 entry->client_relay_request_packet.version_minor = NEXT_VERSION_MINOR_INT;
@@ -1313,7 +1313,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->client_relay_request_timeout_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out requesting client relays for session %016" PRIx64, entry->session_id );
 
                 memset( (char*) &entry->client_relay_response_packet, 0, sizeof(NextBackendClientRelayResponsePacket) );
                 entry->next_client_relay_request_packet_send_time = current_time + NEXT_CLIENT_RELAYS_UPDATE_TIME_BASE + ( rand() % NEXT_CLIENT_RELAYS_UPDATE_TIME_VARIATION );
@@ -1326,7 +1326,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_request_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay request packet for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay request packet for session %016" PRIx64, entry->session_id );
                         
                 uint8_t packet_data[NEXT_MAX_PACKET_BYTES];
 
@@ -1343,7 +1343,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
                 int packet_bytes = 0;
                 if ( next_write_backend_packet( NEXT_BACKEND_CLIENT_RELAY_REQUEST_PACKET, &entry->client_relay_request_packet, packet_data, &packet_bytes, next_signed_packets, server->buyer_private_key, magic, from_address_data, to_address_data ) != NEXT_OK )
                 {
-                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write client relay request packet for session %" PRIx64, entry->session_id );
+                    next_printf( NEXT_LOG_LEVEL_ERROR, "server failed to write client relay request packet for session %016" PRIx64, entry->session_id );
                     return;
                 }
 
@@ -1364,7 +1364,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->client_relay_update_timeout_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out sending client relay update down to client for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_WARN, "server timed out sending client relay update down to client for session %016" PRIx64, entry->session_id );
                 entry->sending_client_relay_update_down_to_client = false;
                 return;
             }
@@ -1373,7 +1373,7 @@ void next_server_internal_update_client_relays( next_server_internal_t * server 
 
             if ( entry->next_client_relay_update_packet_send_time < current_time )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay update packet to client for for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "send client relay update packet to client for for session %016" PRIx64, entry->session_id );
 
                 next_server_internal_send_packet( server, &entry->address, NEXT_CLIENT_RELAY_UPDATE_PACKET, &entry->client_relay_update_packet );
 
@@ -1437,7 +1437,7 @@ void next_server_internal_update_route( next_server_internal_t * server )
 
             entry->update_last_send_time = current_time;
 
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route update packet to session %" PRIx64, entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route update packet to session %016" PRIx64, entry->session_id );
         }
     }
 }
@@ -1542,7 +1542,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
              entry->last_client_direct_ping + NEXT_SERVER_PING_TIMEOUT <= current_time &&
              entry->last_client_next_ping + NEXT_SERVER_PING_TIMEOUT <= current_time )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client ping timed out for session %" PRIx64, entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server client ping timed out for session %016" PRIx64, entry->session_id );
             entry->client_ping_timed_out = true;
         }
 
@@ -1576,7 +1576,7 @@ void next_server_internal_update_sessions( next_server_internal_t * server )
             // look like something is wrong when everything is fine...
             if ( !entry->client_ping_timed_out )
             {
-                next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %" PRIx64, entry->session_id );
+                next_printf( NEXT_LOG_LEVEL_ERROR, "server network next route expired for session %016" PRIx64, entry->session_id );
             }
 
             entry->has_current_route = false;
@@ -1983,7 +1983,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, packet.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. could not find session %" PRIx64, packet.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored session update response packet from backend. could not find session %016" PRIx64, packet.session_id );
             return;
         }
 
@@ -2008,13 +2008,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             case NEXT_UPDATE_TYPE_CONTINUE:  update_type = "continue route";   break;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session update response from backend for session %" PRIx64 " (%s)", entry->session_id, update_type );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received session update response from backend for session %016" PRIx64 " (%s)", entry->session_id, update_type );
 
         bool multipath = packet.multipath;
 
         if ( multipath && !entry->multipath )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %" PRIx64, entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server multipath enabled for session %016" PRIx64, entry->session_id );
             entry->multipath = true;
             {
                 next_platform_mutex_guard( &server->session_mutex );
@@ -2069,13 +2069,13 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         if ( entry->previous_session_events != 0 )
         {   
             char address_buffer[NEXT_MAX_ADDRESS_STRING_LENGTH];
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session events %x to backend for session %" PRIx64 " at address %s", entry->previous_session_events, entry->session_id, next_address_to_string( from, address_buffer ));
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session events %x to backend for session %016" PRIx64 " at address %s", entry->previous_session_events, entry->session_id, next_address_to_string( from, address_buffer ));
             entry->previous_session_events = 0;
         }
 
         if ( entry->session_update_flush && entry->session_update_request_packet.client_ping_timed_out && packet.slice_number == entry->session_flush_update_sequence - 1 )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %" PRIx64 " to backend", entry->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server flushed session update for session %016" PRIx64 " to backend", entry->session_id );
             entry->session_update_flush_finished = true;
             server->num_flushed_session_updates++;
         }
@@ -2176,7 +2176,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         session->latitude = packet.latitude;
         session->longitude = packet.longitude;
 
-        next_printf( NEXT_LOG_LEVEL_INFO, "server found %d client relays for session %" PRIx64, packet.num_client_relays, session->session_id );
+        next_printf( NEXT_LOG_LEVEL_INFO, "server found %d client relays for session %016" PRIx64, packet.num_client_relays, session->session_id );
 
         session->requesting_client_relays = false;
         session->client_relay_response_packet = packet;
@@ -2415,7 +2415,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, route_token.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. could not find session %" PRIx64, route_token.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored route request packet. could not find session %016" PRIx64, route_token.session_id );
             return;
         }
 
@@ -2431,11 +2431,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route request packet from relay for session %" PRIx64, route_token.session_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received route request packet from relay for session %016" PRIx64, route_token.session_id );
 
         if ( next_sequence_greater_than( route_token.session_version, entry->pending_route_session_version ) )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server added pending route for session %" PRIx64, route_token.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server added pending route for session %016" PRIx64, route_token.session_id );
             entry->has_pending_route = true;
             entry->pending_route_session_version = route_token.session_version;
             entry->pending_route_expire_timestamp = route_token.expire_timestamp;
@@ -2469,7 +2469,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %" PRIx64, entry->session_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent route response packet to relay for session %016" PRIx64, entry->session_id );
 
         return;
     }
@@ -2499,7 +2499,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
         next_session_entry_t * entry = next_session_manager_find_by_session_id( server->session_manager, continue_token.session_id );
         if ( !entry )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. could not find session %" PRIx64, continue_token.session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server ignored continue request packet from relay. could not find session %016" PRIx64, continue_token.session_id );
             return;
         }
 
@@ -2521,7 +2521,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             return;
         }
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received continue request packet from relay for session %" PRIx64, continue_token.session_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server received continue request packet from relay for session %016" PRIx64, continue_token.session_id );
 
         entry->current_route_expire_timestamp = continue_token.expire_timestamp;
         entry->current_route_expire_time += NEXT_SLICE_SECONDS;
@@ -2549,7 +2549,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         next_server_internal_send_packet_to_address( server, from, response_data, response_bytes );
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %" PRIx64, entry->session_id );
+        next_printf( NEXT_LOG_LEVEL_DEBUG, "server sent continue response packet to relay for session %016" PRIx64, entry->session_id );
 
         return;
     }
@@ -2753,11 +2753,11 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
 
         if ( packet_sequence > session->stats_sequence )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %" PRIx64, session->session_id );
+            next_printf( NEXT_LOG_LEVEL_DEBUG, "server received client stats packet for session %016" PRIx64, session->session_id );
 
             if ( !session->stats_fallback_to_direct && packet.fallback_to_direct )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "server session fell back to direct %" PRIx64, session->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "server session fell back to direct %016" PRIx64, session->session_id );
             }
 
             session->stats_sequence = packet_sequence;
@@ -2767,7 +2767,7 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_fallback_to_direct = packet.fallback_to_direct;
             if ( packet.next_bandwidth_over_limit )
             {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session sees client over next bandwidth limit %" PRIx64, session->session_id );
+                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session sees client over next bandwidth limit %016" PRIx64, session->session_id );
                 session->stats_client_bandwidth_over_limit = true;
             }
 

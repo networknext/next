@@ -1041,6 +1041,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, n
 	inserter.publisher.MessageChannel <- entry
 
 	sessionIdString := fmt.Sprintf("%016x", sessionId)
+	serverIdString := fmt.Sprintf("%016x", sessionData.ServerId)
 
 	key := fmt.Sprintf("sd-%s", sessionIdString)
 	inserter.pipeline.Set(ctx, key, sessionData.Value(), 0)
@@ -1048,7 +1049,7 @@ func (inserter *SessionInserter) Insert(ctx context.Context, sessionId uint64, n
 	key = fmt.Sprintf("sl-%s", sessionIdString)
 	inserter.pipeline.RPush(ctx, key, sliceData.Value())
 
-	key = fmt.Sprintf("svs-%x-%d", sessionData.ServerId, minutes)
+	key = fmt.Sprintf("svs-%s-%d", serverIdString, minutes)
 	inserter.pipeline.HSet(ctx, key, sessionIdString, currentTime.Unix())
 
 	inserter.numPending++
@@ -1588,7 +1589,9 @@ func (inserter *ServerInserter) Insert(ctx context.Context, serverData *ServerDa
 
 	inserter.publisher.MessageChannel <- entry
 
-	inserter.pipeline.Set(ctx, fmt.Sprintf("svd-%x", serverData.ServerId), serverData.Value(), 0)
+	serverIdString := fmt.Sprintf("%016x", serverId)
+
+	inserter.pipeline.Set(ctx, fmt.Sprintf("svd-%s", serverIdString), serverData.Value(), 0)
 
 	inserter.numPending++
 
@@ -1617,9 +1620,11 @@ func GetServerData(ctx context.Context, redisClient redis.Cmdable, serverId uint
 
 	pipeline := redisClient.Pipeline()
 
-	pipeline.Get(ctx, fmt.Sprintf("svd-%x", serverId))
-	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%x-%d", serverId, minutes-1))
-	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%x-%d", serverId, minutes))
+	serverIdString := fmt.Sprintf("%016x", serverId)
+
+	pipeline.Get(ctx, fmt.Sprintf("svd-%s", serverIdString))
+	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverIdString, minutes-1))
+	pipeline.HGetAll(ctx, fmt.Sprintf("svs-%s-%d", serverIdString, minutes))
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
@@ -1682,7 +1687,8 @@ func GetServerList(ctx context.Context, redisClient redis.Cmdable, serverIds []u
 	pipeline := redisClient.Pipeline()
 
 	for i := range serverIds {
-		pipeline.Get(ctx, fmt.Sprintf("svd-%x", serverIds[i]))
+		serverIdString := fmt.Sprintf("%016x", serverIds[i])
+		pipeline.Get(ctx, fmt.Sprintf("svd-%s", serverIdString))
 	}
 
 	cmds, err := pipeline.Exec(ctx)
@@ -1820,7 +1826,7 @@ func (inserter *RelayInserter) Insert(ctx context.Context, relayData *RelayData)
 
 	score := uint32(relayData.RelayId) ^ uint32(relayData.RelayId>>32)
 
-	key := fmt.Sprintf("r-%x", minutes)
+	key := fmt.Sprintf("r-%d", minutes)
 	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: relayData.RelayName})
 
 	inserter.pipeline.Set(ctx, fmt.Sprintf("rd-%s", relayData.RelayName), relayData.Value(), 0)

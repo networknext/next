@@ -98,23 +98,25 @@ DONE
 
 	Plumb the server id all the way to bigquery
 
+	Plumb the server id all the way to portal
+
+	Update portal APIs to return server id instead of server address
+
+	Show server id in servers view
+
 TODO
 
-	Plumb the server id all the way to portal
+	Update routing to map to server by id, not address
+
+	-------
 
 	Update server "score" so it is top n bits of the server id so it sorts *roughly* in server IP address order.
 
 	-------
 
-	Update portal APIs to return server id instead of server address
 
 	-------
 
-	Show server id in servers view
-
-	-------
-
-	Update routing to map to servers by id, not address
 
 	-------
 
@@ -207,3 +209,11 @@ FUNCTIONAL TESTS
 	Add a functional test to verify we get float values passed in from upgrade
 
 	-----
+
+
+
+
+
+FALLBACK TO DIRECT
+	
+	Why are we seeing so many fallback to directs?

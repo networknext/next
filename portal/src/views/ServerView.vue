@@ -208,7 +208,7 @@ async function getData(page, server) {
           "buyer_link":"/buyer/" + v.buyer_code,
           "datacenter":v.datacenter_name,
           "datacenter_link": "/datacenter/" + v.datacenter_name,
-          "server_address":v.server_address,
+          "server_id":v.server_id,
           "direct_rtt":v.direct_rtt + " ms",
           "next_rtt":next_rtt,
           "improvement":improvement,

@@ -1007,9 +1007,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response := PortalRelayDataResponse{}
 
-	relayAddress := relay.PublicAddress.String()
-
-	relayData := portal.GetRelayData(service.Context, redisPortalClient, relayAddress)
+	relayData := portal.GetRelayData(service.Context, redisPortalClient, relayName)
 	if relayData == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
