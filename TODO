@@ -88,9 +88,9 @@ DONE
 
 	Fix pubsub avro issue with terraform
 
-TODO
-
 	Rename "Game Delta Time" to "Client Delta Time"
+
+TODO
 
 	-----
 
@@ -105,6 +105,8 @@ TODO
 	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
 
 	-----
+
+
 
 
 
@@ -133,3 +135,47 @@ GAME RTT/JITTER/PL FEATURE
 	Update portal to display game latency, game jitter and game packet loss.
 
 	-----
+
+
+
+
+
+
+REMOVE ALL IP ADDRESSES FROM PORTAL
+
+	There is little benefit to showing IP addresses in the portal, at worst people can use them to DDoS attack relays and game servers.
+
+	Create a new "server_id" (random uint64) which is a 64bit hash of the server IP:port string
+
+	Then identify servers using this server ID (and log the server ID in the server info logs...)
+
+	Update the portal data to not show any relay or server IPs and also no IP addresses are ever sent to the portal via APIs.
+
+	At this point the portal is completely safe to make public, if a customer chose to.
+
+
+
+
+
+
+TIME SPENT IN MATCHMAKING FEATURE
+
+	-----
+
+	What if we provided the customer a way to pass in an optional set of n float values when upgrading?
+
+	The values could be 0.0 by default, but if set, we could use them to do things like pass in time spent in matchmaking, skill etc.
+
+	8 values would be plenty.
+
+	-----
+
+
+
+
+
+SERVER SLICE FEATURE
+
+	Extend server portal data to have a ServerSlice data modelled after the session slice.
+
+	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
