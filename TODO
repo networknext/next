@@ -118,10 +118,15 @@ DONE
 
 	Prepare prod branch for fast revert if necessary
 
+	Deploy to prod
+
 TODO
 
-	Deploy to prod
-	
+	What's up with the prod portal, it's very slightly broken?
+
+	Caching issues? Problems?
+
+		
 
 
 
