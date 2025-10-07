@@ -92,21 +92,17 @@ DONE
 
 TODO
 
-	-----
+	Create a new "server_id" which is a 64bit hash of the server IP:port string
 
-	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
+	Then identify servers in the portal using this server ID (and log the server ID in the server info logs...)
 
-	-----
+	Update the portal data to not show any relay or server IPs and also no server IP addresses are ever sent to the portal via APIs.
 
-	Add a functional test to verify that we see server delta time min/max/avg passed up from SDK
+	At this point the portal is completely safe to make public, if a customer chose to.
 
-	-----
+	Extend bigquery analytics to also include the server id uint64 alongside server address so it can be looked up both ways.
 
-	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
-
-	-----
-
-
+	Server "score" could just be the top n bits of the server IP address, this would sort *roughly* in server IP address order.
 
 
 
@@ -141,26 +137,7 @@ GAME RTT/JITTER/PL FEATURE
 
 
 
-REMOVE ALL IP ADDRESSES FROM PORTAL
-
-	There is little benefit to showing IP addresses in the portal, at worst people can use them to DDoS attack relays and game servers.
-
-	Create a new "server_id" (random uint64) which is a 64bit hash of the server IP:port string
-
-	Then identify servers using this server ID (and log the server ID in the server info logs...)
-
-	Update the portal data to not show any relay or server IPs and also no IP addresses are ever sent to the portal via APIs.
-
-	At this point the portal is completely safe to make public, if a customer chose to.
-
-
-
-
-
-
 TIME SPENT IN MATCHMAKING FEATURE
-
-	-----
 
 	What if we provided the customer a way to pass in an optional set of n float values when upgrading?
 
@@ -168,7 +145,6 @@ TIME SPENT IN MATCHMAKING FEATURE
 
 	8 values would be plenty.
 
-	-----
 
 
 
@@ -176,6 +152,37 @@ TIME SPENT IN MATCHMAKING FEATURE
 
 SERVER SLICE FEATURE
 
+	This does not require any SDK changes hence it is last
+
 	Extend server portal data to have a ServerSlice data modelled after the session slice.
 
 	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
+
+
+
+
+
+
+FUNCTIONAL TESTS
+
+	-----
+
+	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
+
+	-----
+
+	Add a functional test to verify that we see server delta time min/max/avg passed up from SDK
+
+	-----
+
+	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
+
+	-----
+
+	Add a functional test to verify we get game rtt, jitter and pl
+
+	-----
+
+	Add a functional test to verify we get float values passed in from upgrade
+
+	-----

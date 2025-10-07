@@ -25,7 +25,6 @@
 
               <tr>
                 <td class="bold">Server</td>
-                <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
               </tr>
 
               <tr>
@@ -75,7 +74,7 @@
               </tr>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align"> Server </td>
               </tr>
 
             </tbody>
@@ -92,7 +91,7 @@
               </tr>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align"> Server </td>
               </tr>
 
             </tbody>
@@ -168,11 +167,6 @@
                 </tr>
 
                 <tr>
-                  <td class="bold">Server</td>
-                  <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
-                </tr>
-                
-                <tr>
                   <td class="bold">ISP</td>
                   <td> {{ this.data['isp'] }} </td>
                 </tr>
@@ -222,7 +216,7 @@
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align bold"> Server </td>
               </tr>
 
             </tbody>
@@ -235,11 +229,10 @@
 
               <tr>
                 <td class="left_align bold"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
+                <td class="left_align bold"> Server </td>
               </tr>
 
             </tbody>
@@ -424,7 +417,6 @@ async function getData(page, session_id) {
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
-      data["server_address"] = session_data.server_address
     
       // route relays
 
@@ -435,7 +427,6 @@ async function getData(page, session_id) {
           route_relays.push({
             id:        session_data.route_relay_ids[i],
             name:      session_data.route_relay_names[i],
-            address:   session_data.route_relay_addresses[i],
           })
           i++
         }
