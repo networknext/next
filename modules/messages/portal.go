@@ -68,7 +68,7 @@ type PortalServerUpdateMessage struct {
 	DatacenterId     uint64
 	NumSessions      uint32
 	Uptime           uint64
-	ServerAddress    net.UDPAddr
+	ServerId         uint64
 }
 
 // ----------------------------------------------------------------------------------------

@@ -10,9 +10,10 @@
     {"name": "buyer_id",          "type": "long"},
     {"name": "datacenter_id",     "type": "long"},
     {"name": "num_sessions",      "type": "int"},
-    {"name": "server_address",    "type": "string"},
+    {"name": "server_address",    "type": "string", "default": ""},
     {"name": "delta_time_min",    "type": "float", "default": 0.0},
     {"name": "delta_time_max",    "type": "float", "default": 0.0},
-    {"name": "delta_time_avg",    "type": "float", "default": 0.0}
+    {"name": "delta_time_avg",    "type": "float", "default": 0.0},
+    {"name": "server_id",         "type": "long", "default": 0}
   ]
 }

@@ -525,18 +525,20 @@ type ServerData struct {
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
 	BuyerId          uint64 `json:"buyer_id,string"`
+	ServerId         uint64 `json:"server_id,string"`
 	DatacenterId     uint64 `json:"datacenter_id,string"`
 	NumSessions      uint32 `json:"num_sessions"`
 	Uptime           uint64 `json:"uptime,string"`
 }
 
 func (data *ServerData) Value() string {
-	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%d|%x",
+	return fmt.Sprintf("%s|%d|%d|%d|%x|%x|%x|%d|%x",
 		data.ServerAddress,
 		data.SDKVersion_Major,
 		data.SDKVersion_Minor,
 		data.SDKVersion_Patch,
 		data.BuyerId,
+		data.ServerId,
 		data.DatacenterId,
 		data.NumSessions,
 		data.Uptime,
@@ -545,7 +547,7 @@ func (data *ServerData) Value() string {
 
 func (data *ServerData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 8 {
+	if len(values) != 9 {
 		return
 	}
 	serverAddress := values[0]
@@ -565,15 +567,19 @@ func (data *ServerData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[5], 16, 64)
+	serverId, err := strconv.ParseUint(values[5], 16, 64)
 	if err != nil {
 		return
 	}
-	numSessions, err := strconv.ParseUint(values[6], 10, 32)
+	datacenterId, err := strconv.ParseUint(values[6], 16, 64)
 	if err != nil {
 		return
 	}
-	uptime, err := strconv.ParseUint(values[7], 16, 64)
+	numSessions, err := strconv.ParseUint(values[7], 10, 32)
+	if err != nil {
+		return
+	}
+	uptime, err := strconv.ParseUint(values[8], 16, 64)
 	if err != nil {
 		return
 	}
@@ -582,6 +588,7 @@ func (data *ServerData) Parse(value string) {
 	data.SDKVersion_Minor = uint8(sdkVersionMinor)
 	data.SDKVersion_Patch = uint8(sdkVersionPatch)
 	data.BuyerId = buyerId
+	data.ServerId = serverId
 	data.DatacenterId = datacenterId
 	data.NumSessions = uint32(numSessions)
 	data.Uptime = uptime
@@ -594,6 +601,7 @@ func GenerateRandomServerData() *ServerData {
 	data.SDKVersion_Minor = uint8(common.RandomInt(0, 255))
 	data.SDKVersion_Patch = uint8(common.RandomInt(0, 255))
 	data.BuyerId = rand.Uint64()
+	data.ServerId = rand.Uint64()
 	data.DatacenterId = rand.Uint64()
 	data.NumSessions = rand.Uint32()
 	data.Uptime = rand.Uint64()
@@ -605,7 +613,6 @@ func GenerateRandomServerData() *ServerData {
 type RelayData struct {
 	RelayName    string `json:"relay_name"`
 	RelayId      uint64 `json:"relay_id,string"`
-	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    uint64 `json:"start_time,string"`
@@ -614,10 +621,9 @@ type RelayData struct {
 }
 
 func (data *RelayData) Value() string {
-	return fmt.Sprintf("%s|%x|%s|%d|%d|%x|%x|%s",
+	return fmt.Sprintf("%s|%x|%d|%d|%x|%x|%s",
 		data.RelayName,
 		data.RelayId,
-		data.RelayAddress,
 		data.NumSessions,
 		data.MaxSessions,
 		data.StartTime,
@@ -629,7 +635,7 @@ func (data *RelayData) Value() string {
 func (data *RelayData) Parse(value string) {
 
 	values := strings.Split(value, "|")
-	if len(values) != 8 {
+	if len(values) != 7 {
 		return
 	}
 	relayName := values[0]
@@ -637,27 +643,26 @@ func (data *RelayData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	relayAddress := values[2]
-	numSessions, err := strconv.ParseUint(values[3], 10, 32)
+	numSessions, err := strconv.ParseUint(values[2], 10, 32)
 	if err != nil {
 		return
 	}
-	maxSessions, err := strconv.ParseUint(values[4], 10, 32)
+	maxSessions, err := strconv.ParseUint(values[3], 10, 32)
 	if err != nil {
 		return
 	}
-	startTime, err := strconv.ParseUint(values[5], 16, 64)
+	startTime, err := strconv.ParseUint(values[4], 16, 64)
 	if err != nil {
 		return
 	}
-	relayFlags, err := strconv.ParseUint(values[6], 16, 64)
+	relayFlags, err := strconv.ParseUint(values[5], 16, 64)
 	if err != nil {
 		return
 	}
-	relayVersion := values[7]
+	relayVersion := values[6]
+
 	data.RelayName = relayName
 	data.RelayId = relayId
-	data.RelayAddress = relayAddress
 	data.NumSessions = uint32(numSessions)
 	data.MaxSessions = uint32(maxSessions)
 	data.StartTime = startTime
@@ -669,7 +674,6 @@ func GenerateRandomRelayData() *RelayData {
 	data := RelayData{}
 	data.RelayName = common.RandomString(32)
 	data.RelayId = rand.Uint64()
-	data.RelayAddress = fmt.Sprintf("127.0.0.1:%d", common.RandomInt(1000, 65535))
 	data.NumSessions = rand.Uint32()
 	data.MaxSessions = rand.Uint32()
 	data.StartTime = rand.Uint64()
@@ -1816,10 +1820,10 @@ func (inserter *RelayInserter) Insert(ctx context.Context, relayData *RelayData)
 
 	score := uint32(relayData.RelayId) ^ uint32(relayData.RelayId>>32)
 
-	key := fmt.Sprintf("r-%d", minutes)
-	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: relayData.RelayAddress})
+	key := fmt.Sprintf("r-%x", minutes)
+	inserter.pipeline.ZAdd(ctx, key, redis.Z{Score: float64(score), Member: relayData.RelayName})
 
-	inserter.pipeline.Set(ctx, fmt.Sprintf("rd-%s", relayData.RelayAddress), relayData.Value(), 0)
+	inserter.pipeline.Set(ctx, fmt.Sprintf("rd-%s", relayData.RelayName), relayData.Value(), 0)
 
 	inserter.numPending++
 
@@ -1874,15 +1878,15 @@ func GetRelayCount(ctx context.Context, redisClient redis.Cmdable, minutes int64
 	return totalRelayCount
 }
 
-func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes int64, begin int, end int) []string {
+func GetRelayNames(ctx context.Context, redisClient redis.Cmdable, minutes int64, begin int, end int) []string {
 
 	if begin < 0 {
-		core.Error("invalid begin passed to get relay addresses: %d", begin)
+		core.Error("invalid begin passed to get relay names: %d", begin)
 		return nil
 	}
 
 	if end < 0 {
-		core.Error("invalid end passed to get relay addresses: %d", end)
+		core.Error("invalid end passed to get relay names: %d", end)
 		return nil
 	}
 
@@ -1891,7 +1895,7 @@ func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes i
 		return nil
 	}
 
-	// get the set of relay addresses in the range [begin,end]
+	// get the set of relay names in the range [begin,end]
 
 	pipeline := redisClient.Pipeline()
 
@@ -1900,39 +1904,39 @@ func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes i
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
-		core.Error("failed to get relay addresses: %v", err)
+		core.Error("failed to get relay names: %v", err)
 		return nil
 	}
 
-	redis_relay_addresses_a, err := cmds[0].(*redis.ZSliceCmd).Result()
+	redis_relay_names_a, err := cmds[0].(*redis.ZSliceCmd).Result()
 	if err != nil {
-		core.Error("failed to get redis relay addresses a: %v", err)
+		core.Error("failed to get redis relay names a: %v", err)
 		return nil
 	}
 
-	redis_relay_addresses_b, err := cmds[1].(*redis.ZSliceCmd).Result()
+	redis_relay_names_b, err := cmds[1].(*redis.ZSliceCmd).Result()
 	if err != nil {
-		core.Error("failed to get redis relay addresses b: %v", err)
+		core.Error("failed to get redis relay names b: %v", err)
 		return nil
 	}
 
 	relayMap := make(map[string]int32)
 
-	for i := range redis_relay_addresses_a {
-		address := redis_relay_addresses_a[i].Member.(string)
-		score := int32(redis_relay_addresses_a[i].Score)
-		relayMap[address] = score
+	for i := range redis_relay_names_a {
+		name := redis_relay_names_a[i].Member.(string)
+		score := int32(redis_relay_names_a[i].Score)
+		relayMap[name] = score
 	}
 
-	for i := range redis_relay_addresses_b {
-		address := redis_relay_addresses_b[i].Member.(string)
-		score := int32(redis_relay_addresses_b[i].Score)
-		relayMap[address] = score
+	for i := range redis_relay_names_b {
+		name := redis_relay_names_b[i].Member.(string)
+		score := int32(redis_relay_names_b[i].Score)
+		relayMap[name] = score
 	}
 
 	type RelayEntry struct {
-		address string
-		score   int32
+		name  string
+		score int32
 	}
 
 	relayEntries := make([]RelayEntry, len(relayMap))
@@ -1947,19 +1951,19 @@ func GetRelayAddresses(ctx context.Context, redisClient redis.Cmdable, minutes i
 		relayEntries = relayEntries[:maxSize]
 	}
 
-	relayAddresses := make([]string, len(relayEntries))
-	for i := range relayEntries {
-		relayAddresses[i] = relayEntries[i].address
+	relayNames := make([]string, len(relayEntries))
+	for i := range relayNames {
+		relayNames[i] = relayEntries[i].name
 	}
 
-	return relayAddresses
+	return relayNames
 }
 
-func GetRelayData(ctx context.Context, redisClient redis.Cmdable, relayAddress string) *RelayData {
+func GetRelayData(ctx context.Context, redisClient redis.Cmdable, relayName string) *RelayData {
 
 	pipeline := redisClient.Pipeline()
 
-	pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayAddress))
+	pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayName))
 
 	cmds, err := pipeline.Exec(ctx)
 	if err != nil {
@@ -1972,19 +1976,19 @@ func GetRelayData(ctx context.Context, redisClient redis.Cmdable, relayAddress s
 	relayData := RelayData{}
 	relayData.Parse(redis_relay_data)
 
-	if relayData.RelayAddress != relayAddress {
+	if relayData.RelayName != relayName {
 		return nil
 	}
 
 	return &relayData
 }
 
-func GetRelayList(ctx context.Context, redisClient redis.Cmdable, relayAddresses []string) []*RelayData {
+func GetRelayList(ctx context.Context, redisClient redis.Cmdable, relayNames []string) []*RelayData {
 
 	pipeline := redisClient.Pipeline()
 
-	for i := range relayAddresses {
-		pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayAddresses[i]))
+	for i := range relayNames {
+		pipeline.Get(ctx, fmt.Sprintf("rd-%s", relayNames[i]))
 	}
 
 	cmds, err := pipeline.Exec(ctx)
@@ -1995,14 +1999,14 @@ func GetRelayList(ctx context.Context, redisClient redis.Cmdable, relayAddresses
 
 	relayList := make([]*RelayData, 0)
 
-	for i := range relayAddresses {
+	for i := range relayNames {
 
 		redis_relay_data := cmds[i].(*redis.StringCmd).Val()
 
 		relayData := RelayData{}
 		relayData.Parse(redis_relay_data)
 
-		if relayData.RelayAddress != relayAddresses[i] {
+		if relayData.RelayName != relayNames[i] {
 			continue
 		}
 

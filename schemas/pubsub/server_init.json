@@ -10,6 +10,7 @@
     {"name": "buyer_id",          "type": "long"},
     {"name": "datacenter_id",     "type": "long"},
     {"name": "datacenter_name",   "type": "string"},
-    {"name": "server_address",    "type": "string"}
+    {"name": "server_address",    "type": "string", "default": ""},
+    {"name": "server_id",         "type": "long", "default": 0}
   ]
 }

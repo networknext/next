@@ -402,6 +402,7 @@ struct NextBackendServerInitRequestPacket
     int version_patch;
     uint64_t buyer_id;
     uint64_t request_id;
+    uint64_t server_id;
     uint64_t datacenter_id;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
 
@@ -423,6 +424,7 @@ struct NextBackendServerInitRequestPacket
         serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, buyer_id );
         serialize_uint64( stream, request_id );
+        serialize_uint64( stream, server_id );
         serialize_uint64( stream, datacenter_id );
         serialize_string( stream, datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
         return true;
@@ -467,7 +469,6 @@ struct NextBackendServerUpdateRequestPacket
     uint64_t datacenter_id;
     uint32_t num_sessions;
     uint64_t server_id;
-    next_address_t server_address;
     uint64_t uptime;
     float delta_time_min;
     float delta_time_max;
@@ -483,7 +484,6 @@ struct NextBackendServerUpdateRequestPacket
         datacenter_id = 0;
         num_sessions = 0;
         server_id = 0;
-        memset( &server_address, 0, sizeof(next_address_t) );
         uptime = 0;
         delta_time_min = 0.0f;
         delta_time_max = 0.0f;
@@ -500,7 +500,6 @@ struct NextBackendServerUpdateRequestPacket
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
         serialize_uint64( stream, server_id );
-        serialize_address( stream, server_address );
         serialize_uint64( stream, uptime );
         serialize_float( stream, delta_time_min );
         serialize_float( stream, delta_time_max );

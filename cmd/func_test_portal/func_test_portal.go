@@ -282,8 +282,6 @@ func RunRelayInsertThreads(threadCount int) {
 
 					relayData.RelayName = fmt.Sprintf("local-%03d", id)
 
-					relayData.RelayAddress = fmt.Sprintf("127.0.0.1:%d", 2000+id)
-
 					relayInserter.Insert(context.Background(), relayData)
 				}
 

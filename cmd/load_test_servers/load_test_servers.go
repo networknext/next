@@ -185,7 +185,7 @@ func RunServer(index int) {
 					RequestId:     requestId,
 					DatacenterId:  datacenterId,
 					NumSessions:   uint32(common.RandomInt(100, 200)),
-					ServerAddress: address,
+					ServerId:      common.HashString(address.String()),
 					Uptime:        uint64(requestId * 10),
 				}
 

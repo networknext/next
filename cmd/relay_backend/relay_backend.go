@@ -479,7 +479,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 				relayData := portal.RelayData{
 					RelayId:      message.RelayId,
 					RelayName:    message.RelayName,
-					RelayAddress: message.RelayAddress.String(),
 					NumSessions:  message.SessionCount,
 					MaxSessions:  message.MaxSessions,
 					StartTime:    message.StartTime,

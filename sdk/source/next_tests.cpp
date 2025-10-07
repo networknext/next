@@ -3738,7 +3738,7 @@ void test_server_update_request_packet()
         in.buyer_id = next_random_uint64();
         in.datacenter_id = next_random_uint64();
         in.num_sessions = 1000;
-        next_address_parse( &in.server_address, "127.0.0.1:40000" );
+        in.server_id = 0x12345678910;
         in.uptime = 0x12345;
 
         int packet_bytes = 0;
@@ -3764,7 +3764,7 @@ void test_server_update_request_packet()
         next_check( in.buyer_id == out.buyer_id );
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( in.num_sessions == out.num_sessions );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.server_id == out.server_id );
         next_check( in.uptime == out.uptime );
     }
 }

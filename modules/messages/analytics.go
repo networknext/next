@@ -116,6 +116,7 @@ type AnalyticsServerUpdateMessage struct {
 	BuyerId          int64   `avro:"buyer_id"`
 	DatacenterId     int64   `avro:"datacenter_id"`
 	NumSessions      int32   `avro:"num_sessions"`
+	ServerId         int64   `avro:"server_id"`
 	ServerAddress    string  `avro:"server_address"`
 	DeltaTimeMin     float32 `avro:"delta_time_min"`
 	DeltaTimeMax     float32 `avro:"delta_time_max"`
@@ -132,6 +133,7 @@ type AnalyticsServerInitMessage struct {
 	BuyerId          int64  `avro:"buyer_id"`
 	DatacenterId     int64  `avro:"datacenter_id"`
 	DatacenterName   string `avro:"datacenter_name"`
+	ServerId         int64  `avro:"server_id"`
 	ServerAddress    string `avro:"server_address"`
 }
 

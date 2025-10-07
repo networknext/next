@@ -96,15 +96,13 @@ DONE
 
 	Extend backend to read server id in server update request packet if SDK >= 1.2.7
 
+	Plumb the server id all the way to bigquery
+
 TODO
 
 	Plumb the server id all the way to portal
 
 	Update server "score" so it is top n bits of the server id so it sorts *roughly* in server IP address order.
-
-	-------
-
-	Plumb the server id all the way to bigquery
 
 	-------
 
@@ -124,6 +122,9 @@ TODO
 
 	-------
 
+	Deploy to dev and verify that I can nav around to servers and see server list and click on them
+
+	-------
 
 
 

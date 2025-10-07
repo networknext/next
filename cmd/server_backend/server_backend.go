@@ -652,11 +652,11 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 			core.Debug("processing portal server update message")
 
 			serverData := portal.ServerData{
-				ServerAddress:    message.ServerAddress.String(),
 				SDKVersion_Major: message.SDKVersion_Major,
 				SDKVersion_Minor: message.SDKVersion_Minor,
 				SDKVersion_Patch: message.SDKVersion_Patch,
 				BuyerId:          message.BuyerId,
+				ServerId:         message.ServerId,
 				DatacenterId:     message.DatacenterId,
 				NumSessions:      message.NumSessions,
 				Uptime:           message.Uptime,

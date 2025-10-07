@@ -334,6 +334,7 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		message.BuyerId = int64(requestPacket.BuyerId)
 		message.DatacenterId = int64(requestPacket.DatacenterId)
 		message.DatacenterName = requestPacket.DatacenterName
+		message.ServerId = int64(requestPacket.ServerId)
 		message.ServerAddress = from.String()
 
 		handler.AnalyticsServerInitMessageChannel <- &message
@@ -371,6 +372,7 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.BuyerId = int64(requestPacket.BuyerId)
 			message.DatacenterId = int64(requestPacket.DatacenterId)
 			message.NumSessions = int32(requestPacket.NumSessions)
+			message.ServerId = int64(requestPacket.ServerId)
 			message.ServerAddress = from.String()
 			message.DeltaTimeMin = requestPacket.DeltaTimeMin
 			message.DeltaTimeMax = requestPacket.DeltaTimeMax
@@ -393,10 +395,10 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
+			message.ServerId = requestPacket.ServerId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
 			message.Uptime = requestPacket.Uptime
-			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message
 

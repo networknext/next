@@ -735,6 +735,7 @@ type PortalServerData struct {
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
 	BuyerId          uint64 `json:"buyer_id,string"`
+	ServerId         uint64 `json:"server_id,string"`
 	DatacenterId     uint64 `json:"datacenter_id,string"`
 	NumSessions      uint32 `json:"num_sessions"`
 	Uptime           uint64 `json:"uptime,string"`
@@ -755,6 +756,7 @@ func upgradePortalServer(database *db.Database, input *portal.ServerData, output
 	output.SDKVersion_Minor = input.SDKVersion_Minor
 	output.SDKVersion_Patch = input.SDKVersion_Patch
 	output.BuyerId = input.BuyerId
+	output.ServerId = input.ServerId
 	output.DatacenterId = input.DatacenterId
 	output.NumSessions = input.NumSessions
 	output.Uptime = input.Uptime
@@ -940,8 +942,8 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		page = 0
 	}
-	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
-	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	relayNames := portal.GetRelayNames(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	relays := portal.GetRelayList(service.Context, redisPortalClient, relayNames)
 	begin, end, outputPage, numPages := core.DoPagination_Simple(int(page), len(relays))
 	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
 	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
@@ -960,8 +962,8 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func portalAllRelaysHandler(w http.ResponseWriter, r *http.Request) {
-	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
-	relays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	relayNames := portal.GetRelayNames(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	relays := portal.GetRelayList(service.Context, redisPortalClient, relayNames)
 	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
 	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
 	response := PortalRelaysResponse{}
@@ -1241,8 +1243,8 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relayAddresses := portal.GetRelayAddresses(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
-	rawRelays := portal.GetRelayList(service.Context, redisPortalClient, relayAddresses)
+	relayNames := portal.GetRelayNames(service.Context, redisPortalClient, time.Now().Unix()/60, 0, constants.MaxRelays)
+	rawRelays := portal.GetRelayList(service.Context, redisPortalClient, relayNames)
 	relays := make([]portal.RelayData, 0, len(rawRelays))
 	for i := range rawRelays {
 		relay := database.GetRelay(rawRelays[i].RelayId)
@@ -1374,12 +1376,12 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 		datacenterRelays[i] = database.GetRelay(datacenterRelayIds[i])
 	}
 
-	datacenterRelayAddresses := make([]string, len(datacenterRelays))
+	datacenterRelayNames := make([]string, len(datacenterRelays))
 	for i := range datacenterRelays {
-		datacenterRelayAddresses[i] = datacenterRelays[i].PublicAddress.String()
+		datacenterRelayNames[i] = datacenterRelays[i].Name
 	}
 
-	relays := portal.GetRelayList(service.Context, redisPortalClient, datacenterRelayAddresses)
+	relays := portal.GetRelayList(service.Context, redisPortalClient, datacenterRelayNames)
 
 	sort.Slice(relays, func(i, j int) bool { return relays[i].RelayName < relays[j].RelayName })
 	sort.SliceStable(relays, func(i, j int) bool { return relays[i].NumSessions > relays[j].NumSessions })
