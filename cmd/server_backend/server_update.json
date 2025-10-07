@@ -11,8 +11,8 @@
     {"name": "datacenter_id",     "type": "long"},
     {"name": "num_sessions",      "type": "int"},
     {"name": "server_address",    "type": "string"},
-    {"name": "delta_time_min",    "type": "float"},
-    {"name": "delta_time_max",    "type": "float"},
-    {"name": "delta_time_avg",    "type": "float"}
+    {"name": "delta_time_min",    "type": "float", "default": 0.0},
+    {"name": "delta_time_max",    "type": "float", "default": 0.0},
+    {"name": "delta_time_avg",    "type": "float", "default": 0.0}
   ]
 }
