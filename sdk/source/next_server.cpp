@@ -4116,6 +4116,7 @@ struct next_server_t
     next_proxy_session_manager_t * pending_session_manager;
     next_proxy_session_manager_t * session_manager;
     next_address_t address;
+    uint64_t server_id;
     uint16_t bound_port;
     bool ready;
     char datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH];
@@ -4188,6 +4189,7 @@ next_server_t * next_server_create( void * context, const char * server_address,
     }
 
     server->address = server->internal->server_address;
+    server->server_id = server->internal->server_id;
     server->bound_port = server->internal->server_address.port;
 
     server->thread = next_platform_thread_create( server->context, next_server_internal_thread_function, server->internal );
@@ -4236,6 +4238,13 @@ const next_address_t * next_server_address( next_server_t * server )
     next_server_verify_sentinels( server );
 
     return &server->address;
+}
+
+uint64_t next_server_id( next_server_t * server )
+{
+    next_server_verify_sentinels( server );
+
+    return server->server_id;
 }
 
 void next_server_destroy( next_server_t * server )
@@ -5009,5 +5018,3 @@ bool next_server_direct_only( struct next_server_t * server )
     next_assert( server );
     return server->direct_only;
 }
-
-// ---------------------------------------------------------------

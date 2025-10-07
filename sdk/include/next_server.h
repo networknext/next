@@ -57,4 +57,6 @@ void next_server_set_payload_receive_callback( struct next_server_t * server, in
 
 bool next_server_direct_only( struct next_server_t * server );
 
+uint64_t next_server_id( struct next_server_t * server );
+
 #endif // #ifndef NEXT_SERVER_H
