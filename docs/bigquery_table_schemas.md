@@ -34,7 +34,7 @@ Session updates contain network performance data once every 10 seconds for a ses
 | direct_jitter | FLOAT64 | Jitter between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always because it is not known yet |
 | direct_packet_loss | FLOAT64 | Packet loss between client and server as measured by direct pings (unaccelerated path). Percent. Generally this is inaccurate and higher that real value, because direct pings are sent infrequently, any packet loss results in an outsized % of packet loss in a 10 second period. |
 | direct_kbps_up | INT64 | Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second |
-| direct_kbps_up | INT64 | Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second |
+| direct_kbps_down | INT64 | Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second |
 | next | BOOL | True if this slice is being accelerated over network next |
 | next_rtt | FLOAT64 | Latency between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next |
 | next_jitter | FLOAT64 | Jitter between client and server as measured by next pings (accelerated path). Milliseconds. NULL if not on network next |

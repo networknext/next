@@ -408,6 +408,7 @@ let game_delta_time_opts = custom_graph({
     {
       name: 'Maximum',
       stroke: "rgb(200,10,10)",
+      fill: "rgba(10,10,10,0.035)",
       units: 'ms',
     },
   ]

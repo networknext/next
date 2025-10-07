@@ -605,7 +605,7 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 				InternalEvents:   message.InternalEvents,
 				SessionEvents:    message.SessionEvents,
 				DirectKbpsUp:     message.DirectKbpsUp,
-				DirectKbpsDown:   message.DirectKbpsUp,
+				DirectKbpsDown:   message.DirectKbpsDown,
 				NextKbpsUp:       message.NextKbpsUp,
 				NextKbpsDown:     message.NextKbpsDown,
 				Next:             message.Next,
