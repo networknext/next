@@ -624,7 +624,7 @@ async function getData(page, session_id) {
         i++
       }
 
-      data.game_delta_time_data = [graph_timestamps, game_delta_time_min, game_delta_time_max, game_delta_time_avg]
+      data.game_delta_time_data = [graph_timestamps, game_delta_time_min, game_delta_time_avg, game_delta_time_max]
 
       // mark data as found
 
