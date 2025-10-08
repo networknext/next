@@ -1804,16 +1804,19 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         bool network_next = false;
         bool fallback_to_direct = false;
+        uint32_t flags = 0;
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
             network_next = next_route_manager_has_network_next_route( client->route_manager );
             fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
+            flags = next_route_manager_get_flags( client->route_manager );
         }
         
         client->client_stats.next = network_next;
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
         client->client_stats.fallback_to_direct = fallback_to_direct;
+        client->client_stats.flags = flags;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
 
@@ -1919,6 +1922,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
         packet.reported = client->client_stats.reported;
         packet.fallback_to_direct = client->client_stats.fallback_to_direct;
+        packet.flags = client->client_stats.flags;
         packet.multipath = client->client_stats.multipath;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;

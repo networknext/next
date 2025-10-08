@@ -211,6 +211,7 @@ struct NextClientStatsPacket
     uint64_t client_relay_request_id;
     float bandwidth_kbps_up;
     float bandwidth_kbps_down;
+    uint32_t flags;
 
     NextClientStatsPacket()
     {
@@ -265,6 +266,7 @@ struct NextClientStatsPacket
         serialize_float( stream, game_packet_loss );
         serialize_float( stream, bandwidth_kbps_up );
         serialize_float( stream, bandwidth_kbps_down );
+        serialize_uint32( stream, flags );
         return true;
     }
 };
@@ -734,6 +736,7 @@ struct NextBackendSessionUpdateRequestPacket
     float game_packet_loss;
     float bandwidth_kbps_up;
     float bandwidth_kbps_down;    
+    uint64_t flags;
 
     void Reset()
     {
@@ -880,6 +883,8 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, game_rtt );
         serialize_float( stream, game_jitter );
         serialize_float( stream, game_packet_loss );
+
+        serialize_uint32( stream, flags );
 
         return true;
     }

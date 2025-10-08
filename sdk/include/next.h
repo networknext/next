@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.9"
+    #define NEXT_VERSION_FULL                              "1.2.10"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                9
+    #define NEXT_VERSION_PATCH_INT                               10
 
 #else // !NEXT_DEVELOPMENT
 
@@ -366,6 +366,7 @@ struct next_client_stats_t
     float game_packet_loss;
     float bandwidth_kbps_up;
     float bandwidth_kbps_down;
+    uint32_t flags;
 };
 
 // -----------------------------------------
