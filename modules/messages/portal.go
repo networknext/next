@@ -100,15 +100,14 @@ type PortalSessionUpdateMessage struct {
 	DirectRTT        float32
 	DirectJitter     float32
 	DirectPacketLoss float32
-	DirectKbpsUp     uint32
-	DirectKbpsDown   uint32
+
+	BandwidthKbpsUp   uint32
+	BandwidthKbpsDown uint32
 
 	Next               bool
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
-	NextKbpsUp         uint32
-	NextKbpsDown       uint32
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64

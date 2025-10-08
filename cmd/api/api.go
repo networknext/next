@@ -498,25 +498,25 @@ func portalSessionCountsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type PortalSessionData struct {
-	SessionId           uint64   `json:"session_id,string"`
-	Score               uint32   `json:"score"`
-	StartTime           uint64   `json:"start_time,string"`
-	ISP                 string   `json:"isp"`
-	ConnectionType      uint8    `json:"connection_type"`
-	PlatformType        uint8    `json:"platform_type"`
-	Latitude            float32  `json:"latitude"`
-	Longitude           float32  `json:"longitude"`
-	DirectRTT           uint32   `json:"direct_rtt"`
-	NextRTT             uint32   `json:"next_rtt"`
-	BuyerId             uint64   `json:"buyer_id,string"`
-	BuyerName           string   `json:"buyer_name"`
-	BuyerCode           string   `json:"buyer_code"`
-	DatacenterId        uint64   `json:"datacenter_id,string"`
-	DatacenterName      string   `json:"datacenter_name"`
-	ServerId            uint64   `json:"server_id,string"`
-	NumRouteRelays      int      `json:"num_route_relays"`
-	RouteRelayIds       []uint64 `json:"route_relay_ids,string"`
-	RouteRelayNames     []string `json:"route_relay_names"`
+	SessionId       uint64   `json:"session_id,string"`
+	Score           uint32   `json:"score"`
+	StartTime       uint64   `json:"start_time,string"`
+	ISP             string   `json:"isp"`
+	ConnectionType  uint8    `json:"connection_type"`
+	PlatformType    uint8    `json:"platform_type"`
+	Latitude        float32  `json:"latitude"`
+	Longitude       float32  `json:"longitude"`
+	DirectRTT       uint32   `json:"direct_rtt"`
+	NextRTT         uint32   `json:"next_rtt"`
+	BuyerId         uint64   `json:"buyer_id,string"`
+	BuyerName       string   `json:"buyer_name"`
+	BuyerCode       string   `json:"buyer_code"`
+	DatacenterId    uint64   `json:"datacenter_id,string"`
+	DatacenterName  string   `json:"datacenter_name"`
+	ServerId        uint64   `json:"server_id,string"`
+	NumRouteRelays  int      `json:"num_route_relays"`
+	RouteRelayIds   []uint64 `json:"route_relay_ids,string"`
+	RouteRelayNames []string `json:"route_relay_names"`
 }
 
 func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {

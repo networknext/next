@@ -40,7 +40,31 @@ DONE
 
 	Verify that we see game rtt, jitter and PL in the portal.
 
+	Deploy to prod
+
+	Verify we see zero values for game rtt, jitter and PL in portal.
+
 TODO
+
+
+
+
+
+FIX BANDWIDTH
+
+	Stop tracking next and direct bandwidth up/down on the client
+
+	Just track total bandwidth period (total bandwidth received in-order, whether next or direct...)
+
+	Adjust the stats packets to pass up only bandwidth_up / bandwidth_down
+
+
+
+
+
+
+
+FALLBACK TO DIRECT
 
 	Why are we seeing so many fallback to directs?
 

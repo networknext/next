@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.8"
+    #define NEXT_VERSION_FULL                               "1.2.9"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                8
+    #define NEXT_VERSION_PATCH_INT                                9
 
 #else // !NEXT_DEVELOPMENT
 
@@ -347,13 +347,9 @@ struct next_client_stats_t
     float direct_jitter;
     float direct_packet_loss;
     float direct_max_packet_loss_seen;
-    float direct_kbps_up;
-    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
-    float next_kbps_up;
-    float next_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -368,6 +364,8 @@ struct next_client_stats_t
     float game_rtt;
     float game_jitter;
     float game_packet_loss;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
 };
 
 // -----------------------------------------
@@ -431,13 +429,9 @@ struct next_server_stats_t
     float direct_jitter;
     float direct_packet_loss;
     float direct_max_packet_loss_seen;
-    float direct_kbps_up;
-    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
-    float next_kbps_up;
-    float next_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -449,6 +443,8 @@ struct next_server_stats_t
     float delta_time_min;
     float delta_time_max;
     float delta_time_avg;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0

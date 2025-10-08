@@ -39,10 +39,8 @@ struct next_session_entry_t
     bool stats_server_bandwidth_over_limit;
     int stats_platform_id;
     int stats_connection_type;
-    float stats_direct_kbps_up;
-    float stats_direct_kbps_down;
-    float stats_next_kbps_up;
-    float stats_next_kbps_down;
+    float stats_bandwidth_kbps_up;
+    float stats_bandwidth_kbps_down;
     float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;

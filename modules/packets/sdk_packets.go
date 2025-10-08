@@ -130,16 +130,16 @@ func (packet *SDK_ServerInitResponsePacket) Serialize(stream encoding.Stream) er
 // ------------------------------------------------------------
 
 type SDK_ServerUpdateRequestPacket struct {
-	Version       SDKVersion
-	BuyerId       uint64
-	RequestId     uint64
-	ServerId      uint64
-	DatacenterId  uint64
-	NumSessions   uint32
-	Uptime        uint64
-	DeltaTimeMin  float32
-	DeltaTimeMax  float32
-	DeltaTimeAvg  float32
+	Version      SDKVersion
+	BuyerId      uint64
+	RequestId    uint64
+	ServerId     uint64
+	DatacenterId uint64
+	NumSessions  uint32
+	Uptime       uint64
+	DeltaTimeMin float32
+	DeltaTimeMax float32
+	DeltaTimeAvg float32
 }
 
 func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -291,8 +291,6 @@ type SDK_SessionUpdateRequestPacket struct {
 	Next                            bool
 	Reported                        bool
 	FallbackToDirect                bool
-	ClientNextBandwidthOverLimit    bool
-	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
 	HasClientRelayPings             bool
 	HasServerRelayPings             bool
@@ -317,10 +315,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	ServerRelayRTT                  [SDK_MaxServerRelays]int32
 	ServerRelayJitter               [SDK_MaxServerRelays]int32
 	ServerRelayPacketLoss           [SDK_MaxServerRelays]float32
-	DirectKbpsUp                    uint32
-	DirectKbpsDown                  uint32
-	NextKbpsUp                      uint32
-	NextKbpsDown                    uint32
+	BandwidthKbpsUp                 uint32
+	BandwidthKbpsDown               uint32
 	PacketsSentClientToServer       uint64
 	PacketsSentServerToClient       uint64
 	PacketsLostClientToServer       uint64
@@ -374,8 +370,14 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.ClientNextBandwidthOverLimit)
-	stream.SerializeBool(&packet.ServerNextBandwidthOverLimit)
+
+	if !core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 9) {
+		var clientNextBandwidthOverLimit bool
+		var serverNextBandwidthOverLimit bool
+		stream.SerializeBool(&clientNextBandwidthOverLimit)
+		stream.SerializeBool(&serverNextBandwidthOverLimit)
+	}
+
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasClientRelayPings)
 	stream.SerializeBool(&packet.HasServerRelayPings)
@@ -435,12 +437,16 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 		}
 	}
 
-	stream.SerializeUint32(&packet.DirectKbpsUp)
-	stream.SerializeUint32(&packet.DirectKbpsDown)
+	stream.SerializeUint32(&packet.BandwidthKbpsUp)
+	stream.SerializeUint32(&packet.BandwidthKbpsDown)
 
-	if packet.Next {
-		stream.SerializeUint32(&packet.NextKbpsUp)
-		stream.SerializeUint32(&packet.NextKbpsDown)
+	if !core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 9) {
+		if packet.Next {
+			var nextKbpsUp uint32
+			var nextKbpsDown uint32
+			stream.SerializeUint32(&nextKbpsUp)
+			stream.SerializeUint32(&nextKbpsDown)
+		}
 	}
 
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)

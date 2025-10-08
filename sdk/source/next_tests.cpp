@@ -3875,10 +3875,8 @@ void test_session_update_request_packet()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_crypto_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         next_crypto_random_bytes( in.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-        in.direct_kbps_up = 50.0f;
-        in.direct_kbps_down = 75.0f;
-        in.next_kbps_up = 100.0f;
-        in.next_kbps_down = 200.0f;
+        in.bandwidth_kbps_up = 50.0f;
+        in.bandwidth_kbps_down = 75.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -3949,10 +3947,8 @@ void test_session_update_request_packet()
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
         next_check( memcmp( in.server_route_public_key, out.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
-        next_check( in.direct_kbps_up == out.direct_kbps_up );
-        next_check( in.direct_kbps_down == out.direct_kbps_down );
-        next_check( in.next_kbps_up == out.next_kbps_up );
-        next_check( in.next_kbps_down == out.next_kbps_down );
+        next_check( in.bandwidth_kbps_up == out.bandwidth_kbps_up );
+        next_check( in.bandwidth_kbps_down == out.bandwidth_kbps_down );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         next_check( in.session_data_bytes == out.session_data_bytes );

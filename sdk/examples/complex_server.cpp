@@ -377,8 +377,6 @@ void print_server_stats( next_server_t * server, ServerContext * context )
             printf( "next_rtt = %.2fms\n", stats.next_rtt );
             printf( "next_jitter = %.2fms\n", stats.next_jitter );
             printf( "next_packet_loss = %.1f%%\n", stats.next_packet_loss );
-            printf( "next_bandwidth_up = %.1fkbps\n", stats.next_kbps_up );
-            printf( "next_bandwidth_down = %.1fkbps\n", stats.next_kbps_down );
         }
 
         if ( !stats.fallback_to_direct )

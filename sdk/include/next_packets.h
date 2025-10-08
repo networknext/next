@@ -183,13 +183,8 @@ struct NextClientStatsPacket
     bool next;
     bool multipath;
     bool reported;
-    bool next_bandwidth_over_limit;
     int platform_id;
     int connection_type;
-    float direct_kbps_up;
-    float direct_kbps_down;
-    float next_kbps_up;
-    float next_kbps_down;
     float direct_rtt;
     float direct_jitter;
     float direct_packet_loss;
@@ -214,6 +209,8 @@ struct NextClientStatsPacket
     uint64_t packets_out_of_order_server_to_client;
     float jitter_server_to_client;
     uint64_t client_relay_request_id;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
 
     NextClientStatsPacket()
     {
@@ -226,13 +223,8 @@ struct NextClientStatsPacket
         serialize_bool( stream, next );
         serialize_bool( stream, multipath );
         serialize_bool( stream, reported );
-        serialize_bool( stream, next_bandwidth_over_limit );
         serialize_int( stream, platform_id, NEXT_PLATFORM_UNKNOWN, NEXT_PLATFORM_MAX );
         serialize_int( stream, connection_type, NEXT_CONNECTION_TYPE_UNKNOWN, NEXT_CONNECTION_TYPE_MAX );
-        serialize_float( stream, direct_kbps_up );
-        serialize_float( stream, direct_kbps_down );
-        serialize_float( stream, next_kbps_up );
-        serialize_float( stream, next_kbps_down );
         serialize_float( stream, direct_rtt );
         serialize_float( stream, direct_jitter );
         serialize_float( stream, direct_packet_loss );
@@ -271,6 +263,8 @@ struct NextClientStatsPacket
         serialize_float( stream, game_rtt );
         serialize_float( stream, game_jitter );
         serialize_float( stream, game_packet_loss );
+        serialize_float( stream, bandwidth_kbps_up );
+        serialize_float( stream, bandwidth_kbps_down );
         return true;
     }
 };
@@ -698,8 +692,6 @@ struct NextBackendSessionUpdateRequestPacket
     bool next;
     bool reported;
     bool fallback_to_direct;
-    bool client_bandwidth_over_limit;
-    bool server_bandwidth_over_limit;
     bool client_ping_timed_out;
     bool has_client_relay_pings;
     bool has_server_relay_pings;
@@ -724,10 +716,6 @@ struct NextBackendSessionUpdateRequestPacket
     uint8_t server_relay_rtt[NEXT_MAX_SERVER_RELAYS];
     uint8_t server_relay_jitter[NEXT_MAX_SERVER_RELAYS];
     float server_relay_packet_loss[NEXT_MAX_SERVER_RELAYS];
-    uint32_t direct_kbps_up;
-    uint32_t direct_kbps_down;
-    uint32_t next_kbps_up;
-    uint32_t next_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -744,6 +732,8 @@ struct NextBackendSessionUpdateRequestPacket
     float game_rtt;
     float game_jitter;
     float game_packet_loss;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;    
 
     void Reset()
     {
@@ -789,8 +779,6 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_bool( stream, next );
         serialize_bool( stream, reported );
         serialize_bool( stream, fallback_to_direct );
-        serialize_bool( stream, client_bandwidth_over_limit );
-        serialize_bool( stream, server_bandwidth_over_limit );
         serialize_bool( stream, client_ping_timed_out );
         serialize_bool( stream, has_client_relay_pings );
         serialize_bool( stream, has_server_relay_pings );
@@ -861,14 +849,8 @@ struct NextBackendSessionUpdateRequestPacket
             }
         }
 
-        serialize_uint32( stream, direct_kbps_up );
-        serialize_uint32( stream, direct_kbps_down );
-
-        if ( next )
-        {
-            serialize_uint32( stream, next_kbps_up );
-            serialize_uint32( stream, next_kbps_down );
-        }
+        serialize_uint32( stream, bandwidth_kbps_up );
+        serialize_uint32( stream, bandwidth_kbps_down );
 
         serialize_uint64( stream, packets_sent_client_to_server );
         serialize_uint64( stream, packets_sent_server_to_client );

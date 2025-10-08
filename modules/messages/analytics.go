@@ -6,56 +6,52 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// always
 
-	Timestamp        int64   `avro:"timestamp"`
-	SessionId        int64   `avro:"session_id"`
-	ServerId         int64   `avro:"server_id"`
-	SliceNumber      int32   `avro:"slice_number"`
-	RealPacketLoss   float32 `avro:"real_packet_loss"`
-	RealJitter       float32 `avro:"real_jitter"`
-	RealOutOfOrder   float32 `avro:"real_out_of_order"`
-	SessionEvents    int64   `avro:"session_events"`
-	InternalEvents   int64   `avro:"internal_events"`
-	DirectRTT        float32 `avro:"direct_rtt"`
-	DirectJitter     float32 `avro:"direct_jitter"`
-	DirectPacketLoss float32 `avro:"direct_packet_loss"`
-	DirectKbpsUp     int32   `avro:"direct_kbps_up"`
-	DirectKbpsDown   int32   `avro:"direct_kbps_down"`
-	DeltaTimeMin     float32 `avro:"delta_time_min"`
-	DeltaTimeMax     float32 `avro:"delta_time_max"`
-	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
-	GameRTT          float32 `avro:"game_rtt"`
-	GameJitter       float32 `avro:"game_jitter"`
-	GamePacketLoss   float32 `avro:"game_packet_loss"`
+	Timestamp         int64   `avro:"timestamp"`
+	SessionId         int64   `avro:"session_id"`
+	ServerId          int64   `avro:"server_id"`
+	SliceNumber       int32   `avro:"slice_number"`
+	RealPacketLoss    float32 `avro:"real_packet_loss"`
+	RealJitter        float32 `avro:"real_jitter"`
+	RealOutOfOrder    float32 `avro:"real_out_of_order"`
+	SessionEvents     int64   `avro:"session_events"`
+	InternalEvents    int64   `avro:"internal_events"`
+	DirectRTT         float32 `avro:"direct_rtt"`
+	DirectJitter      float32 `avro:"direct_jitter"`
+	DirectPacketLoss  float32 `avro:"direct_packet_loss"`
+	BandwidthKbpsUp   int32   `avro:"bandwidth_kbps_up"`
+	BandwidthKbpsDown int32   `avro:"bandwidth_kbps_down"`
+	DeltaTimeMin      float32 `avro:"delta_time_min"`
+	DeltaTimeMax      float32 `avro:"delta_time_max"`
+	DeltaTimeAvg      float32 `avro:"delta_time_avg"`
+	GameRTT           float32 `avro:"game_rtt"`
+	GameJitter        float32 `avro:"game_jitter"`
+	GamePacketLoss    float32 `avro:"game_packet_loss"`
 
 	// next only
 
 	NextRTT          float32 `avro:"next_rtt"`
 	NextJitter       float32 `avro:"next_jitter"`
 	NextPacketLoss   float32 `avro:"next_packet_loss"`
-	NextKbpsUp       int32   `avro:"next_kbps_up"`
-	NextKbpsDown     int32   `avro:"next_kbps_down"`
 	NextPredictedRTT float32 `avro:"next_predicted_rtt"`
 	NextRouteRelays  []int64 `avro:"next_route_relays"`
 
 	// flags
 
-	Next                         bool `avro:"next"`
-	FallbackToDirect             bool `avro:"fallback_to_direct"`
-	Reported                     bool `avro:"reported"`
-	LatencyReduction             bool `avro:"latency_reduction"`
-	PacketLossReduction          bool `avro:"packet_loss_reduction"`
-	ForceNext                    bool `avro:"force_next"`
-	LongSessionUpdate            bool `avro:"long_session_update"`
-	ClientNextBandwidthOverLimit bool `avro:"client_next_bandwidth_over_limit"`
-	ServerNextBandwidthOverLimit bool `avro:"server_next_bandwidth_over_limit"`
-	Veto                         bool `avro:"veto"`
-	Disabled                     bool `avro:"disabled"`
-	NotSelected                  bool `avro:"not_selected"`
-	A                            bool `avro:"a"`
-	B                            bool `avro:"b"`
-	LatencyWorse                 bool `avro:"latency_worse"`
-	Mispredict                   bool `avro:"mispredict"`
-	LackOfDiversity              bool `avro:"lack_of_diversity"`
+	Next                bool `avro:"next"`
+	FallbackToDirect    bool `avro:"fallback_to_direct"`
+	Reported            bool `avro:"reported"`
+	LatencyReduction    bool `avro:"latency_reduction"`
+	PacketLossReduction bool `avro:"packet_loss_reduction"`
+	ForceNext           bool `avro:"force_next"`
+	LongSessionUpdate   bool `avro:"long_session_update"`
+	Veto                bool `avro:"veto"`
+	Disabled            bool `avro:"disabled"`
+	NotSelected         bool `avro:"not_selected"`
+	A                   bool `avro:"a"`
+	B                   bool `avro:"b"`
+	LatencyWorse        bool `avro:"latency_worse"`
+	Mispredict          bool `avro:"mispredict"`
+	LackOfDiversity     bool `avro:"lack_of_diversity"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -93,21 +89,19 @@ type AnalyticsSessionSummaryMessage struct {
 
 	// flags
 
-	Reported                     bool `avro:"reported"`
-	LatencyReduction             bool `avro:"latency_reduction"`
-	PacketLossReduction          bool `avro:"packet_loss_reduction"`
-	ForceNext                    bool `avro:"force_next"`
-	LongSessionUpdate            bool `avro:"long_session_update"`
-	ClientNextBandwidthOverLimit bool `avro:"client_next_bandwidth_over_limit"`
-	ServerNextBandwidthOverLimit bool `avro:"server_next_bandwidth_over_limit"`
-	Veto                         bool `avro:"veto"`
-	Disabled                     bool `avro:"disabled"`
-	NotSelected                  bool `avro:"not_selected"`
-	A                            bool `avro:"a"`
-	B                            bool `avro:"b"`
-	LatencyWorse                 bool `avro:"latency_worse"`
-	Mispredict                   bool `avro:"mispredict"`
-	LackOfDiversity              bool `avro:"lack_of_diversity"`
+	Reported            bool `avro:"reported"`
+	LatencyReduction    bool `avro:"latency_reduction"`
+	PacketLossReduction bool `avro:"packet_loss_reduction"`
+	ForceNext           bool `avro:"force_next"`
+	LongSessionUpdate   bool `avro:"long_session_update"`
+	Veto                bool `avro:"veto"`
+	Disabled            bool `avro:"disabled"`
+	NotSelected         bool `avro:"not_selected"`
+	A                   bool `avro:"a"`
+	B                   bool `avro:"b"`
+	LatencyWorse        bool `avro:"latency_worse"`
+	Mispredict          bool `avro:"mispredict"`
+	LackOfDiversity     bool `avro:"lack_of_diversity"`
 }
 
 // ----------------------------------------------------------------------------------------

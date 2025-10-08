@@ -166,35 +166,33 @@ func GenerateRandomSessionData() *SessionData {
 // --------------------------------------------------------------------------------------------------
 
 type SliceData struct {
-	Timestamp        uint64  `json:"timestamp,string"`
-	SliceNumber      uint32  `json:"session_id"`
-	DirectRTT        uint32  `json:"direct_rtt"`
-	NextRTT          uint32  `json:"next_rtt"`
-	PredictedRTT     uint32  `json:"predicted_rtt"`
-	DirectJitter     uint32  `json:"direct_jitter"`
-	NextJitter       uint32  `json:"next_jitter"`
-	RealJitter       uint32  `json:"real_jitter"`
-	DirectPacketLoss float32 `json:"direct_packet_loss"`
-	NextPacketLoss   float32 `json:"next_packet_loss"`
-	RealPacketLoss   float32 `json:"real_packet_loss"`
-	RealOutOfOrder   float32 `json:"real_out_of_order"`
-	DeltaTimeMin     float32 `json:"delta_time_min"`
-	DeltaTimeMax     float32 `json:"delta_time_max"`
-	DeltaTimeAvg     float32 `json:"delta_time_avg"`
-	InternalEvents   uint64  `json:"internal_events,string"`
-	SessionEvents    uint64  `json:"session_events,string"`
-	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
-	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
-	NextKbpsUp       uint32  `json:"next_kbps_up"`
-	NextKbpsDown     uint32  `json:"next_kbps_down"`
-	Next             bool    `json:"next"`
-	GameRTT          float32 `json:"game_rtt"`
-	GameJitter       float32 `json:"game_jitter"`
-	GamePacketLoss   float32 `json:"game_packet_loss"`
+	Timestamp         uint64  `json:"timestamp,string"`
+	SliceNumber       uint32  `json:"session_id"`
+	DirectRTT         uint32  `json:"direct_rtt"`
+	NextRTT           uint32  `json:"next_rtt"`
+	PredictedRTT      uint32  `json:"predicted_rtt"`
+	DirectJitter      uint32  `json:"direct_jitter"`
+	NextJitter        uint32  `json:"next_jitter"`
+	RealJitter        uint32  `json:"real_jitter"`
+	DirectPacketLoss  float32 `json:"direct_packet_loss"`
+	NextPacketLoss    float32 `json:"next_packet_loss"`
+	RealPacketLoss    float32 `json:"real_packet_loss"`
+	RealOutOfOrder    float32 `json:"real_out_of_order"`
+	DeltaTimeMin      float32 `json:"delta_time_min"`
+	DeltaTimeMax      float32 `json:"delta_time_max"`
+	DeltaTimeAvg      float32 `json:"delta_time_avg"`
+	InternalEvents    uint64  `json:"internal_events,string"`
+	SessionEvents     uint64  `json:"session_events,string"`
+	BandwidthKbpsUp   uint32  `json:"bandwidth_kbps_up"`
+	BandwidthKbpsDown uint32  `json:"bandwidth_kbps_down"`
+	Next              bool    `json:"next"`
+	GameRTT           float32 `json:"game_rtt"`
+	GameJitter        float32 `json:"game_jitter"`
+	GamePacketLoss    float32 `json:"game_packet_loss"`
 }
 
 func (data *SliceData) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f",
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%v|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f",
 		data.Timestamp,
 		data.SliceNumber,
 		data.DirectRTT,
@@ -209,10 +207,8 @@ func (data *SliceData) Value() string {
 		data.RealOutOfOrder,
 		data.InternalEvents,
 		data.SessionEvents,
-		data.DirectKbpsUp,
-		data.DirectKbpsDown,
-		data.NextKbpsUp,
-		data.NextKbpsDown,
+		data.BandwidthKbpsUp,
+		data.BandwidthKbpsDown,
 		data.Next,
 		data.DeltaTimeMin,
 		data.DeltaTimeMax,
@@ -225,7 +221,7 @@ func (data *SliceData) Value() string {
 
 func (data *SliceData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 25 {
+	if len(values) != 23 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -284,44 +280,36 @@ func (data *SliceData) Parse(value string) {
 	if err != nil {
 		return
 	}
-	directKbpsUp, err := strconv.ParseUint(values[14], 10, 32)
+	bandwidthKbpsUp, err := strconv.ParseUint(values[14], 10, 32)
 	if err != nil {
 		return
 	}
-	directKbpsDown, err := strconv.ParseUint(values[15], 10, 32)
+	bandwidthKbpsDown, err := strconv.ParseUint(values[15], 10, 32)
 	if err != nil {
 		return
 	}
-	nextKbpsUp, err := strconv.ParseUint(values[16], 10, 32)
+	next := values[16] == "true"
+	deltaTimeMin, err := strconv.ParseFloat(values[17], 32)
 	if err != nil {
 		return
 	}
-	nextKbpsDown, err := strconv.ParseUint(values[17], 10, 32)
+	deltaTimeMax, err := strconv.ParseFloat(values[18], 32)
 	if err != nil {
 		return
 	}
-	next := values[18] == "true"
-	deltaTimeMin, err := strconv.ParseFloat(values[19], 32)
+	deltaTimeAvg, err := strconv.ParseFloat(values[19], 32)
 	if err != nil {
 		return
 	}
-	deltaTimeMax, err := strconv.ParseFloat(values[20], 32)
+	gameRTT, err := strconv.ParseFloat(values[20], 32)
 	if err != nil {
 		return
 	}
-	deltaTimeAvg, err := strconv.ParseFloat(values[21], 32)
+	gameJitter, err := strconv.ParseFloat(values[21], 32)
 	if err != nil {
 		return
 	}
-	gameRTT, err := strconv.ParseFloat(values[22], 32)
-	if err != nil {
-		return
-	}
-	gameJitter, err := strconv.ParseFloat(values[23], 32)
-	if err != nil {
-		return
-	}
-	gamePacketLoss, err := strconv.ParseFloat(values[24], 32)
+	gamePacketLoss, err := strconv.ParseFloat(values[22], 32)
 	if err != nil {
 		return
 	}
@@ -340,10 +328,8 @@ func (data *SliceData) Parse(value string) {
 	data.RealOutOfOrder = float32(realOutOfOrder)
 	data.InternalEvents = internalEvents
 	data.SessionEvents = sessionEvents
-	data.DirectKbpsUp = uint32(directKbpsUp)
-	data.DirectKbpsDown = uint32(directKbpsDown)
-	data.NextKbpsUp = uint32(nextKbpsUp)
-	data.NextKbpsDown = uint32(nextKbpsDown)
+	data.BandwidthKbpsUp = uint32(bandwidthKbpsUp)
+	data.BandwidthKbpsDown = uint32(bandwidthKbpsDown)
 	data.Next = next
 	data.DeltaTimeMin = float32(deltaTimeMin)
 	data.DeltaTimeMax = float32(deltaTimeMax)
@@ -369,10 +355,8 @@ func GenerateRandomSliceData() *SliceData {
 	data.RealOutOfOrder = float32(common.RandomInt(0, 100000)) / 100.0
 	data.InternalEvents = rand.Uint64()
 	data.SessionEvents = rand.Uint64()
-	data.DirectKbpsUp = rand.Uint32()
-	data.DirectKbpsDown = rand.Uint32()
-	data.NextKbpsUp = rand.Uint32()
-	data.NextKbpsDown = rand.Uint32()
+	data.BandwidthKbpsUp = rand.Uint32()
+	data.BandwidthKbpsDown = rand.Uint32()
 	data.Next = common.RandomBool()
 	data.DeltaTimeMin = 1.0
 	data.DeltaTimeMax = 2.0
@@ -577,7 +561,7 @@ func (data *ServerData) Parse(value string) {
 		return
 	}
 	sdkVersionMajor, err := strconv.ParseUint(values[0], 10, 8)
-    if err != nil {
+	if err != nil {
 		return
 	}
 	sdkVersionMinor, err := strconv.ParseUint(values[1], 10, 8)
@@ -1530,7 +1514,7 @@ func (publisher *ServerCruncherPublisher) sendBatch() {
 		batch[batchIndex] = append(batch[batchIndex], publisher.batchMessages[i])
 	}
 
-	size := 8 + 4*constants.NumBuckets + 8 * len(batchSize)
+	size := 8 + 4*constants.NumBuckets + 8*len(batchSize)
 
 	data := make([]byte, size)
 

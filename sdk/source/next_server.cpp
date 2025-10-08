@@ -2767,18 +2767,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_reported = packet.reported;
             session->stats_multipath = packet.multipath;
             session->stats_fallback_to_direct = packet.fallback_to_direct;
-            if ( packet.next_bandwidth_over_limit )
-            {
-                next_printf( NEXT_LOG_LEVEL_DEBUG, "server session sees client over next bandwidth limit %016" PRIx64, session->session_id );
-                session->stats_client_bandwidth_over_limit = true;
-            }
-
             session->stats_platform_id = packet.platform_id;
             session->stats_connection_type = packet.connection_type;
-            session->stats_direct_kbps_up = packet.direct_kbps_up;
-            session->stats_direct_kbps_down = packet.direct_kbps_down;
-            session->stats_next_kbps_up = packet.next_kbps_up;
-            session->stats_next_kbps_down = packet.next_kbps_down;
+            session->stats_bandwidth_kbps_up = packet.bandwidth_kbps_up;
+            session->stats_bandwidth_kbps_down = packet.bandwidth_kbps_down;
             session->stats_direct_rtt = packet.direct_rtt;
             session->stats_direct_jitter = packet.direct_jitter;
             session->stats_direct_packet_loss = packet.direct_packet_loss;
@@ -3833,14 +3825,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.session_events = session->previous_session_events;
             packet.reported = session->stats_reported;
             packet.fallback_to_direct = session->stats_fallback_to_direct;
-            packet.client_bandwidth_over_limit = session->stats_client_bandwidth_over_limit;
-            packet.server_bandwidth_over_limit = session->stats_server_bandwidth_over_limit;
             packet.client_ping_timed_out = session->client_ping_timed_out;
             packet.connection_type = session->stats_connection_type;
-            packet.direct_kbps_up = session->stats_direct_kbps_up;
-            packet.direct_kbps_down = session->stats_direct_kbps_down;
-            packet.next_kbps_up = session->stats_next_kbps_up;
-            packet.next_kbps_down = session->stats_next_kbps_down;
+            packet.bandwidth_kbps_up = session->stats_bandwidth_kbps_up;
+            packet.bandwidth_kbps_down = session->stats_bandwidth_kbps_down;
             packet.packets_sent_client_to_server = session->stats_packets_sent_client_to_server;
             {
                 next_platform_mutex_guard( &server->session_mutex );
@@ -4806,10 +4794,8 @@ bool next_server_stats( next_server_t * server, const next_address_t * address, 
             stats->next_rtt = entry->stats_next_rtt;
             stats->next_jitter = entry->stats_next_jitter;
             stats->next_packet_loss = entry->stats_next_packet_loss;
-            stats->direct_kbps_up = entry->stats_direct_kbps_up;
-            stats->direct_kbps_down = entry->stats_direct_kbps_down;
-            stats->next_kbps_up = entry->stats_next_kbps_up;
-            stats->next_kbps_down = entry->stats_next_kbps_down;
+            stats->bandwidth_kbps_up = entry->stats_bandwidth_kbps_up;
+            stats->bandwidth_kbps_down = entry->stats_bandwidth_kbps_down;
             stats->packets_sent_client_to_server = entry->stats_packets_sent_client_to_server;
             stats->packets_sent_server_to_client = entry->stats_packets_sent_server_to_client;
             stats->packets_lost_client_to_server = entry->stats_packets_lost_client_to_server;

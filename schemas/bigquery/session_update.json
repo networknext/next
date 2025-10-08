@@ -68,13 +68,13 @@
   {
     "name": "direct_kbps_up",
     "type": "INT64",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
   },
   {
     "name": "direct_kbps_down",
     "type": "INT64",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second"
   },
   {
@@ -262,5 +262,17 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Unique identifier of the server"
+  },
+  {
+    "name": "bandwidth_kbps_up",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth sent by the game in the client to server direction. Kilobits per-second"
+  },
+  {
+    "name": "bandwidth_kbps_down",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth received by the game in the server to client direction. Kilobits per-second"
   }
 ]

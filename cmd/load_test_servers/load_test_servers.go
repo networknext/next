@@ -180,13 +180,13 @@ func RunServer(index int) {
 				fmt.Printf("update server %03d\n", index)
 
 				packet := packets.SDK_ServerUpdateRequestPacket{
-					Version:       packets.SDKVersion{255, 255, 255},
-					BuyerId:       buyerId,
-					RequestId:     requestId,
-					DatacenterId:  datacenterId,
-					NumSessions:   uint32(common.RandomInt(100, 200)),
-					ServerId:      common.HashString(address.String()),
-					Uptime:        uint64(requestId * 10),
+					Version:      packets.SDKVersion{255, 255, 255},
+					BuyerId:      buyerId,
+					RequestId:    requestId,
+					DatacenterId: datacenterId,
+					NumSessions:  uint32(common.RandomInt(100, 200)),
+					ServerId:     common.HashString(address.String()),
+					Uptime:       uint64(requestId * 10),
 				}
 
 				requestId += 1

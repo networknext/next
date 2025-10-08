@@ -1098,8 +1098,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	message.DirectKbpsUp = state.Request.DirectKbpsUp
-	message.DirectKbpsDown = state.Request.DirectKbpsDown
+
+	message.BandwidthKbpsUp = state.Request.BandwidthKbpsUp
+	message.BandwidthKbpsDown = state.Request.BandwidthKbpsDown
 
 	message.Next = state.Request.Next
 
@@ -1107,8 +1108,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
-		message.NextKbpsUp = state.Request.NextKbpsUp
-		message.NextKbpsDown = state.Request.NextKbpsDown
 		message.NextPredictedRTT = uint32(state.Input.RouteCost)
 		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
@@ -1294,8 +1293,8 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	message.DirectKbpsUp = int32(state.Request.DirectKbpsUp)
-	message.DirectKbpsDown = int32(state.Request.DirectKbpsDown)
+	message.BandwidthKbpsUp = int32(state.Request.BandwidthKbpsUp)
+	message.BandwidthKbpsDown = int32(state.Request.BandwidthKbpsDown)
 	message.DeltaTimeMin = state.Request.DeltaTimeMin
 	message.DeltaTimeMax = state.Request.DeltaTimeMax
 	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
@@ -1310,8 +1309,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
-		message.NextKbpsUp = int32(state.Request.NextKbpsUp)
-		message.NextKbpsDown = int32(state.Request.NextKbpsDown)
 		message.NextPredictedRTT = float32(state.Input.RouteCost)
 		message.NextRouteRelays = make([]int64, len(state.Input.RouteRelayIds))
 		for i := range state.Input.RouteRelayIds {
@@ -1327,8 +1324,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
 	message.ForceNext = state.Input.RouteState.ForcedNext
 	message.LongSessionUpdate = state.LongSessionUpdate
-	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
-	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
 	message.Veto = state.Input.RouteState.Veto
 	message.Disabled = state.Input.RouteState.Disabled
 	message.NotSelected = state.Input.RouteState.NotSelected
@@ -1389,8 +1384,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
 	message.ForceNext = state.Input.RouteState.ForcedNext
 	message.LongSessionUpdate = state.LongSessionUpdate
-	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
-	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
 	message.Veto = state.Input.RouteState.Veto
 	message.Disabled = state.Input.RouteState.Disabled
 	message.NotSelected = state.Input.RouteState.NotSelected
