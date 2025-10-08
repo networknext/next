@@ -66,20 +66,19 @@ DONE
 
 	Yes, retry is 1 second.
 
+	Plumb flags from client -> server.
+
+	Plumb flags from server -> backend.
+
 TODO
 
+	Update the session update packet to include flags if SDK version >= 1.2.10
 
+	Get flags sent up to bigquery.
 
+	Deploy to dev.
 
-
-
-FALLBACK TO DIRECT
-
-	Why are we seeing so many fallback to directs?
-
-	Instrument the bigquery data with enough information to see what is causing the fallback to direct.
-
-
+	Verify flags show up in bigquery.
 
 
 
@@ -103,6 +102,9 @@ FUNCTIONAL TESTS
 
 	-----
 
+	Add a functional test to verify we see flags
+
+	-----
 
 
 
