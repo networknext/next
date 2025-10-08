@@ -2011,7 +2011,6 @@ func commitDatabase() {
 type PortalRelayData struct {
 	RelayName    string `json:"relay_name"`
 	RelayId      string `json:"relay_id"`
-	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    string `json:"start_time"`
@@ -2065,13 +2064,14 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	relayMap := make(map[string]*RelayRow)
 
 	for i := range adminRelaysResponse.Relays {
-		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
-		relay := relayMap[relayAddress]
+		relayName := adminRelaysResponse.Relays[i].RelayName
+		relay := relayMap[relayName]
 		if relay == nil {
 			relay = &RelayRow{}
-			relayMap[relayAddress] = relay
+			relayMap[relayName] = relay
 		}
-		relay.Name = adminRelaysResponse.Relays[i].RelayName
+		relay.Name = relayName
+		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
 		relay.Id = fmt.Sprintf("%x", common.HashString(relayAddress))
 		relay.PublicAddress = relayAddress
 		relay.Price = adminRelaysResponse.Relays[i].BandwidthPrice
@@ -2081,8 +2081,8 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	}
 
 	for i := range portalRelaysResponse.Relays {
-		relayAddress := portalRelaysResponse.Relays[i].RelayAddress
-		relay := relayMap[relayAddress]
+		relayName := portalRelaysResponse.Relays[i].RelayName
+		relay := relayMap[relayName]
 		if relay == nil {
 			continue
 		}
