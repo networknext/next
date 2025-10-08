@@ -38,10 +38,13 @@ DONE
 
 	Update portal to display game latency, game jitter and game packet loss.
 
-TODO
-	
 	Verify that we see game rtt, jitter and PL in the portal.
 
+TODO
+
+	Why are we seeing so many fallback to directs?
+
+	Instrument the bigquery data with enough information to see what is causing the fallback to directs.
 
 
 
@@ -68,14 +71,6 @@ FUNCTIONAL TESTS
 	-----
 
 
-
-
-
-FALLBACK TO DIRECT
-	
-	Why are we seeing so many fallback to directs?
-
-	Instrument the bigquery data with enough information to see what is causing the fallback to directs.
 
 
 
