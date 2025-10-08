@@ -576,8 +576,8 @@ async function getData(page, session_id) {
       let bandwidth_down = []
       i = 0
       while (i < res.data.slice_data.length) {
-        bandwidth_up.push(res.data.slice_data[i].direct_kbps_up)
-        bandwidth_down.push(res.data.slice_data[i].direct_kbps_down)
+        bandwidth_up.push(res.data.slice_data[i].bandwidth_kbps_up)
+        bandwidth_down.push(res.data.slice_data[i].bandwidth_kbps_down)
         i++
       }
 

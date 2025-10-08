@@ -48,10 +48,8 @@ type PortalSliceData struct {
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
 	InternalEvents   string  `json:"internal_events"`
 	SessionEvents    string  `json:"session_events"`
-	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
-	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
-	NextKbpsUp       uint32  `json:"next_kbps_up"`
-	NextKbpsDown     uint32  `json:"next_kbps_down"`
+	DirectKbpsUp     uint32  `json:"bandwidth_kbps_up"`
+	DirectKbpsDown   uint32  `json:"bandwidth_kbps_down"`
 }
 
 type PortalRelayData struct {
