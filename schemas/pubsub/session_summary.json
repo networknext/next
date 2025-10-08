@@ -43,6 +43,7 @@
     {"name": "b",                                     "type": "boolean"},
     {"name": "latency_worse",                         "type": "boolean"},
     {"name": "mispredict",                            "type": "boolean"},
-    {"name": "lack_of_diversity",                     "type": "boolean"}
+    {"name": "lack_of_diversity",                     "type": "boolean"},
+    {"name": "flags",                                 "type": "long", "default": 0}
   ]
 }

@@ -244,6 +244,12 @@
     "type": "BOOL",
     "mode": "REQUIRED",
     "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  },  
+  {
+    "name": "flags",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Flags passed up from the SDK client. Useful for debugging."
   }
 
 ]

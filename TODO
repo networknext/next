@@ -70,11 +70,11 @@ DONE
 
 	Plumb flags from server -> backend.
 
-TODO
-
 	Update the session update packet to include flags if SDK version >= 1.2.10
 
 	Get flags sent up to bigquery.
+
+TODO
 
 	Deploy to dev.
 

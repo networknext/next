@@ -52,6 +52,7 @@ type AnalyticsSessionUpdateMessage struct {
 	LatencyWorse        bool `avro:"latency_worse"`
 	Mispredict          bool `avro:"mispredict"`
 	LackOfDiversity     bool `avro:"lack_of_diversity"`
+	Flags              int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -102,6 +103,7 @@ type AnalyticsSessionSummaryMessage struct {
 	LatencyWorse        bool `avro:"latency_worse"`
 	Mispredict          bool `avro:"mispredict"`
 	LackOfDiversity     bool `avro:"lack_of_diversity"`
+	Flags              int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------

@@ -274,5 +274,11 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Bandwidth received by the game in the server to client direction. Kilobits per-second"
+  },
+  {
+    "name": "flags",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Flags passed up from the SDK client. Useful for debugging."
   }
 ]

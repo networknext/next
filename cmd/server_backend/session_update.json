@@ -48,6 +48,7 @@
     {"name": "game_jitter",                           "type": "float", "default": 0.0},
     {"name": "game_packet_loss",                      "type": "float", "default": 0.0},
     {"name": "bandwidth_kbps_up",                     "type": "int", "default": 0},
-    {"name": "bandwidth_kbps_down",                   "type": "int", "default": 0}
+    {"name": "bandwidth_kbps_down",                   "type": "int", "default": 0},
+    {"name": "flags",                                 "type": "long", "default": 0}
   ]
 }
