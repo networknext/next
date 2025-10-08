@@ -609,6 +609,9 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 				NextKbpsUp:       message.NextKbpsUp,
 				NextKbpsDown:     message.NextKbpsDown,
 				Next:             message.Next,
+				GameRTT:          message.GameRTT,
+				GameJitter:       message.GameJitter,
+				GamePacketLoss:   message.GamePacketLoss,
 			}
 
 			if message.SendToPortal {

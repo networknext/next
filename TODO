@@ -28,13 +28,13 @@ DONE
 
 	Game RTT is correct
 
-TODO
-
 	Game jitter is broken
 
 	Game packet loss is broken
 
-	-----
+	Verified fix.
+
+TODO
 
 	Insert the game rtt/jitter/packet loss into redis via the session inserter
 

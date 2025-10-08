@@ -188,10 +188,13 @@ type SliceData struct {
 	NextKbpsUp       uint32  `json:"next_kbps_up"`
 	NextKbpsDown     uint32  `json:"next_kbps_down"`
 	Next             bool    `json:"next"`
+	GameRTT          float32 `json:"game_rtt"`
+	GameJitter       float32 `json:"game_jitter"`
+	GamePacketLoss   float32 `json:"game_packet_loss"`
 }
 
 func (data *SliceData) Value() string {
-	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v|%.3f|%.3f|%.3f",
+	return fmt.Sprintf("%x|%d|%d|%d|%d|%d|%d|%d|%.2f|%.2f|%.2f|%.2f|%x|%x|%d|%d|%d|%d|%v|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f",
 		data.Timestamp,
 		data.SliceNumber,
 		data.DirectRTT,
@@ -214,12 +217,15 @@ func (data *SliceData) Value() string {
 		data.DeltaTimeMin,
 		data.DeltaTimeMax,
 		data.DeltaTimeAvg,
+		data.GameRTT,
+		data.GameJitter,
+		data.GamePacketLoss,
 	)
 }
 
 func (data *SliceData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) != 22 {
+	if len(values) != 25 {
 		return
 	}
 	timestamp, err := strconv.ParseUint(values[0], 16, 64)
@@ -307,6 +313,18 @@ func (data *SliceData) Parse(value string) {
 	if err != nil {
 		return
 	}
+	gameRTT, err := strconv.ParseFloat(values[22], 32)
+	if err != nil {
+		return
+	}
+	gameJitter, err := strconv.ParseFloat(values[23], 32)
+	if err != nil {
+		return
+	}
+	gamePacketLoss, err := strconv.ParseFloat(values[24], 32)
+	if err != nil {
+		return
+	}
 
 	data.Timestamp = timestamp
 	data.SliceNumber = uint32(sliceNumber)
@@ -330,6 +348,9 @@ func (data *SliceData) Parse(value string) {
 	data.DeltaTimeMin = float32(deltaTimeMin)
 	data.DeltaTimeMax = float32(deltaTimeMax)
 	data.DeltaTimeAvg = float32(deltaTimeAvg)
+	data.GameRTT = float32(gameRTT)
+	data.GameJitter = float32(gameJitter)
+	data.GamePacketLoss = float32(gamePacketLoss)
 }
 
 func GenerateRandomSliceData() *SliceData {
@@ -356,6 +377,9 @@ func GenerateRandomSliceData() *SliceData {
 	data.DeltaTimeMin = 1.0
 	data.DeltaTimeMax = 2.0
 	data.DeltaTimeAvg = 4.0
+	data.GameRTT = 10.0
+	data.GameJitter = 5.0
+	data.GamePacketLoss = 1.0
 	return &data
 }
 
