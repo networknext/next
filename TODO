@@ -50,11 +50,16 @@ DONE
 
 	Adjust the stats packets to pass up only bandwidth_up / bandwidth_down
 
-TODO
-
 	Deploy to prod.
 
 	Verify correct prod display (zero values for game rtt, jitter and PL).
+
+	Need to wait a bit for caching issues to resolve.
+
+TODO
+
+	I broke something in the SDK -> backend comms. Data so far indicates it's in the server init.	
+
 
 
 
@@ -65,7 +70,9 @@ FALLBACK TO DIRECT
 
 	Why are we seeing so many fallback to directs?
 
-	Instrument the bigquery data with enough information to see what is causing the fallback to directs.
+	Instrument the bigquery data with enough information to see what is causing the fallback to direct	s.
+
+
 
 
 
@@ -80,10 +87,6 @@ FUNCTIONAL TESTS
 	-----
 
 	Add a functional test to verify that we see server delta time min/max/avg passed up from SDK
-
-	-----
-
-	Add a functional test to verify that we see client delta time min/max/avg passed up from SDK
 
 	-----
 
