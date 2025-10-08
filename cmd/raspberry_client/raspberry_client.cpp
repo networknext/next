@@ -153,7 +153,7 @@ void client_thread_function( void * data )
 
         while ( !quit )
         {
-            next_client_game_stats( client, 25.0f, 10.0f, 2.5f );
+            next_client_game_stats( client, 25.0f, 10.0f, 0.0f );
 
             next_client_send_packet( client, packet_data, sizeof( packet_data ) );
 

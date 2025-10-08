@@ -364,15 +364,15 @@ let packet_loss_opts = custom_graph({
   percent: true,
   series: [
     {
+      name: 'Game',
+      stroke: "purple",
+      units: "ms",
+    },
+    {
       name: 'Real',
       stroke: "rgb(200,10,10)",
       fill: "rgba(10,10,10,0.035)",
       units: "%",
-    },
-    {
-      name: 'Game',
-      stroke: "purple",
-      units: "ms",
     },
   ]
 })
@@ -559,16 +559,16 @@ async function getData(page, session_id) {
 
       // packet loss graph data
   
-      let packet_loss_real = []
       let packet_loss_game = []
+      let packet_loss_real = []
       i = 0
       while (i < res.data.slice_data.length) {
-        packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
         packet_loss_game.push(res.data.slice_data[i].game_packet_loss)
+        packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
         i++
       }
 
-      data.packet_loss_data = [graph_timestamps, packet_loss_real, packet_loss_game]
+      data.packet_loss_data = [graph_timestamps, packet_loss_game, packet_loss_real]
 
       // bandwidth graph data
   

@@ -36,11 +36,11 @@ DONE
 
 	Insert the game rtt/jitter/packet loss into redis via the session inserter
 
-TODO
-
 	Update portal to display game latency, game jitter and game packet loss.
 
-	-----
+TODO
+	
+	Verify that we see game rtt, jitter and PL in the portal.
 
 
 
@@ -80,9 +80,11 @@ FALLBACK TO DIRECT
 
 
 
+ADD TO PLUGIN
+
+	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
+
+
+
 
 *** READY FOR RELEASE ***
-
-
-
-
