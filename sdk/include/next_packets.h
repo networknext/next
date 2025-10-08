@@ -201,6 +201,9 @@ struct NextClientStatsPacket
     float delta_time_min;
     float delta_time_max;
     float delta_time_avg;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
     int num_client_relays;
     uint64_t client_relay_ids[NEXT_MAX_CLIENT_RELAYS];
     uint8_t client_relay_rtt[NEXT_MAX_CLIENT_RELAYS];
@@ -265,6 +268,9 @@ struct NextClientStatsPacket
         serialize_float( stream, delta_time_min );
         serialize_float( stream, delta_time_max );
         serialize_float( stream, delta_time_avg );
+        serialize_float( stream, game_rtt );
+        serialize_float( stream, game_jitter );
+        serialize_float( stream, game_packet_loss );
         return true;
     }
 };
@@ -735,6 +741,9 @@ struct NextBackendSessionUpdateRequestPacket
     float delta_time_min;
     float delta_time_max;
     float delta_time_avg;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
 
     void Reset()
     {
@@ -885,6 +894,8 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, delta_time_min );
         serialize_float( stream, delta_time_max );
         serialize_float( stream, delta_time_avg );
+
+        serialize_float( stream, game_rtt );
 
         return true;
     }

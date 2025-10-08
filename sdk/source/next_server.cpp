@@ -2812,6 +2812,10 @@ void next_server_internal_process_network_next_packet( next_server_internal_t * 
             session->stats_delta_time_max = packet.delta_time_max;
             session->stats_delta_time_avg = packet.delta_time_avg;
 
+            session->stats_game_rtt = packet.game_rtt;
+            session->stats_game_jitter = packet.game_jitter;
+            session->stats_game_packet_loss = packet.game_packet_loss;
+
             session->last_client_stats_update = next_platform_time();
         }
 
@@ -3854,6 +3858,10 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.delta_time_min = session->stats_delta_time_min;
             packet.delta_time_max = session->stats_delta_time_max;
             packet.delta_time_avg = session->stats_delta_time_avg;
+
+            packet.game_rtt = session->stats_game_rtt;
+            packet.game_jitter = session->stats_game_jitter;
+            packet.game_packet_loss = session->stats_game_packet_loss;
 
             packet.next = session->stats_next;
             packet.next_rtt = session->stats_next_rtt;

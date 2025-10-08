@@ -1,160 +1,22 @@
 DONE
 
-	Fix backend not having correct latitude/longitude. It needs to come from SDK in session update request packet.
-
-	Client stores lat/long from client relay response.
-
-	Extend session update request packet so it has latitude/longitude in it from the SDK.
-
-	Read the session update request packet in the backend if SDK 1.2.6 or greater with the lat/long values.
-
-	Switch over post session update messages to include lat/long from the request packet.
-
-	Make the SDK pass up the lat/long in the session update request packet when sent.
-
-	Move to dev branch
-
-	Server update packet should include delta_time_min/max/avg
-
-	Session update request packet should include delta_time_min/max/avg
-
-	Update backend to read delta_time_min/max/avg if SDK 1.2.6 or greater
-
-	Update the avro schema so it has the new delta_time_min/max/avg data in it.
-
-	Plumb the delta_time_min/max/avg from the server update to bigquery (avro)
-
-	Plumb the delta_time_min/max/avg from the session update to bigquery (avro)
-
-	Bring dev back up
-
-	Verify that the big query stuff doesn't explode, even with the old bigquery schema
-
-	Update bigquery schemas in-place in dev
-
-	Update the default bigquery schemas to include the new data
-
-	Make sure any bigquery schema changes don't destroy tables
-
-	Verify that the data starts coming in! (it should be zeros...)
-
-	Verify lat/longs are coming up in bigquery in dev.
-
-	Add a new "next_value_tracker_t" to the SDK to track min/max/avg for values.
-
-	Unit test it!
-
-	Extend the server to track min/max/avg delta time since last server update
-
-	Pass up the tracked min/max/avg delta time values in the backend server update request packet
-
-	Deploy to dev and verify we see server update containing delta time min/max/avg in big query
-
-	Extend the client to track min/max/avg delta time since last client update
-
-	Extend client stats to pass up delta time stats to server via client stats packet
-
-	Out of order packets display some weird behavior.
-
-	Disable showing the out of order graph in the portal until it is fixed. Game packet loss (in unreal) can provide the same visibility.
-
-	Extend server to cache per-session delta time min/max/avg when it receives client stats packet
-
-	Server passes up delta time stats to the backend via backend session update request packet
-
-	Deploy to dev
-
-	Verify that we start seeing session delta time min/max/avg values in dev bigquery
-
-	Extend portal messages and redis to pass up delta time min/max/avg to portal
-
-	Update portal to display "Game Delta Time" (min/max/avg) at the bottom of the session page.
-
-	Verify that we see game delta time!
-
-	Deploy to prod.
-
-	Fix so we can handle missing delta time values.
-
-	Separate next/direct bandwidth is annoying.
-
-	Simplify bandwidth processing in the SDK so if it sends or receives a packet (whether next or direct), it is included in bandwidth up/down.
-
-	Deprecate the old bigquery schema values for next_bandwidth_up/down, direct_bandwidth_up/down and make them NULLABLE and create new entries bandwidth_up / bandwidth_down (must also be NULLABLE, because new...)
-
-	Extend to pass bandwidth up/down to portal instead of next/direct bandwidth.
-
-	Combine into one graph and show "Up" and "Down".
-
-	Fix pubsub avro issue with terraform
-
-	Rename "Game Delta Time" to "Client Delta Time"
-
-	Create a new "server_id" which is a 64bit hash of the server IP:port string
-
-	Increase SDK to 1.2.7
-
-	Extend backend to read server id in server update request packet if SDK >= 1.2.7
-
-	Plumb the server id all the way to bigquery
-
-	Plumb the server id all the way to portal
-
-	Update portal APIs to return server id instead of server address
-
-	Show server id in servers view
-
-	Update routing to map to server by id, not address
-
-	Deploy to dev and verify that I can nav around to servers and see server list and click on them
-
-	Debug why the the server lookup by server id is sometimes not working
-
-	It seems there is a mismatch between server id and server address passed up in session update. Weird?
-
-	Fixed. Was using bind address, not server address =p
-
-	Pass func tests
-
-	Prepare prod branch for fast revert if necessary
-
-	Deploy to prod
-
-	What's up with the prod portal, it's very slightly broken?
-
-	Caching issues + all server ids were set to 0.
-
-	Make sure that we are uploading server_id to the bigquery schemas as needed.
-
-TODO
-
 	Increase SDK version to 1.2.8
 
-	-----
+	Add next_client_game_stats function to pass in game_rtt, game_jitter and game_packet_loss.
 
-	Add next_client_game_network_stats function to pass in game_rtt, game_jitter and game_packet_loss.
-
-	Store all these in value trackers, and take the max values when passing up to the sernver.
+	Store all these in value trackers, and take the max values when passing up to the server.
 
 	If these values aren't set, they will all stay set to zero.
 
-	-----
-
 	Session update request packet should also include game_rtt, game_jitter and game_packet_loss.
-
-	-----
 
 	Server stash the game_rtt, game_jitter and game_packet_loss values in the session entry
 
-	-----
-
 	Server passes the stats_game_rtt/jitter/packet_loss up to the backend via backend session update packet
-
-	-----
 
 	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.8 or greater.
 
-	-----
+TODO
 
 	Update pubsub and bigquery schemas to include game_rtt, game_jitter and game_packet_loss in the session update.
 
@@ -169,17 +31,6 @@ TODO
 	Update portal to display game latency, game jitter and game packet loss.
 
 	-----
-
-
-
-
-
-
-SERVER SAMPLE FEATURE
-
-	Extend server portal data to have a ServerSample data modelled after the session slice.
-
-	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
 
 
 

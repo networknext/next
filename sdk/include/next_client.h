@@ -52,4 +52,6 @@ const next_address_t * next_client_server_address( next_client_t * client );
 
 void next_client_counters( next_client_t * client, uint64_t * counters );
 
+void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss );
+
 #endif // #ifndef NEXT_CLIENT_H

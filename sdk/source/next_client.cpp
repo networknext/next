@@ -50,6 +50,9 @@ struct next_client_command_close_session_t : public next_client_command_t
 struct next_client_command_update_t : public next_client_command_t
 {
     float delta_time;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
 };
 
 struct next_client_command_destroy_t : public next_client_command_t
@@ -274,12 +277,27 @@ struct next_client_internal_t
     NEXT_DECLARE_SENTINEL(13)
 
     next_value_tracker_t delta_time_tracker;
+    next_value_tracker_t game_rtt_tracker;
+    next_value_tracker_t game_jitter_tracker;
+    next_value_tracker_t game_packet_loss_tracker;
 
     NEXT_DECLARE_SENTINEL(14)
 
     float delta_time_min;
     float delta_time_max;
     float delta_time_avg;
+
+    float game_rtt_min;
+    float game_rtt_max;
+    float game_rtt_avg;
+
+    float game_jitter_min;
+    float game_jitter_max;
+    float game_jitter_avg;
+
+    float game_packet_loss_min;
+    float game_packet_loss_max;
+    float game_packet_loss_avg;
 
     NEXT_DECLARE_SENTINEL(15)
 
@@ -515,6 +533,9 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_jitter_tracker_reset( &client->jitter_tracker );
 
     next_value_tracker_reset( &client->delta_time_tracker );
+    next_value_tracker_reset( &client->game_rtt_tracker );
+    next_value_tracker_reset( &client->game_jitter_tracker );
+    next_value_tracker_reset( &client->game_packet_loss_tracker );
 
     next_client_internal_verify_sentinels( client );
 
@@ -1742,6 +1763,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_jitter_tracker_reset( &client->jitter_tracker );
 
                 next_value_tracker_reset( &client->delta_time_tracker );
+                next_value_tracker_reset( &client->game_rtt_tracker );
+                next_value_tracker_reset( &client->game_jitter_tracker );
+                next_value_tracker_reset( &client->game_packet_loss_tracker );
 
                 client->counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION]++;
             }
@@ -1755,6 +1779,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 
                 next_client_command_update_t * update_command = (next_client_command_update_t*) entry;
                 next_value_tracker_add_sample( &client->delta_time_tracker, update_command->delta_time );
+                next_value_tracker_add_sample( &client->game_rtt_tracker, update_command->game_rtt );
+                next_value_tracker_add_sample( &client->game_jitter_tracker, update_command->game_jitter );
+                next_value_tracker_add_sample( &client->game_packet_loss_tracker, update_command->game_packet_loss );
             }
             break;
 
@@ -1890,6 +1917,10 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.delta_time_max = client->delta_time_max;
         client->client_stats.delta_time_avg = client->delta_time_avg;
 
+        client->client_stats.game_rtt = client->game_rtt_max;
+        client->client_stats.game_jitter = client->game_jitter_max;
+        client->client_stats.game_packet_loss = client->game_packet_loss_max;
+
         if ( !fallback_to_direct )
         {
             const int packets_lost = next_packet_loss_tracker_update( &client->packet_loss_tracker );
@@ -1981,10 +2012,17 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.client_relay_request_id = client->client_relay_update_packet.request_id;
 
         next_value_tracker_calculate( &client->delta_time_tracker, &client->delta_time_min, &client->delta_time_max, &client->delta_time_avg );
+        next_value_tracker_calculate( &client->game_rtt_tracker, &client->game_rtt_min, &client->game_rtt_max, &client->game_rtt_avg );
+        next_value_tracker_calculate( &client->game_jitter_tracker, &client->game_jitter_min, &client->game_jitter_max, &client->game_jitter_avg );
+        next_value_tracker_calculate( &client->game_packet_loss_tracker, &client->game_packet_loss_min, &client->game_packet_loss_max, &client->game_packet_loss_avg );
 
         packet.delta_time_min = client->delta_time_min;
         packet.delta_time_max = client->delta_time_max;
         packet.delta_time_avg = client->delta_time_avg;
+
+        packet.game_rtt = client->game_rtt_max;
+        packet.game_jitter = client->game_jitter_max;
+        packet.game_packet_loss = client->game_packet_loss_max;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {

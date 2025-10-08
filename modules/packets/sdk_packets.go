@@ -334,6 +334,9 @@ type SDK_SessionUpdateRequestPacket struct {
 	DeltaTimeMin                    float32
 	DeltaTimeMax                    float32
 	DeltaTimeAvg                    float32
+	GameRTT                         float32
+	GameJitter                      float32
+	GamePacketLoss                  float32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -462,6 +465,12 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 		stream.SerializeFloat32(&packet.DeltaTimeMin)
 		stream.SerializeFloat32(&packet.DeltaTimeMax)
 		stream.SerializeFloat32(&packet.DeltaTimeAvg)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 8) {
+		stream.SerializeFloat32(&packet.GameRTT)
+		stream.SerializeFloat32(&packet.GameJitter)
+		stream.SerializeFloat32(&packet.GamePacketLoss)
 	}
 
 	return stream.Error()

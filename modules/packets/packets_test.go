@@ -223,7 +223,7 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 7},
+		Version:                         packets.SDKVersion{1, 2, 8},
 		BuyerId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
@@ -262,6 +262,9 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		DeltaTimeMin:                    rand.Float32(),
 		DeltaTimeMax:                    rand.Float32(),
 		DeltaTimeAvg:                    rand.Float32(),
+		GameRTT:                         rand.Float32(),
+		GameJitter:                      rand.Float32(),
+		GamePacketLoss:                  rand.Float32(),
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {

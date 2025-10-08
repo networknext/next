@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.7"
+    #define NEXT_VERSION_FULL                               "1.2.8"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                7
+    #define NEXT_VERSION_PATCH_INT                                8
 
 #else // !NEXT_DEVELOPMENT
 
@@ -365,6 +365,9 @@ struct next_client_stats_t
     float delta_time_min;
     float delta_time_max;
     float delta_time_avg;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
 };
 
 // -----------------------------------------
