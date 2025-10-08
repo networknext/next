@@ -128,27 +128,41 @@ DONE
 
 TODO
 
-
-
-
-
-GAME RTT/JITTER/PL FEATURE
+	Increase SDK version to 1.2.8
 
 	-----
 
-	Session update request packet should also include game_rtt
+	Add next_client_game_network_stats function to pass in game_rtt, game_jitter and game_packet_loss.
 
-	Session update request packet should also include game_jitter
+	Store all these in value trackers, and take the max values when passing up to the sernver.
 
-	Session update request packet should also include game_packet_loss
-
-	-----
-
-	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.6 or greater.
+	If these values aren't set, they will all stay set to zero.
 
 	-----
 
-	Functional test to verify that we see client game rtt, jitter and packet loss passed up from SDK
+	Session update request packet should also include game_rtt, game_jitter and game_packet_loss.
+
+	-----
+
+	Server stash the game_rtt, game_jitter and game_packet_loss values in the session entry
+
+	-----
+
+	Server passes the stats_game_rtt/jitter/packet_loss up to the backend via backend session update packet
+
+	-----
+
+	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.8 or greater.
+
+	-----
+
+	Update pubsub and bigquery schemas to include game_rtt, game_jitter and game_packet_loss in the session update.
+
+	Make sure the values get passed in from the session update.
+
+	-----
+
+	Pass the game rtt/jitter/packet loss to the portal via messages and redis.
 
 	-----
 
@@ -161,9 +175,9 @@ GAME RTT/JITTER/PL FEATURE
 
 
 
-SERVER SLICE FEATURE
+SERVER SAMPLE FEATURE
 
-	Extend server portal data to have a ServerSlice data modelled after the session slice.
+	Extend server portal data to have a ServerSample data modelled after the session slice.
 
 	Add a graph to the portal showing the "Server Delta Time". This would be a great feature to have in the portal!
 
