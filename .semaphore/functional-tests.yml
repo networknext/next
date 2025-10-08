@@ -186,17 +186,9 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_packet_loss
 
-        - name: "test_direct_bandwidth"
+        - name: "test_bandwidth"
           commands:
-            - cd ./dist && ./func_test_sdk test_direct_bandwidth
-
-        - name: "test_next_bandwidth"
-          commands:
-            - cd ./dist && ./func_test_sdk test_next_bandwidth
-
-        - name: "test_next_bandwidth_over_limit"
-          commands:
-            - cd ./dist && ./func_test_sdk test_next_bandwidth_over_limit
+            - cd ./dist && ./func_test_sdk test_bandwidth
 
         - name: "test_jitter"
           commands:
