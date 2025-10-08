@@ -58,20 +58,15 @@ DONE
 
 	Autodetect failed to apt install whois, so was failing in prod. Fixed.
 
-TODO
-
-
-
-
-
-
-RETRY
-
 	Why are we seeing so many retries?
 
 	My theory is that it's not caused by load on the server backend, but by packet loss between the game servers and the google cloud backend.
 
 	But check to make sure, the retry time should be generous (like retry every 1 second?) so retries don't trip up when latency is high (eg. > 250ms).
+
+	Yes, retry is 1 second.
+
+TODO
 
 
 

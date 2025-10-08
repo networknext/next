@@ -33,7 +33,7 @@
 #define NEXT_DIRECT_PINGS_PER_SECOND                                    5
 #define NEXT_COMMAND_QUEUE_LENGTH                                    1024
 #define NEXT_NOTIFY_QUEUE_LENGTH                                     1024
-#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                            5
+#define NEXT_CLIENT_STATS_UPDATES_PER_SECOND                           10
 #define NEXT_SECONDS_BETWEEN_SERVER_UPDATES                          10.0
 #define NEXT_SECONDS_BETWEEN_SESSION_UPDATES                         10.0
 #define NEXT_UPGRADE_TOKEN_BYTES                                      128

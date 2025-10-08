@@ -174,7 +174,7 @@ struct next_client_internal_t
     bool session_open;
     bool upgraded;
     bool reported;
-    bool fallback_to_direct;
+    bool fallback_to_direct;                    // IMPORTANT: This is a cached value used for edge detection only. Do not set it directly.
     bool multipath;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
@@ -1800,6 +1800,8 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
     {
+        // update client stats struct locally
+
         bool network_next = false;
         bool fallback_to_direct = false;
         {
@@ -1811,7 +1813,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.next = network_next;
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
-        client->client_stats.fallback_to_direct = client->fallback_to_direct;
+        client->client_stats.fallback_to_direct = fallback_to_direct;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
 
@@ -1911,18 +1913,20 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_rtt > 0.0f )
     {
+        // send stats packet to server
+
         NextClientStatsPacket packet;
 
-        packet.reported = client->reported;
-        packet.fallback_to_direct = client->fallback_to_direct;
-        packet.multipath = client->multipath;
+        packet.reported = client->client_stats.reported;
+        packet.fallback_to_direct = client->client_stats.fallback_to_direct;
+        packet.multipath = client->client_stats.multipath;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
         {
             next_platform_mutex_guard( &client->bandwidth_mutex );
-            packet.bandwidth_kbps_up = (int) ceil( client->bandwidth_kbps_up );
-            packet.bandwidth_kbps_down = (int) ceil( client->bandwidth_kbps_down );
+            packet.bandwidth_kbps_up = (int) ceil( client->client_stats.bandwidth_kbps_up );
+            packet.bandwidth_kbps_down = (int) ceil( client->client_stats.bandwidth_kbps_down );
         }
 
         packet.next = client->client_stats.next;
@@ -1935,7 +1939,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
         packet.direct_max_packet_loss_seen = client->client_stats.direct_max_packet_loss_seen;
 
-        if ( !client->fallback_to_direct && client->has_client_ping_stats )
+        if ( !client->client_stats.fallback_to_direct && client->has_client_ping_stats )
         {
             packet.num_client_relays = client->num_client_relays;
 
@@ -2331,6 +2335,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
             next_platform_mutex_guard( &client->route_manager_mutex );
             next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
         }
+
         client->fallback_to_direct = true;
     }
 }
