@@ -52,17 +52,10 @@ DONE
 
 TODO
 
+	Deploy to prod.
 
+	Verify correct prod display (zero values for game rtt, jitter and PL).
 
-
-
-FIX UNREAL OUT OF ORDER PACKETS
-
-	I'm pretty sure that the Network Next SDK delivers duplicates for direct and next packets to UE.
-
-	This would result in an elevated % of packet loss shown to the user because UE considers out of order packets to be packet loss.
-
-	I need to fix this!
 
 
 
