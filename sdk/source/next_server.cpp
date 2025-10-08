@@ -744,23 +744,17 @@ void next_server_internal_destroy( next_server_internal_t * server )
 {
     next_assert( server );
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_internal_destroy (begin)" );
-
     next_server_internal_verify_sentinels( server );
 
     if ( server->resolve_hostname_thread )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join resolve hostname thread)" );
         next_platform_thread_join( server->resolve_hostname_thread );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join resolve hostname thread)" );
         next_platform_thread_destroy( server->resolve_hostname_thread );
     }
 
     if ( server->autodetect_thread )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join autodetect thread)" );
         next_platform_thread_join( server->autodetect_thread );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join autodetect thread)" );
         next_platform_thread_destroy( server->autodetect_thread );
     }
 
@@ -806,8 +800,6 @@ void next_server_internal_destroy( next_server_internal_t * server )
     next_server_internal_verify_sentinels( server );
 
     next_clear_and_free( server->context, server, sizeof(next_server_internal_t) );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_internal_destroy (end)" );
 }
 
 void next_server_internal_quit( next_server_internal_t * server )
@@ -3262,11 +3254,7 @@ static void next_server_internal_resolve_hostname_thread_function( void * contex
 
         for ( int i = 0; i < 10; ++i )
         {
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "(before resolve hostname attempt #%d)", i + 1 );
-
             int result = next_platform_hostname_resolve( hostname, port, &address );
-
-            next_printf( NEXT_LOG_LEVEL_DEBUG, "(after resolve hostname attempt #%d)", i + 1 );
 
             if ( result == NEXT_OK )
             {
@@ -3335,9 +3323,7 @@ static bool next_server_internal_update_resolve_hostname( next_server_internal_t
 
     if ( finished )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join resolve hostname thread)" );
         next_platform_thread_join( server->resolve_hostname_thread );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join resolve hostname thread)" );
     }
     else
     {
@@ -3465,9 +3451,7 @@ static bool next_server_internal_update_autodetect( next_server_internal_t * ser
 
     if ( finished )
     {
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join autodetect thread)" );
         next_platform_thread_join( server->autodetect_thread );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join autodetect thread)" );
     }
     else
     {
@@ -4246,17 +4230,13 @@ uint64_t next_server_id( next_server_t * server )
 
 void next_server_destroy( next_server_t * server )
 {
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_destroy (begin)" );
-
     next_server_verify_sentinels( server );
 
     if ( server->thread )
     {
         next_server_internal_quit( server->internal );
 
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(before join server thread)" );
         next_platform_thread_join( server->thread );
-        next_printf( NEXT_LOG_LEVEL_DEBUG, "(after join server thread)" );
     }
 
     if ( server->pending_session_manager )
@@ -4280,8 +4260,6 @@ void next_server_destroy( next_server_t * server )
     }
 
     next_clear_and_free( server->context, server, sizeof(next_server_t) );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "next_server_destroy (end)" );
 }
 
 void next_server_update( next_server_t * server )

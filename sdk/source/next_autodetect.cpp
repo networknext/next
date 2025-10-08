@@ -109,8 +109,6 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
     char buffer[32*1024];
     memset( buffer, 0, sizeof(buffer) );
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(before google metadata http request)" );
-
     if ( !next_http_request( "http://metadata.google.internal/computeMetadata/v1/instance/zone", "Metadata-Flavor: Google", 2, buffer, sizeof(buffer) ) )
     {
         next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: not in google cloud" );
@@ -118,8 +116,6 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
     }
 
     next_printf( NEXT_LOG_LEVEL_DEBUG, "output: '%s'", buffer );
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after google metadata http request)" );
 
     char * p = strstr( buffer, "projects/" );
     if ( p == NULL )
@@ -143,8 +139,6 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
 
     // download "google.txt" from google cloud storage. it contains lines mapping from google cloud zone to network next datacenter
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(before google.txt http request)" );
-
     char url[1024];
     snprintf( url, sizeof(url), "https://storage.googleapis.com/%s/google.txt?ts=%x", NEXT_CONFIG_BUCKET_NAME, uint32_t(time(NULL)) );
     memset( buffer, 0, sizeof(buffer) );
@@ -154,15 +148,11 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
         return false;
     }
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after google.txt http request)" );
-
     // map our google cloud zone to a network next datacenter
 
     p = buffer;
 
     char * end = buffer + sizeof(buffer);
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(before map to google datacenter)" );
 
     int line = 0;
     while ( p < end && *p != '\0' )
@@ -188,7 +178,6 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
                 {
                     next_printf( NEXT_LOG_LEVEL_INFO, "server autodetect datacenter: '%s' -> '%s'", zone, network_next_datacenter );
                     next_copy_string( datacenter, network_next_datacenter, datacenter_size );
-                    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after map to google datacenter)" );
                     return true;
                 }
             }
@@ -196,8 +185,6 @@ bool next_autodetect_google( char * datacenter, size_t datacenter_size )
         p = q + 1;
         line++;
     }
-
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after map to google datacenter)" );
 
     next_printf( NEXT_LOG_LEVEL_WARN, "could not find network next datacenter for google cloud zone :(" );
 
@@ -295,8 +282,6 @@ bool next_autodetect_unity( const char * input_datacenter, const char * public_a
         return false;
     }
 
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(before unity autodetect http request)" );
-
     char url[1024];
     snprintf( url, sizeof(url), "%s/%s/%s", NEXT_AUTODETECT_URL, input_datacenter, public_address );
     char unity_data[1024];
@@ -306,8 +291,6 @@ bool next_autodetect_unity( const char * input_datacenter, const char * public_a
         next_printf( NEXT_LOG_LEVEL_WARN, "server autodetect datacenter: no match found" );
         return false;
     }
-    
-    next_printf( NEXT_LOG_LEVEL_DEBUG, "(after unity autodetect http request)" );
 
     next_copy_string( output_datacenter, unity_data, output_datacenter_size );
 

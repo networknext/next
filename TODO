@@ -78,9 +78,11 @@ DONE
 
 	Verify flags show up in bigquery in session update.
 
+	Verify flags show up in bigquery in session summary.
+
 TODO
 
-	Verify flags show up in bigquery in session summary.
+	Try to relax timeouts so we might reduce fallback to direct.
 
 
 

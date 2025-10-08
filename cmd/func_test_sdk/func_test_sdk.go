@@ -709,8 +709,8 @@ func test_fallback_to_direct_server_restart() {
 	fmt.Printf("test_fallback_to_direct_server_restart\n")
 
 	clientConfig := &ClientConfig{}
-	clientConfig.stop_sending_packets_time = 55.0
-	clientConfig.duration = 60.0
+	clientConfig.stop_sending_packets_time = 85.0
+	clientConfig.duration = 90.0
 	clientConfig.buyer_public_key = TestBuyerPublicKey
 
 	client_cmd, client_stdout, client_stderr := client(clientConfig)
