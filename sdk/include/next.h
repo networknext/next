@@ -413,6 +413,8 @@ NEXT_EXPORT_FUNC bool next_client_ready( struct next_client_t * client );
 
 NEXT_EXPORT_FUNC bool next_client_fallback_to_direct( struct next_client_t * client );
 
+NEXT_EXPORT_FUNC void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss );
+
 // -----------------------------------------
 
 struct next_server_stats_t

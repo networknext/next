@@ -16,15 +16,27 @@ DONE
 
 	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.8 or greater.
 
-TODO
-
 	Update pubsub and bigquery schemas to include game_rtt, game_jitter and game_packet_loss in the session update.
 
 	Make sure the values get passed in from the session update.
 
+	Pass the game rtt/jitter/packet loss to server backend via portal message
+
+TODO
+
+	Mock up game rtt, jitter and packet loss values in raspberry clients.
+
 	-----
 
-	Pass the game rtt/jitter/packet loss to the portal via messages and redis.
+	Verify we see game_rtt, game_jitter and game_packet_loss values in bigquery in dev.
+
+	-----
+
+	Insert the game rtt/jitter/packet loss into redis via the session inserter
+
+	-----
+
+	Update API to get game_rtt, game_jitter and game_packet_loss samples for graphing.
 
 	-----
 

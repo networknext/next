@@ -2466,6 +2466,9 @@ struct next_client_t
     uint16_t bound_port;
     uint64_t session_id;
     uint64_t server_id;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
     double previous_update_time;
     next_address_t server_address;
     next_address_t client_external_address;
@@ -2693,6 +2696,9 @@ void next_client_close_session( next_client_t * client )
     next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
     client->state = NEXT_CLIENT_STATE_CLOSED;
     memset( client->current_magic, 0, sizeof(client->current_magic) );
+    client->game_rtt = 0.0f;
+    client->game_jitter = 0.0f;
+    client->game_packet_loss = 0.0f;    
 }
 
 void next_client_update( next_client_t * client )
@@ -2717,7 +2723,10 @@ void next_client_update( next_client_t * client )
         {   
             command->delta_time = 0.0f;
             client->previous_update_time = next_platform_time();
-        } 
+        }
+        command->game_rtt = client->game_rtt;
+        command->game_jitter = client->game_jitter;
+        command->game_packet_loss = client->game_packet_loss;
         {
 #if NEXT_SPIKE_TRACKING
             next_printf( NEXT_LOG_LEVEL_SPAM, "client queues up NEXT_SERVER_COMMAND_UPDATE from %s:%d", __FILE__, __LINE__ );
@@ -3169,4 +3178,10 @@ void next_client_counters( next_client_t * client, uint64_t * counters )
         counters[i] += client->internal->counters[i];
 }
 
-// ---------------------------------------------------------------
+void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss )
+{
+    next_client_verify_sentinels( client );
+    client->game_rtt = game_rtt;
+    client->game_jitter = game_jitter;
+    client->game_packet_loss = game_packet_loss;
+}

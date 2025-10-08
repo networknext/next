@@ -1124,6 +1124,10 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DeltaTimeMax = state.Request.DeltaTimeMax
 	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
 
+	message.GameRTT = state.Request.GameRTT
+	message.GameJitter = state.Request.GameJitter
+	message.GamePacketLoss = state.Request.GamePacketLoss
+
 	message.NumClientRelays = uint32(state.Request.NumClientRelays)
 	for i := 0; i < int(message.NumClientRelays); i++ {
 		message.ClientRelayId[i] = state.Request.ClientRelayIds[i]
@@ -1295,6 +1299,9 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.DeltaTimeMin = state.Request.DeltaTimeMin
 	message.DeltaTimeMax = state.Request.DeltaTimeMax
 	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
+	message.GameRTT = state.Request.GameRTT
+	message.GameJitter = state.Request.GameJitter
+	message.GamePacketLoss = state.Request.GamePacketLoss
 
 	// next only
 
