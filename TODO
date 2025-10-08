@@ -44,21 +44,25 @@ DONE
 
 	Verify we see zero values for game rtt, jitter and PL in portal.
 
-TODO
-
-
-
-
-
-FIX BANDWIDTH
-
 	Stop tracking next and direct bandwidth up/down on the client
 
 	Just track total bandwidth period (total bandwidth received in-order, whether next or direct...)
 
 	Adjust the stats packets to pass up only bandwidth_up / bandwidth_down
 
+TODO
 
+
+
+
+
+FIX UNREAL OUT OF ORDER PACKETS
+
+	I'm pretty sure that the Network Next SDK delivers duplicates for direct and next packets to UE.
+
+	This would result in an elevated % of packet loss shown to the user because UE considers out of order packets to be packet loss.
+
+	I need to fix this!
 
 
 
