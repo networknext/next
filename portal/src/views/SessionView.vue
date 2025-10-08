@@ -66,15 +66,15 @@
             <tbody>
 
               <tr>
-                <td class="left_align bold"> Client </td>
+                <td class="left_align"> Client </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
-                <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
+                <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
+                <td class="left_align"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -86,11 +86,11 @@
             <tbody>
 
               <tr>
-                <td class="left_align bold"> Client </td>
+                <td class="left_align"> Client </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
+                <td class="left_align"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>

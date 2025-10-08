@@ -74,11 +74,13 @@ DONE
 
 	Get flags sent up to bigquery.
 
-TODO
-
 	Deploy to dev.
 
-	Verify flags show up in bigquery.
+	Verify flags show up in bigquery in session update.
+
+TODO
+
+	Verify flags show up in bigquery in session summary.
 
 
 
