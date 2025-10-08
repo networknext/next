@@ -56,10 +56,22 @@ DONE
 
 	Need to wait a bit for caching issues to resolve.
 
+	Autodetect failed to apt install whois, so was failing in prod. Fixed.
+
 TODO
 
-	I broke something in the SDK -> backend comms. Data so far indicates it's in the server init.	
 
+
+
+
+
+RETRY
+
+	Why are we seeing so many retries?
+
+	My theory is that it's not caused by load on the server backend, but by packet loss between the game servers and the google cloud backend.
+
+	But check to make sure, the retry time should be generous (like retry every 1 second?) so retries don't trip up when latency is high (eg. > 250ms).
 
 
 
@@ -70,7 +82,9 @@ FALLBACK TO DIRECT
 
 	Why are we seeing so many fallback to directs?
 
-	Instrument the bigquery data with enough information to see what is causing the fallback to direct	s.
+	Instrument the bigquery data with enough information to see what is causing the fallback to direct.
+
+
 
 
 
@@ -102,6 +116,8 @@ FUNCTIONAL TESTS
 ADD TO PLUGIN
 
 	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
+
+
 
 
 
