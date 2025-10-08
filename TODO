@@ -34,32 +34,13 @@ DONE
 
 	Verified fix.
 
-TODO
-
 	Insert the game rtt/jitter/packet loss into redis via the session inserter
 
-	-----
-
-	Update API to get game_rtt, game_jitter and game_packet_loss samples for graphing.
-
-	-----
+TODO
 
 	Update portal to display game latency, game jitter and game packet loss.
 
 	-----
-
-
-
-
-
-
-SESSION VALUES
-
-	What if we provided the customer a way to pass in an optional set of n float values when upgrading?
-
-	The values could be 0.0 by default, but if set, we could use them to do things like pass in time spent in matchmaking, skill etc.
-
-	8 values would be plenty.
 
 
 
@@ -86,10 +67,6 @@ FUNCTIONAL TESTS
 
 	-----
 
-	Add a functional test to verify we get float values passed in from upgrade
-
-	-----
-
 
 
 
@@ -97,3 +74,15 @@ FUNCTIONAL TESTS
 FALLBACK TO DIRECT
 	
 	Why are we seeing so many fallback to directs?
+
+	Instrument the bigquery data with enough information to see what is causing the fallback to directs.
+
+
+
+
+
+*** READY FOR RELEASE ***
+
+
+
+

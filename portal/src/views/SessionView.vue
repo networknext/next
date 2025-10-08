@@ -320,7 +320,11 @@ let latency_opts = custom_graph({
     {
       name: 'Predicted',
       stroke: "orange",
-      fill: "rgba(0,0,0,0)",
+      units: "ms",
+    },
+    {
+      name: 'Game',
+      stroke: "purple",
       units: "ms",
     },
   ]
@@ -343,8 +347,13 @@ let jitter_opts = custom_graph({
     },
     {
       name: 'Real',
-      stroke: "purple",
+      stroke: "orange",
       fill: "rgba(10,10,10,0.035)",
+      units: "ms",
+    },
+    {
+      name: 'Game',
+      stroke: "purple",
       units: "ms",
     },
   ]
@@ -359,6 +368,11 @@ let packet_loss_opts = custom_graph({
       stroke: "rgb(200,10,10)",
       fill: "rgba(10,10,10,0.035)",
       units: "%",
+    },
+    {
+      name: 'Game',
+      stroke: "purple",
+      units: "ms",
     },
   ]
 })
@@ -514,41 +528,47 @@ async function getData(page, session_id) {
       let latency_direct = []
       let latency_next = []
       let latency_predicted = []
+      let latency_game = []
       i = 0
       while (i < res.data.slice_data.length) {
         latency_direct.push(res.data.slice_data[i].direct_rtt)
         latency_next.push(res.data.slice_data[i].next_rtt)
         latency_predicted.push(res.data.slice_data[i].predicted_rtt)
+        latency_game.push(res.data.slice_data[i].game_rtt)
         i++
       }
 
-      data.latency_data = [graph_timestamps, latency_direct, latency_next, latency_predicted]
+      data.latency_data = [graph_timestamps, latency_direct, latency_next, latency_predicted, latency_game]
 
       // jitter graph data
   
       let jitter_direct = []
       let jitter_next = []
       let jitter_real = []
+      let jitter_game = []
       i = 0
       while (i < res.data.slice_data.length) {
         jitter_direct.push(res.data.slice_data[i].direct_jitter)
         jitter_next.push(res.data.slice_data[i].next_jitter)
         jitter_real.push(res.data.slice_data[i].real_jitter)
+        jitter_game.push(res.data.slice_data[i].game_jitter)
         i++
       }
 
-      data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real]
+      data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real, jitter_game]
 
       // packet loss graph data
   
       let packet_loss_real = []
+      let packet_loss_game = []
       i = 0
       while (i < res.data.slice_data.length) {
         packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
+        packet_loss_game.push(res.data.slice_data[i].game_packet_loss)
         i++
       }
 
-      data.packet_loss_data = [graph_timestamps, packet_loss_real]
+      data.packet_loss_data = [graph_timestamps, packet_loss_real, packet_loss_game]
 
       // bandwidth graph data
   
