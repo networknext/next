@@ -366,7 +366,7 @@ let packet_loss_opts = custom_graph({
     {
       name: 'Game',
       stroke: "purple",
-      units: "ms",
+      units: "%",
     },
     {
       name: 'Real',
