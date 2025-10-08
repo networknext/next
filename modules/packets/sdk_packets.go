@@ -333,6 +333,7 @@ type SDK_SessionUpdateRequestPacket struct {
 	GameRTT                         float32
 	GameJitter                      float32
 	GamePacketLoss                  float32
+	Flags						    uint32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -477,6 +478,10 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 		stream.SerializeFloat32(&packet.GameRTT)
 		stream.SerializeFloat32(&packet.GameJitter)
 		stream.SerializeFloat32(&packet.GamePacketLoss)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 10) {
+		stream.SerializeUint32(&packet.Flags)
 	}
 
 	return stream.Error()
