@@ -24,9 +24,15 @@ DONE
 
 	Mock up game rtt, jitter and packet loss values in raspberry clients.
 
+	Verify we see game_rtt, game_jitter and game_packet_loss values in bigquery in dev.
+
+	Game RTT is correct
+
 TODO
 
-	Verify we see game_rtt, game_jitter and game_packet_loss values in bigquery in dev.
+	Game jitter is broken
+
+	Game packet loss is broken
 
 	-----
 

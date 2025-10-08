@@ -896,6 +896,8 @@ struct NextBackendSessionUpdateRequestPacket
         serialize_float( stream, delta_time_avg );
 
         serialize_float( stream, game_rtt );
+        serialize_float( stream, game_jitter );
+        serialize_float( stream, game_packet_loss );
 
         return true;
     }
