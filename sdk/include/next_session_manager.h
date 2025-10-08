@@ -37,6 +37,8 @@ struct next_session_entry_t
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
+    bool stats_next;
+    uint32_t stats_flags;
     int stats_platform_id;
     int stats_connection_type;
     float stats_bandwidth_kbps_up;
@@ -45,7 +47,6 @@ struct next_session_entry_t
     float stats_direct_jitter;
     float stats_direct_packet_loss;
     float stats_direct_max_packet_loss_seen;
-    bool stats_next;
     float stats_next_rtt;
     float stats_next_jitter;
     float stats_next_packet_loss;

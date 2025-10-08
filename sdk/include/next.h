@@ -446,6 +446,7 @@ struct next_server_stats_t
     float delta_time_avg;
     float bandwidth_kbps_up;
     float bandwidth_kbps_down;
+    uint32_t flags;
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0
