@@ -22,10 +22,10 @@
 #define NEXT_PING_HISTORY_ENTRY_COUNT                                1024
 #define NEXT_PING_STATS_WINDOW                                       10.0
 #define NEXT_PING_SAFETY                                              1.0
-#define NEXT_UPGRADE_TIMEOUT                                          5.0
-#define NEXT_CLIENT_SESSION_TIMEOUT                                   5.0
-#define NEXT_CLIENT_ROUTE_TIMEOUT                                    16.5
-#define NEXT_SERVER_PING_TIMEOUT                                      5.0
+#define NEXT_UPGRADE_TIMEOUT                                         10.0
+#define NEXT_CLIENT_SESSION_TIMEOUT                                  10.0
+#define NEXT_CLIENT_ROUTE_TIMEOUT                                    20.0
+#define NEXT_SERVER_PING_TIMEOUT                                     10.0
 #define NEXT_SERVER_SESSION_TIMEOUT                                  60.0
 #define NEXT_INITIAL_PENDING_SESSION_SIZE                              64
 #define NEXT_INITIAL_SESSION_SIZE                                      64
@@ -52,8 +52,8 @@
 #define NEXT_ROUTE_REQUEST_SEND_TIME                                 0.25
 #define NEXT_CONTINUE_REQUEST_SEND_TIME                              0.25
 #define NEXT_SLICE_SECONDS                                           10.0
-#define NEXT_ROUTE_REQUEST_TIMEOUT                                      5
-#define NEXT_CONTINUE_REQUEST_TIMEOUT                                   5
+#define NEXT_ROUTE_REQUEST_TIMEOUT                                   10.0
+#define NEXT_CONTINUE_REQUEST_TIMEOUT                                10.0
 #define NEXT_SESSION_UPDATE_RESEND_TIME                               1.0
 #define NEXT_SESSION_UPDATE_TIMEOUT                                  10.0
 #define NEXT_BANDWIDTH_LIMITER_INTERVAL                               1.0
