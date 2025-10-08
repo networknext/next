@@ -96,6 +96,24 @@
     "description": "Average delta time over the last 10 seconds"
   },
   {
+    "name": "game_rtt",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game round trip time (milliseconds)"
+  },
+  {
+    "name": "game_jitter",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game jitter (milliseconds)"
+  },
+  {
+    "name": "game_packet_loss",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game packet loss (milliseconds)"
+  },
+  {
     "name": "next",
     "type": "BOOL",
     "mode": "REQUIRED",

@@ -23,6 +23,9 @@ type AnalyticsSessionUpdateMessage struct {
 	DeltaTimeMin     float32 `avro:"delta_time_min"`
 	DeltaTimeMax     float32 `avro:"delta_time_max"`
 	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
+	GameRTT          float32 `avro:"game_rtt"`
+	GameJitter       float32 `avro:"game_jitter"`
+	GamePacketLoss   float32 `avro:"game_packet_loss"`
 
 	// next only
 

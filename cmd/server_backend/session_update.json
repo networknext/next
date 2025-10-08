@@ -43,6 +43,9 @@
     {"name": "delta_time_min",                        "type": "float", "default": 0.0},
     {"name": "delta_time_max",                        "type": "float", "default": 0.0},
     {"name": "delta_time_avg",                        "type": "float", "default": 0.0},
-    {"name": "server_id",                             "type": "long", "default": 0}
+    {"name": "server_id",                             "type": "long",  "default": 0},
+    {"name": "game_rtt",                              "type": "float", "default": 0.0},
+    {"name": "game_jitter",                           "type": "float", "default": 0.0},
+    {"name": "game_packet_loss",                      "type": "float", "default": 0.0}
   ]
 }
