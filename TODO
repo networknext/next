@@ -20,8 +20,6 @@ DONE
 
 	Plus, we don't have to wait for SDK update. It's in the backend right now.
 
-TODO
-
 	Deploy to prod.
 
 	Verify we see country code in portal.
@@ -29,6 +27,8 @@ TODO
 	Extend portal to translate from country code to local language country name in javascript.
 
 	Verify we see country names in portal.
+
+TODO
 
 	-----
 

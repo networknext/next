@@ -3,8 +3,8 @@
     Licensed under the Network Next Source Available License 1.0
 */
 
-#include "next_config.h"
 #include "next_server.h"
+#include "next_config.h"
 #include "next_queue.h"
 #include "next_hash.h"
 #include "next_pending_session_manager.h"
@@ -490,7 +490,6 @@ static void next_server_internal_thread_function( void * context );
 next_server_internal_t * next_server_internal_create( void * context, const char * server_address_string, const char * bind_address_string, const char * datacenter_string )
 {
 #if !NEXT_DEVELOPMENT
-    #error not development
     next_printf( NEXT_LOG_LEVEL_INFO, "server sdk version is %s", NEXT_VERSION_FULL );
 #endif // #if !NEXT_DEVELOPMENT
 

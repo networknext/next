@@ -478,7 +478,7 @@ resource "google_bigquery_table" "table" {
     field = "timestamp"
   }
   lifecycle {
-    ignore_changes = all
+    prevent_destroy = true
   }
 }
 
