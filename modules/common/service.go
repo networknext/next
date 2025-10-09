@@ -304,8 +304,9 @@ func (service *Service) GetLocation(ip net.IP) (float32, float32) {
 func (service *Service) GetISPAndCountry(ip net.IP) (string, string) {
 	service.ip2location_mutex.RLock()
 	isp_db := service.ip2location_isp_db
+	city_db := service.ip2location_city_db
 	service.ip2location_mutex.RUnlock()
-	return ip2location.GetISPAndCountry(isp_db, ip)
+	return ip2location.GetISPAndCountry(isp_db, city_db, ip)
 }
 
 func (service *Service) Database() *db.Database {

@@ -13,7 +13,11 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 )
 
+
 type City struct {
+	Country struct {
+		ISOCode string `maxminddb:"iso_code"`
+	} `maxminddb:"country"`
 	Location struct {
 		Latitude  float64 `maxminddb:"latitude"`
 		Longitude float64 `maxminddb:"longitude"`
@@ -22,7 +26,6 @@ type City struct {
 
 type ISP struct {
 	ISP     string `maxminddb:"isp"`
-	Country string `maxminddb:"iso_code"`
 }
 
 func Bash(command string) error {
@@ -192,10 +195,11 @@ func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
 	}
 }
 
-func GetISPAndCountry(isp_db *maxminddb.Reader, ip net.IP) (string, string) {
+func GetISPAndCountry(isp_db *maxminddb.Reader, city_db *maxminddb.Reader, ip net.IP) (string, string) {
 	var isp ISP
-	if isp_db != nil && isp_db.Lookup(ip, &isp) == nil {
-		return isp.ISP, isp.Country
+	var city City
+	if isp_db != nil && city_db != nil && isp_db.Lookup(ip, &isp) == nil && city_db.Lookup(ip, &city) == nil {
+		return isp.ISP, city.Country.ISOCode
 	} else {
 		return "Unknown", "Unknown"
 	}

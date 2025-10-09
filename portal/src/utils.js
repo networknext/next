@@ -66,12 +66,7 @@ function getConnectionName(connectionType) {
 function getCountryName(countryCode) {
   try {
     const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
-    let countryName = regionNames.of(countryCode);
-    if (countryName != "") {
-      return countryName
-    } else {
-      return countryCode
-    }
+    return regionNames.of(countryCode);
   } catch (error) {
     return countryCode
   }
