@@ -100,9 +100,9 @@
               <tr>
                 <th>Session ID</th>
                 <th>Country</th>
-                <th>ISP</th>
                 <th>Connection</th>
                 <th>Platform</th>
+                <th>ISP</th>
                 <th>Direct RTT</th>
                 <th>Accelerated RTT</th>
                 <th>Improvement</th>
@@ -112,9 +112,9 @@
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td>{{item.country}}</td>
-                <td>{{item.isp}}</td>
                 <td>{{item.connection}}</td>
                 <td>{{item.platform}}</td>
+                <td>{{item.isp}}</td>
                 <td>{{item.direct_rtt}}</td>
                 <td >{{item.next_rtt}}</td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
