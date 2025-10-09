@@ -136,7 +136,6 @@ async function getData(page) {
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
       const country = getCountryName(v.country)
-      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
