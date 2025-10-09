@@ -4,7 +4,7 @@
 
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
-Network Next is a **network accelerator** for multiplayer games. 
+Network Next is a **network accelerator** for multiplayer games. It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com).
 
 It works by monitoring player connections and sending game traffic down an optimized route when the default internet route has high latency, jitter or packet loss.
 
