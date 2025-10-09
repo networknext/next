@@ -501,6 +501,7 @@ struct NextBackendServerUpdateRequestPacket
         serialize_bits( stream, version_minor, 8 );
         serialize_bits( stream, version_patch, 8 );
         serialize_uint64( stream, buyer_id );
+        serialize_uint64( stream, match_id );
         serialize_uint64( stream, request_id );
         serialize_uint64( stream, datacenter_id );
         serialize_uint32( stream, num_sessions );
