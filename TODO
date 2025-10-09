@@ -22,7 +22,7 @@ DONE
 
 TODO
 
-	Deploy to prod. 
+	Deploy to prod.
 
 	Verify we see country code in portal.
 
@@ -32,12 +32,12 @@ TODO
 
 	-----
 
-	Verify we see match id coming up in bigquery.
+	Verify we see match id coming up in bigquery in prod.
 
 	-----
 
-	Verify we see session summary with ISP and country code in bigquery
-	
+	Verify we see session summary with ISP and country code in bigquery in prod.
+
 	-----
 
 

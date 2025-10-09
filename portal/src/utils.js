@@ -67,7 +67,7 @@ function getCountryName(countryCode) {
   const clientLocales = navigator.languages || [navigator.language];
   const regionNames = new Intl.DisplayNames(clientLocales, { type: 'region' });
   let countryName = regionNames.of(countryCode);
-  if countryName != null {
+  if (countryName != null) {
     return countryName
   } else {
     return countryCode
