@@ -6,9 +6,7 @@
 
 Network Next is a **network accelerator** for multiplayer games. It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com).
 
-It works by monitoring player connections and sending game traffic down an optimized route when the default internet route has high latency, jitter or packet loss.
-
-You decide when to accelerate your players. Set acceptable latency, jitter and packet loss values and only accelerate players that are above them. You can also set how much latency reduction is required for acceleration.
+Network Next accelerates players by monitoring their connection and sending game traffic down an optimized route across a relay network when the default internet route has high latency, jitter or packet loss.
 
 Network Next is source available and free to use when you host the software for your own game with maximum concurrent users (CCU) less than 10k.
 
