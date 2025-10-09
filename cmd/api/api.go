@@ -502,6 +502,7 @@ type PortalSessionData struct {
 	Score           uint32   `json:"score"`
 	StartTime       uint64   `json:"start_time,string"`
 	ISP             string   `json:"isp"`
+	Country         string   `json:"country"`
 	ConnectionType  uint8    `json:"connection_type"`
 	PlatformType    uint8    `json:"platform_type"`
 	Latitude        float32  `json:"latitude"`
@@ -519,10 +520,11 @@ type PortalSessionData struct {
 	RouteRelayNames []string `json:"route_relay_names"`
 }
 
-func upgradePortalSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
+func upgradeSessionData(database *db.Database, input *portal.SessionData, output *PortalSessionData) {
 	output.SessionId = input.SessionId
 	output.StartTime = input.StartTime
 	output.ISP = input.ISP
+	output.Country = input.Country
 	output.ConnectionType = input.ConnectionType
 	output.PlatformType = input.PlatformType
 	output.Latitude = input.Latitude
@@ -586,7 +588,7 @@ func portalSessionsHandler(w http.ResponseWriter, r *http.Request) {
 	// This fills the per-session data in with additional data that's stored elsewhere
 	upgradedSessions := make([]PortalSessionData, len(sessions))
 	for i := range upgradedSessions {
-		upgradePortalSessionData(service.Database(), sessions[i], &upgradedSessions[i])
+		upgradeSessionData(service.Database(), sessions[i], &upgradedSessions[i])
 	}
 
 	// Sometimes the score is out of date between redis and the session cruncher. Sort the sessions page here to fix it
@@ -693,7 +695,7 @@ func portalSessionDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalSessionData(database, sessionData, &response.SessionData)
+	upgradeSessionData(database, sessionData, &response.SessionData)
 
 	response.SliceData = sliceData
 
@@ -731,7 +733,7 @@ type PortalServersResponse struct {
 	NumPages   int                `json:"num_pages"`
 }
 
-func upgradePortalServer(database *db.Database, input *portal.ServerData, output *PortalServerData) {
+func upgradeServer(database *db.Database, input *portal.ServerData, output *PortalServerData) {
 	output.SDKVersion_Major = input.SDKVersion_Major
 	output.SDKVersion_Minor = input.SDKVersion_Minor
 	output.SDKVersion_Patch = input.SDKVersion_Patch
@@ -769,7 +771,7 @@ func portalServersHandler(w http.ResponseWriter, r *http.Request) {
 	response.NumPages = numPages
 	database := service.Database()
 	for i := range servers {
-		upgradePortalServer(database, servers[i], &response.Servers[i])
+		upgradeServer(database, servers[i], &response.Servers[i])
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -817,7 +819,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 	response.ServerSessions = make([]PortalSessionData, len(serverSessions))
 
 	for i := range response.ServerSessions {
-		upgradePortalSessionData(database, serverSessions[i], &response.ServerSessions[i])
+		upgradeSessionData(database, serverSessions[i], &response.ServerSessions[i])
 	}
 
 	sort.Slice(response.ServerSessions, func(i, j int) bool {
@@ -828,7 +830,7 @@ func portalServerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.ServerSessions = response.ServerSessions[begin:end]
 
-	upgradePortalServer(database, serverData, &response.ServerData)
+	upgradeServer(database, serverData, &response.ServerData)
 
 	response.OutputPage = outputPage
 	response.NumPages = numPages
@@ -882,7 +884,7 @@ type PortalRelayData struct {
 	PacketsReceivedPerSecond_Values     []int    `json:"packets_received_per_second_values"`
 }
 
-func upgradePortalRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
+func upgradeRelayData(database *db.Database, input *portal.RelayData, output *PortalRelayData, withTimeSeries bool) {
 	output.RelayName = input.RelayName
 	output.RelayId = input.RelayId
 	output.NumSessions = input.NumSessions
@@ -939,7 +941,7 @@ func portalRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	response.OutputPage = outputPage
 	response.NumPages = numPages
 	for i := range response.Relays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
+		upgradeRelayData(database, relays[i], &response.Relays[i], false)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -955,7 +957,7 @@ func portalAllRelaysHandler(w http.ResponseWriter, r *http.Request) {
 	database := service.Database()
 	response.Relays = make([]PortalRelayData, len(relays))
 	for i := range response.Relays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
+		upgradeRelayData(database, relays[i], &response.Relays[i], false)
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
@@ -992,7 +994,7 @@ func portalRelayDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalRelayData(database, relayData, &response.RelayData, true)
+	upgradeRelayData(database, relayData, &response.RelayData, true)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -1030,7 +1032,7 @@ type PortalBuyersResponse struct {
 	NumPages   int           `json:"num_pages"`
 }
 
-func upgradePortalBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bool, withTimeSeries bool) {
+func upgradeBuyer(input *db.Buyer, output *PortalBuyer, withRouteShader bool, withTimeSeries bool) {
 
 	output.Id = input.Id
 	output.Name = input.Name
@@ -1109,7 +1111,7 @@ func portalBuyersHandler(w http.ResponseWriter, r *http.Request) {
 	response := PortalBuyersResponse{}
 	response.Buyers = make([]PortalBuyer, len(buyers))
 	for i := range buyers {
-		upgradePortalBuyer(&buyers[i], &response.Buyers[i], false, false)
+		upgradeBuyer(&buyers[i], &response.Buyers[i], false, false)
 	}
 
 	sort.Slice(response.Buyers, func(i, j int) bool { return response.Buyers[i].Name < response.Buyers[j].Name })
@@ -1154,7 +1156,7 @@ func portalBuyerDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upgradePortalBuyer(buyer, &response.BuyerData, true, true)
+	upgradeBuyer(buyer, &response.BuyerData, true, true)
 
 	w.WriteHeader(http.StatusOK)
 
@@ -1242,7 +1244,7 @@ func portalSellerDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(relays))
 	for i := range response.Relays {
-		upgradePortalRelayData(database, &relays[i], &response.Relays[i], false)
+		upgradeRelayData(database, &relays[i], &response.Relays[i], false)
 	}
 
 	response.OutputPage = outputPage
@@ -1371,7 +1373,7 @@ func portalDatacenterDataHandler(w http.ResponseWriter, r *http.Request) {
 
 	response.Relays = make([]PortalRelayData, len(datacenterRelays))
 	for i := range datacenterRelays {
-		upgradePortalRelayData(database, relays[i], &response.Relays[i], false)
+		upgradeRelayData(database, relays[i], &response.Relays[i], false)
 	}
 
 	w.WriteHeader(http.StatusOK)

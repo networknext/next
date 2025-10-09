@@ -29,6 +29,7 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
+            <th>Country</th>
             <th>ISP</th>
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
@@ -38,6 +39,7 @@ mess// -------------------------------------------------------------------------
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td> {{ item["Country"] }} </td>
             <td> {{ item["ISP"] }} </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
             <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
@@ -55,6 +57,7 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
+            <th>Country</th>
             <th>Platform</th>
             <th>Connection</th>
             <th>ISP</th>
@@ -67,6 +70,7 @@ mess// -------------------------------------------------------------------------
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td> {{ item["Country"] }} </td>
             <td> {{ item["Platform"] }} </td>
             <td> {{ item["Connection"] }} </td>
             <td> {{ item["ISP"] }} </td>
@@ -113,6 +117,7 @@ async function getData(page) {
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
+        "Country":v.country,
         "ISP":v.isp,
         "Connection":connection,
         "Platform":platform,
