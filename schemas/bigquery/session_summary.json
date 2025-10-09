@@ -256,6 +256,18 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "The match id. Makes it easy to go from a session to the specific server match it was playing in the dataset."
+  },
+  {
+    "name": "isp",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The player's ISP from ip2location"
+  },
+  {
+    "name": "country",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The player's ISO country code from ip2location"
   }
 
 ]

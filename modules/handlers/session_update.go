@@ -67,6 +67,9 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
+	// ip2location function to get ISP and country from IP
+	GetISPAndCountry func(ip net.IP) (string, string)
+
 	// track start time of handler
 	StartTimestamp     uint64
 	StartTimestampNano uint64
@@ -1378,6 +1381,14 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DurationOnNext = int32(state.Input.DurationOnNext)           // seconds
 	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
 	message.Error = int64(state.Input.Error)
+	
+	// get isp and country from client IP address via ip2location db (optional)
+
+	if state.GetISPAndCountry != nil {
+		isp, country := state.GetISPAndCountry(state.Request.ClientAddress.IP)
+		message.ISP = isp
+		message.Country = country
+	}
 
 	// flags
 

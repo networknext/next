@@ -444,10 +444,13 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsServerRelayPingMessageChannel = analyticsServerRelayPingMessageChannel
 
 	handler.LocateIP = locateIP_Real
+	handler.GetISPAndCountry = getISPAndCountry_Real
+
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
+		handler.GetISPAndCountry = getISPAndCountry_Dev
 	} else if service.Env == "local" && service.Env == "docker" {
-		handler.LocateIP = locateIP_Local
+		handler.GetISPAndCountry = getISPAndCountry_Local
 	}
 
 	handlers.SDK_PacketHandler(&handler, conn, from, packetData)
@@ -521,6 +524,29 @@ func locateIP_Dev(ip net.IP) (float32, float32) {
 
 func locateIP_Real(ip net.IP) (float32, float32) {
 	return service.GetLocation(ip)
+}
+
+// ------------------------------------------------------------------------------------
+
+func getISPAndCountry_Local(ip net.IP) (string, string) {
+	return "Local", "Local"
+}
+
+func getISPAndCountry_Dev(ip net.IP) (string, string) {
+	ipv4 := ip.To4()
+	if ipv4[0] == 34 || ipv4[0] == 35 {
+		return "Google Cloud", "BR"
+	}
+	// this is a real client. do ip2location with maxmind if enabled, otherwise fallback to fixed location for debugging
+	if enableIP2Location {
+		return service.GetISPAndCountry(ip)
+	} else {
+		return "Comcast Internet LLC", "US"
+	}
+}
+
+func getISPAndCountry_Real(ip net.IP) (string, string) {
+	return service.GetISPAndCountry(ip)
 }
 
 // ------------------------------------------------------------------------------------

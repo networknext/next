@@ -14,17 +14,38 @@ DONE
 
 	Deploy to dev
 
-TODO
-
-	Verify we see match id coming up in bigquery.
-
-	-----
-
 	Session summary, add country. Add ISP?
 
 	Just makes it much easier to do country analysis.
 
 	Plus, we don't have to wait for SDK update. It's in the backend right now.
+
+TODO
+
+	Deploy to prod. 
+
+	Verify we see country code in portal.
+
+	Extend portal to translate from country code to local language country name in javascript.
+
+	Verify we see country names in portal.
+
+	-----
+
+	Verify we see match id coming up in bigquery.
+
+	-----
+
+	Verify we see session summary with ISP and country code in bigquery
+	
+	-----
+
+
+
+
+
+
+
 
 	-----
 
@@ -48,7 +69,7 @@ TODO
 
 	-----
 
-	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
+	*** Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function ***
 
 	-----
 

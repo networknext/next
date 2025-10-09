@@ -88,6 +88,8 @@ type AnalyticsSessionSummaryMessage struct {
 	SessionDuration                 int32   `avro:"session_duration"`
 	StartTimestamp                  int64   `avro:"start_timestamp"`
 	Error                           int64   `avro:"error"`
+	ISP                            string   `avro:"isp"`
+	Country                        string   `avro:"country"`
 
 	// flags
 

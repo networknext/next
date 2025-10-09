@@ -45,6 +45,8 @@
     {"name": "mispredict",                            "type": "boolean"},
     {"name": "lack_of_diversity",                     "type": "boolean"},
     {"name": "flags",                                 "type": "long", "default": 0},
-    {"name": "server_id",                             "type": "long", "default": 0}
+    {"name": "server_id",                             "type": "long", "default": 0},
+    {"name": "isp",                                   "type": "string", "default": ""},
+    {"name": "country",                               "type": "string", "default": ""}
   ]
 }

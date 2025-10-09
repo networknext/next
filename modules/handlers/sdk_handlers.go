@@ -67,6 +67,7 @@ type SDK_Handler struct {
 	GetMagicValues          func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)
 	Events                  [SDK_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
+	GetISPAndCountry        func(ip net.IP) (string, string)
 
 	PortalNextSessionsOnly bool
 
@@ -495,6 +496,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	state.AnalyticsServerRelayPingMessageChannel = handler.AnalyticsServerRelayPingMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
+
+	state.GetISPAndCountry = handler.GetISPAndCountry
 
 	// track the length of session update handlers
 
