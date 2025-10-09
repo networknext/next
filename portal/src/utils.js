@@ -64,11 +64,11 @@ function getConnectionName(connectionType) {
 }
 
 function getCountryName(countryCode) {
-  let regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
-  let countryName = regionNames.of(countryCode);
-  if (countryName != null) {
+  try {
+    const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+    let countryName = regionNames.of(countryCode);
     return countryName
-  } else {
+  } catch (error) {
     return countryCode
   }
 }
