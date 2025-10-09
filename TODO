@@ -32,22 +32,25 @@ DONE
 
 	Verify we see match id coming up in bigquery in dev and prod.
 
-TODO
-
 	Seems like we might be missing match id in dev session summary?
 
+TODO
+
+	Verify we see session summary with ISP, country and match id in prod.
+
+
+
+
+
+
+
 	-----
 
-	Verify we see session summary with ISP and country code in bigquery in prod.
+	Portal needs a bit of a cleanup of breakpoints.
 
-	-----
+	The current version of the portal XL really can't scale down as needed.
 
-
-
-
-
-
-
+	We need a middle version.
 
 	-----
 
@@ -69,12 +72,4 @@ TODO
 
 	Add functional test to verify we see match id from sessions
 
-	-----
-
-	*** Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function ***
-
-	-----
-
-	Ready to go live.
-	
 	-----
