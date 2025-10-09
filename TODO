@@ -8,36 +8,15 @@ DONE
 
 	Update all the backends to read match id if SDK >= 1.2.11
 
-TODO
-
-	Add match id to all bigquery tables and pubsub avro schemas: server_init, server_update, server
-
-	-----
+	Add match id to all bigquery tables and pubsub avro schemas: server_init, server_update, session_summary.
 
 	Pass the match id in through to pubsub via messages in golang.
 
-	-----
+	Deploy to dev
+
+TODO
 
 	Verify we see match id coming up in bigquery.
-
-	-----
-
-	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
-
-	-----
-
-	Ready to go live.
-	
-	-----
-
-
-
-
-
-
-
-
-
 
 	-----
 
@@ -59,4 +38,12 @@ TODO
 
 	Add functional test to verify we see match id from sessions
 
+	-----
+
+	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
+
+	-----
+
+	Ready to go live.
+	
 	-----
