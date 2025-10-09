@@ -56,9 +56,9 @@ mess// -------------------------------------------------------------------------
           <tr>
             <th>Session ID</th>
             <th>Country</th>
+            <th>Platform</th>
+            <th>Connection</th>
             <th>Datacenter</th>
-            <th class="right_align">Direct RTT</th>
-            <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
@@ -66,9 +66,9 @@ mess// -------------------------------------------------------------------------
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
             <td> {{ item["Country"] }} </td>
+            <td> {{ item["Platform"] }} </td>
+            <td> {{ item["Connection"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-            <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
