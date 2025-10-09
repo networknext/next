@@ -27,6 +27,7 @@ type SessionData struct {
 	SessionId      uint64                           `json:"session_id,string"`
 	StartTime      uint64                           `json:"start_time,string"`
 	ISP            string                           `json:"isp"`
+	Country        string                           `json:"country"`
 	ConnectionType uint8                            `json:"connection_type"`
 	PlatformType   uint8                            `json:"platform_type"`
 	Latitude       float32                          `json:"latitude"`
@@ -41,10 +42,11 @@ type SessionData struct {
 }
 
 func (data *SessionData) Value() string {
-	value := fmt.Sprintf("%x|%x|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%d|",
+	value := fmt.Sprintf("%x|%x|%s|%s|%d|%d|%.2f|%.2f|%d|%d|%x|%x|%x|%d|",
 		data.SessionId,
 		data.StartTime,
 		data.ISP,
+		data.Country,
 		data.ConnectionType,
 		data.PlatformType,
 		data.Latitude,
@@ -64,7 +66,7 @@ func (data *SessionData) Value() string {
 
 func (data *SessionData) Parse(value string) {
 	values := strings.Split(value, "|")
-	if len(values) < 13 {
+	if len(values) < 14 {
 		return
 	}
 	sessionId, err := strconv.ParseUint(values[0], 16, 64)
@@ -76,52 +78,53 @@ func (data *SessionData) Parse(value string) {
 		return
 	}
 	isp := values[2]
-	connectionType, err := strconv.ParseUint(values[3], 10, 32)
+	country := values[3]
+	connectionType, err := strconv.ParseUint(values[4], 10, 32)
 	if err != nil {
 		return
 	}
-	platformType, err := strconv.ParseUint(values[4], 10, 32)
+	platformType, err := strconv.ParseUint(values[5], 10, 32)
 	if err != nil {
 		return
 	}
-	latitude, err := strconv.ParseFloat(values[5], 32)
+	latitude, err := strconv.ParseFloat(values[6], 32)
 	if err != nil {
 		return
 	}
-	longitude, err := strconv.ParseFloat(values[6], 32)
+	longitude, err := strconv.ParseFloat(values[7], 32)
 	if err != nil {
 		return
 	}
-	directRTT, err := strconv.ParseUint(values[7], 10, 32)
+	directRTT, err := strconv.ParseUint(values[8], 10, 32)
 	if err != nil {
 		return
 	}
-	nextRTT, err := strconv.ParseUint(values[8], 10, 32)
+	nextRTT, err := strconv.ParseUint(values[9], 10, 32)
 	if err != nil {
 		return
 	}
-	buyerId, err := strconv.ParseUint(values[9], 16, 64)
+	buyerId, err := strconv.ParseUint(values[10], 16, 64)
 	if err != nil {
 		return
 	}
-	serverId, err := strconv.ParseUint(values[10], 16, 64)
+	serverId, err := strconv.ParseUint(values[11], 16, 64)
 	if err != nil {
 		return
 	}
-	datacenterId, err := strconv.ParseUint(values[11], 16, 64)
+	datacenterId, err := strconv.ParseUint(values[12], 16, 64)
 	if err != nil {
 		return
 	}
-	numRouteRelays, err := strconv.ParseUint(values[12], 10, 32)
+	numRouteRelays, err := strconv.ParseUint(values[13], 10, 32)
 	if err != nil {
 		return
 	}
-	if len(values) != 13+int(numRouteRelays)+1 {
+	if len(values) != 14+int(numRouteRelays)+1 {
 		return
 	}
 	routeRelays := make([]uint64, numRouteRelays)
 	for i := range routeRelays {
-		routeRelays[i], err = strconv.ParseUint(values[13+i], 16, 64)
+		routeRelays[i], err = strconv.ParseUint(values[14+i], 16, 64)
 		if err != nil {
 			return
 		}
@@ -130,6 +133,7 @@ func (data *SessionData) Parse(value string) {
 	data.SessionId = sessionId
 	data.StartTime = startTime
 	data.ISP = isp
+	data.Country = country
 	data.ConnectionType = uint8(connectionType)
 	data.PlatformType = uint8(platformType)
 	data.Latitude = float32(latitude)
@@ -147,6 +151,7 @@ func GenerateRandomSessionData() *SessionData {
 	data := SessionData{}
 	data.SessionId = rand.Uint64()
 	data.ISP = "Comcast Internet Company, LLC"
+	data.Country = "United States"
 	data.ConnectionType = uint8(common.RandomInt(0, constants.MaxConnectionType))
 	data.PlatformType = uint8(common.RandomInt(0, constants.MaxPlatformType))
 	data.Latitude = float32(common.RandomInt(-9000, +9000)) / 100.0

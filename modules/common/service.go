@@ -301,11 +301,11 @@ func (service *Service) GetLocation(ip net.IP) (float32, float32) {
 	return ip2location.GetLocation(city_db, ip)
 }
 
-func (service *Service) GetISP(ip net.IP) string {
+func (service *Service) GetISPAndCountry(ip net.IP) (string, string) {
 	service.ip2location_mutex.RLock()
 	isp_db := service.ip2location_isp_db
 	service.ip2location_mutex.RUnlock()
-	return ip2location.GetISP(isp_db, ip)
+	return ip2location.GetISPAndCountry(isp_db, ip)
 }
 
 func (service *Service) Database() *db.Database {

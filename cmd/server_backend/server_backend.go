@@ -557,17 +557,18 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 
 			sessionId := message.SessionId
 
-			var isp string
+			var isp, country string
 			if enableIP2Location {
-				isp = service.GetISP(message.ClientAddress.IP)
+				isp, country = service.GetISPAndCountry(message.ClientAddress.IP)
 			} else {
-				isp = "Local"
+				isp, country = "Local", "Unknown"
 			}
 
 			sessionData := portal.SessionData{
 				SessionId:      message.SessionId,
 				StartTime:      message.StartTime,
 				ISP:            isp,
+				Country:        country,
 				ConnectionType: message.ConnectionType,
 				PlatformType:   message.PlatformType,
 				Latitude:       message.Latitude,

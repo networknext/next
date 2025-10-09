@@ -21,7 +21,8 @@ type City struct {
 }
 
 type ISP struct {
-	ISP string `maxminddb:"isp"`
+	ISP     string `maxminddb:"isp"`
+	Country string `maxminddb:"iso_code"`
 }
 
 func Bash(command string) error {
@@ -191,11 +192,11 @@ func GetLocation(city_db *maxminddb.Reader, ip net.IP) (float32, float32) {
 	}
 }
 
-func GetISP(isp_db *maxminddb.Reader, ip net.IP) string {
+func GetISPAndCountry(isp_db *maxminddb.Reader, ip net.IP) (string, string) {
 	var isp ISP
 	if isp_db != nil && isp_db.Lookup(ip, &isp) == nil {
-		return isp.ISP
+		return isp.ISP, isp.Country
 	} else {
-		return "Unknown"
+		return "Unknown", "Unknown"
 	}
 }

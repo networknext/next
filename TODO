@@ -20,6 +20,12 @@ TODO
 
 	-----
 
+	Session summary, add country. Add ISP?
+
+	Just makes it much easier to do country analysis.
+
+	-----
+
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK
 
 	-----
