@@ -1,4 +1,4 @@
-mess// -----------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 
 <template>
 
@@ -101,8 +101,6 @@ mess// -------------------------------------------------------------------------
             <td> {{ item["Connection"] }} </td>
             <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-            <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -152,8 +150,6 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
-        "Direct RTT":v.direct_rtt + " ms",
-        "Accelerated RTT":next_rtt,
         "Improvement":improvement,
       }
       data.push(row)
