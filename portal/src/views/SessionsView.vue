@@ -55,8 +55,10 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>ISP</th>
+            <th>Country</th>
             <th>Platform</th>
+            <th>Connection</th>
+            <th>ISP</th>
             <th>Datacenter</th>
             <th class="right_align">Direct RTT</th>
             <th class="right_align">Accelerated RTT</th>
@@ -66,8 +68,10 @@ mess// -------------------------------------------------------------------------
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td> {{ item["ISP"] }} </td>
+            <td> {{ item["Country"] }} </td>
             <td> {{ item["Platform"] }} </td>
+            <td> {{ item["Connection"] }} </td>
+            <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td class="right_align"> {{ item["Direct RTT"] }} </td>
             <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
@@ -91,7 +95,7 @@ mess// -------------------------------------------------------------------------
 import axios from "axios";
 import update from '@/update.js'
 
-import {parse_uint64, getPlatformName, getConnectionName} from '@/utils.js'
+import {parse_uint64, getPlatformName, getConnectionName, getCountryName} from '@/utils.js'
 
 async function getData(page) {
   try {
@@ -107,10 +111,12 @@ async function getData(page) {
       const session_id = parse_uint64(v.session_id)
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
+      const country = getCountryName(v.country)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
+        "Country":country,
         "ISP":v.isp,
         "Connection":connection,
         "Platform":platform,
@@ -118,7 +124,6 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
-        "Server Address":v.server_address,
         "Direct RTT":v.direct_rtt + " ms",
         "Accelerated RTT":next_rtt,
         "Improvement":improvement,

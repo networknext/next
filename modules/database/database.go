@@ -42,6 +42,7 @@ type Relay struct {
 	PrivateKey         []byte      `json:"private_key"`
 	MaxSessions        int         `json:"max_sessions"`
 	PortSpeed          int         `json:"port_speed"`
+	BandwidthPrice     int         `json:"bandwidth_price"`
 	Version            string      `json:"version"`
 	Seller             *Seller     `json:"seller"`
 	Datacenter         *Datacenter `json:"datacenter"`
@@ -586,6 +587,7 @@ func (database *Database) String() string {
 		PublicAddress   string
 		InternalAddress string
 		InternalGroup   string
+		BandwidthPrice  string
 		Version         string
 		PublicKey       string
 		PrivateKey      string
@@ -596,12 +598,13 @@ func (database *Database) String() string {
 	for _, v := range database.RelayMap {
 
 		row := RelayRow{
-			Id:            fmt.Sprintf("%016x", v.Id),
-			Name:          v.Name,
-			Version:       v.Version,
-			PublicAddress: v.PublicAddress.String(),
-			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
-			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
+			Id:             fmt.Sprintf("%016x", v.Id),
+			Name:           v.Name,
+			Version:        v.Version,
+			PublicAddress:  v.PublicAddress.String(),
+			BandwidthPrice: fmt.Sprintf("%d", v.BandwidthPrice),
+			PublicKey:      base64.StdEncoding.EncodeToString(v.PublicKey),
+			PrivateKey:     base64.StdEncoding.EncodeToString(v.PrivateKey),
 		}
 
 		if v.HasInternalAddress {
@@ -843,6 +846,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 		InternalGroup   string
 		PublicKey       string
 		PrivateKey      string
+		Price           string
 	}
 
 	relays := []RelayRow{}
@@ -855,6 +859,7 @@ func (database *Database) WriteHTML(w io.Writer) {
 			PublicAddress: v.PublicAddress.String(),
 			PublicKey:     base64.StdEncoding.EncodeToString(v.PublicKey),
 			PrivateKey:    base64.StdEncoding.EncodeToString(v.PrivateKey),
+			Price:         fmt.Sprintf("%d", v.BandwidthPrice),
 		}
 
 		if v.HasInternalAddress {
@@ -871,9 +876,9 @@ func (database *Database) WriteHTML(w io.Writer) {
 
 	fmt.Fprintf(w, "<br><br>Relays:<br><br>")
 	fmt.Fprintf(w, "<table>\n")
-	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Id", "Name", "Public Address", "Internal Address", "Internal Group", "Public Key")
+	fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td><td><b>%s</b></td></tr>\n", "Id", "Name", "Public Address", "Internal Address", "Internal Group", "Price", "Public Key")
 	for i := range relays {
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", relays[i].Id, relays[i].Name, relays[i].PublicAddress, relays[i].InternalAddress, relays[i].InternalGroup, relays[i].PublicKey)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n", relays[i].Id, relays[i].Name, relays[i].PublicAddress, relays[i].InternalAddress, relays[i].InternalGroup, relays[i].Price, relays[i].PublicKey)
 	}
 	fmt.Fprintf(w, "</table>\n")
 
@@ -993,11 +998,12 @@ func ExtractDatabase(config string) (*Database, error) {
 		mrc                int
 		port_speed         int
 		max_sessions       int
+		bandwidth_price    int
 	}
 
 	relayRows := make([]RelayRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT relay_id, relay_name, datacenter_id, public_ip, public_port, internal_ip, internal_port, internal_group, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions FROM relays")
+		rows, err := pgsql.Query("SELECT relay_id, relay_name, datacenter_id, public_ip, public_port, internal_ip, internal_port, internal_group, ssh_ip, ssh_port, ssh_user, public_key_base64, private_key_base64, version, mrc, port_speed, max_sessions, bandwidth_price FROM relays")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract relays: %v\n", err)
 		}
@@ -1006,7 +1012,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RelayRow{}
-			if err := rows.Scan(&row.relay_id, &row.relay_name, &row.datacenter_id, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.internal_group, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions); err != nil {
+			if err := rows.Scan(&row.relay_id, &row.relay_name, &row.datacenter_id, &row.public_ip, &row.public_port, &row.internal_ip, &row.internal_port, &row.internal_group, &row.ssh_ip, &row.ssh_port, &row.ssh_user, &row.public_key_base64, &row.private_key_base64, &row.version, &row.mrc, &row.port_speed, &row.max_sessions, &row.bandwidth_price); err != nil {
 				return nil, fmt.Errorf("failed to scan relay row: %v\n", err)
 			}
 			relayRows = append(relayRows, row)
@@ -1170,7 +1176,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nrelays:\n")
 	for _, row := range relayRows {
-		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d\n", row.relay_id, row.relay_name, row.datacenter_id, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions)
+		fmt.Printf("%d: %s, %d, %s, %d, %s, %d, %s, %d, %s, %s, %s, %s, %d, %d, %d, %d\n", row.relay_id, row.relay_name, row.datacenter_id, row.public_ip, row.public_port, row.internal_ip, row.internal_port, row.ssh_ip, row.ssh_port, row.ssh_user, row.public_key_base64, row.private_key_base64, row.version.String, row.mrc, row.port_speed, row.max_sessions, row.bandwidth_price)
 	}
 
 	fmt.Printf("\ndatacenters:\n")
@@ -1396,6 +1402,7 @@ func ExtractDatabase(config string) (*Database, error) {
 		relay.MaxSessions = row.max_sessions
 		relay.PortSpeed = row.port_speed
 		relay.Version = row.version.String
+		relay.BandwidthPrice = row.bandwidth_price
 
 		datacenter_row, datacenter_exists := datacenterIndex[row.datacenter_id]
 		if !datacenter_exists {

@@ -112,8 +112,9 @@ func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *t
 func GenerateRandomServerInitRequestPacket() packets.SDK_ServerInitRequestPacket {
 
 	return packets.SDK_ServerInitRequestPacket{
-		Version:        packets.SDKVersion{1, 0, 0},
+		Version:        packets.SDKVersion{1, 2, 11},
 		BuyerId:        rand.Uint64(),
+		MatchId:        rand.Uint64(),
 		RequestId:      rand.Uint64(),
 		DatacenterId:   rand.Uint64(),
 		DatacenterName: common.RandomString(packets.SDK_MaxDatacenterNameLength),
@@ -137,10 +138,12 @@ func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePack
 func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
 	return packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{1, 0, 0},
+		Version:      packets.SDKVersion{1, 2, 11},
 		BuyerId:      rand.Uint64(),
+		MatchId:      rand.Uint64(),
 		RequestId:    rand.Uint64(),
 		DatacenterId: rand.Uint64(),
+		ServerId:     rand.Uint64(),
 		Uptime:       rand.Uint64(),
 	}
 }
@@ -222,8 +225,9 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 3},
+		Version:                         packets.SDKVersion{1, 2, 11},
 		BuyerId:                         rand.Uint64(),
+		MatchId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
 		SliceNumber:                     rand.Uint32(),
@@ -239,8 +243,6 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		Next:                            common.RandomBool(),
 		Reported:                        common.RandomBool(),
 		FallbackToDirect:                common.RandomBool(),
-		ClientNextBandwidthOverLimit:    common.RandomBool(),
-		ServerNextBandwidthOverLimit:    common.RandomBool(),
 		ClientPingTimedOut:              common.RandomBool(),
 		PlatformType:                    int32(common.RandomInt(0, packets.SDK_PlatformTypeMax)),
 		ConnectionType:                  int32(common.RandomInt(0, packets.SDK_ConnectionTypeMax)),
@@ -258,6 +260,12 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		PacketsOutOfOrderServerToClient: rand.Uint64(),
 		JitterClientToServer:            rand.Float32(),
 		JitterServerToClient:            rand.Float32(),
+		DeltaTimeMin:                    rand.Float32(),
+		DeltaTimeMax:                    rand.Float32(),
+		DeltaTimeAvg:                    rand.Float32(),
+		GameRTT:                         rand.Float32(),
+		GameJitter:                      rand.Float32(),
+		GamePacketLoss:                  rand.Float32(),
 	}
 
 	for i := 0; i < int(packet.SessionDataBytes); i++ {
@@ -285,15 +293,13 @@ func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequest
 		}
 	}
 
-	packet.DirectKbpsUp = rand.Uint32()
-	packet.DirectKbpsDown = rand.Uint32()
+	packet.BandwidthKbpsUp = rand.Uint32()
+	packet.BandwidthKbpsDown = rand.Uint32()
 
 	if packet.Next {
 		packet.NextRTT = rand.Float32()
 		packet.NextJitter = rand.Float32()
 		packet.NextPacketLoss = rand.Float32()
-		packet.NextKbpsUp = rand.Uint32()
-		packet.NextKbpsDown = rand.Uint32()
 	}
 
 	return packet

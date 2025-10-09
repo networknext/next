@@ -479,7 +479,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 				relayData := portal.RelayData{
 					RelayId:      message.RelayId,
 					RelayName:    message.RelayName,
-					RelayAddress: message.RelayAddress.String(),
 					NumSessions:  message.SessionCount,
 					MaxSessions:  message.MaxSessions,
 					StartTime:    message.StartTime,
@@ -1016,7 +1015,13 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				activeRelays := relayManager.GetActiveRelays(currentTime)
 
+				numRelays := len(relayData.RelayIds)
+
 				costs := relayManager.GetCosts(currentTime, relayData.RelayIds, float32(maxJitter), maxPacketLoss)
+
+				relayPrice := make([]byte, numRelays)
+
+				copy(relayPrice, relayData.RelayPrice)
 
 				costMatrixNew := &common.CostMatrix{
 					Version:            common.CostMatrixVersion_Write,
@@ -1028,6 +1033,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					RelayDatacenterIds: relayData.RelayDatacenterIds,
 					DestRelays:         relayData.DestRelays,
 					Costs:              costs,
+					RelayPrice:         relayPrice,
 				}
 
 				// optimize cost matrix -> route matrix
@@ -1052,7 +1058,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 
 				// optimize
 
-				routeEntries := core.Optimize2(relayData.NumRelays, numSegments, costs, relayData.RelayDatacenterIds, relayData.DestRelays)
+				routeEntries := core.Optimize2(relayData.NumRelays, numSegments, costs, relayPrice, relayData.RelayDatacenterIds, relayData.DestRelays)
 
 				timeFinish := time.Now()
 
@@ -1082,6 +1088,7 @@ func UpdateRouteMatrix(service *common.Service, relayManager *common.RelayManage
 					CostMatrixSize:     uint32(len(costMatrixDataNew)),
 					OptimizeTime:       uint32(optimizeDuration.Milliseconds()),
 					Costs:              costs,
+					RelayPrice:         relayPrice,
 				}
 
 				// write route matrix data

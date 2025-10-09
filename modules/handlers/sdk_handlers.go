@@ -67,6 +67,7 @@ type SDK_Handler struct {
 	GetMagicValues          func() ([constants.MagicBytes]byte, [constants.MagicBytes]byte, [constants.MagicBytes]byte)
 	Events                  [SDK_HandlerEvent_NumEvents]bool
 	LocateIP                func(ip net.IP) (float32, float32)
+	GetISPAndCountry        func(ip net.IP) (string, string)
 
 	PortalNextSessionsOnly bool
 
@@ -266,9 +267,10 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 
 	if core.DebugLogs {
 		core.Debug("---------------------------------------------------------------------------")
-		core.Debug("received server init request packet from %s", from.String())
+		core.Debug("received server init request packet from %s [%016x]", from.String(), common.HashString(from.String()))
 		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("match id: %016x", requestPacket.MatchId)
 		core.Debug("request id: %016x", requestPacket.RequestId)
 		core.Debug("datacenter: \"%s\" [%016x]", requestPacket.DatacenterName, requestPacket.DatacenterId)
 		core.Debug("---------------------------------------------------------------------------")
@@ -332,9 +334,11 @@ func SDK_ProcessServerInitRequestPacket(handler *SDK_Handler, conn *net.UDPConn,
 		message.SDKVersion_Minor = int32(requestPacket.Version.Minor)
 		message.SDKVersion_Patch = int32(requestPacket.Version.Patch)
 		message.BuyerId = int64(requestPacket.BuyerId)
+		message.MatchId = int64(requestPacket.MatchId)
 		message.DatacenterId = int64(requestPacket.DatacenterId)
 		message.DatacenterName = requestPacket.DatacenterName
 		message.ServerAddress = from.String()
+		message.ServerId = int64(common.HashString(from.String()))
 
 		handler.AnalyticsServerInitMessageChannel <- &message
 
@@ -353,7 +357,9 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 		core.Debug("received server update request packet from %s", from.String())
 		core.Debug("version: %d.%d.%d", requestPacket.Version.Major, requestPacket.Version.Minor, requestPacket.Version.Patch)
 		core.Debug("buyer id: %016x", requestPacket.BuyerId)
+		core.Debug("match id: %016x", requestPacket.MatchId)
 		core.Debug("request id: %016x", requestPacket.RequestId)
+		core.Debug("server id: %016x", requestPacket.ServerId)
 		core.Debug("datacenter id: %016x", requestPacket.DatacenterId)
 		core.Debug("---------------------------------------------------------------------------")
 	}
@@ -369,9 +375,14 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.SDKVersion_Minor = int32(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = int32(requestPacket.Version.Patch)
 			message.BuyerId = int64(requestPacket.BuyerId)
+			message.MatchId = int64(requestPacket.MatchId)
 			message.DatacenterId = int64(requestPacket.DatacenterId)
 			message.NumSessions = int32(requestPacket.NumSessions)
+			message.ServerId = int64(requestPacket.ServerId)
 			message.ServerAddress = from.String()
+			message.DeltaTimeMin = requestPacket.DeltaTimeMin
+			message.DeltaTimeMax = requestPacket.DeltaTimeMax
+			message.DeltaTimeAvg = requestPacket.DeltaTimeAvg
 
 			handler.AnalyticsServerUpdateMessageChannel <- &message
 
@@ -390,10 +401,10 @@ func SDK_ProcessServerUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCon
 			message.SDKVersion_Minor = byte(requestPacket.Version.Minor)
 			message.SDKVersion_Patch = byte(requestPacket.Version.Patch)
 			message.BuyerId = requestPacket.BuyerId
+			message.ServerId = requestPacket.ServerId
 			message.DatacenterId = requestPacket.DatacenterId
 			message.NumSessions = requestPacket.NumSessions
 			message.Uptime = requestPacket.Uptime
-			message.ServerAddress = *from
 
 			handler.PortalServerUpdateMessageChannel <- &message
 
@@ -444,7 +455,7 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 
 	if core.DebugLogs {
 		core.Debug("---------------------------------------------------------------------------")
-		core.Debug("received session update request packet from %s", from.String())
+		core.Debug("received session update request packet from %s [%x]", from.String(), common.HashString(from.String()))
 		core.Debug("---------------------------------------------------------------------------")
 	}
 
@@ -485,6 +496,8 @@ func SDK_ProcessSessionUpdateRequestPacket(handler *SDK_Handler, conn *net.UDPCo
 	state.AnalyticsServerRelayPingMessageChannel = handler.AnalyticsServerRelayPingMessageChannel
 	state.AnalyticsSessionUpdateMessageChannel = handler.AnalyticsSessionUpdateMessageChannel
 	state.AnalyticsSessionSummaryMessageChannel = handler.AnalyticsSessionSummaryMessageChannel
+
+	state.GetISPAndCountry = handler.GetISPAndCountry
 
 	// track the length of session update handlers
 

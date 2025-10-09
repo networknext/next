@@ -17,6 +17,8 @@
 #include "next_read_write.h"
 #include "next_header.h"
 #include "next_internal_config.h"
+#include "next_value_tracker.h"
+#include "next_hash.h"
 
 #include <atomic>
 #include <stdio.h>
@@ -26,8 +28,9 @@
 
 #define NEXT_CLIENT_COMMAND_OPEN_SESSION            0
 #define NEXT_CLIENT_COMMAND_CLOSE_SESSION           1
-#define NEXT_CLIENT_COMMAND_DESTROY                 2
-#define NEXT_CLIENT_COMMAND_REPORT_SESSION          3
+#define NEXT_CLIENT_COMMAND_UPDATE                  2
+#define NEXT_CLIENT_COMMAND_DESTROY                 3
+#define NEXT_CLIENT_COMMAND_REPORT_SESSION          4
 
 struct next_client_command_t
 {
@@ -42,6 +45,14 @@ struct next_client_command_open_session_t : public next_client_command_t
 struct next_client_command_close_session_t : public next_client_command_t
 {
     // ...
+};
+
+struct next_client_command_update_t : public next_client_command_t
+{
+    float delta_time;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
 };
 
 struct next_client_command_destroy_t : public next_client_command_t
@@ -163,7 +174,7 @@ struct next_client_internal_t
     bool session_open;
     bool upgraded;
     bool reported;
-    bool fallback_to_direct;
+    bool fallback_to_direct;                    // IMPORTANT: This is a cached value used for edge detection only. Do not set it directly.
     bool multipath;
     uint8_t open_session_sequence;
     uint64_t upgrade_sequence;
@@ -226,20 +237,11 @@ struct next_client_internal_t
 
     NEXT_DECLARE_SENTINEL(8)
 
-    next_platform_mutex_t direct_bandwidth_mutex;
-    float direct_bandwidth_usage_kbps_up;
-    float direct_bandwidth_usage_kbps_down;
+    next_platform_mutex_t bandwidth_mutex;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
 
     NEXT_DECLARE_SENTINEL(9)
-
-    next_platform_mutex_t next_bandwidth_mutex;
-    bool next_bandwidth_over_limit;
-    float next_bandwidth_usage_kbps_up;
-    float next_bandwidth_usage_kbps_down;
-    float next_bandwidth_envelope_kbps_up;
-    float next_bandwidth_envelope_kbps_down;
-
-    NEXT_DECLARE_SENTINEL(10)
 
     bool sending_upgrade_response;
     double upgrade_response_start_time;
@@ -247,14 +249,14 @@ struct next_client_internal_t
     int upgrade_response_packet_bytes;
     uint8_t upgrade_response_packet_data[NEXT_MAX_PACKET_BYTES];
 
-    NEXT_DECLARE_SENTINEL(11)
+    NEXT_DECLARE_SENTINEL(10)
 
     bool sending_client_relay_pings;
     double client_relay_ping_stop_time;
     NextClientRelayUpdatePacket client_relay_update_packet;
     next_relay_manager_t * client_relay_manager;
 
-    NEXT_DECLARE_SENTINEL(12)
+    NEXT_DECLARE_SENTINEL(11)
 
     bool has_client_ping_stats;
     int num_client_relays;
@@ -263,11 +265,36 @@ struct next_client_internal_t
     uint8_t client_relay_jitter[NEXT_MAX_CLIENT_RELAYS];
     float client_relay_packet_loss[NEXT_MAX_CLIENT_RELAYS];
 
+    NEXT_DECLARE_SENTINEL(12)
+
+    next_value_tracker_t delta_time_tracker;
+    next_value_tracker_t game_rtt_tracker;
+    next_value_tracker_t game_jitter_tracker;
+    next_value_tracker_t game_packet_loss_tracker;
+
     NEXT_DECLARE_SENTINEL(13)
+
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
+
+    float game_rtt_min;
+    float game_rtt_max;
+    float game_rtt_avg;
+
+    float game_jitter_min;
+    float game_jitter_max;
+    float game_jitter_avg;
+
+    float game_packet_loss_min;
+    float game_packet_loss_max;
+    float game_packet_loss_avg;
+
+    NEXT_DECLARE_SENTINEL(14)
 
     std::atomic<uint64_t> counters[NEXT_CLIENT_COUNTER_MAX];
 
-    NEXT_DECLARE_SENTINEL(14)
+    NEXT_DECLARE_SENTINEL(15)
 };
 
 void next_client_internal_initialize_sentinels( next_client_internal_t * client )
@@ -289,6 +316,7 @@ void next_client_internal_initialize_sentinels( next_client_internal_t * client 
     NEXT_INITIALIZE_SENTINEL( client, 12 )
     NEXT_INITIALIZE_SENTINEL( client, 13 )
     NEXT_INITIALIZE_SENTINEL( client, 14 )
+    NEXT_INITIALIZE_SENTINEL( client, 15 )
 
     next_replay_protection_initialize_sentinels( &client->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &client->special_replay_protection );
@@ -319,6 +347,7 @@ void next_client_internal_verify_sentinels( next_client_internal_t * client )
     NEXT_VERIFY_SENTINEL( client, 12 )
     NEXT_VERIFY_SENTINEL( client, 13 )
     NEXT_VERIFY_SENTINEL( client, 14 )
+    NEXT_VERIFY_SENTINEL( client, 15 )
 
     if ( client->command_queue )
         next_queue_verify_sentinels( client->command_queue );
@@ -465,18 +494,10 @@ next_client_internal_t * next_client_internal_create( void * context, const char
         return NULL;
     }
 
-    result = next_platform_mutex_create( &client->direct_bandwidth_mutex );
+    result = next_platform_mutex_create( &client->bandwidth_mutex );
     if ( result != NEXT_OK )
     {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create direct bandwidth mutex" );
-        next_client_internal_destroy( client );
-        return NULL;
-    }
-
-    result = next_platform_mutex_create( &client->next_bandwidth_mutex );
-    if ( result != NEXT_OK )
-    {
-        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create next bandwidth mutex" );
+        next_printf( NEXT_LOG_LEVEL_ERROR, "client could not create bandwidth mutex" );
         next_client_internal_destroy( client );
         return NULL;
     }
@@ -491,6 +512,11 @@ next_client_internal_t * next_client_internal_create( void * context, const char
     next_packet_loss_tracker_reset( &client->packet_loss_tracker );
     next_out_of_order_tracker_reset( &client->out_of_order_tracker );
     next_jitter_tracker_reset( &client->jitter_tracker );
+
+    next_value_tracker_reset( &client->delta_time_tracker );
+    next_value_tracker_reset( &client->game_rtt_tracker );
+    next_value_tracker_reset( &client->game_jitter_tracker );
+    next_value_tracker_reset( &client->game_packet_loss_tracker );
 
     next_client_internal_verify_sentinels( client );
 
@@ -528,8 +554,7 @@ void next_client_internal_destroy( next_client_internal_t * client )
     next_platform_mutex_destroy( &client->command_mutex );
     next_platform_mutex_destroy( &client->notify_mutex );
     next_platform_mutex_destroy( &client->route_manager_mutex );
-    next_platform_mutex_destroy( &client->direct_bandwidth_mutex );
-    next_platform_mutex_destroy( &client->next_bandwidth_mutex );
+    next_platform_mutex_destroy( &client->bandwidth_mutex );
 
     next_clear_and_free( client->context, client, sizeof(next_client_internal_t) );
 }
@@ -1076,11 +1101,6 @@ void next_client_internal_process_network_next_packet( next_client_internal_t * 
         next_printf( NEXT_LOG_LEVEL_DEBUG, "client network next route is confirmed" );
 
         client->last_route_switch_time = next_platform_time();
-        {
-            next_platform_mutex_guard( &client->next_bandwidth_mutex );
-            client->next_bandwidth_envelope_kbps_up = route_kbps_up;
-            client->next_bandwidth_envelope_kbps_down = route_kbps_down;
-        }
 
         return;
     }
@@ -1694,18 +1714,9 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_replay_protection_reset( &client->internal_replay_protection );
 
                 {
-                    next_platform_mutex_guard( &client->direct_bandwidth_mutex );
-                    client->direct_bandwidth_usage_kbps_up = 0;
-                    client->direct_bandwidth_usage_kbps_down = 0;
-                }
-
-                {
-                    next_platform_mutex_guard( &client->next_bandwidth_mutex );
-                    client->next_bandwidth_over_limit = false;
-                    client->next_bandwidth_usage_kbps_up = 0;
-                    client->next_bandwidth_usage_kbps_down = 0;
-                    client->next_bandwidth_envelope_kbps_up = 0;
-                    client->next_bandwidth_envelope_kbps_down = 0;
+                    next_platform_mutex_guard( &client->bandwidth_mutex );
+                    client->bandwidth_kbps_up = 0;
+                    client->bandwidth_kbps_down = 0;
                 }
 
                 {
@@ -1717,7 +1728,26 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
                 next_out_of_order_tracker_reset( &client->out_of_order_tracker );
                 next_jitter_tracker_reset( &client->jitter_tracker );
 
+                next_value_tracker_reset( &client->delta_time_tracker );
+                next_value_tracker_reset( &client->game_rtt_tracker );
+                next_value_tracker_reset( &client->game_jitter_tracker );
+                next_value_tracker_reset( &client->game_packet_loss_tracker );
+
                 client->counters[NEXT_CLIENT_COUNTER_CLOSE_SESSION]++;
+            }
+            break;
+
+            case NEXT_CLIENT_COMMAND_UPDATE:
+            {
+#if NEXT_SPIKE_TRACKING
+                next_printf( NEXT_LOG_LEVEL_SPAM, "client internal thread received NEXT_CLIENT_COMMAND_UPDATE" );
+#endif // #if NEXT_SPIKE_TRACKING
+
+                next_client_command_update_t * update_command = (next_client_command_update_t*) entry;
+                next_value_tracker_add_sample( &client->delta_time_tracker, update_command->delta_time );
+                next_value_tracker_add_sample( &client->game_rtt_tracker, update_command->game_rtt );
+                next_value_tracker_add_sample( &client->game_jitter_tracker, update_command->game_jitter );
+                next_value_tracker_add_sample( &client->game_packet_loss_tracker, update_command->game_packet_loss );
             }
             break;
 
@@ -1737,7 +1767,7 @@ bool next_client_internal_pump_commands( next_client_internal_t * client )
 #endif // #if NEXT_SPIKE_TRACKING
                 if ( client->session_id != 0 && !client->reported )
                 {
-                    next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %" PRIx64, client->session_id );
+                    next_printf( NEXT_LOG_LEVEL_INFO, "client reported session %016" PRIx64, client->session_id );
                     client->reported = true;
                 }
             }
@@ -1770,18 +1800,23 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_update_time + ( 1.0 / NEXT_CLIENT_STATS_UPDATES_PER_SECOND ) < current_time )
     {
+        // update client stats struct locally
+
         bool network_next = false;
         bool fallback_to_direct = false;
+        uint32_t flags = 0;
         {
             next_platform_mutex_guard( &client->route_manager_mutex );
             network_next = next_route_manager_has_network_next_route( client->route_manager );
             fallback_to_direct = next_route_manager_get_fallback_to_direct( client->route_manager );
+            flags = next_route_manager_get_flags( client->route_manager );
         }
         
         client->client_stats.next = network_next;
         client->client_stats.upgraded = client->upgraded;
         client->client_stats.reported = client->reported;
-        client->client_stats.fallback_to_direct = client->fallback_to_direct;
+        client->client_stats.fallback_to_direct = fallback_to_direct;
+        client->client_stats.flags = flags;
         client->client_stats.multipath = client->multipath;
         client->client_stats.platform_id = next_platform_id();
 
@@ -1800,9 +1835,9 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         next_route_stats_from_ping_history( &client->direct_ping_history, current_time - NEXT_PING_STATS_WINDOW, current_time, &direct_route_stats );
 
         {
-            next_platform_mutex_guard( &client->direct_bandwidth_mutex );
-            client->client_stats.direct_kbps_up = client->direct_bandwidth_usage_kbps_up;
-            client->client_stats.direct_kbps_down = client->direct_bandwidth_usage_kbps_down;
+            next_platform_mutex_guard( &client->bandwidth_mutex );
+            client->client_stats.bandwidth_kbps_up = client->bandwidth_kbps_up;
+            client->client_stats.bandwidth_kbps_down = client->bandwidth_kbps_down;
         }
 
         if ( network_next )
@@ -1810,19 +1845,12 @@ void next_client_internal_update_stats( next_client_internal_t * client )
             client->client_stats.next_rtt = next_route_stats.rtt;
             client->client_stats.next_jitter = next_route_stats.jitter;
             client->client_stats.next_packet_loss = next_route_stats.packet_loss;
-            {
-                next_platform_mutex_guard( &client->next_bandwidth_mutex );
-                client->client_stats.next_kbps_up = client->next_bandwidth_usage_kbps_up;
-                client->client_stats.next_kbps_down = client->next_bandwidth_usage_kbps_down;
-            }
         }
         else
         {
             client->client_stats.next_rtt = 0.0f;
             client->client_stats.next_jitter = 0.0f;
             client->client_stats.next_packet_loss = 0.0f;
-            client->client_stats.next_kbps_up = 0;
-            client->client_stats.next_kbps_down = 0;
         }
 
         client->client_stats.direct_rtt = direct_route_stats.rtt;
@@ -1848,6 +1876,14 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         client->client_stats.next_rtt += next_fake_next_rtt;
         client->client_stats.next_packet_loss += next_fake_next_packet_loss;
  #endif // #if NEXT_DEVELOPMENT
+
+        client->client_stats.delta_time_min = client->delta_time_min;
+        client->client_stats.delta_time_max = client->delta_time_max;
+        client->client_stats.delta_time_avg = client->delta_time_avg;
+
+        client->client_stats.game_rtt = client->game_rtt_max;
+        client->client_stats.game_jitter = client->game_jitter_max;
+        client->client_stats.game_packet_loss = client->game_packet_loss_max;
 
         if ( !fallback_to_direct )
         {
@@ -1880,32 +1916,21 @@ void next_client_internal_update_stats( next_client_internal_t * client )
 
     if ( client->last_stats_report_time + 1.0 < current_time && client->client_stats.direct_rtt > 0.0f )
     {
+        // send stats packet to server
+
         NextClientStatsPacket packet;
 
-        packet.reported = client->reported;
-        packet.fallback_to_direct = client->fallback_to_direct;
-        packet.multipath = client->multipath;
+        packet.reported = client->client_stats.reported;
+        packet.fallback_to_direct = client->client_stats.fallback_to_direct;
+        packet.flags = client->client_stats.flags;
+        packet.multipath = client->client_stats.multipath;
         packet.platform_id = client->client_stats.platform_id;
         packet.connection_type = client->client_stats.connection_type;
 
         {
-            next_platform_mutex_guard( &client->direct_bandwidth_mutex );
-            packet.direct_kbps_up = (int) ceil( client->direct_bandwidth_usage_kbps_up );
-            packet.direct_kbps_down = (int) ceil( client->direct_bandwidth_usage_kbps_down );
-        }
-
-        {
-            next_platform_mutex_guard( &client->next_bandwidth_mutex );
-            packet.next_bandwidth_over_limit = client->next_bandwidth_over_limit;
-            packet.next_kbps_up = (int) ceil( client->next_bandwidth_usage_kbps_up );
-            packet.next_kbps_down = (int) ceil( client->next_bandwidth_usage_kbps_down );
-            client->next_bandwidth_over_limit = false;
-        }
-
-        if ( !client->client_stats.next )
-        {
-            packet.next_kbps_up = 0;
-            packet.next_kbps_down = 0;
+            next_platform_mutex_guard( &client->bandwidth_mutex );
+            packet.bandwidth_kbps_up = (int) ceil( client->client_stats.bandwidth_kbps_up );
+            packet.bandwidth_kbps_down = (int) ceil( client->client_stats.bandwidth_kbps_down );
         }
 
         packet.next = client->client_stats.next;
@@ -1918,7 +1943,7 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.direct_packet_loss = client->client_stats.direct_packet_loss;
         packet.direct_max_packet_loss_seen = client->client_stats.direct_max_packet_loss_seen;
 
-        if ( !client->fallback_to_direct && client->has_client_ping_stats )
+        if ( !client->client_stats.fallback_to_direct && client->has_client_ping_stats )
         {
             packet.num_client_relays = client->num_client_relays;
 
@@ -1938,6 +1963,19 @@ void next_client_internal_update_stats( next_client_internal_t * client )
         packet.jitter_server_to_client = client->client_stats.jitter_server_to_client;
 
         packet.client_relay_request_id = client->client_relay_update_packet.request_id;
+
+        next_value_tracker_calculate( &client->delta_time_tracker, &client->delta_time_min, &client->delta_time_max, &client->delta_time_avg );
+        next_value_tracker_calculate( &client->game_rtt_tracker, &client->game_rtt_min, &client->game_rtt_max, &client->game_rtt_avg );
+        next_value_tracker_calculate( &client->game_jitter_tracker, &client->game_jitter_min, &client->game_jitter_max, &client->game_jitter_avg );
+        next_value_tracker_calculate( &client->game_packet_loss_tracker, &client->game_packet_loss_min, &client->game_packet_loss_max, &client->game_packet_loss_avg );
+
+        packet.delta_time_min = client->delta_time_min;
+        packet.delta_time_max = client->delta_time_max;
+        packet.delta_time_avg = client->delta_time_avg;
+
+        packet.game_rtt = client->game_rtt_max;
+        packet.game_jitter = client->game_jitter_max;
+        packet.game_packet_loss = client->game_packet_loss_max;
 
         if ( next_client_internal_send_packet_to_server( client, NEXT_CLIENT_STATS_PACKET, &packet ) != NEXT_OK )
         {
@@ -2301,6 +2339,7 @@ void next_client_internal_update_upgrade_response( next_client_internal_t * clie
             next_platform_mutex_guard( &client->route_manager_mutex );
             next_route_manager_fallback_to_direct( client->route_manager, NEXT_FLAGS_UPGRADE_RESPONSE_TIMED_OUT );
         }
+
         client->fallback_to_direct = true;
     }
 }
@@ -2380,6 +2419,11 @@ struct next_client_t
     uint8_t current_magic[8];
     uint16_t bound_port;
     uint64_t session_id;
+    uint64_t server_id;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
+    double previous_update_time;
     next_address_t server_address;
     next_address_t client_external_address;
     next_client_internal_t * internal;
@@ -2392,10 +2436,8 @@ struct next_client_t
 
     NEXT_DECLARE_SENTINEL(2)
 
-    next_bandwidth_limiter_t direct_send_bandwidth;
-    next_bandwidth_limiter_t direct_receive_bandwidth;
-    next_bandwidth_limiter_t next_send_bandwidth;
-    next_bandwidth_limiter_t next_receive_bandwidth;
+    next_bandwidth_limiter_t send_bandwidth;
+    next_bandwidth_limiter_t receive_bandwidth;
 
     NEXT_DECLARE_SENTINEL(3)
 
@@ -2465,10 +2507,8 @@ next_client_t * next_client_create( void * context, const char * bind_address, v
 
     next_platform_client_thread_priority( client->thread );
 
-    next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
-    next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );
-    next_bandwidth_limiter_reset( &client->next_send_bandwidth );
-    next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
+    next_bandwidth_limiter_reset( &client->send_bandwidth );
+    next_bandwidth_limiter_reset( &client->receive_bandwidth );
 
     next_client_verify_sentinels( client );
 
@@ -2552,6 +2592,7 @@ void next_client_open_session( next_client_t * client, const char * server_addre
 
     client->state = NEXT_CLIENT_STATE_OPEN;
     client->server_address = server_address;
+    client->server_id = next_hash_string( server_address_string );
     client->open_session_sequence++;
 }
 
@@ -2599,12 +2640,13 @@ void next_client_close_session( next_client_t * client )
     memset( &client->client_stats, 0, sizeof(next_client_stats_t ) );
     memset( &client->server_address, 0, sizeof(next_address_t) );
     memset( &client->client_external_address, 0, sizeof(next_address_t) );
-    next_bandwidth_limiter_reset( &client->direct_send_bandwidth );
-    next_bandwidth_limiter_reset( &client->direct_receive_bandwidth );
-    next_bandwidth_limiter_reset( &client->next_send_bandwidth );
-    next_bandwidth_limiter_reset( &client->next_receive_bandwidth );
+    next_bandwidth_limiter_reset( &client->send_bandwidth );
+    next_bandwidth_limiter_reset( &client->receive_bandwidth );
     client->state = NEXT_CLIENT_STATE_CLOSED;
     memset( client->current_magic, 0, sizeof(client->current_magic) );
+    client->game_rtt = 0.0f;
+    client->game_jitter = 0.0f;
+    client->game_packet_loss = 0.0f;    
 }
 
 void next_client_update( next_client_t * client )
@@ -2614,6 +2656,33 @@ void next_client_update( next_client_t * client )
 #if NEXT_SPIKE_TRACKING
     next_printf( NEXT_LOG_LEVEL_SPAM, "next_client_update" );
 #endif // #if NEXT_SPIKE_TRACKING
+
+    next_client_command_update_t * command = (next_client_command_update_t*) next_malloc( client->context, sizeof( next_client_command_update_t ) );
+    if ( command )
+    {
+        command->type = NEXT_CLIENT_COMMAND_UPDATE;
+        if ( client->previous_update_time != 0.0 )
+        {
+            double current_time = next_platform_time();
+            command->delta_time = current_time - client->previous_update_time;
+            client->previous_update_time = current_time;
+        }
+        else
+        {   
+            command->delta_time = 0.0f;
+            client->previous_update_time = next_platform_time();
+        }
+        command->game_rtt = client->game_rtt;
+        command->game_jitter = client->game_jitter;
+        command->game_packet_loss = client->game_packet_loss;
+        {
+#if NEXT_SPIKE_TRACKING
+            next_printf( NEXT_LOG_LEVEL_SPAM, "client queues up NEXT_SERVER_COMMAND_UPDATE from %s:%d", __FILE__, __LINE__ );
+#endif // #if NEXT_SPIKE_TRACKING
+            next_platform_mutex_guard( &client->internal->command_mutex );
+            next_queue_push( client->internal->command_queue, command );
+        }
+    }
 
     while ( true )
     {
@@ -2643,7 +2712,6 @@ void next_client_update( next_client_t * client )
                 next_printf( NEXT_LOG_LEVEL_SPAM, "client calling packet received callback: from = %s, payload = %d bytes", next_address_to_string( &client->server_address, address_buffer ), packet_received->payload_bytes );
 #endif // #if NEXT_SPIKE_TRACKING
 
-                const bool direct = packet_received->direct;
                 const bool already_received = packet_received->already_received;
 
                 if ( !already_received )
@@ -2653,33 +2721,12 @@ void next_client_update( next_client_t * client )
 
                 const int wire_packet_bits = next_wire_packet_bits( packet_received->payload_bytes );
 
-                if ( direct )
+                next_bandwidth_limiter_add_packet( &client->receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
+
+                double bandwidth_kbps_down = next_bandwidth_limiter_usage_kbps( &client->receive_bandwidth );
                 {
-                    next_bandwidth_limiter_add_packet( &client->direct_receive_bandwidth, next_platform_time(), 0, wire_packet_bits );
-
-                    double direct_kbps_down = next_bandwidth_limiter_usage_kbps( &client->direct_receive_bandwidth );
-
-                    {
-                        next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
-                        client->internal->direct_bandwidth_usage_kbps_down = direct_kbps_down;
-                    }
-                }
-                else
-                {
-                    int envelope_kbps_down;
-                    {
-                        next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
-                        envelope_kbps_down = client->internal->next_bandwidth_envelope_kbps_down;
-                    }
-
-                    next_bandwidth_limiter_add_packet( &client->next_receive_bandwidth, next_platform_time(), envelope_kbps_down, wire_packet_bits );
-
-                    double next_kbps_down = next_bandwidth_limiter_usage_kbps( &client->next_receive_bandwidth );
-
-                    {
-                        next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
-                        client->internal->next_bandwidth_usage_kbps_down = next_kbps_down;
-                    }
+                    next_platform_mutex_guard( &client->internal->bandwidth_mutex );
+                    client->internal->bandwidth_kbps_down = bandwidth_kbps_down;
                 }
             }
             break;
@@ -2694,7 +2741,7 @@ void next_client_update( next_client_t * client )
                 client->session_id = upgraded->session_id;
                 client->client_external_address = upgraded->client_external_address;
                 memcpy( client->current_magic, upgraded->current_magic, 8 );
-                next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %" PRIx64, client->session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "client upgraded to session %016" PRIx64, client->session_id );
             }
             break;
 
@@ -2795,52 +2842,22 @@ void next_client_send_packet( next_client_t * client, const uint8_t * packet_dat
             send_direct = true;
         }
 
-        // track direct send bandwidth
+        // track send bandwidth
 
         const int wire_packet_bits = next_wire_packet_bits( packet_bytes );
 
-        next_bandwidth_limiter_add_packet( &client->direct_send_bandwidth, next_platform_time(), 0, wire_packet_bits );
+        next_bandwidth_limiter_add_packet( &client->send_bandwidth, next_platform_time(), 0, wire_packet_bits );
 
-        double direct_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->direct_send_bandwidth );
-
+        double bandwidth_kbps_up = next_bandwidth_limiter_usage_kbps( &client->send_bandwidth );
         {
-            next_platform_mutex_guard( &client->internal->direct_bandwidth_mutex );
-            client->internal->direct_bandwidth_usage_kbps_up = direct_usage_kbps_up;
+            next_platform_mutex_guard( &client->internal->bandwidth_mutex );
+            client->internal->bandwidth_kbps_up = bandwidth_kbps_up;
         }
 
-        // track next send bandwidth and don't send over network next if we're over the bandwidth budget
+        // send over network next
 
         if ( send_over_network_next )
         {
-            int next_envelope_kbps_up;
-            {
-                next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
-                next_envelope_kbps_up = client->internal->next_bandwidth_envelope_kbps_up;
-            }
-
-            bool over_budget = next_bandwidth_limiter_add_packet( &client->next_send_bandwidth, next_platform_time(), next_envelope_kbps_up, wire_packet_bits );
-
-            double next_usage_kbps_up = next_bandwidth_limiter_usage_kbps( &client->next_send_bandwidth );
-
-            {
-                next_platform_mutex_guard( &client->internal->next_bandwidth_mutex );
-                client->internal->next_bandwidth_usage_kbps_up = next_usage_kbps_up;
-                if ( over_budget )
-                    client->internal->next_bandwidth_over_limit = true;
-            }
-
-            if ( over_budget )
-            {
-                next_printf( NEXT_LOG_LEVEL_WARN, "client exceeded bandwidth budget (%d kbps)", next_envelope_kbps_up );
-                send_over_network_next = false;
-                send_direct = true;
-            }
-        }
-
-        if ( send_over_network_next )
-        {
-            // send over network next
-
             int next_packet_bytes = 0;
             next_address_t next_to;
             uint8_t next_packet_data[NEXT_MAX_PACKET_BYTES];
@@ -3029,6 +3046,13 @@ uint64_t next_client_session_id( next_client_t * client )
     return client->session_id;
 }
 
+uint64_t next_client_server_id( next_client_t * client )
+{
+    next_client_verify_sentinels( client );
+
+    return client->server_id;
+}
+
 const next_client_stats_t * next_client_stats( next_client_t * client )
 {
     next_client_verify_sentinels( client );
@@ -3050,4 +3074,10 @@ void next_client_counters( next_client_t * client, uint64_t * counters )
         counters[i] += client->internal->counters[i];
 }
 
-// ---------------------------------------------------------------
+void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss )
+{
+    next_client_verify_sentinels( client );
+    client->game_rtt = game_rtt;
+    client->game_jitter = game_jitter;
+    client->game_packet_loss = game_packet_loss;
+}

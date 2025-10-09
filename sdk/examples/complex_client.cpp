@@ -238,7 +238,7 @@ void print_client_stats( next_client_t * client )
             break;
 
         case NEXT_PLATFORM_SWITCH:
-            platform = "nintendo switch";
+            platform = "switch";
             break;
 
         case NEXT_PLATFORM_PS4:
@@ -258,7 +258,7 @@ void print_client_stats( next_client_t * client )
             break;
 
         case NEXT_PLATFORM_XBOX_SERIES_X:
-            platform = "xbox series x";
+            platform = "series x";
             break;
 
         default:
@@ -333,8 +333,6 @@ void print_client_stats( next_client_t * client )
         printf( "next rtt = %.2fms\n", stats->next_rtt );
         printf( "next jitter = %.2fms\n", stats->next_jitter );
         printf( "next packet loss = %.1f%%\n", stats->next_packet_loss );
-        printf( "next bandwidth up = %.1fkbps\n", stats->next_kbps_up );
-        printf( "next bandwidth down = %.1fkbps\n", stats->next_kbps_down );
     }
 
     if ( stats->upgraded && !stats->fallback_to_direct )

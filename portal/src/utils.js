@@ -42,11 +42,11 @@ function getPlatformName(platformId) {
   case 1: return "Windows"
   case 2: return "Mac"
   case 3: return "Linux"
-  case 4: return "Nintendo Switch"
+  case 4: return "Switch"
   case 5: return "PS4"
   case 6: return "iOS"
   case 7: return "Xbox One"
-  case 8: return "Xbox Series X"
+  case 8: return "Series X"
   case 9: return "PS5"
   default:
     return "Unknown"
@@ -57,9 +57,21 @@ function getConnectionName(connectionType) {
   switch(connectionType) {
   case 1: return "Wired"
   case 2: return "Wi-Fi"
-  case 3: return "Cellular"
+  case 3: return "Cell"
   default:
     return "Unknown"
+  }
+}
+
+function getCountryName(countryCode) {
+  if (countryCode=="" || countryCode==null) {
+    return "Unknown"
+  }
+  try {
+    const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
+    return regionNames.of(countryCode);
+  } catch (error) {
+    return countryCode
   }
 }
 
@@ -179,4 +191,4 @@ function custom_graph(config) {
   return opts
 }
 
-export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getAcceleratedPercent, custom_graph};
+export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getCountryName, getAcceleratedPercent, custom_graph};

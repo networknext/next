@@ -117,6 +117,7 @@ func OptimizeThread() {
 
 		numRelays := len(activeRelays)
 		relayIds := make([]uint64, numRelays)
+		relayPrice := make([]uint8, numRelays)
 		relayDatacenterIds := make([]uint64, numRelays)
 		for i := 0; i < numRelays; i++ {
 			relayIds[i] = activeRelays[i].Id
@@ -139,7 +140,7 @@ func OptimizeThread() {
 			destRelays[i] = true
 		}
 
-		core.Optimize2(numRelays, numSegments, costMatrix, relayDatacenterIds, destRelays)
+		core.Optimize2(numRelays, numSegments, costMatrix, relayPrice, relayDatacenterIds, destRelays)
 
 		backend.mutex.Unlock()
 
@@ -456,6 +457,8 @@ func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
 
 	costs := backend.relayManager.GetCosts(currentTime, relayIds, 100.0, 0.1)
 
+	relayPrice := make([]byte, len(activeRelays))
+
 	costMatrix := &common.CostMatrix{
 		Version:            common.CostMatrixVersion_Write,
 		RelayIds:           relayIds,
@@ -466,6 +469,7 @@ func CostMatrixHandler(writer http.ResponseWriter, request *http.Request) {
 		RelayDatacenterIds: relayDatacenterIds,
 		DestRelays:         destRelays,
 		Costs:              costs,
+		RelayPrice:         relayPrice,
 	}
 
 	costMatrixData, err := costMatrix.Write()
@@ -748,14 +752,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 		fmt.Printf("client ping timed out\n")
 	}
 
-	if requestPacket.ClientNextBandwidthOverLimit {
-		fmt.Printf("client next bandwidth over limit\n")
-	}
-
-	if requestPacket.ServerNextBandwidthOverLimit {
-		fmt.Printf("server next bandwidth over limit\n")
-	}
-
 	if requestPacket.PacketsLostClientToServer > 0 {
 		fmt.Printf("%d client to server packets lost\n", requestPacket.PacketsLostClientToServer)
 	}
@@ -765,17 +761,11 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 	}
 
 	if backend.mode == BACKEND_MODE_BANDWIDTH {
-		if requestPacket.DirectKbpsUp > 0 {
-			fmt.Printf("%d direct kbps up\n", requestPacket.DirectKbpsUp)
+		if requestPacket.BandwidthKbpsUp > 0 {
+			fmt.Printf("%d bandwidth kbps up\n", requestPacket.BandwidthKbpsUp)
 		}
-		if requestPacket.DirectKbpsDown > 0 {
-			fmt.Printf("%d direct kbps down\n", requestPacket.DirectKbpsDown)
-		}
-		if requestPacket.NextKbpsUp > 0 {
-			fmt.Printf("%d next kbps up\n", requestPacket.NextKbpsUp)
-		}
-		if requestPacket.NextKbpsDown > 0 {
-			fmt.Printf("%d next kbps down\n", requestPacket.NextKbpsDown)
+		if requestPacket.BandwidthKbpsDown > 0 {
+			fmt.Printf("%d bandwidth kbps down\n", requestPacket.BandwidthKbpsDown)
 		}
 	}
 

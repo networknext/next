@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                               "1.2.5"
+    #define NEXT_VERSION_FULL                              "1.2.11"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                                5
+    #define NEXT_VERSION_PATCH_INT                               11
 
 #else // !NEXT_DEVELOPMENT
 
@@ -347,13 +347,9 @@ struct next_client_stats_t
     float direct_jitter;
     float direct_packet_loss;
     float direct_max_packet_loss_seen;
-    float direct_kbps_up;
-    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
-    float next_kbps_up;
-    float next_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -362,6 +358,15 @@ struct next_client_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
+    float game_rtt;
+    float game_jitter;
+    float game_packet_loss;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
+    uint32_t flags;
 };
 
 // -----------------------------------------
@@ -407,6 +412,8 @@ NEXT_EXPORT_FUNC bool next_client_ready( struct next_client_t * client );
 
 NEXT_EXPORT_FUNC bool next_client_fallback_to_direct( struct next_client_t * client );
 
+NEXT_EXPORT_FUNC void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss );
+
 // -----------------------------------------
 
 struct next_server_stats_t
@@ -423,13 +430,9 @@ struct next_server_stats_t
     float direct_jitter;
     float direct_packet_loss;
     float direct_max_packet_loss_seen;
-    float direct_kbps_up;
-    float direct_kbps_down;
     float next_rtt;
     float next_jitter;
     float next_packet_loss;
-    float next_kbps_up;
-    float next_kbps_down;
     uint64_t packets_sent_client_to_server;
     uint64_t packets_sent_server_to_client;
     uint64_t packets_lost_client_to_server;
@@ -438,6 +441,12 @@ struct next_server_stats_t
     uint64_t packets_out_of_order_server_to_client;
     float jitter_client_to_server;
     float jitter_server_to_client;
+    float delta_time_min;
+    float delta_time_max;
+    float delta_time_avg;
+    float bandwidth_kbps_up;
+    float bandwidth_kbps_down;
+    uint32_t flags;
 };
 
 #define NEXT_SERVER_STATE_DIRECT_ONLY               0

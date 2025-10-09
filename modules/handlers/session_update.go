@@ -67,9 +67,8 @@ type SessionUpdateState struct {
 	// error flags for this update
 	Error uint64
 
-	// lat/long if we looked it up this update
-	Latitude  float32
-	Longitude float32
+	// ip2location function to get ISP and country from IP
+	GetISPAndCountry func(ip net.IP) (string, string)
 
 	// track start time of handler
 	StartTimestamp     uint64
@@ -101,7 +100,6 @@ type SessionUpdateState struct {
 	SentAnalyticsServerRelayPingMessage         bool
 	SentAnalyticsSessionUpdateMessage           bool
 	SentAnalyticsSessionSummaryMessage          bool
-	LocatedIP                                   bool
 	WroteResponsePacket                         bool
 	LongSessionUpdate                           bool
 
@@ -168,7 +166,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.SliceNumber >= 1 {
-		score := core.GetSessionScore(state.Request.Next, int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
+		score := core.GetSessionScore(int32(state.Request.DirectRTT), int32(state.Request.NextRTT))
 		if uint32(score) <= state.Input.BestScore {
 			state.Input.BestScore = uint32(score)
 			state.Input.BestDirectRTT = uint32(state.Request.DirectRTT)
@@ -196,7 +194,7 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 			if datacenter != nil {
 				core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
 			} else {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)				
+				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
 			}
 			state.Error |= constants.SessionError_FallbackToDirect
 			state.FallbackToDirect = true
@@ -948,8 +946,6 @@ func SessionUpdate_Post(state *SessionUpdateState) {
 
 	if state.Request.SliceNumber == 0 {
 		core.Debug("first slice always goes direct")
-		state.Output.Latitude = state.Latitude
-		state.Output.Longitude = state.Longitude
 	}
 
 	/*
@@ -1083,6 +1079,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.ClientAddress = core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ServerAddress = state.Request.ServerAddress
+	message.ServerId = common.HashString(state.Request.ServerAddress.String())
+	message.MatchId = state.Request.MatchId
 
 	message.SDKVersion_Major = byte(state.Request.Version.Major)
 	message.SDKVersion_Minor = byte(state.Request.Version.Minor)
@@ -1093,8 +1091,8 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.StartTime = state.Input.StartTimestamp
 	message.BuyerId = state.Request.BuyerId
 	message.DatacenterId = state.Request.DatacenterId
-	message.Latitude = state.Input.Latitude
-	message.Longitude = state.Input.Longitude
+	message.Latitude = state.Request.Latitude
+	message.Longitude = state.Request.Longitude
 	message.SliceNumber = state.Input.SliceNumber - 1 // IMPORTANT: Line it up with data coming from the SDK
 	message.SessionEvents = state.Request.SessionEvents
 	message.InternalEvents = state.Request.InternalEvents
@@ -1104,8 +1102,9 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	message.DirectKbpsUp = state.Request.DirectKbpsUp
-	message.DirectKbpsDown = state.Request.DirectKbpsDown
+
+	message.BandwidthKbpsUp = state.Request.BandwidthKbpsUp
+	message.BandwidthKbpsDown = state.Request.BandwidthKbpsDown
 
 	message.Next = state.Request.Next
 
@@ -1113,8 +1112,6 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
-		message.NextKbpsUp = state.Request.NextKbpsUp
-		message.NextKbpsDown = state.Request.NextKbpsDown
 		message.NextPredictedRTT = uint32(state.Input.RouteCost)
 		message.NextNumRouteRelays = uint32(state.Input.RouteNumRelays)
 		for i := 0; i < int(message.NextNumRouteRelays); i++ {
@@ -1125,6 +1122,14 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.RealJitter = state.RealJitter
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealOutOfOrder = state.RealOutOfOrder
+
+	message.DeltaTimeMin = state.Request.DeltaTimeMin
+	message.DeltaTimeMax = state.Request.DeltaTimeMax
+	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
+
+	message.GameRTT = state.Request.GameRTT
+	message.GameJitter = state.Request.GameJitter
+	message.GamePacketLoss = state.Request.GamePacketLoss
 
 	message.NumClientRelays = uint32(state.Request.NumClientRelays)
 	for i := 0; i < int(message.NumClientRelays); i++ {
@@ -1224,8 +1229,8 @@ func sendAnalyticsClientRelayPingMessages(state *SessionUpdateState) {
 		message.BuyerId = int64(state.Request.BuyerId)
 		message.SessionId = int64(state.Output.SessionId)
 		message.UserHash = int64(state.Request.UserHash)
-		message.Latitude = state.Output.Latitude
-		message.Longitude = state.Output.Longitude
+		message.Latitude = state.Request.Latitude
+		message.Longitude = state.Request.Longitude
 		anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
 		message.ClientAddress = anonymizedClientAddress.String()
 		message.ConnectionType = int32(state.Request.ConnectionType)
@@ -1282,6 +1287,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 
 	message.Timestamp = int64(state.StartTimestampNano / 1000) // nano -> micro
 	message.SessionId = int64(state.Request.SessionId)
+	message.ServerId = int64(common.HashString(state.Request.ServerAddress.String()))
 	message.SliceNumber = int32(state.Request.SliceNumber - 1) // IMPORTANT: Line it up with data coming from the SDK
 	message.RealPacketLoss = state.RealPacketLoss
 	message.RealJitter = state.RealJitter
@@ -1291,8 +1297,14 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.DirectRTT = state.Request.DirectRTT
 	message.DirectJitter = state.Request.DirectJitter
 	message.DirectPacketLoss = state.Request.DirectPacketLoss
-	message.DirectKbpsUp = int32(state.Request.DirectKbpsUp)
-	message.DirectKbpsDown = int32(state.Request.DirectKbpsDown)
+	message.BandwidthKbpsUp = int32(state.Request.BandwidthKbpsUp)
+	message.BandwidthKbpsDown = int32(state.Request.BandwidthKbpsDown)
+	message.DeltaTimeMin = state.Request.DeltaTimeMin
+	message.DeltaTimeMax = state.Request.DeltaTimeMax
+	message.DeltaTimeAvg = state.Request.DeltaTimeAvg
+	message.GameRTT = state.Request.GameRTT
+	message.GameJitter = state.Request.GameJitter
+	message.GamePacketLoss = state.Request.GamePacketLoss
 
 	// next only
 
@@ -1301,8 +1313,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 		message.NextRTT = state.Request.NextRTT
 		message.NextJitter = state.Request.NextJitter
 		message.NextPacketLoss = state.Request.NextPacketLoss
-		message.NextKbpsUp = int32(state.Request.NextKbpsUp)
-		message.NextKbpsDown = int32(state.Request.NextKbpsDown)
 		message.NextPredictedRTT = float32(state.Input.RouteCost)
 		message.NextRouteRelays = make([]int64, len(state.Input.RouteRelayIds))
 		for i := range state.Input.RouteRelayIds {
@@ -1318,8 +1328,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
 	message.ForceNext = state.Input.RouteState.ForcedNext
 	message.LongSessionUpdate = state.LongSessionUpdate
-	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
-	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
 	message.Veto = state.Input.RouteState.Veto
 	message.Disabled = state.Input.RouteState.Disabled
 	message.NotSelected = state.Input.RouteState.NotSelected
@@ -1328,6 +1336,7 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+	message.Flags = int64(state.Request.Flags)
 
 	// send message
 
@@ -1349,9 +1358,10 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.SessionId = int64(state.Request.SessionId)
 	message.DatacenterId = int64(state.Request.DatacenterId)
 	message.BuyerId = int64(state.Request.BuyerId)
+	message.MatchId = int64(state.Request.MatchId)
 	message.UserHash = int64(state.Request.UserHash)
-	message.Latitude = state.Input.Latitude
-	message.Longitude = state.Input.Longitude
+	message.Latitude = state.Request.Latitude
+	message.Longitude = state.Request.Longitude
 	anonymizedClientAddress := core.AnonymizeAddress(state.Request.ClientAddress)
 	message.ClientAddress = anonymizedClientAddress.String()
 	message.ServerAddress = state.Request.ServerAddress.String()
@@ -1372,6 +1382,14 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DurationOnNext = int32(state.Input.DurationOnNext)           // seconds
 	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
 	message.Error = int64(state.Input.Error)
+	
+	// get isp and country from client IP address via ip2location db (optional)
+
+	if state.GetISPAndCountry != nil {
+		isp, country := state.GetISPAndCountry(state.Request.ClientAddress.IP)
+		message.ISP = isp
+		message.Country = country
+	}
 
 	// flags
 
@@ -1380,8 +1398,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.PacketLossReduction = state.Input.RouteState.ReducePacketLoss
 	message.ForceNext = state.Input.RouteState.ForcedNext
 	message.LongSessionUpdate = state.LongSessionUpdate
-	message.ClientNextBandwidthOverLimit = state.Request.ClientNextBandwidthOverLimit
-	message.ServerNextBandwidthOverLimit = state.Request.ServerNextBandwidthOverLimit
 	message.Veto = state.Input.RouteState.Veto
 	message.Disabled = state.Input.RouteState.Disabled
 	message.NotSelected = state.Input.RouteState.NotSelected
@@ -1390,6 +1406,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+	message.Flags = int64(state.Request.Flags)
 
 	// send it
 

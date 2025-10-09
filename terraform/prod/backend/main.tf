@@ -16,8 +16,8 @@ locals {
   google_region               = "us-central1"
   google_zone                 = "us-central1-a"
   google_zones                = ["us-central1-a", "us-central1-b", "us-central1-c"]   # IMPORTANT: c3 family is only available in these zones, not us-central1-f
-  google_artifacts_bucket     = "gs://next_network_next_backend_artifacts"
-  google_database_bucket      = "gs://next_network_next_database_files"
+  google_artifacts_bucket     = "gs://sloclap_network_next_backend_artifacts"
+  google_database_bucket      = "gs://sloclap_network_next_database_files"
 
   cloudflare_api_token        = "~/secrets/terraform-cloudflare.txt"
   cloudflare_zone_id          = "eba5d882ea2aa23f92dfb50fbf7e3cf4"
@@ -31,7 +31,7 @@ locals {
   raspberry_buyer_public_key  = "gtdzp3hCfJ9Y+6OOpsWoMChMXhXGDRnY7vkFdHwNqVW0bdp6jjTx6Q=="
   raspberry_buyer_private_key = "gtdzp3hCfJ+Xl4L4PsLbaBlzLeIogMkmzArY3r19jSenj1t4TAQKGlj7o46mxagwKExeFcYNGdju+QV0fA2pVbRt2nqONPHp"
 
-  ip2location_bucket_name     = "next_network_next_prod"
+  ip2location_bucket_name     = "sloclap_network_next_prod"
 
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
 
@@ -44,19 +44,19 @@ locals {
   disable_raspberry           = true
   disable_ip2location         = false
 
-  google_project_id          = file("~/secrets/prod-project-id.txt")
-  google_project_number      = file("~/secrets/prod-project-number.txt")
-  google_service_account     = file("~/secrets/prod-runtime-service-account.txt")
+  google_project_id           = file("~/secrets/prod-project-id.txt")
+  google_project_number       = file("~/secrets/prod-project-number.txt")
+  google_service_account      = file("~/secrets/prod-runtime-service-account.txt")
 
-  maxmind_license_key        = file("~/secrets/maxmind.txt")
+  maxmind_license_key         = file("~/secrets/maxmind.txt")
 
-  relay_backend_private_key  = file("~/secrets/prod-relay-backend-private-key.txt")
+  relay_backend_private_key   = file("~/secrets/prod-relay-backend-private-key.txt")
 
-  server_backend_private_key = file("~/secrets/prod-server-backend-private-key.txt")
+  server_backend_private_key  = file("~/secrets/prod-server-backend-private-key.txt")
 
-  api_private_key            = file("~/secrets/prod-api-private-key.txt")
+  api_private_key             = file("~/secrets/prod-api-private-key.txt")
 
-  ping_key                   = file("~/secrets/prod-ping-key.txt")
+  ping_key                    = file("~/secrets/prod-ping-key.txt")
 }
 
 # ----------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "production"
   }
 }
@@ -477,6 +477,9 @@ resource "google_bigquery_table" "table" {
     type = "DAY"
     field = "timestamp"
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # ----------------------------------------------------------------------------------------
@@ -574,7 +577,7 @@ module "magic_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                   = local.disable_backend ? 0 : 1
   max_size                   = local.disable_backend ? 0 : 16
-  target_cpu                 = 60
+  target_cpu                 = 70
 }
 
 output "magic_backend_address" {
@@ -621,7 +624,7 @@ module "relay_gateway" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  target_size              = local.disable_backend ? 0 : 3
+  target_size              = local.disable_backend ? 0 : 1
   domain                   = "relay.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.relay.id
   
@@ -684,7 +687,7 @@ module "relay_backend" {
   tags                       = ["allow-ssh", "allow-health-checks", "allow-http"]
   initial_delay              = 500
   connection_drain           = 0
-  target_size                = local.disable_backend ? 0 : 2
+  target_size                = local.disable_backend ? 0 : 1
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 
@@ -746,7 +749,7 @@ module "api" {
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
   min_size                 = local.disable_backend ? 0 : 1
   max_size                 = local.disable_backend ? 0 : 4
-  target_cpu               = 60
+  target_cpu               = 70
   domain                   = "api.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.api.id
 
@@ -774,14 +777,14 @@ module "autodetect" {
 
   startup_script = <<-EOF1
     #!/bin/bash
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
+    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
     gsutil cp ${local.google_artifacts_bucket}/${var.tag}/bootstrap.sh bootstrap.sh
     chmod +x bootstrap.sh
     ./bootstrap.sh -t ${var.tag} -b ${local.google_artifacts_bucket} -a autodetect.tar.gz
     cat <<EOF > /app/app.env
     ENV=prod
     EOF
-    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt update -y
-    sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt install whois -y
     systemctl start app.service
   EOF1
 
@@ -795,9 +798,9 @@ module "autodetect" {
   default_subnetwork       = google_compute_subnetwork.production.id
   service_account          = local.google_service_account
   tags                     = ["allow-ssh", "allow-health-checks", "allow-http"]
-  min_size                 = local.disable_backend ? 0 : 2
+  min_size                 = local.disable_backend ? 0 : 1
   max_size                 = local.disable_backend ? 0 : 4
-  target_cpu               = 60
+  target_cpu               = 70
   domain                   = "autodetect.${local.cloudflare_domain}"
   certificate              = google_compute_managed_ssl_certificate.autodetect.id
 }
@@ -937,9 +940,9 @@ module "server_backend" {
   load_balancer_network_mask = google_compute_subnetwork.internal_http_load_balancer.ip_cidr_range
   service_account            = local.google_service_account
   tags                       = ["allow-ssh", "allow-health-checks", "allow-udp-40000"]
-  min_size                   = local.disable_backend ? 0 : 3
+  min_size                   = local.disable_backend ? 0 : 1
   max_size                   = local.disable_backend ? 0 : 6
-  target_cpu                 = 50
+  target_cpu                 = 70
 
   depends_on = [
     google_pubsub_topic.pubsub_topic, 

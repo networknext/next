@@ -9,7 +9,7 @@ locals {
   ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-140"
-  relay_artifacts_bucket      = "next_network_next_relay_artifacts"
+  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
   relay_backend_url           = "relay.virtualgo.net"
 
@@ -29,6 +29,72 @@ locals {
     "google.saopaulo.3",
   ]
 
+  rematch_buyer_public_key    = "+FJSkN2kAua9KdP3/83gSkmIXARxcoB1vFKA6JAXsWf/0Syno+6T1A=="
+
+  rematch_datacenters = [
+
+    "latitude.saopaulo",
+    "google.saopaulo.1",
+    "google.saopaulo.2",
+    "google.saopaulo.3",
+
+    "i3d.dubai",
+    "google.doha.1",
+    "google.doha.2",
+    "google.doha.3",
+
+    "datapacket.istanbul",
+    "gcore.istanbul",
+
+    "velia.frankfurt",
+    "uk2group.frankfurt",
+    "gcore.frankfurt",
+    "i3d.frankfurt",
+    "datapacket.frankfurt",
+    "ovh.frankfurt",
+    "google.frankfurt.1",
+    "google.frankfurt.2",
+    "google.frankfurt.3",
+
+    "i3d.losangeles",
+    "datapacket.losangeles",
+    "hivelocity.losangeles",
+    "google.losangeles.1",
+    "google.losangeles.2",
+    "google.losangeles.3",
+
+    "uk2group.dallas",
+    "serversdotcom.dallas",
+    "google.dallas.1",
+    "google.dallas.2",
+    "google.dallas.3",
+
+    "latitude.ashburn",
+    "i3d.ashburn",
+    "gcore.ashburn",
+    "ovh.ashburn",
+    "datapacket.ashburn",
+    "google.virginia.1",
+    "google.virginia.2",
+    "google.virginia.3",
+
+    "i3d.singapore",
+
+    "google.tokyo.1",
+    "google.tokyo.2",
+    "google.tokyo.3",
+
+    "serversaustralia.sydney",
+    "google.sydney.1",
+    "google.sydney.2",
+    "google.sydney.3",
+
+    "gcore.johannesburg",
+    "google.johannesburg.1",
+    "google.johannesburg.2",
+    "google.johannesburg.3",
+  ]
+
   sellers = {
     "Akamai" = "akamai"
     "Amazon" = "amazon"
@@ -45,7 +111,6 @@ locals {
     "Zenlayer" = "zenlayer"
     "Latitude" = "latitude"
     "Equinix" = "equinix"
-    "Unity" = "unity"
     "Azure" = "azure"
     "UK2Group" = "uk2group"
     "OVH" = "ovh"
@@ -59,11 +124,11 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0.6"
+      version = "~> 5.0.12"
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
@@ -892,26 +957,6 @@ module "gcore_relays" {
 
 # ----------------------------------------------------------------------------------------
 
-# ============
-# UNITY RELAYS
-# ============
-
-locals {
-
-  unity_relays = {
-
-     //...
- 
-  }
-}
-
-module "unity_relays" {
-  relays = local.unity_relays
-  source = "../../sellers/unity"
-}
-
-# ----------------------------------------------------------------------------------------
-
 # ==============
 # ONEQODE RELAYS
 # ==============
@@ -1216,7 +1261,6 @@ locals {
       keys(module.zenlayer_relays.relays),
       keys(module.latitude_relays.relays),
       keys(module.equinix_relays.relays),
-      keys(module.unity_relays.relays),
       keys(module.azure_relays.relays),
       keys(module.uk2group_relays.relays),
       keys(module.ovh_relays.relays),
@@ -1240,7 +1284,6 @@ locals {
     module.zenlayer_relays.relays,
     module.latitude_relays.relays,
     module.equinix_relays.relays,
-    module.unity_relays.relays,
     module.azure_relays.relays,
     module.uk2group_relays.relays,
     module.ovh_relays.relays,
@@ -1263,7 +1306,6 @@ locals {
     module.zenlayer_relays.datacenters,
     module.latitude_relays.datacenters,
     module.equinix_relays.datacenters,
-    module.unity_relays.datacenters,
     module.azure_relays.datacenters,
     module.uk2group_relays.datacenters,
     module.ovh_relays.datacenters,
@@ -1321,6 +1363,7 @@ resource "networknext_relay" relays {
   ssh_port = each.value.ssh_port
   ssh_user = each.value.ssh_user
   version = local.relay_version
+  bandwidth_price = each.value.bandwidth_price
 }
 
 # ----------------------------------------------------------------------------------------
@@ -1349,6 +1392,7 @@ output "all_relays" {
 
 # ----------------------------------------------------------------------------------------
 
+/*
 # ===============
 # RASPBERRY BUYER
 # ===============
@@ -1405,6 +1449,40 @@ resource "networknext_buyer" test {
 resource "networknext_buyer_datacenter_settings" test {
   for_each = toset(local.test_datacenters)
   buyer_id = networknext_buyer.test.id
+  datacenter_id = networknext_datacenter.datacenters[each.value].id
+  enable_acceleration = true
+}
+*/
+
+# =============
+# REMATCH BUYER
+# =============
+
+resource "networknext_route_shader" rematch {
+  name = "rematch"
+  force_next = false
+  latency_reduction_threshold = 10
+  acceptable_latency = 0
+  acceptable_packet_loss_instant = 1.0
+  acceptable_packet_loss_sustained = 0.25
+  bandwidth_envelope_up_kbps = 1024
+  bandwidth_envelope_down_kbps = 1024
+  route_select_threshold = 5
+  route_switch_threshold = 10
+}
+
+resource "networknext_buyer" rematch {
+  name = "REMATCH"
+  code = "rematch"
+  debug = false
+  live = true
+  route_shader_id = networknext_route_shader.rematch.id
+  public_key_base64 = local.rematch_buyer_public_key
+}
+
+resource "networknext_buyer_datacenter_settings" rematch {
+  for_each = toset(local.rematch_datacenters)
+  buyer_id = networknext_buyer.rematch.id
   datacenter_id = networknext_datacenter.datacenters[each.value].id
   enable_acceleration = true
 }

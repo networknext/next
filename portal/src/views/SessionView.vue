@@ -19,13 +19,18 @@
             <tbody>
 
               <tr>
+                <td class="bold">Server ID</td>
+                <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
+              </tr>
+
+              <tr>
                 <td class="bold">Datacenter</td>
                 <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
               </tr>
 
               <tr>
-                <td class="bold">Server</td>
-                <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
+                <td class="bold">Country</td>
+                <td> {{ this.data['country'] }} </td>
               </tr>
 
               <tr>
@@ -53,11 +58,9 @@
         
         <div id="packet_loss_graph" class="graph"/>
 
-        <div id="out_of_order_graph" class="graph"/>
+        <div id="bandwidth_graph" class="graph"/>
 
-        <div id="bandwidth_up_graph" class="graph"/>
-
-        <div id="bandwidth_down_graph" class="graph"/>
+        <div id="client_delta_time_graph" class="graph"/>
 
         <div class="d-xxl-none">
 
@@ -69,17 +72,14 @@
 
               <tr>
                 <td class="left_align"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
                 <td class="left_align"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
+                <td class="left_align"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -92,12 +92,10 @@
 
               <tr>
                 <td class="left_align"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr>
-                <td class="left_align"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
+                <td class="left_align"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -168,15 +166,20 @@
               <tbody>
 
                 <tr>
+                  <td class="bold">Server ID</td>
+                  <td> <router-link :to="'/server/' + this.data['server_id']"> {{ this.data['server_id'] }} </router-link> </td>
+                </tr>
+
+                <tr>
                   <td class="bold">Datacenter</td>
                   <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
                 </tr>
 
                 <tr>
-                  <td class="bold">Server</td>
-                  <td> <router-link :to="'/server/' + this.data['server_address']"> {{ this.data['server_address'] }} </router-link> </td>
+                  <td class="bold">Country</td>
+                  <td> {{ this.data['country'] }} </td>
                 </tr>
-                
+
                 <tr>
                   <td class="bold">ISP</td>
                   <td> {{ this.data['isp'] }} </td>
@@ -219,17 +222,14 @@
 
               <tr>
                 <td class="left_align bold"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr v-for="item in this.data['route_relays']" :key="item.id">
                 <td class="left_align bold"> <router-link :to="'/relay/' + item.name"> {{ item.name }} </router-link> </td>
-                <td class="right_align"> {{ item.address }} </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -242,12 +242,10 @@
 
               <tr>
                 <td class="left_align bold"> Client </td>
-                <td class="right_align"> </td>
               </tr>
 
               <tr>
-                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_address']"> Server </router-link> </td>
-                <td class="right_align"> {{ this.data['server_address'] }} </td>
+                <td class="left_align bold"> <router-link :to="'/server/' + this.data['server_id']"> Server </router-link> </td>
               </tr>
 
             </tbody>
@@ -312,7 +310,7 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import {parse_uint64, is_visible, custom_graph} from '@/utils.js'
+import {parse_uint64, is_visible, custom_graph, getPlatformName, getConnectionName, getCountryName} from '@/utils.js'
 
 let latency_opts = custom_graph({
   title: "Latency",
@@ -332,7 +330,11 @@ let latency_opts = custom_graph({
     {
       name: 'Predicted',
       stroke: "orange",
-      fill: "rgba(0,0,0,0)",
+      units: "ms",
+    },
+    {
+      name: 'Game',
+      stroke: "purple",
       units: "ms",
     },
   ]
@@ -355,8 +357,13 @@ let jitter_opts = custom_graph({
     },
     {
       name: 'Real',
-      stroke: "purple",
+      stroke: "orange",
       fill: "rgba(10,10,10,0.035)",
+      units: "ms",
+    },
+    {
+      name: 'Game',
+      stroke: "purple",
       units: "ms",
     },
   ]
@@ -367,6 +374,11 @@ let packet_loss_opts = custom_graph({
   percent: true,
   series: [
     {
+      name: 'Game',
+      stroke: "purple",
+      units: "%",
+    },
+    {
       name: 'Real',
       stroke: "rgb(200,10,10)",
       fill: "rgba(10,10,10,0.035)",
@@ -375,30 +387,17 @@ let packet_loss_opts = custom_graph({
   ]
 })
 
-let out_of_order_opts = custom_graph({
-  title: "Out of Order",
-  percent: true,
-  series: [
-    {
-      name: 'Real',
-      stroke: "#ffcc00",
-      fill: "rgba(10,10,10,0.035)",
-      units: "%",
-    },
-  ]
-})
-
-let bandwidth_up_opts = custom_graph({
-  title: "Bandwidth Up",
+let bandwidth_opts = custom_graph({
+  title: "Bandwidth",
   series: [
     { 
-      name: 'Direct',
+      name: 'Up',
       stroke: 'rgb(49, 130, 189)',
       fill: 'rgba(49, 130, 189, 0.1)',
       units: 'kbps',
     },
     {
-      name: 'Next',
+      name: 'Down',
       stroke: "#11AA44",
       fill: "rgba(10,100,10,0.1)",
       units: 'kbps',
@@ -406,49 +405,17 @@ let bandwidth_up_opts = custom_graph({
   ]
 })
 
-let bandwidth_down_opts = custom_graph({
-  title: "Bandwidth Down",
+let client_delta_time_opts = custom_graph({
+  title: "Client Delta Time",
   series: [
-    { 
-      name: 'Direct',
-      stroke: 'rgb(49, 130, 189)',
-      fill: 'rgba(49, 130, 189, 0.1)',
-      units: 'kbps',
-    },
     {
-      name: 'Next',
-      stroke: "#11AA44",
-      fill: "rgba(10,100,10,0.1)",
-      units: 'kbps',
+      name: 'Maximum',
+      stroke: "orange",
+      fill: "rgba(255, 140, 0,0.035)",
+      units: 'ms',
     },
   ]
 })
-
-function getPlatformName(platformId) {
-  switch(platformId) {
-  case 1: return "Windows"
-  case 2: return "Mac"
-  case 3: return "Linux"
-  case 4: return "Nintendo Switch"
-  case 5: return "PS4"
-  case 6: return "iOS"
-  case 7: return "Xbox One"
-  case 8: return "Xbox Series X"
-  case 9: return "PS5"
-  default:
-    return "Unknown"
-  }
-}
-
-function getConnectionName(connectionType) {
-  switch(connectionType) {
-  case 1: return "Wired"
-  case 2: return "Wi-Fi"
-  case 3: return "Cellular"
-  default:
-    return "Unknown"
-  }
-}
 
 async function getData(page, session_id) {
   try {
@@ -470,14 +437,15 @@ async function getData(page, session_id) {
       let session_data = res.data.session_data
 
       data['session_id'] = parse_uint64(session_data.session_id)
+      data['server_id'] = parse_uint64(session_data.server_id)
       data["datacenter_name"] = session_data.datacenter_name
       data["isp"] = session_data.isp
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
+      data["country"] = getCountryName(session_data.country)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
-      data["server_address"] = session_data.server_address
     
       // route relays
 
@@ -488,7 +456,6 @@ async function getData(page, session_id) {
           route_relays.push({
             id:        session_data.route_relay_ids[i],
             name:      session_data.route_relay_names[i],
-            address:   session_data.route_relay_addresses[i],
           })
           i++
         }
@@ -572,78 +539,72 @@ async function getData(page, session_id) {
       let latency_direct = []
       let latency_next = []
       let latency_predicted = []
+      let latency_game = []
       i = 0
       while (i < res.data.slice_data.length) {
         latency_direct.push(res.data.slice_data[i].direct_rtt)
         latency_next.push(res.data.slice_data[i].next_rtt)
         latency_predicted.push(res.data.slice_data[i].predicted_rtt)
+        latency_game.push(res.data.slice_data[i].game_rtt)
         i++
       }
 
-      data.latency_data = [graph_timestamps, latency_direct, latency_next, latency_predicted]
+      data.latency_data = [graph_timestamps, latency_direct, latency_next, latency_predicted, latency_game]
 
       // jitter graph data
   
       let jitter_direct = []
       let jitter_next = []
       let jitter_real = []
+      let jitter_game = []
       i = 0
       while (i < res.data.slice_data.length) {
         jitter_direct.push(res.data.slice_data[i].direct_jitter)
         jitter_next.push(res.data.slice_data[i].next_jitter)
         jitter_real.push(res.data.slice_data[i].real_jitter)
+        jitter_game.push(res.data.slice_data[i].game_jitter)
         i++
       }
 
-      data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real]
+      data.jitter_data = [graph_timestamps, jitter_direct, jitter_next, jitter_real, jitter_game]
 
       // packet loss graph data
   
+      let packet_loss_game = []
       let packet_loss_real = []
       i = 0
       while (i < res.data.slice_data.length) {
+        packet_loss_game.push(res.data.slice_data[i].game_packet_loss)
         packet_loss_real.push(res.data.slice_data[i].real_packet_loss)
         i++
       }
 
-      data.packet_loss_data = [graph_timestamps, packet_loss_real]
+      data.packet_loss_data = [graph_timestamps, packet_loss_game, packet_loss_real]
 
-      // out of order graph data
+      // bandwidth graph data
   
-      let out_of_order_real = []
+      let bandwidth_up = []
+      let bandwidth_down = []
       i = 0
       while (i < res.data.slice_data.length) {
-        out_of_order_real.push(res.data.slice_data[i].real_out_of_order)
+        bandwidth_up.push(res.data.slice_data[i].bandwidth_kbps_up)
+        bandwidth_down.push(res.data.slice_data[i].bandwidth_kbps_down)
         i++
       }
 
-      data.out_of_order_data = [graph_timestamps, out_of_order_real]
+      data.bandwidth_data = [graph_timestamps, bandwidth_up, bandwidth_down]
 
-      // bandwidth up graph data
+      // client delta time graph data
   
-      let bandwidth_up_direct = []
-      let bandwidth_up_next = []
+      let client_delta_time_max = []
       i = 0
       while (i < res.data.slice_data.length) {
-        bandwidth_up_direct.push(res.data.slice_data[i].direct_kbps_up)
-        bandwidth_up_next.push(res.data.slice_data[i].next_kbps_up)
+        let delta_time_max = ( res.data.slice_data[i].delta_time_max != null ) ? res.data.slice_data[i].delta_time_max : 0.0;
+        client_delta_time_max.push(delta_time_max * 1000.0)
         i++
       }
 
-      data.bandwidth_up_data = [graph_timestamps, bandwidth_up_direct, bandwidth_up_next]
-
-      // bandwidth down graph data
-  
-      let bandwidth_down_direct = []
-      let bandwidth_down_next = []
-      i = 0
-      while (i < res.data.slice_data.length) {
-        bandwidth_down_direct.push(res.data.slice_data[i].direct_kbps_down)
-        bandwidth_down_next.push(res.data.slice_data[i].next_kbps_down)
-        i++
-      }
-
-      data.bandwidth_down_data = [graph_timestamps, bandwidth_down_direct, bandwidth_down_next]
+      data.client_delta_time_data = [graph_timestamps, client_delta_time_max]
 
       // mark data as found
 
@@ -704,9 +665,8 @@ export default {
     this.latency = new uPlot(latency_opts, [[],[],[]], document.getElementById('latency_graph'))
     this.jitter = new uPlot(jitter_opts, [[],[],[]], document.getElementById('jitter_graph'))
     this.packet_loss = new uPlot(packet_loss_opts, [[],[],[]], document.getElementById('packet_loss_graph'))
-    this.out_of_order = new uPlot(out_of_order_opts, [[]], document.getElementById('out_of_order_graph'))
-    this.bandwidth_up = new uPlot(bandwidth_up_opts, [[],[]], document.getElementById('bandwidth_up_graph'))
-    this.bandwidth_down = new uPlot(bandwidth_down_opts, [[],[]], document.getElementById('bandwidth_down_graph'))
+    this.bandwidth = new uPlot(bandwidth_opts, [[],[]], document.getElementById('bandwidth_graph'))
+    this.client_delta_time = new uPlot(client_delta_time_opts, [[],[]], document.getElementById('client_delta_time_graph'))
 
     this.observer = new ResizeObserver(this.resize)
     this.observer.observe(document.body, {box: 'border-box'})
@@ -724,17 +684,15 @@ export default {
     this.latency.destroy()
     this.jitter.destroy()
     this.packet_loss.destroy()
-    this.out_of_order.destroy()
-    this.bandwidth_up.destroy()
-    this.bandwidth_down.destroy()
+    this.bandwidth.destroy()
+    this.client_delta_time.destroy()
     this.observer.disconnect()
     this.prevWidth = 0
     this.latency = null
     this.jitter = null
     this.packet_loss = null
-    this.out_of_order = null
-    this.bandwidth_up = null
-    this.bandwidth_down = null
+    this.bandwidth = null
+    this.client_delta_time = null
     this.observer = null
   },
 
@@ -765,9 +723,8 @@ export default {
           this.latency.setSize({width: graph_width, height: graph_height})
           this.jitter.setSize({width: graph_width, height: graph_height})
           this.packet_loss.setSize({width: graph_width, height: graph_height})
-          this.out_of_order.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_up.setSize({width: graph_width, height: graph_height})
-          this.bandwidth_down.setSize({width: graph_width, height: graph_height})
+          this.bandwidth.setSize({width: graph_width, height: graph_height})
+          this.client_delta_time.setSize({width: graph_width, height: graph_height})
         }
       }    
 
@@ -815,14 +772,11 @@ export default {
       if (this.packet_loss != null && this.data.packet_loss_data != null) {
         this.packet_loss.setData(this.data.packet_loss_data, true)
       }
-      if (this.out_of_order != null && this.data.out_of_order_data != null) {
-        this.out_of_order.setData(this.data.out_of_order_data, true)
+      if (this.bandwidth != null && this.data.bandwidth_data != null) {
+        this.bandwidth.setData(this.data.bandwidth_data, true)
       }
-      if (this.bandwidth_up != null && this.data.bandwidth_up_data != null) {
-        this.bandwidth_up.setData(this.data.bandwidth_up_data, true)
-      }
-      if (this.bandwidth_down != null && this.data.bandwidth_down_data != null) {
-        this.bandwidth_down.setData(this.data.bandwidth_down_data, true)
+      if (this.client_delta_time != null && this.data.client_delta_time_data != null) {
+        this.client_delta_time.setData(this.data.client_delta_time_data, true)
       }
     },
 

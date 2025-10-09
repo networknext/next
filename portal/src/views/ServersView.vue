@@ -8,13 +8,13 @@
       <table id="servers_table" class="table table-striped">
         <thead>
           <tr>
-            <th>Server Address</th>
+            <th>Server ID</th>
             <th>Current Sessions</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='item["Server Link"]'> {{ item["Server Id"] }} </router-link> </td>
             <td> {{ item["Current Sessions"] }} </td>
           </tr>
         </tbody>
@@ -25,22 +25,22 @@
       <table id="servers_table" class="table table-striped table-hover">
         <thead>
           <tr>
-            <th>Server Address</th>
+            <th>Server ID</th>
+            <th>Datacenter</th>
             <th>Current Sessions</th>
             <th>Uptime</th>
             <th>SDK Version</th>
             <th>Buyer</th>
-            <th>Datacenter</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
-            <td> <router-link :to='item["Server Link"]'> {{ item["Server Address"] }} </router-link> </td>
+            <td class="fixed"> <router-link :to='item["Server Link"]'> {{ item["Server Id"] }} </router-link> </td>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td> {{ item["Current Sessions"] }} </td>
             <td> {{ item["Uptime"] }} </td>
             <td> {{ item["SDK Version"] }} </td>
             <td> <router-link :to='item["Buyer Link"]'> {{ item["Buyer"] }} </router-link> </td>
-            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
           </tr>
         </tbody>
       </table>
@@ -56,6 +56,8 @@
 
 import axios from "axios";
 import update from "@/update.js"
+
+import {parse_uint64} from '@/utils.js'
 
 function nice_uptime(value) {
   if (isNaN(value)) {
@@ -85,9 +87,10 @@ async function getData(page) {
     while (i < res.data.servers.length) {
       let v = res.data.servers[i]
       const datacenterLink = v.datacenter_name != "" ? "/datacenter/" + v.datacenter_name : ""
+      let server_id = parse_uint64(v.server_id)
       let row = {
-        "Server Address":v.server_address,
-        "Server Link":"server/" + v.server_address,
+        "Server Id":server_id,
+        "Server Link":"server/" + server_id,
         "Buyer":v.buyer_name,
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,

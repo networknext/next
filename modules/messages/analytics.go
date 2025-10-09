@@ -6,49 +6,53 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// always
 
-	Timestamp        int64   `avro:"timestamp"`
-	SessionId        int64   `avro:"session_id"`
-	SliceNumber      int32   `avro:"slice_number"`
-	RealPacketLoss   float32 `avro:"real_packet_loss"`
-	RealJitter       float32 `avro:"real_jitter"`
-	RealOutOfOrder   float32 `avro:"real_out_of_order"`
-	SessionEvents    int64   `avro:"session_events"`
-	InternalEvents   int64   `avro:"internal_events"`
-	DirectRTT        float32 `avro:"direct_rtt"`
-	DirectJitter     float32 `avro:"direct_jitter"`
-	DirectPacketLoss float32 `avro:"direct_packet_loss"`
-	DirectKbpsUp     int32   `avro:"direct_kbps_up"`
-	DirectKbpsDown   int32   `avro:"direct_kbps_down"`
+	Timestamp         int64   `avro:"timestamp"`
+	SessionId         int64   `avro:"session_id"`
+	ServerId          int64   `avro:"server_id"`
+	SliceNumber       int32   `avro:"slice_number"`
+	RealPacketLoss    float32 `avro:"real_packet_loss"`
+	RealJitter        float32 `avro:"real_jitter"`
+	RealOutOfOrder    float32 `avro:"real_out_of_order"`
+	SessionEvents     int64   `avro:"session_events"`
+	InternalEvents    int64   `avro:"internal_events"`
+	DirectRTT         float32 `avro:"direct_rtt"`
+	DirectJitter      float32 `avro:"direct_jitter"`
+	DirectPacketLoss  float32 `avro:"direct_packet_loss"`
+	BandwidthKbpsUp   int32   `avro:"bandwidth_kbps_up"`
+	BandwidthKbpsDown int32   `avro:"bandwidth_kbps_down"`
+	DeltaTimeMin      float32 `avro:"delta_time_min"`
+	DeltaTimeMax      float32 `avro:"delta_time_max"`
+	DeltaTimeAvg      float32 `avro:"delta_time_avg"`
+	GameRTT           float32 `avro:"game_rtt"`
+	GameJitter        float32 `avro:"game_jitter"`
+	GamePacketLoss    float32 `avro:"game_packet_loss"`
 
 	// next only
 
 	NextRTT          float32 `avro:"next_rtt"`
 	NextJitter       float32 `avro:"next_jitter"`
 	NextPacketLoss   float32 `avro:"next_packet_loss"`
-	NextKbpsUp       int32   `avro:"next_kbps_up"`
-	NextKbpsDown     int32   `avro:"next_kbps_down"`
 	NextPredictedRTT float32 `avro:"next_predicted_rtt"`
 	NextRouteRelays  []int64 `avro:"next_route_relays"`
 
 	// flags
 
-	Next                         bool `avro:"next"`
-	FallbackToDirect             bool `avro:"fallback_to_direct"`
-	Reported                     bool `avro:"reported"`
-	LatencyReduction             bool `avro:"latency_reduction"`
-	PacketLossReduction          bool `avro:"packet_loss_reduction"`
-	ForceNext                    bool `avro:"force_next"`
-	LongSessionUpdate            bool `avro:"long_session_update"`
-	ClientNextBandwidthOverLimit bool `avro:"client_next_bandwidth_over_limit"`
-	ServerNextBandwidthOverLimit bool `avro:"server_next_bandwidth_over_limit"`
-	Veto                         bool `avro:"veto"`
-	Disabled                     bool `avro:"disabled"`
-	NotSelected                  bool `avro:"not_selected"`
-	A                            bool `avro:"a"`
-	B                            bool `avro:"b"`
-	LatencyWorse                 bool `avro:"latency_worse"`
-	Mispredict                   bool `avro:"mispredict"`
-	LackOfDiversity              bool `avro:"lack_of_diversity"`
+	Next                bool `avro:"next"`
+	FallbackToDirect    bool `avro:"fallback_to_direct"`
+	Reported            bool `avro:"reported"`
+	LatencyReduction    bool `avro:"latency_reduction"`
+	PacketLossReduction bool `avro:"packet_loss_reduction"`
+	ForceNext           bool `avro:"force_next"`
+	LongSessionUpdate   bool `avro:"long_session_update"`
+	Veto                bool `avro:"veto"`
+	Disabled            bool `avro:"disabled"`
+	NotSelected         bool `avro:"not_selected"`
+	A                   bool `avro:"a"`
+	B                   bool `avro:"b"`
+	LatencyWorse        bool `avro:"latency_worse"`
+	Mispredict          bool `avro:"mispredict"`
+	LackOfDiversity     bool `avro:"lack_of_diversity"`
+	Flags              int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -59,6 +63,7 @@ type AnalyticsSessionSummaryMessage struct {
 
 	Timestamp                       int64   `avro:"timestamp"`
 	SessionId                       int64   `avro:"session_id"`
+	MatchId                         int64   `avro:"match_id"`
 	DatacenterId                    int64   `avro:"datacenter_id"`
 	BuyerId                         int64   `avro:"buyer_id"`
 	UserHash                        int64   `avro:"user_hash"`
@@ -83,37 +88,25 @@ type AnalyticsSessionSummaryMessage struct {
 	SessionDuration                 int32   `avro:"session_duration"`
 	StartTimestamp                  int64   `avro:"start_timestamp"`
 	Error                           int64   `avro:"error"`
+	ISP                            string   `avro:"isp"`
+	Country                        string   `avro:"country"`
 
 	// flags
 
-	Reported                     bool `avro:"reported"`
-	LatencyReduction             bool `avro:"latency_reduction"`
-	PacketLossReduction          bool `avro:"packet_loss_reduction"`
-	ForceNext                    bool `avro:"force_next"`
-	LongSessionUpdate            bool `avro:"long_session_update"`
-	ClientNextBandwidthOverLimit bool `avro:"client_next_bandwidth_over_limit"`
-	ServerNextBandwidthOverLimit bool `avro:"server_next_bandwidth_over_limit"`
-	Veto                         bool `avro:"veto"`
-	Disabled                     bool `avro:"disabled"`
-	NotSelected                  bool `avro:"not_selected"`
-	A                            bool `avro:"a"`
-	B                            bool `avro:"b"`
-	LatencyWorse                 bool `avro:"latency_worse"`
-	Mispredict                   bool `avro:"mispredict"`
-	LackOfDiversity              bool `avro:"lack_of_diversity"`
-}
-
-// ----------------------------------------------------------------------------------------
-
-type AnalyticsServerUpdateMessage struct {
-	Timestamp        int64  `avro:"timestamp"`
-	SDKVersion_Major int32  `avro:"sdk_version_major"`
-	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
-	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
-	BuyerId          int64  `avro:"buyer_id"`
-	DatacenterId     int64  `avro:"datacenter_id"`
-	NumSessions      int32  `avro:"num_sessions"`
-	ServerAddress    string `avro:"server_address"`
+	Reported            bool `avro:"reported"`
+	LatencyReduction    bool `avro:"latency_reduction"`
+	PacketLossReduction bool `avro:"packet_loss_reduction"`
+	ForceNext           bool `avro:"force_next"`
+	LongSessionUpdate   bool `avro:"long_session_update"`
+	Veto                bool `avro:"veto"`
+	Disabled            bool `avro:"disabled"`
+	NotSelected         bool `avro:"not_selected"`
+	A                   bool `avro:"a"`
+	B                   bool `avro:"b"`
+	LatencyWorse        bool `avro:"latency_worse"`
+	Mispredict          bool `avro:"mispredict"`
+	LackOfDiversity     bool `avro:"lack_of_diversity"`
+	Flags              int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -124,9 +117,29 @@ type AnalyticsServerInitMessage struct {
 	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
 	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
 	BuyerId          int64  `avro:"buyer_id"`
+	MatchId          int64  `avro:"match_id"`
 	DatacenterId     int64  `avro:"datacenter_id"`
 	DatacenterName   string `avro:"datacenter_name"`
+	ServerId         int64  `avro:"server_id"`
 	ServerAddress    string `avro:"server_address"`
+}
+
+// ----------------------------------------------------------------------------------------
+
+type AnalyticsServerUpdateMessage struct {
+	Timestamp        int64   `avro:"timestamp"`
+	SDKVersion_Major int32   `avro:"sdk_version_major"`
+	SDKVersion_Minor int32   `avro:"sdk_version_minor"`
+	SDKVersion_Patch int32   `avro:"sdk_version_patch"`
+	BuyerId          int64   `avro:"buyer_id"`
+	MatchId          int64  `avro:"match_id"`
+	DatacenterId     int64   `avro:"datacenter_id"`
+	NumSessions      int32   `avro:"num_sessions"`
+	ServerId         int64   `avro:"server_id"`
+	ServerAddress    string  `avro:"server_address"`
+	DeltaTimeMin     float32 `avro:"delta_time_min"`
+	DeltaTimeMax     float32 `avro:"delta_time_max"`
+	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
 }
 
 // ----------------------------------------------------------------------------------------

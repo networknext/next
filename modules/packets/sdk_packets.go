@@ -94,6 +94,7 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 type SDK_ServerInitRequestPacket struct {
 	Version        SDKVersion
 	BuyerId        uint64
+	MatchId        uint64
 	RequestId      uint64
 	DatacenterId   uint64
 	DatacenterName string
@@ -102,6 +103,9 @@ type SDK_ServerInitRequestPacket struct {
 func (packet *SDK_ServerInitRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 11) {
+		stream.SerializeUint64(&packet.MatchId)
+	}
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeString(&packet.DatacenterName, SDK_MaxDatacenterNameLength)
@@ -130,23 +134,41 @@ func (packet *SDK_ServerInitResponsePacket) Serialize(stream encoding.Stream) er
 // ------------------------------------------------------------
 
 type SDK_ServerUpdateRequestPacket struct {
-	Version       SDKVersion
-	BuyerId       uint64
-	RequestId     uint64
-	DatacenterId  uint64
-	NumSessions   uint32
-	ServerAddress net.UDPAddr
-	Uptime        uint64
+	Version      SDKVersion
+	BuyerId      uint64
+	MatchId      uint64
+	RequestId    uint64
+	ServerId     uint64
+	DatacenterId uint64
+	NumSessions  uint32
+	Uptime       uint64
+	DeltaTimeMin float32
+	DeltaTimeMax float32
+	DeltaTimeAvg float32
 }
 
 func (packet *SDK_ServerUpdateRequestPacket) Serialize(stream encoding.Stream) error {
 	packet.Version.Serialize(stream)
 	stream.SerializeUint64(&packet.BuyerId)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 11) {
+		stream.SerializeUint64(&packet.MatchId)
+	}
 	stream.SerializeUint64(&packet.RequestId)
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint32(&packet.NumSessions)
-	stream.SerializeAddress(&packet.ServerAddress)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 7) {
+		stream.SerializeUint64(&packet.ServerId)
+	} else if stream.IsReading() {
+		var serverAddress net.UDPAddr
+		stream.SerializeAddress(&serverAddress)
+		packet.ServerId = common.HashString(serverAddress.String())
+	}
 	stream.SerializeUint64(&packet.Uptime)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {
+		stream.SerializeFloat32(&packet.DeltaTimeMin)
+		stream.SerializeFloat32(&packet.DeltaTimeMax)
+		stream.SerializeFloat32(&packet.DeltaTimeAvg)
+	}
 	return stream.Error()
 }
 
@@ -260,6 +282,7 @@ func (packet *SDK_ServerRelayResponsePacket) Serialize(stream encoding.Stream) e
 type SDK_SessionUpdateRequestPacket struct {
 	Version                         SDKVersion
 	BuyerId                         uint64
+	MatchId                         uint64
 	DatacenterId                    uint64
 	SessionId                       uint64
 	SliceNumber                     uint32
@@ -277,8 +300,6 @@ type SDK_SessionUpdateRequestPacket struct {
 	Next                            bool
 	Reported                        bool
 	FallbackToDirect                bool
-	ClientNextBandwidthOverLimit    bool
-	ServerNextBandwidthOverLimit    bool
 	ClientPingTimedOut              bool
 	HasClientRelayPings             bool
 	HasServerRelayPings             bool
@@ -303,10 +324,8 @@ type SDK_SessionUpdateRequestPacket struct {
 	ServerRelayRTT                  [SDK_MaxServerRelays]int32
 	ServerRelayJitter               [SDK_MaxServerRelays]int32
 	ServerRelayPacketLoss           [SDK_MaxServerRelays]float32
-	DirectKbpsUp                    uint32
-	DirectKbpsDown                  uint32
-	NextKbpsUp                      uint32
-	NextKbpsDown                    uint32
+	BandwidthKbpsUp                 uint32
+	BandwidthKbpsDown               uint32
 	PacketsSentClientToServer       uint64
 	PacketsSentServerToClient       uint64
 	PacketsLostClientToServer       uint64
@@ -315,6 +334,15 @@ type SDK_SessionUpdateRequestPacket struct {
 	PacketsOutOfOrderServerToClient uint64
 	JitterClientToServer            float32
 	JitterServerToClient            float32
+	Latitude                        float32
+	Longitude                       float32
+	DeltaTimeMin                    float32
+	DeltaTimeMax                    float32
+	DeltaTimeAvg                    float32
+	GameRTT                         float32
+	GameJitter                      float32
+	GamePacketLoss                  float32
+	Flags						    uint32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -322,6 +350,9 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 	packet.Version.Serialize(stream)
 
 	stream.SerializeUint64(&packet.BuyerId)
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 11) {
+		stream.SerializeUint64(&packet.MatchId)
+	}
 	stream.SerializeUint64(&packet.DatacenterId)
 	stream.SerializeUint64(&packet.SessionId)
 	stream.SerializeUint32(&packet.SliceNumber)
@@ -352,8 +383,14 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 
 	stream.SerializeBool(&packet.Reported)
 	stream.SerializeBool(&packet.FallbackToDirect)
-	stream.SerializeBool(&packet.ClientNextBandwidthOverLimit)
-	stream.SerializeBool(&packet.ServerNextBandwidthOverLimit)
+
+	if !core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 9) {
+		var clientNextBandwidthOverLimit bool
+		var serverNextBandwidthOverLimit bool
+		stream.SerializeBool(&clientNextBandwidthOverLimit)
+		stream.SerializeBool(&serverNextBandwidthOverLimit)
+	}
+
 	stream.SerializeBool(&packet.ClientPingTimedOut)
 	stream.SerializeBool(&packet.HasClientRelayPings)
 	stream.SerializeBool(&packet.HasServerRelayPings)
@@ -413,12 +450,16 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 		}
 	}
 
-	stream.SerializeUint32(&packet.DirectKbpsUp)
-	stream.SerializeUint32(&packet.DirectKbpsDown)
+	stream.SerializeUint32(&packet.BandwidthKbpsUp)
+	stream.SerializeUint32(&packet.BandwidthKbpsDown)
 
-	if packet.Next {
-		stream.SerializeUint32(&packet.NextKbpsUp)
-		stream.SerializeUint32(&packet.NextKbpsDown)
+	if !core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 9) {
+		if packet.Next {
+			var nextKbpsUp uint32
+			var nextKbpsDown uint32
+			stream.SerializeUint32(&nextKbpsUp)
+			stream.SerializeUint32(&nextKbpsDown)
+		}
 	}
 
 	stream.SerializeUint64(&packet.PacketsSentClientToServer)
@@ -436,6 +477,24 @@ func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) 
 
 	stream.SerializeFloat32(&packet.JitterClientToServer)
 	stream.SerializeFloat32(&packet.JitterServerToClient)
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 6) {
+		stream.SerializeFloat32(&packet.Latitude)
+		stream.SerializeFloat32(&packet.Longitude)
+		stream.SerializeFloat32(&packet.DeltaTimeMin)
+		stream.SerializeFloat32(&packet.DeltaTimeMax)
+		stream.SerializeFloat32(&packet.DeltaTimeAvg)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 8) {
+		stream.SerializeFloat32(&packet.GameRTT)
+		stream.SerializeFloat32(&packet.GameJitter)
+		stream.SerializeFloat32(&packet.GamePacketLoss)
+	}
+
+	if core.ProtocolVersionAtLeast(uint32(packet.Version.Major), uint32(packet.Version.Minor), uint32(packet.Version.Patch), 1, 2, 10) {
+		stream.SerializeUint32(&packet.Flags)
+	}
 
 	return stream.Error()
 }

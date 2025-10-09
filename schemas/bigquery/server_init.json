@@ -44,7 +44,19 @@
   {
     "name": "server_address",
     "type": "STRING",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "The address and port of the server, for example: '123.254.10.5:40000'"
+  },
+  {
+    "name": "server_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The server id. This is the FNV1a64 hash of the server IP and port in this string format: '123.254.10.5:40000'"
+  },
+  {
+    "name": "match_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The match id. This is a random id generated each time the server starts a new match."
   }
 ]

@@ -48,10 +48,8 @@ type PortalSliceData struct {
 	RealOutOfOrder   float32 `json:"real_out_of_order"`
 	InternalEvents   string  `json:"internal_events"`
 	SessionEvents    string  `json:"session_events"`
-	DirectKbpsUp     uint32  `json:"direct_kbps_up"`
-	DirectKbpsDown   uint32  `json:"direct_kbps_down"`
-	NextKbpsUp       uint32  `json:"next_kbps_up"`
-	NextKbpsDown     uint32  `json:"next_kbps_down"`
+	DirectKbpsUp     uint32  `json:"bandwidth_kbps_up"`
+	DirectKbpsDown   uint32  `json:"bandwidth_kbps_down"`
 }
 
 type PortalRelayData struct {
@@ -94,11 +92,11 @@ type PortalSessionData struct {
 	NextRTT        uint32  `json:"next_rtt"`
 	BuyerId        string  `json:"buyer_id"`
 	DatacenterId   string  `json:"datacenter_id"`
-	ServerAddress  string  `json:"server_address"`
+	ServerId       uint64  `json:"server_id,string"`
 }
 
 type PortalServerData struct {
-	ServerAddress    string `json:"server_address"`
+	ServerId         uint64 `json:"server_id,string"`
 	SDKVersion_Major uint8  `json:"sdk_version_major"`
 	SDKVersion_Minor uint8  `json:"sdk_version_minor"`
 	SDKVersion_Patch uint8  `json:"sdk_version_patch"`
@@ -213,7 +211,7 @@ func RunSessionInsertThreads(threadCount int) {
 
 					sessionData.SessionId = sessionId
 					sessionData.BuyerId = uint64(common.RandomInt(0, 9))
-					sessionData.ServerAddress = "127.0.0.1:50000"
+					sessionData.ServerId = common.HashString("127.0.0.1:50000")
 
 					sliceData := portal.GenerateRandomSliceData()
 
@@ -250,7 +248,7 @@ func RunServerInsertThreads(threadCount int) {
 
 				serverData := portal.GenerateRandomServerData()
 
-				serverData.ServerAddress = "127.0.0.1:50000"
+				serverData.ServerId = common.HashString("127.0.0.1:50000")
 
 				serverInserter.Insert(context.Background(), serverData)
 
@@ -281,8 +279,6 @@ func RunRelayInsertThreads(threadCount int) {
 					id := 1 + uint64(k*threadCount+j)
 
 					relayData.RelayName = fmt.Sprintf("local-%03d", id)
-
-					relayData.RelayAddress = fmt.Sprintf("127.0.0.1:%d", 2000+id)
 
 					relayInserter.Insert(context.Background(), relayData)
 				}
@@ -514,7 +510,7 @@ func test_portal() {
 
 		if len(sessionsResponse.Sessions) > 0 {
 
-			sessionId, err := strconv.ParseInt(sessionsResponse.Sessions[0].SessionId, 10, 64)
+			sessionId, err := strconv.ParseUint(sessionsResponse.Sessions[0].SessionId, 10, 64)
 			if err != nil {
 				panic(err)
 			}
@@ -526,30 +522,22 @@ func test_portal() {
 			fmt.Printf("session %016x has %d slices, %d client relay data, %d server relay data\n", sessionId, len(sessionDataResponse.SliceData), len(sessionDataResponse.ClientRelayData), len(sessionDataResponse.ServerRelayData))
 		}
 
-		serverCountResponse := PortalServerCountResponse{}
-
-		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
-
-		fmt.Printf("servers = %d\n", serverCountResponse.ServerCount)
-
 		serversResponse := PortalServersResponse{}
 
 		Get("http://127.0.0.1:50000/portal/servers/0", &serversResponse)
 
-		serverDataResponse := PortalServerDataResponse{}
-
 		fmt.Printf("got data for %d servers\n", len(serversResponse.Servers))
+
+		serverDataResponse := PortalServerDataResponse{}
 
 		if len(serversResponse.Servers) > 0 {
 
-			fmt.Printf("first server address is '%s'\n", serversResponse.Servers[0].ServerAddress)
+			fmt.Printf("first server id is %016x\n", serversResponse.Servers[0].ServerId)
 
-			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%s", serversResponse.Servers[0].ServerAddress), &serverDataResponse)
+			Get(fmt.Sprintf("http://127.0.0.1:50000/portal/server/%016x", serversResponse.Servers[0].ServerId), &serverDataResponse)
 
-			fmt.Printf("server %s has %d sessions\n", serversResponse.Servers[0].ServerAddress, len(serverDataResponse.ServerSessionIds))
+			fmt.Printf("server %016x has %d sessions\n", serversResponse.Servers[0].ServerId, len(serverDataResponse.ServerSessionIds))
 		}
-
-		Get("http://127.0.0.1:50000/portal/server_count", &serverCountResponse)
 
 		relayCountResponse := PortalRelayCountResponse{}
 		Get("http://127.0.0.1:50000/portal/relay_count", &relayCountResponse)

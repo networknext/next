@@ -223,6 +223,22 @@ func main() {
 		},
 	}
 
+	var hashCommand = &ffcli.Command{
+		Name:       "hash",
+		ShortUsage: "next hash [string]",
+		ShortHelp:  "Hash a string with FNV1a64 hash and print as hex and signed int64",
+		Exec: func(_ context.Context, args []string) error {
+
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+
+			hash(args[0])
+
+			return nil
+		},
+	}
+
 	var sshCommand = &ffcli.Command{
 		Name:       "ssh",
 		ShortUsage: "next ssh [regex...]",
@@ -441,6 +457,7 @@ func main() {
 		optimizeCommand,
 		analyzeCommand,
 		routesCommand,
+		hashCommand,
 	}
 
 	root := &ffcli.Command{
@@ -1994,7 +2011,6 @@ func commitDatabase() {
 type PortalRelayData struct {
 	RelayName    string `json:"relay_name"`
 	RelayId      string `json:"relay_id"`
-	RelayAddress string `json:"relay_address"`
 	NumSessions  uint32 `json:"num_sessions"`
 	MaxSessions  uint32 `json:"max_sessions"`
 	StartTime    string `json:"start_time"`
@@ -2038,6 +2054,7 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		Name          string
 		PublicAddress string
 		Id            string
+		Price         int
 		Status        string
 		Uptime        string
 		Sessions      int
@@ -2047,23 +2064,25 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	relayMap := make(map[string]*RelayRow)
 
 	for i := range adminRelaysResponse.Relays {
-		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
-		relay := relayMap[relayAddress]
+		relayName := adminRelaysResponse.Relays[i].RelayName
+		relay := relayMap[relayName]
 		if relay == nil {
 			relay = &RelayRow{}
-			relayMap[relayAddress] = relay
+			relayMap[relayName] = relay
 		}
-		relay.Name = adminRelaysResponse.Relays[i].RelayName
+		relay.Name = relayName
+		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
 		relay.Id = fmt.Sprintf("%x", common.HashString(relayAddress))
 		relay.PublicAddress = relayAddress
+		relay.Price = adminRelaysResponse.Relays[i].BandwidthPrice
 		relay.Status = "offline"
 		relay.Sessions = 0
 		relay.Version = adminRelaysResponse.Relays[i].Version
 	}
 
 	for i := range portalRelaysResponse.Relays {
-		relayAddress := portalRelaysResponse.Relays[i].RelayAddress
-		relay := relayMap[relayAddress]
+		relayName := portalRelaysResponse.Relays[i].RelayName
+		relay := relayMap[relayName]
 		if relay == nil {
 			continue
 		}
@@ -2146,6 +2165,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 		Native    string
 		Latitude  float64
 		Longitude float64
+		ID        string
 	}
 
 	datacenterRows := make([]DatacenterRow, 0)
@@ -2156,6 +2176,8 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 		row.Native = adminDatacentersResponse.Datacenters[i].NativeName
 		row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
 		row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+		hash := common.HashString(adminDatacentersResponse.Datacenters[i].DatacenterName)
+		row.ID = fmt.Sprintf("%016x (%d)", hash, int64(hash))
 		matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
 		if regexName == "" || (matched && err == nil) {
 			datacenterRows = append(datacenterRows, row)
@@ -2169,7 +2191,7 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 
 	// find nearby datacenters within 100km, so we can pick up ashburn <-> virginia, sanjose <-> sf <-> siliconvalley
 
-	if regexName != "" {
+	if regexName != "" && len(datacenterRows) != 1 {
 
 		averageLatitude := 0.0
 		averageLongitude := 0.0
@@ -2200,6 +2222,8 @@ func printDatacenters(env Environment, datacenterCount int64, regexName string) 
 				row.Native = adminDatacentersResponse.Datacenters[i].NativeName
 				row.Latitude = adminDatacentersResponse.Datacenters[i].Latitude
 				row.Longitude = adminDatacentersResponse.Datacenters[i].Longitude
+				hash := common.HashString(adminDatacentersResponse.Datacenters[i].DatacenterName)
+				row.ID = fmt.Sprintf("%016x (%d)", hash, int64(hash))
 				matched, err := regexp.Match(regexName, []byte(adminDatacentersResponse.Datacenters[i].DatacenterName))
 				distance := core.HaversineDistance(row.Latitude, row.Longitude, averageLatitude, averageLongitude)
 				if distance <= threshold && (!matched || err != nil) {
@@ -2839,8 +2863,9 @@ func optimizeCostMatrix(costMatrixFilename, routeMatrixFilename string, costThre
 		RelayLongitudes:    costMatrix.RelayLongitudes,
 		RelayDatacenterIds: costMatrix.RelayDatacenterIds,
 		DestRelays:         costMatrix.DestRelays,
-		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
+		RouteEntries:       core.Optimize2(numRelays, numSegments, costMatrix.Costs, costMatrix.RelayPrice, costMatrix.RelayDatacenterIds, costMatrix.DestRelays),
 		Costs:              costMatrix.Costs,
+		RelayPrice:         costMatrix.RelayPrice,
 	}
 
 	routeMatrixData, err := routeMatrix.Write()
@@ -3178,3 +3203,8 @@ func getKeyValue(envFile string, keyName string) string {
 }
 
 // --------------------------------------------------------------------------------------
+
+func hash(s string) {
+	h := common.HashString(s)
+	fmt.Printf("\"%s\" -> %016x (%d)\n\n", s, h, int64(h))
+}

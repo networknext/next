@@ -61,15 +61,6 @@
 
       <div id="right" class="right d-none d-xxl-block">
 
-<!--
-
-        <div class="right-top">
-
-          <div class="map"/>
-
-        </div>
--->
-
         <div class="right-bottom">
    
           <div class="relay_info">

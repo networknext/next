@@ -138,7 +138,7 @@ func TestRouteManager(t *testing.T) {
 
 	assert.Equal(t, 0, routeManager.NumRoutes)
 
-	routeManager.AddRoute(10, 1, 2, 3)
+	routeManager.AddRoute(10, 0, 1, 2, 3)
 	assert.Equal(t, 1, routeManager.NumRoutes)
 	assert.Equal(t, int32(10), routeManager.RouteCost[0])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
@@ -146,48 +146,48 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, int32(2), routeManager.RouteRelays[0][1])
 	assert.Equal(t, int32(3), routeManager.RouteRelays[0][2])
 
-	routeManager.AddRoute(20, 4, 5, 6)
+	routeManager.AddRoute(20, 0, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// verify adding the same route twice gets filtered out
 
-	routeManager.AddRoute(20, 4, 5, 6)
+	routeManager.AddRoute(20, 0, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// verify loops get filtered out
 
-	routeManager.AddRoute(20, 4, 4, 5, 6)
+	routeManager.AddRoute(20, 0, 4, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// verify routes with cost >= 255 get filtered out
 
-	routeManager.AddRoute(255, 4, 5, 6)
+	routeManager.AddRoute(255, 0, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
-	routeManager.AddRoute(1000, 4, 5, 6)
+	routeManager.AddRoute(1000, 0, 4, 5, 6)
 	assert.Equal(t, 2, routeManager.NumRoutes)
 
 	// add some more routes
 
-	routeManager.AddRoute(21, 4, 5, 254, 255)
+	routeManager.AddRoute(21, 0, 4, 5, 254, 255)
 	assert.Equal(t, 3, routeManager.NumRoutes)
 
-	routeManager.AddRoute(14, 5, 6, 7, 8, 9)
+	routeManager.AddRoute(14, 0, 5, 6, 7, 8, 9)
 	assert.Equal(t, 4, routeManager.NumRoutes)
 
-	routeManager.AddRoute(18, 6, 7, 8)
+	routeManager.AddRoute(18, 0, 6, 7, 8)
 	assert.Equal(t, 5, routeManager.NumRoutes)
 
-	routeManager.AddRoute(17, 8, 9)
+	routeManager.AddRoute(17, 0, 8, 9)
 	assert.Equal(t, 6, routeManager.NumRoutes)
 
-	routeManager.AddRoute(16, 9, 10, 11)
+	routeManager.AddRoute(16, 0, 9, 10, 11)
 	assert.Equal(t, 7, routeManager.NumRoutes)
 
-	routeManager.AddRoute(19, 10, 11, 12, 13, 14)
+	routeManager.AddRoute(19, 0, 10, 11, 12, 13, 14)
 	assert.Equal(t, 8, routeManager.NumRoutes)
 
-	routeManager.AddRoute(15, 11, 12)
+	routeManager.AddRoute(15, 0, 11, 12)
 	assert.Equal(t, 9, routeManager.NumRoutes)
 
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
@@ -199,7 +199,7 @@ func TestRouteManager(t *testing.T) {
 	numFillers := constants.MaxRoutesPerEntry - routeManager.NumRoutes
 
 	for i := 0; i < numFillers; i++ {
-		routeManager.AddRoute(int32(50+i), int32(100+i), int32(100+i+1), int32(100+i+2))
+		routeManager.AddRoute(int32(50+i), 0, int32(100+i), int32(100+i+1), int32(100+i+2))
 		assert.Equal(t, 9+i+1, routeManager.NumRoutes)
 	}
 
@@ -207,7 +207,7 @@ func TestRouteManager(t *testing.T) {
 
 	// make sure we can't add worse routes once we are at max routes
 
-	routeManager.AddRoute(250, 12, 13, 14)
+	routeManager.AddRoute(250, 0, 12, 13, 14)
 	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes; i++ {
 		assert.True(t, routeManager.RouteCost[i] != 250)
@@ -215,7 +215,7 @@ func TestRouteManager(t *testing.T) {
 
 	// make sure we can add better routes while at max routes
 
-	routeManager.AddRoute(5, 13, 14, 15, 16, 17)
+	routeManager.AddRoute(5, 0, 13, 14, 15, 16, 17)
 	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
 	for i := 0; i < routeManager.NumRoutes-1; i++ {
 		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
@@ -231,6 +231,7 @@ func TestRouteManager(t *testing.T) {
 	// check all the best routes are sorted and they have correct data
 
 	assert.Equal(t, int32(5), routeManager.RouteCost[0])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[0])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[0])
 	assert.Equal(t, int32(13), routeManager.RouteRelays[0][0])
 	assert.Equal(t, int32(14), routeManager.RouteRelays[0][1])
@@ -240,6 +241,7 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[0])
 
 	assert.Equal(t, int32(10), routeManager.RouteCost[1])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[1])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[1])
 	assert.Equal(t, int32(1), routeManager.RouteRelays[1][0])
 	assert.Equal(t, int32(2), routeManager.RouteRelays[1][1])
@@ -247,6 +249,7 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(1, 2, 3), routeManager.RouteHash[1])
 
 	assert.Equal(t, int32(14), routeManager.RouteCost[2])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[2])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[2])
 	assert.Equal(t, int32(5), routeManager.RouteRelays[2][0])
 	assert.Equal(t, int32(6), routeManager.RouteRelays[2][1])
@@ -256,12 +259,14 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[2])
 
 	assert.Equal(t, int32(15), routeManager.RouteCost[3])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[3])
 	assert.Equal(t, int32(2), routeManager.RouteNumRelays[3])
 	assert.Equal(t, int32(11), routeManager.RouteRelays[3][0])
 	assert.Equal(t, int32(12), routeManager.RouteRelays[3][1])
 	assert.Equal(t, core.RouteHash(11, 12), routeManager.RouteHash[3])
 
 	assert.Equal(t, int32(16), routeManager.RouteCost[4])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[4])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[4])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[4][0])
 	assert.Equal(t, int32(10), routeManager.RouteRelays[4][1])
@@ -269,12 +274,14 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(9, 10, 11), routeManager.RouteHash[4])
 
 	assert.Equal(t, int32(17), routeManager.RouteCost[5])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[5])
 	assert.Equal(t, int32(2), routeManager.RouteNumRelays[5])
 	assert.Equal(t, int32(8), routeManager.RouteRelays[5][0])
 	assert.Equal(t, int32(9), routeManager.RouteRelays[5][1])
 	assert.Equal(t, core.RouteHash(8, 9), routeManager.RouteHash[5])
 
 	assert.Equal(t, int32(18), routeManager.RouteCost[6])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[6])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[6])
 	assert.Equal(t, int32(6), routeManager.RouteRelays[6][0])
 	assert.Equal(t, int32(7), routeManager.RouteRelays[6][1])
@@ -282,6 +289,7 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(6, 7, 8), routeManager.RouteHash[6])
 
 	assert.Equal(t, int32(19), routeManager.RouteCost[7])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[7])
 	assert.Equal(t, int32(5), routeManager.RouteNumRelays[7])
 	assert.Equal(t, int32(10), routeManager.RouteRelays[7][0])
 	assert.Equal(t, int32(11), routeManager.RouteRelays[7][1])
@@ -291,6 +299,189 @@ func TestRouteManager(t *testing.T) {
 	assert.Equal(t, core.RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[7])
 
 	assert.Equal(t, int32(20), routeManager.RouteCost[8])
+	assert.Equal(t, int32(0), routeManager.RoutePrice[8])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[8])
+	assert.Equal(t, int32(4), routeManager.RouteRelays[8][0])
+	assert.Equal(t, int32(5), routeManager.RouteRelays[8][1])
+	assert.Equal(t, int32(6), routeManager.RouteRelays[8][2])
+	assert.Equal(t, core.RouteHash(4, 5, 6), routeManager.RouteHash[8])
+}
+
+func TestRouteManagerWithPrice(t *testing.T) {
+
+	t.Parallel()
+
+	routeManager := core.RouteManager{}
+	routeManager.RelayDatacenter = make([]uint64, 256)
+	for i := range routeManager.RelayDatacenter {
+		routeManager.RelayDatacenter[i] = uint64(i)
+	}
+	routeManager.RelayDatacenter[255] = 254
+
+	assert.Equal(t, 0, routeManager.NumRoutes)
+
+	routeManager.AddRoute(10, 10, 1, 2, 3)
+	assert.Equal(t, 1, routeManager.NumRoutes)
+	assert.Equal(t, int32(10), routeManager.RouteCost[0])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[0])
+	assert.Equal(t, int32(1), routeManager.RouteRelays[0][0])
+	assert.Equal(t, int32(2), routeManager.RouteRelays[0][1])
+	assert.Equal(t, int32(3), routeManager.RouteRelays[0][2])
+
+	routeManager.AddRoute(20, 20, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	// verify adding the same route twice gets filtered out
+
+	routeManager.AddRoute(20, 20, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	// verify loops get filtered out
+
+	routeManager.AddRoute(20, 20, 4, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	// verify routes with cost >= 255 get filtered out
+
+	routeManager.AddRoute(255, 255, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	routeManager.AddRoute(1000, 1000, 4, 5, 6)
+	assert.Equal(t, 2, routeManager.NumRoutes)
+
+	// add some more routes
+
+	routeManager.AddRoute(21, 21, 4, 5, 254, 255)
+	assert.Equal(t, 3, routeManager.NumRoutes)
+
+	routeManager.AddRoute(14, 14, 5, 6, 7, 8, 9)
+	assert.Equal(t, 4, routeManager.NumRoutes)
+
+	routeManager.AddRoute(18, 18, 6, 7, 8)
+	assert.Equal(t, 5, routeManager.NumRoutes)
+
+	routeManager.AddRoute(17, 17, 8, 9)
+	assert.Equal(t, 6, routeManager.NumRoutes)
+
+	routeManager.AddRoute(16, 16, 9, 10, 11)
+	assert.Equal(t, 7, routeManager.NumRoutes)
+
+	routeManager.AddRoute(19, 19, 10, 11, 12, 13, 14)
+	assert.Equal(t, 8, routeManager.NumRoutes)
+
+	routeManager.AddRoute(15, 15, 11, 12)
+	assert.Equal(t, 9, routeManager.NumRoutes)
+
+	for i := 0; i < routeManager.NumRoutes-1; i++ {
+		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
+	}
+
+	// fill up lots of extra routes to get to max routes
+
+	numFillers := constants.MaxRoutesPerEntry - routeManager.NumRoutes
+
+	for i := 0; i < numFillers; i++ {
+		routeManager.AddRoute(int32(50+i), int32(50+i), int32(100+i), int32(100+i+1), int32(100+i+2))
+		assert.Equal(t, 9+i+1, routeManager.NumRoutes)
+	}
+
+	assert.Equal(t, constants.MaxRoutesPerEntry, routeManager.NumRoutes)
+
+	// make sure we can't add worse routes once we are at max routes
+
+	routeManager.AddRoute(250, 250, 12, 13, 14)
+	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
+	for i := 0; i < routeManager.NumRoutes; i++ {
+		assert.True(t, routeManager.RouteCost[i] != 250)
+	}
+
+	// make sure we can add better routes while at max routes
+
+	routeManager.AddRoute(5, 5, 13, 14, 15, 16, 17)
+	assert.Equal(t, routeManager.NumRoutes, constants.MaxRoutesPerEntry)
+	for i := 0; i < routeManager.NumRoutes-1; i++ {
+		assert.True(t, routeManager.RouteCost[i] <= routeManager.RouteCost[i+1])
+	}
+	found := false
+	for i := 0; i < routeManager.NumRoutes; i++ {
+		if routeManager.RouteCost[i] == 5 {
+			found = true
+		}
+	}
+	assert.True(t, found)
+
+	// check all the best routes are sorted and they have correct data
+
+	assert.Equal(t, int32(5), routeManager.RouteCost[0])
+	assert.Equal(t, int32(5), routeManager.RoutePrice[0])
+	assert.Equal(t, int32(5), routeManager.RouteNumRelays[0])
+	assert.Equal(t, int32(13), routeManager.RouteRelays[0][0])
+	assert.Equal(t, int32(14), routeManager.RouteRelays[0][1])
+	assert.Equal(t, int32(15), routeManager.RouteRelays[0][2])
+	assert.Equal(t, int32(16), routeManager.RouteRelays[0][3])
+	assert.Equal(t, int32(17), routeManager.RouteRelays[0][4])
+	assert.Equal(t, core.RouteHash(13, 14, 15, 16, 17), routeManager.RouteHash[0])
+
+	assert.Equal(t, int32(10), routeManager.RouteCost[1])
+	assert.Equal(t, int32(10), routeManager.RoutePrice[1])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[1])
+	assert.Equal(t, int32(1), routeManager.RouteRelays[1][0])
+	assert.Equal(t, int32(2), routeManager.RouteRelays[1][1])
+	assert.Equal(t, int32(3), routeManager.RouteRelays[1][2])
+	assert.Equal(t, core.RouteHash(1, 2, 3), routeManager.RouteHash[1])
+
+	assert.Equal(t, int32(14), routeManager.RouteCost[2])
+	assert.Equal(t, int32(14), routeManager.RoutePrice[2])
+	assert.Equal(t, int32(5), routeManager.RouteNumRelays[2])
+	assert.Equal(t, int32(5), routeManager.RouteRelays[2][0])
+	assert.Equal(t, int32(6), routeManager.RouteRelays[2][1])
+	assert.Equal(t, int32(7), routeManager.RouteRelays[2][2])
+	assert.Equal(t, int32(8), routeManager.RouteRelays[2][3])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[2][4])
+	assert.Equal(t, core.RouteHash(5, 6, 7, 8, 9), routeManager.RouteHash[2])
+
+	assert.Equal(t, int32(15), routeManager.RouteCost[3])
+	assert.Equal(t, int32(15), routeManager.RoutePrice[3])
+	assert.Equal(t, int32(2), routeManager.RouteNumRelays[3])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[3][0])
+	assert.Equal(t, int32(12), routeManager.RouteRelays[3][1])
+	assert.Equal(t, core.RouteHash(11, 12), routeManager.RouteHash[3])
+
+	assert.Equal(t, int32(16), routeManager.RouteCost[4])
+	assert.Equal(t, int32(16), routeManager.RoutePrice[4])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[4])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[4][0])
+	assert.Equal(t, int32(10), routeManager.RouteRelays[4][1])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[4][2])
+	assert.Equal(t, core.RouteHash(9, 10, 11), routeManager.RouteHash[4])
+
+	assert.Equal(t, int32(17), routeManager.RouteCost[5])
+	assert.Equal(t, int32(17), routeManager.RoutePrice[5])
+	assert.Equal(t, int32(2), routeManager.RouteNumRelays[5])
+	assert.Equal(t, int32(8), routeManager.RouteRelays[5][0])
+	assert.Equal(t, int32(9), routeManager.RouteRelays[5][1])
+	assert.Equal(t, core.RouteHash(8, 9), routeManager.RouteHash[5])
+
+	assert.Equal(t, int32(18), routeManager.RouteCost[6])
+	assert.Equal(t, int32(18), routeManager.RoutePrice[6])
+	assert.Equal(t, int32(3), routeManager.RouteNumRelays[6])
+	assert.Equal(t, int32(6), routeManager.RouteRelays[6][0])
+	assert.Equal(t, int32(7), routeManager.RouteRelays[6][1])
+	assert.Equal(t, int32(8), routeManager.RouteRelays[6][2])
+	assert.Equal(t, core.RouteHash(6, 7, 8), routeManager.RouteHash[6])
+
+	assert.Equal(t, int32(19), routeManager.RouteCost[7])
+	assert.Equal(t, int32(19), routeManager.RoutePrice[7])
+	assert.Equal(t, int32(5), routeManager.RouteNumRelays[7])
+	assert.Equal(t, int32(10), routeManager.RouteRelays[7][0])
+	assert.Equal(t, int32(11), routeManager.RouteRelays[7][1])
+	assert.Equal(t, int32(12), routeManager.RouteRelays[7][2])
+	assert.Equal(t, int32(13), routeManager.RouteRelays[7][3])
+	assert.Equal(t, int32(14), routeManager.RouteRelays[7][4])
+	assert.Equal(t, core.RouteHash(10, 11, 12, 13, 14), routeManager.RouteHash[7])
+
+	assert.Equal(t, int32(20), routeManager.RouteCost[8])
+	assert.Equal(t, int32(20), routeManager.RoutePrice[8])
 	assert.Equal(t, int32(3), routeManager.RouteNumRelays[8])
 	assert.Equal(t, int32(4), routeManager.RouteRelays[8][0])
 	assert.Equal(t, int32(5), routeManager.RouteRelays[8][1])
@@ -349,6 +540,7 @@ type TestEnvironment struct {
 	relayArray []*TestRelayData
 	relays     map[string]*TestRelayData
 	cost       [][]uint8
+	price      []uint8
 }
 
 func NewTestEnvironment() *TestEnvironment {
@@ -360,6 +552,7 @@ func NewTestEnvironment() *TestEnvironment {
 func (env *TestEnvironment) Clear() {
 	numRelays := len(env.relays)
 	env.cost = make([][]uint8, numRelays)
+	env.price = make([]uint8, numRelays)
 	for i := 0; i < numRelays; i++ {
 		env.cost[i] = make([]uint8, numRelays)
 		for j := 0; j < numRelays; j++ {
@@ -428,6 +621,11 @@ func (env *TestEnvironment) SetCost(sourceRelayName string, destRelayName string
 		i, j = j, i
 	}
 	env.cost[i][j] = cost
+}
+
+func (env *TestEnvironment) SetPrice(relayName string, price uint8) {
+	i := env.relays[relayName].index
+	env.price[i] = price
 }
 
 func (env *TestEnvironment) GetRelayIndex(relayName string) int {
@@ -617,6 +815,40 @@ func (env *TestEnvironment) GetRandomBestRoute(routeMatrix []core.RouteEntry, so
 	return &route
 }
 
+func (env *TestEnvironment) GetRandomBestRoute_LowestPrice(routeMatrix []core.RouteEntry, sourceRelays []string, sourceRelayCost []int32, destRelays []string, maxCost int32) *TestRouteData {
+	sourceRelayIndex := make([]int32, len(sourceRelays))
+	for i := range sourceRelays {
+		sourceRelayIndex[i] = int32(env.GetRelayIndex(sourceRelays[i]))
+		if sourceRelayIndex[i] == -1 {
+			panic("bad source relay name")
+		}
+	}
+	destRelayIndex := make([]int32, len(destRelays))
+	for i := range destRelays {
+		destRelayIndex[i] = int32(env.GetRelayIndex(destRelays[i]))
+		if destRelayIndex[i] == -1 {
+			panic("bad dest relay name")
+		}
+	}
+	var bestRouteCost int32
+	var bestRouteNumRelays int32
+	var bestRouteRelays [constants.MaxRouteRelays]int32
+	debug := ""
+	selectThreshold := int32(2)
+	core.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayIndex, sourceRelayCost, destRelayIndex, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, &debug)
+	if bestRouteNumRelays == 0 {
+		return nil
+	}
+	var route TestRouteData
+	route.cost = bestRouteCost
+	route.relays = make([]string, bestRouteNumRelays)
+	for j := 0; j < int(bestRouteNumRelays); j++ {
+		relayIndex := bestRouteRelays[j]
+		route.relays[j] = env.relayArray[relayIndex].name
+	}
+	return &route
+}
+
 func (env *TestEnvironment) ReframeRouteHash(route []uint64) (int32, [constants.MaxRouteRelays]int32) {
 	relayIdToIndex := make(map[uint64]int32)
 	for _, v := range env.relays {
@@ -734,7 +966,7 @@ func TestTheTestEnvironment(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceIndex := env.GetRelayIndex("losangeles")
 	destIndex := env.GetRelayIndex("chicago")
@@ -770,7 +1002,7 @@ func TestIndirectRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -811,7 +1043,7 @@ func TestIndirectRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -852,7 +1084,7 @@ func TestIndirectRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -885,7 +1117,7 @@ func TestFasterRoute3(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -923,7 +1155,7 @@ func TestFasterRoute4(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -965,7 +1197,7 @@ func TestFasterRoute5(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -1005,7 +1237,7 @@ func TestSlowerRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routes := env.GetRoutes(routeMatrix, "losangeles", "chicago")
 
@@ -1427,7 +1659,7 @@ func TestBestRouteCostReallySimple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1462,7 +1694,7 @@ func TestBestRouteCostSimple(t *testing.T) {
 
 	numSegments := 64
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1509,7 +1741,7 @@ func TestBestRouteCostComplex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b", "chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{10, 5, 100, 100}
@@ -1540,7 +1772,7 @@ func TestBestRouteCostNoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{10, 5}
@@ -1575,7 +1807,7 @@ func TestCurrentRouteCost_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routeRelays := []string{"losangeles", "a", "b", "chicago"}
 
@@ -1616,7 +1848,7 @@ func TestCurrentRouteCost_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	routeRelays := []string{"chicago", "b", "a", "losangeles"}
 
@@ -1657,7 +1889,7 @@ func TestGetBestRoutes_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1707,7 +1939,7 @@ func TestGetBestRoutes_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"chicago"}
 	sourceRelayCosts := []int32{10}
@@ -1769,7 +2001,7 @@ func TestGetBestRoutes_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 3}
@@ -1822,7 +2054,7 @@ func TestGetBestRoutes_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelays := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -1871,7 +2103,7 @@ func TestGetRandomBestRoute_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1931,7 +2163,7 @@ func TestGetRandomBestRoute_Reverse(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1975,7 +2207,7 @@ func TestGetRandomBestRoute_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"chicago.a", "chicago.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -1985,6 +2217,121 @@ func TestGetRandomBestRoute_NoRoute(t *testing.T) {
 	maxCost := int32(20)
 
 	bestRoute := env.GetRandomBestRoute(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+
+	assert.True(t, bestRoute == nil)
+}
+
+func TestGetRandomBestRoute_LowestPrice(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles.a", "10.0.0.1")
+	env.AddRelay("losangeles.b", "10.0.0.2")
+	env.AddRelay("chicago.a", "10.0.0.3")
+	env.AddRelay("chicago.b", "10.0.0.4")
+	env.AddRelay("a", "10.0.0.5")
+	env.AddRelay("b", "10.0.0.6")
+
+	env.SetCost("losangeles.a", "chicago.a", 150)
+	env.SetCost("losangeles.a", "chicago.b", 150)
+
+	env.SetCost("losangeles.a", "a", 10)
+	env.SetCost("losangeles.a", "b", 10)
+
+	env.SetCost("losangeles.b", "a", 10)
+	env.SetCost("losangeles.b", "b", 10)
+
+	env.SetCost("a", "chicago.a", 20)
+	env.SetCost("a", "chicago.b", 20)
+	env.SetCost("a", "b", 10)
+
+	env.SetCost("b", "chicago.a", 5)
+	env.SetCost("b", "chicago.b", 5)
+
+	env.SetCost("losangeles.b", "chicago.a", 50)
+	env.SetCost("losangeles.b", "chicago.b", 50)
+
+	env.SetPrice("losangeles.b", 10)
+	env.SetPrice("chicago.b", 10)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
+
+	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
+	sourceRelayCosts := []int32{5, 2}
+
+	destRelayNames := []string{"chicago.a", "chicago.b"}
+
+	maxCost := int32(100)
+
+	bestRoute := env.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+
+	assert.True(t, bestRoute != nil)
+	assert.True(t, bestRoute.cost > 0)
+	assert.True(t, bestRoute.cost <= maxCost)
+
+	assert.True(t, bestRoute.cost == 20+constants.CostBias)
+
+	assert.Equal(t, []string{"losangeles.a", "b", "chicago.a"}, bestRoute.relays)
+}
+
+func TestGetRandomBestRoute_RelaysFull(t *testing.T) {
+
+	t.Parallel()
+
+	env := NewTestEnvironment()
+
+	env.AddRelay("losangeles.a", "10.0.0.1")
+	env.AddRelay("losangeles.b", "10.0.0.2")
+	env.AddRelay("chicago.a", "10.0.0.3")
+	env.AddRelay("chicago.b", "10.0.0.4")
+	env.AddRelay("a", "10.0.0.5")
+	env.AddRelay("b", "10.0.0.6")
+
+	env.SetCost("losangeles.a", "chicago.a", 100)
+	env.SetCost("losangeles.a", "chicago.b", 150)
+	env.SetCost("losangeles.a", "a", 10)
+
+	env.SetCost("a", "chicago.a", 20)
+	env.SetCost("a", "chicago.b", 20)
+	env.SetCost("a", "b", 10)
+
+	env.SetCost("b", "chicago.a", 5)
+	env.SetCost("b", "chicago.b", 5)
+
+	env.SetCost("losangeles.b", "chicago.a", 50)
+	env.SetCost("losangeles.b", "chicago.b", 50)
+	env.SetCost("losangeles.b", "a", 10)
+	env.SetCost("losangeles.b", "b", 5)
+
+	env.SetPrice("chicago.a", 255) // IMPORTANT: set both dest relays as full, there is no way to find any route without cost >= 255
+	env.SetPrice("chicago.b", 255)
+
+	costMatrix, numRelays := env.GetCostMatrix()
+
+	relayDatacenters := env.GetRelayDatacenters()
+
+	numSegments := numRelays
+
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
+
+	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
+	sourceRelayCosts := []int32{5, 2}
+
+	destRelayNames := []string{"chicago.a", "chicago.b"}
+
+	maxCost := int32(20)
+
+	bestRoute := env.GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelayNames, sourceRelayCosts, destRelayNames, maxCost)
+
+	fmt.Printf("%v\n", bestRoute)
 
 	assert.True(t, bestRoute == nil)
 }
@@ -2192,7 +2539,7 @@ func TestGetBestRoute_Initial_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{5}
@@ -2243,7 +2590,7 @@ func TestGetBestRoute_Initial_Complex(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2304,7 +2651,7 @@ func TestGetBestRoute_Initial_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2355,7 +2702,7 @@ func TestGetBestRoute_Initial_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles.a", "losangeles.b"}
 	sourceRelayCosts := []int32{5, 2}
@@ -2394,7 +2741,7 @@ func TestGetBestRoute_Update_Simple(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{10}
@@ -2437,7 +2784,7 @@ func TestGetBestRoute_Update_BetterRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2474,7 +2821,7 @@ func TestGetBestRoute_Update_NoRoute(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2511,7 +2858,7 @@ func TestGetBestRoute_Update_NegativeMaxCost(t *testing.T) {
 
 	numSegments := numRelays
 
-	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters)
+	routeMatrix := core.Optimize(numRelays, numSegments, costMatrix, env.price, relayDatacenters)
 
 	sourceRelayNames := []string{"losangeles"}
 	sourceRelayCosts := []int32{1}
@@ -2552,9 +2899,8 @@ type TestData struct {
 	routeNumRelays int32
 	routeRelays    [constants.MaxRouteRelays]int32
 
-	routeShader        core.RouteShader
-	routeState         core.RouteState
-	multipathVetoUsers map[uint64]bool
+	routeShader core.RouteShader
+	routeState  core.RouteState
 
 	debug string
 
@@ -2584,10 +2930,10 @@ func NewTestData(env *TestEnvironment) *TestData {
 	test.relayDatacenters = env.GetRelayDatacenters()
 
 	numSegments := test.numRelays
-	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, test.relayDatacenters)
-	test.routeShader = core.NewRouteShader()
 
-	test.multipathVetoUsers = map[uint64]bool{}
+	test.routeMatrix = core.Optimize(test.numRelays, numSegments, test.costMatrix, env.price, test.relayDatacenters)
+
+	test.routeShader = core.NewRouteShader()
 
 	test.userId = 100
 
@@ -4858,41 +5204,41 @@ func TestSessionScore(t *testing.T) {
 
 	// biggest next improvement possible should be 0 (lowest score)
 
-	assert.True(t, core.GetSessionScore(true, 254, 0) == uint32(0))
+	assert.True(t, core.GetSessionScore(1000, 1) == uint32(0))
 
 	// no next improvement should be 254 (no improvement)
 
-	assert.True(t, core.GetSessionScore(true, 0, 0) == uint32(254))
+	assert.True(t, core.GetSessionScore(0, 1) == uint32(254))
 
 	// next is worse than direct is still no improvement
 
-	assert.True(t, core.GetSessionScore(true, 100, 200) == uint32(254))
+	assert.True(t, core.GetSessionScore(100, 200) == uint32(254))
 
 	// biggest direct RTT values come first, after next values with no improvement
 
-	assert.True(t, core.GetSessionScore(false, 1000, 0) == uint32(255))
+	assert.True(t, core.GetSessionScore(1000, 0) == uint32(255))
 
 	// lowest direct RTT values are last
 
-	assert.True(t, core.GetSessionScore(false, 0, 0) == uint32(999))
+	assert.True(t, core.GetSessionScore(0, 0) == uint32(999))
 
 	// make sure low direct rtt values have distinct scores
 
 	for i := 1; i < 300; i++ {
-		assert.True(t, core.GetSessionScore(false, int32(i), 0) == uint32(999-i))
+		assert.True(t, core.GetSessionScore(int32(i), 0) == uint32(999-i))
 	}
 
 	// test random direct sessions
 
 	for i := 0; i < 10000; i++ {
-		score := core.GetSessionScore(false, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		score := core.GetSessionScore(int32(rand.Intn(5000)-2000), 0)
 		assert.True(t, score <= 999)
 	}
 
 	// test random next sessions
 
 	for i := 0; i < 10000; i++ {
-		score := core.GetSessionScore(true, int32(rand.Intn(5000)-2000), int32(rand.Intn(5000)-2000))
+		score := core.GetSessionScore(int32(rand.Intn(5000)-2000), 1+int32(rand.Intn(5000)-2000))
 		assert.True(t, score <= 999)
 	}
 }

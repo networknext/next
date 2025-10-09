@@ -53,7 +53,6 @@
             <th>Status</th>
             <th>Uptime</th>
             <th>Relay Version</th>
-            <th>Public Address</th>
             <th>Datacenter</th>
             <th>Seller</th>
           </tr>
@@ -65,7 +64,6 @@
             <td> {{ item["Status"] }} </td>
             <td> {{ item["Uptime"] }} </td>
             <td> {{ item["Relay Version"] }} </td>
-            <td> {{ item["Public Address"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td> <router-link :to='item["Seller Link"]'> {{ item["Seller"] }} </router-link> </td>
           </tr>
@@ -104,7 +102,6 @@ async function getData(page) {
       let row = {
         "Relay Name":v.relay_name,
         "Relay Link":"/relay/" + v.relay_name,
-        "Public Address":v.relay_address,
         "Datacenter":v.datacenter_name,
         "Datacenter Link":"/datacenter/" + v.datacenter_name,
         "Seller":v.seller_name,

@@ -1334,7 +1334,9 @@ func generateRouteMatrix(relayIds []uint64, costMatrix []uint8, relayDatacenters
 
 	numSegments := numRelays
 
-	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, relayDatacenters[:])
+	relayPrice := make([]uint8, numRelays)
+
+	routeEntries := core.Optimize(numRelays, numSegments, costMatrix, relayPrice, relayDatacenters[:])
 
 	destRelays := make([]bool, numRelays)
 

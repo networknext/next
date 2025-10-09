@@ -37,20 +37,25 @@ struct next_session_entry_t
     bool stats_fallback_to_direct;
     bool stats_client_bandwidth_over_limit;
     bool stats_server_bandwidth_over_limit;
+    bool stats_next;
+    uint32_t stats_flags;
     int stats_platform_id;
     int stats_connection_type;
-    float stats_direct_kbps_up;
-    float stats_direct_kbps_down;
-    float stats_next_kbps_up;
-    float stats_next_kbps_down;
+    float stats_bandwidth_kbps_up;
+    float stats_bandwidth_kbps_down;
     float stats_direct_rtt;
     float stats_direct_jitter;
     float stats_direct_packet_loss;
     float stats_direct_max_packet_loss_seen;
-    bool stats_next;
     float stats_next_rtt;
     float stats_next_jitter;
     float stats_next_packet_loss;
+    float stats_delta_time_min;
+    float stats_delta_time_max;
+    float stats_delta_time_avg;
+    float stats_game_rtt;
+    float stats_game_jitter;
+    float stats_game_packet_loss;
 
     NEXT_DECLARE_SENTINEL(2)
 
@@ -211,6 +216,11 @@ struct next_session_entry_t
     NextClientRelayUpdatePacket client_relay_update_packet;
 
     NEXT_DECLARE_SENTINEL(24)
+
+    float latitude;
+    float longitude;
+
+    NEXT_DECLARE_SENTINEL(25)
 };
 
 inline void next_session_entry_initialize_sentinels( next_session_entry_t * entry )
@@ -242,6 +252,7 @@ inline void next_session_entry_initialize_sentinels( next_session_entry_t * entr
     NEXT_INITIALIZE_SENTINEL( entry, 22 )
     NEXT_INITIALIZE_SENTINEL( entry, 23 )
     NEXT_INITIALIZE_SENTINEL( entry, 24 )
+    NEXT_INITIALIZE_SENTINEL( entry, 25 )
     next_replay_protection_initialize_sentinels( &entry->payload_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->special_replay_protection );
     next_replay_protection_initialize_sentinels( &entry->internal_replay_protection );
@@ -279,6 +290,7 @@ inline void next_session_entry_verify_sentinels( next_session_entry_t * entry )
     NEXT_VERIFY_SENTINEL( entry, 22 )
     NEXT_VERIFY_SENTINEL( entry, 23 )
     NEXT_VERIFY_SENTINEL( entry, 24 )
+    NEXT_VERIFY_SENTINEL( entry, 25 )
     next_replay_protection_verify_sentinels( &entry->payload_replay_protection );
     next_replay_protection_verify_sentinels( &entry->special_replay_protection );
     next_replay_protection_verify_sentinels( &entry->internal_replay_protection );

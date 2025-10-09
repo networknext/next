@@ -652,6 +652,12 @@ bool next_route_manager_get_fallback_to_direct( next_route_manager_t * route_man
     return route_manager->fallback_to_direct;
 }
 
+uint32_t next_route_manager_get_flags( next_route_manager_t * route_manager )
+{
+    next_assert( route_manager );
+    return route_manager->flags;
+}
+
 void next_route_manager_get_next_route_data( next_route_manager_t * route_manager, uint64_t * session_id, uint8_t * session_version, next_address_t * to, uint8_t * private_key )
 {
     *session_id = route_manager->route_data.current_route_session_id;

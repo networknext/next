@@ -13,8 +13,8 @@ import (
 
 const (
 	RouteMatrixVersion_Min   = 3
-	RouteMatrixVersion_Max   = 3
-	RouteMatrixVersion_Write = 3
+	RouteMatrixVersion_Max   = 4
+	RouteMatrixVersion_Write = 4
 )
 
 type RouteMatrix struct {
@@ -38,6 +38,8 @@ type RouteMatrix struct {
 	OptimizeTime   uint32
 
 	Costs []byte
+
+	RelayPrice []byte
 }
 
 func (m *RouteMatrix) GetCostMatrix() *CostMatrix {
@@ -62,6 +64,7 @@ func (m *RouteMatrix) GetMaxSize() int {
 	size += core.TriMatrixLength(numRelays) * (4 + 4 + 12*constants.MaxRoutesPerEntry + 4*constants.MaxRoutesPerEntry*constants.MaxRouteRelays)
 	size += int(m.BinFileBytes)
 	size += core.TriMatrixLength(numRelays)
+	size += 4 + numRelays
 	size -= size % 4
 	return size
 }
@@ -151,13 +154,18 @@ func (m *RouteMatrix) Serialize(stream encoding.Stream) error {
 		stream.SerializeUint32(&m.OptimizeTime)
 	}
 
-	if m.Version >= 3 {
-		if stream.IsReading() {
-			m.Costs = make([]byte, numEntries)
-		}
-		if numEntries > 0 {
-			stream.SerializeBytes(m.Costs)
-		}
+	if stream.IsReading() {
+		m.Costs = make([]byte, numEntries)
+	}
+	if m.Version >= 3 && numEntries > 0 {
+		stream.SerializeBytes(m.Costs)
+	}
+
+	if stream.IsReading() {
+		m.RelayPrice = make([]byte, numRelays)
+	}
+	if m.Version >= 4 && numRelays > 0 {
+		stream.SerializeBytes(m.RelayPrice)
 	}
 
 	return stream.Error()
@@ -344,7 +352,7 @@ func (m *RouteMatrix) Analyze() RouteMatrixAnalysis {
 func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 
 	routeMatrix := RouteMatrix{
-		Version: RouteMatrixVersion_Max,
+		Version: RouteMatrixVersion_Write,
 	}
 
 	if numRelays > constants.MaxRelays {
@@ -398,6 +406,8 @@ func GenerateRandomRouteMatrix(numRelays int) RouteMatrix {
 	}
 
 	routeMatrix.Costs = make([]byte, numEntries)
+
+	routeMatrix.RelayPrice = make([]byte, numRelays)
 
 	return routeMatrix
 }

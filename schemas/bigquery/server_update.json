@@ -38,7 +38,7 @@
   {
     "name": "server_address",
     "type": "STRING",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "The address and port of the server, for example: '123.254.10.5:40000'"
   },
   {
@@ -46,5 +46,35 @@
     "type": "INT64",
     "mode": "REQUIRED",
     "description": "The number of client sessions currently connected to the server"
+  },
+  {
+    "name": "delta_time_min",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Minimum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_max",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Maximum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_avg",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Average delta time over the last 10 seconds"
+  },
+  {
+    "name": "server_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The server id"
+  },
+  {
+    "name": "match_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The match id. This is a random id generated each time the server starts a new match."
   }
 ]

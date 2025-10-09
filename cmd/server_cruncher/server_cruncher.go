@@ -12,24 +12,24 @@ import (
 	"github.com/networknext/next/modules/constants"
 	"github.com/networknext/next/modules/core"
 	"github.com/networknext/next/modules/encoding"
-	"github.com/networknext/next/modules/envvar"	
+	"github.com/networknext/next/modules/envvar"
 )
 
 const MaxServerAddressLength = 64 // IMPORTANT: Enough for IPv4 and IPv6 + port number
 
 const TopServersCount = 10000
 
-const ServerBatchVersion = uint64(0)
+const ServerBatchVersion = uint64(1)
 
-const TopServersVersion = uint64(0)
+const TopServersVersion = uint64(1)
 
 type ServerUpdate struct {
-	serverAddress string
+	serverId uint64
 }
 
 type TopServers struct {
 	numTopServers int
-	topServers    [TopServersCount]string
+	topServers    [TopServersCount]uint64
 }
 
 type Bucket struct {
@@ -82,8 +82,7 @@ func TestThread() {
 		for index := 0; index < constants.NumBuckets; index++ {
 			batch := make([]ServerUpdate, 1000)
 			for i := 0; i < len(batch); i++ {
-				serverAddress := common.RandomAddress()
-				batch[i].serverAddress = serverAddress.String()
+				batch[i].serverId = rand.Uint64()
 			}
 			buckets[index].serverUpdateChannel <- batch
 			time.Sleep(time.Millisecond)
@@ -108,7 +107,7 @@ func StartProcessThread(bucket *Bucket) {
 			case batch := <-bucket.serverUpdateChannel:
 				bucket.mutex.Lock()
 				for i := range batch {
-					bucket.servers.Insert(batch[i].serverAddress, uint32(bucket.index))
+					bucket.servers.Insert(batch[i].serverId, uint32(bucket.index))
 				}
 				bucket.mutex.Unlock()
 			}
@@ -126,7 +125,7 @@ func UpdateTopServers(newTopServers *TopServers) {
 	encoding.WriteUint32(data[:], &index, uint32(newTopServers.numTopServers))
 
 	for i := 0; i < newTopServers.numTopServers; i++ {
-		encoding.WriteString(data[:], &index, newTopServers.topServers[i], MaxServerAddressLength)
+		encoding.WriteUint64(data[:], &index, newTopServers.topServers[i])
 	}
 
 	topServersMutex.Lock()
@@ -160,11 +159,11 @@ func TopSessionsThread() {
 
 		// calculate server count and the set of top servers
 
-		serversMap := make(map[string]bool, TopServersCount)
+		serversMap := make(map[uint64]bool, TopServersCount)
 
 		type Server struct {
-			serverAddress string
-			score         uint32
+			serverId uint64
+			score    uint32
 		}
 
 		topServers := make([]Server, 0, TopServersCount)
@@ -174,7 +173,7 @@ func TopSessionsThread() {
 			for j := range bucketServers {
 				if _, exists := serversMap[bucketServers[j].Key]; !exists {
 					serversMap[bucketServers[j].Key] = true
-					topServers = append(topServers, Server{serverAddress: bucketServers[j].Key, score: bucketServers[j].Score})
+					topServers = append(topServers, Server{serverId: bucketServers[j].Key, score: bucketServers[j].Score})
 					if len(topServers) >= TopServersCount {
 						goto done
 					}
@@ -187,7 +186,7 @@ func TopSessionsThread() {
 		newTopServers := &TopServers{}
 		newTopServers.numTopServers = len(topServers)
 		for i := range topServers {
-			newTopServers.topServers[i] = topServers[i].serverAddress
+			newTopServers.topServers[i] = topServers[i].serverId
 		}
 
 		UpdateTopServers(newTopServers)
@@ -232,7 +231,7 @@ func serverBatchHandler(w http.ResponseWriter, r *http.Request) {
 		batch := make([]ServerUpdate, numUpdates)
 		if numUpdates > 0 {
 			for i := 0; i < int(numUpdates); i++ {
-				encoding.ReadString(body, &index, &batch[i].serverAddress, MaxServerAddressLength)
+				encoding.ReadUint64(body, &index, &batch[i].serverId)
 			}
 			buckets[j].serverUpdateChannel <- batch
 		}
@@ -280,7 +279,7 @@ type SortedSet struct {
 	tail   *SortedSetNode
 	length int64
 	level  int
-	dict   map[string]*SortedSetNode
+	dict   map[uint64]*SortedSetNode
 }
 
 type SortedSetLevel struct {
@@ -289,13 +288,13 @@ type SortedSetLevel struct {
 }
 
 type SortedSetNode struct {
-	Key      string // unique key of this node
+	Key      uint64 // unique key of this node
 	Score    uint32 // score to determine the order of this node in the set
 	backward *SortedSetNode
 	level    []SortedSetLevel
 }
 
-func createNode(level int, score uint32, key string) *SortedSetNode {
+func createNode(level int, score uint32, key uint64) *SortedSetNode {
 	node := SortedSetNode{
 		Score: score,
 		Key:   key,
@@ -315,7 +314,7 @@ func randomLevel() int {
 	return SKIPLIST_MAXLEVEL
 }
 
-func (this *SortedSet) insertNode(score uint32, key string) *SortedSetNode {
+func (this *SortedSet) insertNode(score uint32, key uint64) *SortedSetNode {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 	var rank [SKIPLIST_MAXLEVEL]int64
 
@@ -404,7 +403,7 @@ func (this *SortedSet) deleteNode(x *SortedSetNode, update [SKIPLIST_MAXLEVEL]*S
 	delete(this.dict, x.Key)
 }
 
-func (this *SortedSet) delete(score uint32, key string) bool {
+func (this *SortedSet) delete(score uint32, key uint64) bool {
 	var update [SKIPLIST_MAXLEVEL]*SortedSetNode
 
 	x := this.header
@@ -431,9 +430,9 @@ func (this *SortedSet) delete(score uint32, key string) bool {
 func NewSortedSet() *SortedSet {
 	sortedSet := SortedSet{
 		level: 1,
-		dict:  make(map[string]*SortedSetNode, 10000),
+		dict:  make(map[uint64]*SortedSetNode, 10000),
 	}
-	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, "")
+	sortedSet.header = createNode(SKIPLIST_MAXLEVEL, 0, 0)
 	return &sortedSet
 }
 
@@ -441,7 +440,7 @@ func (this *SortedSet) GetCount() int {
 	return int(this.length)
 }
 
-func (this *SortedSet) Insert(key string, score uint32) bool {
+func (this *SortedSet) Insert(key uint64, score uint32) bool {
 	var newNode *SortedSetNode = nil
 	found := this.dict[key]
 	if found != nil {
@@ -458,7 +457,7 @@ func (this *SortedSet) Insert(key string, score uint32) bool {
 	return found == nil
 }
 
-func (this *SortedSet) Delete(key string) *SortedSetNode {
+func (this *SortedSet) Delete(key uint64) *SortedSetNode {
 	found := this.dict[key]
 	if found != nil {
 		this.delete(found.Score, found.Key)

@@ -244,6 +244,30 @@
     "type": "BOOL",
     "mode": "REQUIRED",
     "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  },  
+  {
+    "name": "flags",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Flags passed up from the SDK client. Useful for debugging."
+  },
+  {
+    "name": "match_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The match id. Makes it easy to go from a session to the specific server match it was playing in the dataset."
+  },
+  {
+    "name": "isp",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The player's ISP from ip2location"
+  },
+  {
+    "name": "country",
+    "type": "STRING",
+    "mode": "NULLABLE",
+    "description": "The player's ISO country code from ip2location"
   }
 
 ]

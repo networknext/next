@@ -68,14 +68,50 @@
   {
     "name": "direct_kbps_up",
     "type": "INT64",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "Bandwidth in the client to server direction along the direct path (unaccelerated). Kilobits per-second"
   },
   {
     "name": "direct_kbps_down",
     "type": "INT64",
-    "mode": "REQUIRED",
+    "mode": "NULLABLE",
     "description": "Bandwidth in the server to client direction along the direct path (unaccelerated). Kilobits per-second"
+  },
+  {
+    "name": "delta_time_min",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Minimum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_max",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Maximum delta time over the last 10 seconds"
+  },
+  {
+    "name": "delta_time_avg",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Average delta time over the last 10 seconds"
+  },
+  {
+    "name": "game_rtt",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game round trip time (milliseconds)"
+  },
+  {
+    "name": "game_jitter",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game jitter (milliseconds)"
+  },
+  {
+    "name": "game_packet_loss",
+    "type": "FLOAT",
+    "mode": "NULLABLE",
+    "description": "Game packet loss (milliseconds)"
   },
   {
     "name": "next",
@@ -220,5 +256,29 @@
     "type": "BOOL",
     "mode": "REQUIRED",
     "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
+  },
+  {
+    "name": "server_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Unique identifier of the server"
+  },
+  {
+    "name": "bandwidth_kbps_up",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth sent by the game in the client to server direction. Kilobits per-second"
+  },
+  {
+    "name": "bandwidth_kbps_down",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Bandwidth received by the game in the server to client direction. Kilobits per-second"
+  },
+  {
+    "name": "flags",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "Flags passed up from the SDK client. Useful for debugging."
   }
 ]

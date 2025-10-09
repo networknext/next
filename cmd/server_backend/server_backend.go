@@ -444,10 +444,13 @@ func packetHandler(conn *net.UDPConn, from *net.UDPAddr, packetData []byte) {
 	handler.AnalyticsServerRelayPingMessageChannel = analyticsServerRelayPingMessageChannel
 
 	handler.LocateIP = locateIP_Real
+	handler.GetISPAndCountry = getISPAndCountry_Real
+
 	if service.Env == "dev" {
 		handler.LocateIP = locateIP_Dev
+		handler.GetISPAndCountry = getISPAndCountry_Dev
 	} else if service.Env == "local" && service.Env == "docker" {
-		handler.LocateIP = locateIP_Local
+		handler.GetISPAndCountry = getISPAndCountry_Local
 	}
 
 	handlers.SDK_PacketHandler(&handler, conn, from, packetData)
@@ -525,6 +528,29 @@ func locateIP_Real(ip net.IP) (float32, float32) {
 
 // ------------------------------------------------------------------------------------
 
+func getISPAndCountry_Local(ip net.IP) (string, string) {
+	return "Local", "Local"
+}
+
+func getISPAndCountry_Dev(ip net.IP) (string, string) {
+	ipv4 := ip.To4()
+	if ipv4[0] == 34 || ipv4[0] == 35 {
+		return "Google Cloud", "BR"
+	}
+	// this is a real client. do ip2location with maxmind if enabled, otherwise fallback to fixed location for debugging
+	if enableIP2Location {
+		return service.GetISPAndCountry(ip)
+	} else {
+		return "Comcast Internet LLC", "US"
+	}
+}
+
+func getISPAndCountry_Real(ip net.IP) (string, string) {
+	return service.GetISPAndCountry(ip)
+}
+
+// ------------------------------------------------------------------------------------
+
 func processFallbackToDirect(service *common.Service, channel chan uint64) {
 	go func() {
 		for {
@@ -557,17 +583,18 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 
 			sessionId := message.SessionId
 
-			var isp string
+			var isp, country string
 			if enableIP2Location {
-				isp = service.GetISP(message.ClientAddress.IP)
+				isp, country = service.GetISPAndCountry(message.ClientAddress.IP)
 			} else {
-				isp = "Local"
+				isp, country = "Local", "Unknown"
 			}
 
 			sessionData := portal.SessionData{
 				SessionId:      message.SessionId,
 				StartTime:      message.StartTime,
 				ISP:            isp,
+				Country:        country,
 				ConnectionType: message.ConnectionType,
 				PlatformType:   message.PlatformType,
 				Latitude:       message.Latitude,
@@ -575,8 +602,8 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 				DirectRTT:      message.BestDirectRTT,
 				NextRTT:        message.BestNextRTT,
 				BuyerId:        message.BuyerId,
+				ServerId:       message.ServerId,
 				DatacenterId:   message.DatacenterId,
-				ServerAddress:  message.ServerAddress.String(),
 			}
 
 			if message.Next {
@@ -587,25 +614,29 @@ func processPortalSessionUpdateMessages(service *common.Service, inputChannel ch
 			}
 
 			sliceData := portal.SliceData{
-				Timestamp:        message.Timestamp,
-				SliceNumber:      message.SliceNumber,
-				DirectRTT:        uint32(message.DirectRTT),
-				NextRTT:          uint32(message.NextRTT),
-				PredictedRTT:     uint32(message.NextPredictedRTT),
-				DirectJitter:     uint32(message.DirectJitter),
-				NextJitter:       uint32(message.NextJitter),
-				RealJitter:       uint32(message.RealJitter),
-				DirectPacketLoss: float32(message.DirectPacketLoss),
-				NextPacketLoss:   float32(message.NextPacketLoss),
-				RealPacketLoss:   float32(message.RealPacketLoss),
-				RealOutOfOrder:   float32(message.RealOutOfOrder),
-				InternalEvents:   message.InternalEvents,
-				SessionEvents:    message.SessionEvents,
-				DirectKbpsUp:     message.DirectKbpsUp,
-				DirectKbpsDown:   message.DirectKbpsUp,
-				NextKbpsUp:       message.NextKbpsUp,
-				NextKbpsDown:     message.NextKbpsDown,
-				Next:             message.Next,
+				Timestamp:         message.Timestamp,
+				SliceNumber:       message.SliceNumber,
+				DirectRTT:         uint32(message.DirectRTT),
+				NextRTT:           uint32(message.NextRTT),
+				PredictedRTT:      uint32(message.NextPredictedRTT),
+				DirectJitter:      uint32(message.DirectJitter),
+				NextJitter:        uint32(message.NextJitter),
+				RealJitter:        uint32(message.RealJitter),
+				DirectPacketLoss:  float32(message.DirectPacketLoss),
+				NextPacketLoss:    float32(message.NextPacketLoss),
+				RealPacketLoss:    float32(message.RealPacketLoss),
+				RealOutOfOrder:    float32(message.RealOutOfOrder),
+				DeltaTimeMin:      float32(message.DeltaTimeMin),
+				DeltaTimeMax:      float32(message.DeltaTimeMax),
+				DeltaTimeAvg:      float32(message.DeltaTimeAvg),
+				InternalEvents:    message.InternalEvents,
+				SessionEvents:     message.SessionEvents,
+				BandwidthKbpsUp:   message.BandwidthKbpsUp,
+				BandwidthKbpsDown: message.BandwidthKbpsDown,
+				Next:              message.Next,
+				GameRTT:           message.GameRTT,
+				GameJitter:        message.GameJitter,
+				GamePacketLoss:    message.GamePacketLoss,
 			}
 
 			if message.SendToPortal {
@@ -649,11 +680,11 @@ func processPortalServerUpdateMessages(service *common.Service, inputChannel cha
 			core.Debug("processing portal server update message")
 
 			serverData := portal.ServerData{
-				ServerAddress:    message.ServerAddress.String(),
 				SDKVersion_Major: message.SDKVersion_Major,
 				SDKVersion_Minor: message.SDKVersion_Minor,
 				SDKVersion_Patch: message.SDKVersion_Patch,
 				BuyerId:          message.BuyerId,
+				ServerId:         message.ServerId,
 				DatacenterId:     message.DatacenterId,
 				NumSessions:      message.NumSessions,
 				Uptime:           message.Uptime,

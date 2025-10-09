@@ -72,6 +72,7 @@
               <tr>
                 <th>Session ID</th>
                 <th>ISP</th>
+                <th>Country</th>
                 <th>Direct RTT</th>
                 <th>Accelerated RTT</th>
                 <th>Improvement</th>
@@ -80,6 +81,7 @@
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
+                <td>{{item.country}}</td>
                 <td>{{item.isp}}</td>
                 <td>{{item.direct_rtt}}</td>
                 <td >{{item.next_rtt}}</td>
@@ -97,9 +99,10 @@
             <thead>
               <tr>
                 <th>Session ID</th>
-                <th>ISP</th>
+                <th>Country</th>
                 <th>Connection</th>
                 <th>Platform</th>
+                <th>ISP</th>
                 <th>Direct RTT</th>
                 <th>Accelerated RTT</th>
                 <th>Improvement</th>
@@ -108,9 +111,10 @@
             <tbody>
               <tr v-for="item in data.server_sessions" :key='item'>
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
-                <td>{{item.isp}}</td>
+                <td>{{item.country}}</td>
                 <td>{{item.connection}}</td>
                 <td>{{item.platform}}</td>
+                <td>{{item.isp}}</td>
                 <td>{{item.direct_rtt}}</td>
                 <td >{{item.next_rtt}}</td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
@@ -125,15 +129,6 @@
       </div>
 
       <div id="right" class="right d-none d-xxl-block">
-
-<!--
-
-        <div class="right-top">
-
-          <div class="map"/>
-
-        </div>
--->
 
         <div class="server_info">
 
@@ -180,7 +175,7 @@
 import axios from "axios";
 import update from '@/update.js'
 
-import {parse_uint64, nice_uptime, getPlatformName, getConnectionName} from '@/utils.js'
+import {parse_uint64, nice_uptime, getPlatformName, getConnectionName, getCountryName} from '@/utils.js'
 
 async function getData(page, server) {
   try {
@@ -200,6 +195,7 @@ async function getData(page, server) {
         const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
         const connection = getConnectionName(v.connection_type)
         const platform = getPlatformName(v.platform_type)
+        const country = getCountryName(v.country)
         let start_time = new Date(parseInt(v.start_time*1000)).toLocaleString()
         let row = {
           "session_id":session_id,
@@ -208,12 +204,12 @@ async function getData(page, server) {
           "buyer_link":"/buyer/" + v.buyer_code,
           "datacenter":v.datacenter_name,
           "datacenter_link": "/datacenter/" + v.datacenter_name,
-          "server_address":v.server_address,
           "direct_rtt":v.direct_rtt + " ms",
           "next_rtt":next_rtt,
           "improvement":improvement,
           "connection":connection,
           "platform":platform,
+          "country":country,
           "start_time":start_time,
         }
         data.server_sessions.push(row)

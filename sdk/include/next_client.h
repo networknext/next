@@ -42,6 +42,8 @@ uint16_t next_client_port( next_client_t * client );
 
 uint64_t next_client_session_id( next_client_t * client );
 
+uint64_t next_client_server_id( next_client_t * client );
+
 void next_client_report_session( next_client_t * client );
 
 const next_client_stats_t * next_client_stats( next_client_t * client );
@@ -49,5 +51,7 @@ const next_client_stats_t * next_client_stats( next_client_t * client );
 const next_address_t * next_client_server_address( next_client_t * client );
 
 void next_client_counters( next_client_t * client, uint64_t * counters );
+
+void next_client_game_stats( next_client_t * client, float game_rtt, float game_jitter, float game_packet_loss );
 
 #endif // #ifndef NEXT_CLIENT_H

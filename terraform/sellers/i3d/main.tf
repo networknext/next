@@ -276,14 +276,6 @@ locals {
       seller_code = local.seller_code
     },
 
-    "i3d.istanbul" = {
-      latitude    = 41.0082
-      longitude   = 28.9784
-      native_name = ""
-      seller_name = local.seller_name
-      seller_code = local.seller_code
-    },
-
     "i3d.kyiv" = {
       latitude    = 50.4504
       longitude   = 30.5245
@@ -384,6 +376,7 @@ output "relays" {
         "ssh_ip",
         "ssh_port",
         "ssh_user",
+        "bandwidth_price",
       ], 
       [
         k,
@@ -398,6 +391,7 @@ output "relays" {
         v.public_address,
         22,
         local.ssh_user,
+        0,
       ]
     )
   }

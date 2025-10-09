@@ -34,6 +34,7 @@
 #include "next_session_manager.h"
 #include "next_relay_manager.h"
 #include "next_internal_config.h"
+#include "next_value_tracker.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -3737,7 +3738,7 @@ void test_server_update_request_packet()
         in.buyer_id = next_random_uint64();
         in.datacenter_id = next_random_uint64();
         in.num_sessions = 1000;
-        next_address_parse( &in.server_address, "127.0.0.1:40000" );
+        in.server_id = 0x12345678910;
         in.uptime = 0x12345;
 
         int packet_bytes = 0;
@@ -3763,7 +3764,7 @@ void test_server_update_request_packet()
         next_check( in.buyer_id == out.buyer_id );
         next_check( in.datacenter_id == out.datacenter_id );
         next_check( in.num_sessions == out.num_sessions );
-        next_check( next_address_equal( &in.server_address, &out.server_address ) );
+        next_check( in.server_id == out.server_id );
         next_check( in.uptime == out.uptime );
     }
 }
@@ -3874,10 +3875,8 @@ void test_session_update_request_packet()
         next_address_parse( &in.server_address, "127.0.0.1:12345" );
         next_crypto_random_bytes( in.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
         next_crypto_random_bytes( in.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES );
-        in.direct_kbps_up = 50.0f;
-        in.direct_kbps_down = 75.0f;
-        in.next_kbps_up = 100.0f;
-        in.next_kbps_down = 200.0f;
+        in.bandwidth_kbps_up = 50.0f;
+        in.bandwidth_kbps_down = 75.0f;
         in.packets_lost_client_to_server = 100;
         in.packets_lost_server_to_client = 200;
         in.session_data_bytes = NEXT_MAX_SESSION_DATA_BYTES;
@@ -3948,10 +3947,8 @@ void test_session_update_request_packet()
         next_check( next_address_equal( &in.server_address, &out.server_address ) );
         next_check( memcmp( in.client_route_public_key, out.client_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
         next_check( memcmp( in.server_route_public_key, out.server_route_public_key, NEXT_CRYPTO_BOX_PUBLICKEYBYTES ) == 0 );
-        next_check( in.direct_kbps_up == out.direct_kbps_up );
-        next_check( in.direct_kbps_down == out.direct_kbps_down );
-        next_check( in.next_kbps_up == out.next_kbps_up );
-        next_check( in.next_kbps_down == out.next_kbps_down );
+        next_check( in.bandwidth_kbps_up == out.bandwidth_kbps_up );
+        next_check( in.bandwidth_kbps_down == out.bandwidth_kbps_down );
         next_check( in.packets_lost_client_to_server == out.packets_lost_client_to_server );
         next_check( in.packets_lost_server_to_client == out.packets_lost_server_to_client );
         next_check( in.session_data_bytes == out.session_data_bytes );
@@ -4446,6 +4443,74 @@ void test_packet_tagging()
     }
 }
 
+void test_value_tracker()
+{
+    // initial values without any samples added should be 0/0/0
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
+    }
+
+    // add just one sample and min/max/avg should be set to that sample value
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        next_value_tracker_add_sample( &tracker, 1.0f );
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 1.0f );
+        next_check( max_value == 1.0f );
+        next_check( avg_value == 1.0f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
+    }
+
+    // add a bunch of samples and we should see min/max/avg
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        for ( int i = 0; i < 100; i++ )
+        {
+            next_value_tracker_add_sample( &tracker, float(i%10) );
+        }
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 9.0f );
+        next_check( avg_value == 4.5f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
+    }
+
+    // add more samples than history size and it should still work
+    {
+        next_value_tracker_t tracker;
+        next_value_tracker_reset( &tracker );
+        for ( int i = 0; i < NEXT_VALUE_TRACKER_HISTORY * 2; i++ )
+        {
+            next_value_tracker_add_sample( &tracker, float(i%10) );
+        }
+        float min_value, max_value, avg_value;
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 9.0f );
+        next_check( fabs( 4.5f - avg_value ) < 0.1f );
+        next_value_tracker_calculate( &tracker, &min_value, &max_value, &avg_value );
+        next_check( min_value == 0.0f );
+        next_check( max_value == 0.0f );
+        next_check( avg_value == 0.0f );
+    }
+}
+
 #define RUN_TEST( test_function )                                           \
     do                                                                      \
     {                                                                       \
@@ -4554,6 +4619,7 @@ void next_run_tests()
         RUN_TEST( test_passthrough_packets );
 #endif // #if NEXT_PLATFORM_CAN_RUN_SERVER
         RUN_TEST( test_packet_tagging );
+        RUN_TEST( test_value_tracker );
     }
 }
 

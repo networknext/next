@@ -92,6 +92,7 @@ output "relays" {
         "ssh_ip",
         "ssh_port",
         "ssh_user",
+        "bandwidth_price",
       ], 
       [
         k,
@@ -106,6 +107,7 @@ output "relays" {
         linode_instance.relay[k].ip_address,
         22,
         "root",
+        1,
       ]
     )
   }

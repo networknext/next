@@ -53,6 +53,7 @@ type RelayData struct {
 	RelayLongitudes    []float32
 	RelaySellerIds     []uint64
 	RelayDatacenterIds []uint64
+	RelayPrice         []byte
 	RelayIdToIndex     map[uint64]int
 	DatacenterRelays   map[uint64][]int
 	DestRelays         []bool
@@ -300,11 +301,12 @@ func (service *Service) GetLocation(ip net.IP) (float32, float32) {
 	return ip2location.GetLocation(city_db, ip)
 }
 
-func (service *Service) GetISP(ip net.IP) string {
+func (service *Service) GetISPAndCountry(ip net.IP) (string, string) {
 	service.ip2location_mutex.RLock()
 	isp_db := service.ip2location_isp_db
+	city_db := service.ip2location_city_db
 	service.ip2location_mutex.RUnlock()
-	return ip2location.GetISP(isp_db, ip)
+	return ip2location.GetISPAndCountry(isp_db, city_db, ip)
 }
 
 func (service *Service) Database() *db.Database {
@@ -657,7 +659,7 @@ func (service *Service) WaitForShutdown() {
 	}
 	service.ip2location_mutex.Unlock()
 
-	if service.ConnectionDrain {
+	if service.ConnectionDrain && !service.Local {
 		core.Log("connection drain...")
 		time.Sleep(60 * time.Second)
 	}
@@ -692,6 +694,7 @@ func generateRelayData(database *db.Database) *RelayData {
 	relayData.RelayLongitudes = make([]float32, numRelays)
 	relayData.RelaySellerIds = make([]uint64, numRelays)
 	relayData.RelayDatacenterIds = make([]uint64, numRelays)
+	relayData.RelayPrice = make([]byte, numRelays)
 
 	for i := 0; i < numRelays; i++ {
 		relayData.RelayIds[i] = relayData.RelayArray[i].Id
@@ -701,6 +704,7 @@ func generateRelayData(database *db.Database) *RelayData {
 		relayData.RelayLongitudes[i] = float32(relayData.RelayArray[i].Datacenter.Longitude)
 		relayData.RelaySellerIds[i] = relayData.RelayArray[i].Seller.Id
 		relayData.RelayDatacenterIds[i] = relayData.RelayArray[i].Datacenter.Id
+		relayData.RelayPrice[i] = byte(relayData.RelayArray[i].BandwidthPrice)
 	}
 
 	// build a mapping from relay id to relay index

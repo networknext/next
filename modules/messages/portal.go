@@ -68,7 +68,7 @@ type PortalServerUpdateMessage struct {
 	DatacenterId     uint64
 	NumSessions      uint32
 	Uptime           uint64
-	ServerAddress    net.UDPAddr
+	ServerId         uint64
 }
 
 // ----------------------------------------------------------------------------------------
@@ -89,6 +89,8 @@ type PortalSessionUpdateMessage struct {
 	Longitude      float32
 	ClientAddress  net.UDPAddr
 	ServerAddress  net.UDPAddr
+	ServerId       uint64
+	MatchId        uint64
 	SliceNumber    uint32
 	SessionFlags   uint64
 	SessionEvents  uint64
@@ -99,15 +101,14 @@ type PortalSessionUpdateMessage struct {
 	DirectRTT        float32
 	DirectJitter     float32
 	DirectPacketLoss float32
-	DirectKbpsUp     uint32
-	DirectKbpsDown   uint32
+
+	BandwidthKbpsUp   uint32
+	BandwidthKbpsDown uint32
 
 	Next               bool
 	NextRTT            float32
 	NextJitter         float32
 	NextPacketLoss     float32
-	NextKbpsUp         uint32
-	NextKbpsDown       uint32
 	NextPredictedRTT   uint32
 	NextNumRouteRelays uint32
 	NextRouteRelayId   [constants.MaxRouteRelays]uint64
@@ -115,6 +116,14 @@ type PortalSessionUpdateMessage struct {
 	RealJitter     float32
 	RealPacketLoss float32
 	RealOutOfOrder float32
+
+	DeltaTimeMin float32
+	DeltaTimeMax float32
+	DeltaTimeAvg float32
+
+	GameRTT        float32
+	GameJitter     float32
+	GamePacketLoss float32
 
 	NumClientRelays       uint32
 	ClientRelayId         [constants.MaxClientRelays]uint64
