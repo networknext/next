@@ -64,7 +64,7 @@ function getConnectionName(connectionType) {
 }
 
 function getCountryName(countryCode) {
-  if (countryCode=="") {
+  if (countryCode=="" || countryCode==null) {
     return "Unknown"
   }
   try {
