@@ -28,11 +28,13 @@ DONE
 
 	Verify we see country names in portal.
 
+	Fix terraform so prod bigquery envolves schema like dev.
+
+	Verify we see match id coming up in bigquery in dev and prod.
+
 TODO
 
-	-----
-
-	Verify we see match id coming up in bigquery in prod.
+	Seems like we might be missing match id in dev session summary?
 
 	-----
 

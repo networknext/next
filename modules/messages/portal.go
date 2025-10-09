@@ -90,6 +90,7 @@ type PortalSessionUpdateMessage struct {
 	ClientAddress  net.UDPAddr
 	ServerAddress  net.UDPAddr
 	ServerId       uint64
+	MatchId        uint64
 	SliceNumber    uint32
 	SessionFlags   uint64
 	SessionEvents  uint64
