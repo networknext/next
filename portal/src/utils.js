@@ -63,6 +63,17 @@ function getConnectionName(connectionType) {
   }
 }
 
+function getCountryName(countryCode) {
+  const clientLocales = navigator.languages || [navigator.language];
+  const regionNames = new Intl.DisplayNames(clientLocales, { type: 'region' });
+  let countryName = regionNames.of(countryCode);
+  if countryName != null {
+    return countryName
+  } else {
+    return countryCode
+  }
+}
+
 function getAcceleratedPercent(nextSessions, totalSessions) {
   let acceleratedPercent = 0.0
   if (totalSessions > 0) {
@@ -179,4 +190,4 @@ function custom_graph(config) {
   return opts
 }
 
-export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getAcceleratedPercent, custom_graph};
+export {parse_uint64, uint64_to_decimal, nice_uptime, is_visible, getPlatformName, getConnectionName, getCountryName, getAcceleratedPercent, custom_graph};

@@ -95,7 +95,7 @@ mess// -------------------------------------------------------------------------
 import axios from "axios";
 import update from '@/update.js'
 
-import {parse_uint64, getPlatformName, getConnectionName} from '@/utils.js'
+import {parse_uint64, getPlatformName, getConnectionName, getCountryName} from '@/utils.js'
 
 async function getData(page) {
   try {
@@ -111,11 +111,12 @@ async function getData(page) {
       const session_id = parse_uint64(v.session_id)
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
+      const country = getCountryName(v.country)
       const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
-        "Country":v.country,
+        "Country":country,
         "ISP":v.isp,
         "Connection":connection,
         "Platform":platform,

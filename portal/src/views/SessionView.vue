@@ -310,7 +310,7 @@ import axios from "axios";
 import update from '@/update.js'
 import uPlot from "uplot";
 
-import {parse_uint64, is_visible, custom_graph, getPlatformName, getConnectionName} from '@/utils.js'
+import {parse_uint64, is_visible, custom_graph, getPlatformName, getConnectionName, getCountryName} from '@/utils.js'
 
 let latency_opts = custom_graph({
   title: "Latency",
@@ -440,11 +440,11 @@ async function getData(page, session_id) {
       data['server_id'] = parse_uint64(session_data.server_id)
       data["datacenter_name"] = session_data.datacenter_name
       data["isp"] = session_data.isp
-      data["country"] = session_data.country
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
       data["platform"] = getPlatformName(session_data.platform_type)
       data["connection"] = getConnectionName(session_data.connection_type)
+      data["country"] = getCountryName(session_data.country)
       data["start_time"] = new Date(parseInt(session_data.start_time)*1000).toLocaleString()
     
       // route relays
