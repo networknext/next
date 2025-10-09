@@ -29,6 +29,11 @@
               </tr>
 
               <tr>
+                <td class="bold">Country</td>
+                <td> {{ this.data['country'] }} </td>
+              </tr>
+
+              <tr>
                 <td class="bold">ISP</td>
                 <td> {{ this.data['isp'] }} </td>
               </tr>
@@ -168,6 +173,11 @@
                 <tr>
                   <td class="bold">Datacenter</td>
                   <td> <router-link :to="'/datacenter/' + this.data['datacenter_name']"> {{ this.data['datacenter_name'] }} </router-link> </td>
+                </tr>
+
+                <tr>
+                  <td class="bold">Country</td>
+                  <td> {{ this.data['country'] }} </td>
                 </tr>
 
                 <tr>
