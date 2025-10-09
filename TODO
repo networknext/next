@@ -24,6 +24,8 @@ TODO
 
 	Just makes it much easier to do country analysis.
 
+	Plus, we don't have to wait for SDK update. It's in the backend right now.
+
 	-----
 
 	Add a functional test to verify that we see the correct lat/longs passed up from the SDK

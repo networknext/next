@@ -440,6 +440,7 @@ async function getData(page, session_id) {
       data['server_id'] = parse_uint64(session_data.server_id)
       data["datacenter_name"] = session_data.datacenter_name
       data["isp"] = session_data.isp
+      data["country"] = session_data.country
       data["buyer_code"] = session_data.buyer_code
       data["buyer_name"] = session_data.buyer_name
       data["platform"] = getPlatformName(session_data.platform_type)
