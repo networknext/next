@@ -112,8 +112,9 @@ func PacketSerializationTest[P packets.Packet](writePacket P, readPacket P, t *t
 func GenerateRandomServerInitRequestPacket() packets.SDK_ServerInitRequestPacket {
 
 	return packets.SDK_ServerInitRequestPacket{
-		Version:        packets.SDKVersion{1, 2, 7},
+		Version:        packets.SDKVersion{1, 2, 11},
 		BuyerId:        rand.Uint64(),
+		MatchId:        rand.Uint64(),
 		RequestId:      rand.Uint64(),
 		DatacenterId:   rand.Uint64(),
 		DatacenterName: common.RandomString(packets.SDK_MaxDatacenterNameLength),
@@ -137,8 +138,9 @@ func GenerateRandomServerInitResponsePacket() packets.SDK_ServerInitResponsePack
 func GenerateRandomServerUpdateRequestPacket() packets.SDK_ServerUpdateRequestPacket {
 
 	return packets.SDK_ServerUpdateRequestPacket{
-		Version:      packets.SDKVersion{1, 2, 7},
+		Version:      packets.SDKVersion{1, 2, 11},
 		BuyerId:      rand.Uint64(),
+		MatchId:      rand.Uint64(),
 		RequestId:    rand.Uint64(),
 		DatacenterId: rand.Uint64(),
 		ServerId:     rand.Uint64(),
@@ -223,8 +225,9 @@ func GenerateRandomServerRelayResponsePacket() packets.SDK_ServerRelayResponsePa
 func GenerateRandomSessionUpdateRequestPacket() packets.SDK_SessionUpdateRequestPacket {
 
 	packet := packets.SDK_SessionUpdateRequestPacket{
-		Version:                         packets.SDKVersion{1, 2, 8},
+		Version:                         packets.SDKVersion{1, 2, 11},
 		BuyerId:                         rand.Uint64(),
+		MatchId:                         rand.Uint64(),
 		DatacenterId:                    rand.Uint64(),
 		SessionId:                       rand.Uint64(),
 		SliceNumber:                     rand.Uint32(),

@@ -254,6 +254,7 @@ struct next_server_internal_t
     double next_resolve_hostname_time;
     next_address_t backend_address;
     uint64_t server_id;
+    uint64_t match_id;
     next_address_t server_address;
     next_address_t bind_address;
     next_queue_t * command_queue;
@@ -609,8 +610,11 @@ next_server_internal_t * next_server_internal_create( void * context, const char
 
     next_address_to_string( &server_address, address_string );
     server->server_id = next_hash_string( address_string );
+    server->match_id = next_random_uint64();
 
     next_printf( NEXT_LOG_LEVEL_INFO, "server id is %016" PRIx64, server->server_id );
+
+    next_printf( NEXT_LOG_LEVEL_INFO, "match id is %016" PRIx64, server->match_id );
 
     int result = next_platform_mutex_create( &server->session_mutex );
     if ( result != NEXT_OK )
@@ -3582,6 +3586,7 @@ void next_server_internal_update_init( next_server_internal_t * server )
 
     packet.request_id = server->server_init_request_id;
     packet.buyer_id = server->buyer_id;
+    packet.match_id = server->match_id;
     packet.datacenter_id = server->datacenter_id;
     next_copy_string( packet.datacenter_name, server->datacenter_name, NEXT_MAX_DATACENTER_NAME_LENGTH );
     packet.datacenter_name[NEXT_MAX_DATACENTER_NAME_LENGTH-1] = '\0';
@@ -3695,6 +3700,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         packet.request_id = server->server_update_request_id;
         packet.buyer_id = server->buyer_id;
+        packet.match_id = server->match_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_id = server->server_id;
@@ -3747,6 +3753,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
 
         packet.request_id = server->server_update_request_id;
         packet.buyer_id = server->buyer_id;
+        packet.match_id = server->match_id;
         packet.datacenter_id = server->datacenter_id;
         packet.num_sessions = server->server_update_num_sessions;
         packet.server_id = server->server_id;
@@ -3800,6 +3807,7 @@ void next_server_internal_backend_update( next_server_internal_t * server )
             packet.Reset();
 
             packet.buyer_id = server->buyer_id;
+            packet.match_id = server->match_id;
             packet.datacenter_id = server->datacenter_id;
             packet.session_id = session->session_id;
             packet.slice_number = session->update_sequence++;

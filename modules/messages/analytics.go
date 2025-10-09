@@ -63,6 +63,7 @@ type AnalyticsSessionSummaryMessage struct {
 
 	Timestamp                       int64   `avro:"timestamp"`
 	SessionId                       int64   `avro:"session_id"`
+	MatchId                         int64   `avro:"match_id"`
 	DatacenterId                    int64   `avro:"datacenter_id"`
 	BuyerId                         int64   `avro:"buyer_id"`
 	UserHash                        int64   `avro:"user_hash"`
@@ -108,12 +109,28 @@ type AnalyticsSessionSummaryMessage struct {
 
 // ----------------------------------------------------------------------------------------
 
+type AnalyticsServerInitMessage struct {
+	Timestamp        int64  `avro:"timestamp"`
+	SDKVersion_Major int32  `avro:"sdk_version_major"`
+	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
+	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
+	BuyerId          int64  `avro:"buyer_id"`
+	MatchId          int64  `avro:"match_id"`
+	DatacenterId     int64  `avro:"datacenter_id"`
+	DatacenterName   string `avro:"datacenter_name"`
+	ServerId         int64  `avro:"server_id"`
+	ServerAddress    string `avro:"server_address"`
+}
+
+// ----------------------------------------------------------------------------------------
+
 type AnalyticsServerUpdateMessage struct {
 	Timestamp        int64   `avro:"timestamp"`
 	SDKVersion_Major int32   `avro:"sdk_version_major"`
 	SDKVersion_Minor int32   `avro:"sdk_version_minor"`
 	SDKVersion_Patch int32   `avro:"sdk_version_patch"`
 	BuyerId          int64   `avro:"buyer_id"`
+	MatchId          int64  `avro:"match_id"`
 	DatacenterId     int64   `avro:"datacenter_id"`
 	NumSessions      int32   `avro:"num_sessions"`
 	ServerId         int64   `avro:"server_id"`
@@ -121,20 +138,6 @@ type AnalyticsServerUpdateMessage struct {
 	DeltaTimeMin     float32 `avro:"delta_time_min"`
 	DeltaTimeMax     float32 `avro:"delta_time_max"`
 	DeltaTimeAvg     float32 `avro:"delta_time_avg"`
-}
-
-// ----------------------------------------------------------------------------------------
-
-type AnalyticsServerInitMessage struct {
-	Timestamp        int64  `avro:"timestamp"`
-	SDKVersion_Major int32  `avro:"sdk_version_major"`
-	SDKVersion_Minor int32  `avro:"sdk_version_minor"`
-	SDKVersion_Patch int32  `avro:"sdk_version_patch"`
-	BuyerId          int64  `avro:"buyer_id"`
-	DatacenterId     int64  `avro:"datacenter_id"`
-	DatacenterName   string `avro:"datacenter_name"`
-	ServerId         int64  `avro:"server_id"`
-	ServerAddress    string `avro:"server_address"`
 }
 
 // ----------------------------------------------------------------------------------------

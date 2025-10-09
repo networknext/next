@@ -250,6 +250,12 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Flags passed up from the SDK client. Useful for debugging."
+  },
+  {
+    "name": "match_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The match id. Makes it easy to go from a session to the specific server match it was playing in the dataset."
   }
 
 ]

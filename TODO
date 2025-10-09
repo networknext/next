@@ -1,92 +1,43 @@
 DONE
 
-	Increase SDK version to 1.2.8
+	Generate a random "Match ID" for each server when it starts up so I can calculate things per-match.
 
-	Add next_client_game_stats function to pass in game_rtt, game_jitter and game_packet_loss.
+	Increase SDK version to 1.2.11
 
-	Store all these in value trackers, and take the max values when passing up to the server.
+	Pass up to the backend in server init, server update, session update request packets.
 
-	If these values aren't set, they will all stay set to zero.
-
-	Session update request packet should also include game_rtt, game_jitter and game_packet_loss.
-
-	Server stash the game_rtt, game_jitter and game_packet_loss values in the session entry
-
-	Server passes the stats_game_rtt/jitter/packet_loss up to the backend via backend session update packet
-
-	Update backend to read game_rtt, game_jitter and game_packet_loss if SDK version is 1.2.8 or greater.
-
-	Update pubsub and bigquery schemas to include game_rtt, game_jitter and game_packet_loss in the session update.
-
-	Make sure the values get passed in from the session update.
-
-	Pass the game rtt/jitter/packet loss to server backend via portal message
-
-	Mock up game rtt, jitter and packet loss values in raspberry clients.
-
-	Verify we see game_rtt, game_jitter and game_packet_loss values in bigquery in dev.
-
-	Game RTT is correct
-
-	Game jitter is broken
-
-	Game packet loss is broken
-
-	Verified fix.
-
-	Insert the game rtt/jitter/packet loss into redis via the session inserter
-
-	Update portal to display game latency, game jitter and game packet loss.
-
-	Verify that we see game rtt, jitter and PL in the portal.
-
-	Deploy to prod
-
-	Verify we see zero values for game rtt, jitter and PL in portal.
-
-	Stop tracking next and direct bandwidth up/down on the client
-
-	Just track total bandwidth period (total bandwidth received in-order, whether next or direct...)
-
-	Adjust the stats packets to pass up only bandwidth_up / bandwidth_down
-
-	Deploy to prod.
-
-	Verify correct prod display (zero values for game rtt, jitter and PL).
-
-	Need to wait a bit for caching issues to resolve.
-
-	Autodetect failed to apt install whois, so was failing in prod. Fixed.
-
-	Why are we seeing so many retries?
-
-	My theory is that it's not caused by load on the server backend, but by packet loss between the game servers and the google cloud backend.
-
-	But check to make sure, the retry time should be generous (like retry every 1 second?) so retries don't trip up when latency is high (eg. > 250ms).
-
-	Yes, retry is 1 second.
-
-	Plumb flags from client -> server.
-
-	Plumb flags from server -> backend.
-
-	Update the session update packet to include flags if SDK version >= 1.2.10
-
-	Get flags sent up to bigquery.
-
-	Deploy to dev.
-
-	Verify flags show up in bigquery in session update.
-
-	Verify flags show up in bigquery in session summary.
-
-	Try to relax timeouts so we might reduce fallback to direct.
-
-	Deploy to prod.
+	Update all the backends to read match id if SDK >= 1.2.11
 
 TODO
 
+	Add match id to all bigquery tables and pubsub avro schemas: server_init, server_update, server
+
+	-----
+
+	Pass the match id in through to pubsub via messages in golang.
+
+	-----
+
+	Verify we see match id coming up in bigquery.
+
+	-----
+
 	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
+
+	-----
+
+	Ready to go live.
+	
+	-----
+
+
+
+
+
+
+
+
+
 
 	-----
 
@@ -106,6 +57,6 @@ TODO
 
 	-----
 
-	Ready to update SLOCLAP with new plugin version to try
+	Add functional test to verify we see match id from sessions
 
 	-----

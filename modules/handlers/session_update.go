@@ -1354,6 +1354,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.SessionId = int64(state.Request.SessionId)
 	message.DatacenterId = int64(state.Request.DatacenterId)
 	message.BuyerId = int64(state.Request.BuyerId)
+	message.MatchId = int64(state.Request.MatchId)
 	message.UserHash = int64(state.Request.UserHash)
 	message.Latitude = state.Request.Latitude
 	message.Longitude = state.Request.Longitude

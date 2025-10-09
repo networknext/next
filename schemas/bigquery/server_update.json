@@ -70,5 +70,11 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "The server id"
+  },
+  {
+    "name": "match_id",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The match id. This is a random id generated each time the server starts a new match."
   }
 ]
