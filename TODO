@@ -80,17 +80,13 @@ DONE
 
 	Verify flags show up in bigquery in session summary.
 
-TODO
-
 	Try to relax timeouts so we might reduce fallback to direct.
 
+	Deploy to prod.
 
+TODO
 
-
-
-
-
-FUNCTIONAL TESTS
+	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
 
 	-----
 
@@ -110,17 +106,6 @@ FUNCTIONAL TESTS
 
 	-----
 
+	Ready to update SLOCLAP with new plugin version to try
 
-
-
-
-ADD TO PLUGIN
-
-	Pass in rtt, jitter and PL estimates from unreal engine each frame to next_client_game_stats function
-
-
-
-
-
-
-*** READY FOR RELEASE ***
+	-----
