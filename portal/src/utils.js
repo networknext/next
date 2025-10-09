@@ -67,7 +67,11 @@ function getCountryName(countryCode) {
   try {
     const regionNames = new Intl.DisplayNames(['en'], {type: 'region'});
     let countryName = regionNames.of(countryCode);
-    return countryName
+    if (countryName != "") {
+      return countryName
+    } else {
+      return countryCode
+    }
   } catch (error) {
     return countryCode
   }
