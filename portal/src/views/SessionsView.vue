@@ -50,7 +50,7 @@ mess// -------------------------------------------------------------------------
       </table>
     </div>
 
-    <div class="d-none d-xl-block d-xxl-none">
+    <div class="d-none d-lg-block d-xl-none">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>
@@ -82,7 +82,7 @@ mess// -------------------------------------------------------------------------
       </table>
     </div>
 
-    <div class="d-none d-xxl-block">
+    <div class="d-none d-xl-block">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>
