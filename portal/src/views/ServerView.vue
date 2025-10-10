@@ -73,8 +73,7 @@
                 <th>Session ID</th>
                 <th>ISP</th>
                 <th>Country</th>
-                <th>Direct RTT</th>
-                <th>Accelerated RTT</th>
+                <th>Latency</th>
                 <th>Improvement</th>
               </tr>
             </thead>
@@ -83,8 +82,7 @@
                 <td class="fixed"> <router-link :to='"/session/" + item.session_id'> {{ item.session_id }} </router-link> </td>
                 <td>{{item.country}}</td>
                 <td>{{item.isp}}</td>
-                <td>{{item.direct_rtt}}</td>
-                <td >{{item.next_rtt}}</td>
+                <td>{{item.latency}} ms</td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
                 <td class="orange-center" v-else-if="item.improvement != '--' && item.improvement >= 5"> {{ item.improvement }} ms</td>
                 <td class="red-center" v-else-if="item.improvement != '--' && item.improvement > 0"> {{ item.improvement }} ms</td>
@@ -103,8 +101,7 @@
                 <th>Connection</th>
                 <th>Platform</th>
                 <th>ISP</th>
-                <th>Direct RTT</th>
-                <th>Accelerated RTT</th>
+                <th>Latency</th>
                 <th>Improvement</th>
               </tr>
             </thead>
@@ -115,8 +112,7 @@
                 <td>{{item.connection}}</td>
                 <td>{{item.platform}}</td>
                 <td>{{item.isp}}</td>
-                <td>{{item.direct_rtt}}</td>
-                <td >{{item.next_rtt}}</td>
+                <td>{{item.latency}} ms</td>
                 <td class="green-center" v-if="item.improvement != '--' && item.improvement >= 10"> {{ item.improvement }} ms</td>
                 <td class="orange-center" v-else-if="item.improvement != '--' && item.improvement >= 5"> {{ item.improvement }} ms</td>
                 <td class="red-center" v-else-if="item.improvement != '--' && item.improvement > 0"> {{ item.improvement }} ms</td>
@@ -191,11 +187,11 @@ async function getData(page, server) {
       while (i < res.data.server_sessions.length) {
         const v = res.data.server_sessions[i]
         const session_id = parse_uint64(v.session_id)
-        const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
         const improvement = v.next_rtt != 0 && v.next_rtt < v.direct_rtt ? v.direct_rtt - v.next_rtt : "--"
         const connection = getConnectionName(v.connection_type)
         const platform = getPlatformName(v.platform_type)
         const country = getCountryName(v.country)
+        const latency = (v.next_rtt != 0 && v.next_rtt < v.direct_rtt) ? v.next_rtt : v.direct_rtt
         let start_time = new Date(parseInt(v.start_time*1000)).toLocaleString()
         let row = {
           "session_id":session_id,
@@ -204,13 +200,12 @@ async function getData(page, server) {
           "buyer_link":"/buyer/" + v.buyer_code,
           "datacenter":v.datacenter_name,
           "datacenter_link": "/datacenter/" + v.datacenter_name,
-          "direct_rtt":v.direct_rtt + " ms",
-          "next_rtt":next_rtt,
           "improvement":improvement,
           "connection":connection,
           "platform":platform,
           "country":country,
           "start_time":start_time,
+          "latency":latency,
         }
         data.server_sessions.push(row)
         i++;

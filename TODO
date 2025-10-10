@@ -34,23 +34,19 @@ DONE
 
 	Seems like we might be missing match id in dev session summary?
 
-TODO
-
 	Verify we see session summary with ISP, country and match id in prod.
-
-
-
-
-
-
-
-	-----
 
 	Portal needs a bit of a cleanup of breakpoints.
 
 	The current version of the portal XL really can't scale down as needed.
 
 	We need a middle version.
+
+	Make preview release.
+
+TODO
+
+	Would be nice if I could get the session counts over to the left a bit so I don't need to include scrollbar in screenshots...
 
 	-----
 
@@ -71,5 +67,17 @@ TODO
 	-----
 
 	Add functional test to verify we see match id from sessions
+
+	-----
+
+	Update documentation
+
+	-----
+
+	Fix some easy issues
+
+	-----
+
+	Make release
 
 	-----
