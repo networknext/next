@@ -8,7 +8,7 @@ Network Next is a **network accelerator** for multiplayer games. It's currently 
 
 Network Next accelerates players by monitoring their connection and sending game traffic down an optimized route across a relay network when the default internet route has high latency, jitter or packet loss.
 
-Network Next is source available and free to use when you host the software for your own game with maximum concurrent users (CCU) less than 10k.
+Network Next is source available and free to use when you host the software for your own game with peak concurrent users (CCU) less than 10k.
 
 For games with more than 10k peak CCU in any given year, a license fee of $25k USD per-year must be paid to Network Next, Inc. for each game using the technology. For games with more than 100k peak CCU, the license fee is $100k USD per-year.
 
