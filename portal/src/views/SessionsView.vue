@@ -88,6 +88,7 @@
             <th>Connection</th>
             <th>ISP</th>
             <th>Datacenter</th>
+            <th>Latency</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
@@ -99,6 +100,7 @@
             <td> {{ item["Connection"] }} </td>
             <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+            <td> {{ item["Latency"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -136,6 +138,7 @@ async function getData(page) {
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
       const country = getCountryName(v.country)
+      const latency = (v.next_rtt != 0 && v.next_rtt < v.direct_rtt) ? v.next_rtt : v.direct_rtt
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
@@ -147,6 +150,7 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
+        "Latency":latency,
         "Improvement":improvement,
       }
       data.push(row)
