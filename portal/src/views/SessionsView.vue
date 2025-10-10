@@ -83,9 +83,9 @@
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>Country</th>
             <th>Platform</th>
             <th>Connection</th>
+            <th>Country</th>
             <th>ISP</th>
             <th>Datacenter</th>
             <th class="right_align">Improvement</th>
@@ -94,9 +94,9 @@
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td> {{ item["Country"] }} </td>
             <td> {{ item["Platform"] }} </td>
             <td> {{ item["Connection"] }} </td>
+            <td> {{ item["Country"] }} </td>
             <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
