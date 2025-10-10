@@ -90,6 +90,7 @@ type AnalyticsSessionSummaryMessage struct {
 	Error                           int64   `avro:"error"`
 	ISP                            string   `avro:"isp"`
 	Country                        string   `avro:"country"`
+	BestLatencyReduction            int64   `avro:"best_latency_reduction"`
 
 	// flags
 

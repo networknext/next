@@ -869,6 +869,11 @@ locals {
     "latitude.london" = {
       datacenter_name = "latitude.london"
       public_address  = "103.50.32.156"
+    },
+
+    "latitude.memico" = {
+      datacenter_name = "latitude.mexico"
+      public_address  = "103.88.234.141"
     }
 
   }

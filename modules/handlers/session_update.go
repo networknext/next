@@ -1382,13 +1382,19 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DurationOnNext = int32(state.Input.DurationOnNext)           // seconds
 	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
 	message.Error = int64(state.Input.Error)
-	
+
 	// get isp and country from client IP address via ip2location db (optional)
 
 	if state.GetISPAndCountry != nil {
 		isp, country := state.GetISPAndCountry(state.Request.ClientAddress.IP)
 		message.ISP = isp
 		message.Country = country
+	}
+
+	// calculate best latency reduction for this session
+
+	if message.DurationOnNext > 0 {
+		message.BestLatencyReduction = int64(state.Output.BestDirectRTT - state.Output.BestNextRTT)
 	}
 
 	// flags
