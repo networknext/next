@@ -21,6 +21,8 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
+const Relax = true
+
 var DebugLogs bool
 
 func init() {
@@ -1983,19 +1985,19 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
-	// todo: provide a way to disable this
-
-	if !routeShader.ForceNext && predictedLatency > 0 && nextLatency >= predictedLatency+10 {
-		routeState.MispredictCounter++
-		if routeState.MispredictCounter == 3 {
-			if debug != nil {
-				*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
+	if !Relax {
+		if !routeShader.ForceNext && predictedLatency > 0 && nextLatency >= predictedLatency+10 {
+			routeState.MispredictCounter++
+			if routeState.MispredictCounter == 3 {
+				if debug != nil {
+					*debug += fmt.Sprintf("mispredict: next rtt = %d, predicted rtt = %d\n", nextLatency, predictedLatency)
+				}
+				routeState.Mispredict = true
+				return false, false
 			}
-			routeState.Mispredict = true
-			return false, false
+		} else {
+			routeState.MispredictCounter = 0
 		}
-	} else {
-		routeState.MispredictCounter = 0
 	}
 
 	// if we make rtt significantly worse leave network next
@@ -2024,23 +2026,25 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 		} else {
 
-			// todo: provide a way to disable this codepath. we really don't need to worry about making latency worse in multipath. that's fine.
-
 			// If we are in multipath, only leave network next if we make latency worse three slices in a row
 
-			if nextLatency > (directLatency + rttVeto) {
-				routeState.LatencyWorseCounter++
-				if routeState.LatencyWorseCounter == 3 {
-					if debug != nil {
-						*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency+rttVeto)
-					}
-					routeState.LatencyWorse = true
-					return false, false
-				}
-			} else {
-				routeState.LatencyWorseCounter = 0
-			}
+			if !Relax {
 
+				// If we are in multipath, only leave network next if we make latency worse three slices in a row
+
+				if nextLatency > (directLatency + rttVeto) {
+					routeState.LatencyWorseCounter++
+					if routeState.LatencyWorseCounter == 3 {
+						if debug != nil {
+							*debug += fmt.Sprintf("aborting route because we made latency worse 3X: next rtt = %d, direct rtt = %d, veto rtt = %d\n", nextLatency, directLatency, directLatency+rttVeto)
+						}
+						routeState.LatencyWorse = true
+						return false, false
+					}
+				} else {
+					routeState.LatencyWorseCounter = 0
+				}
+			}
 		}
 
 		maxCost = directLatency - routeShader.LatencyReductionThreshold
@@ -2071,12 +2075,14 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	// if the next route RTT is too high, leave network next
 
-	if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
-		if debug != nil {
-			*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, routeShader.MaxNextRTT)
+	if !Relax {
+		if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
+			if debug != nil {
+				*debug += fmt.Sprintf("next latency is too high. next rtt = %d, threshold = %d\n", bestRouteCost, routeShader.MaxNextRTT)
+			}
+			routeState.NextLatencyTooHigh = true
+			return false, false
 		}
-		routeState.NextLatencyTooHigh = true
-		return false, false
 	}
 
 	// stay on network next
