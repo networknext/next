@@ -1,50 +1,47 @@
 DONE
 
-	Generate a random "Match ID" for each server when it starts up so I can calculate things per-match.
+	Use queries to look for bad things
 
-	Increase SDK version to 1.2.11
+	Fallback to direct is happening a lot (thousands of times a day)
 
-	Pass up to the backend in server init, server update, session update request packets.
+	Fallback to direct error is not showing up in error code.
 
-	Update all the backends to read match id if SDK >= 1.2.11
+	SessionError_Aborted = (1 << 5) seems to be happening semi-frequently (hundreds of times a day)
 
-	Add match id to all bigquery tables and pubsub avro schemas: server_init, server_update, session_summary.
+	Bad slice number (512) is happening extremely rarely. a few a day...
 
-	Pass the match id in through to pubsub via messages in golang.
+	A lot of route_no_longer_exists are happening, 1000s a day.
 
-	Deploy to dev
+	Latency worse is happening less than 100 times a day.
 
-	Session summary, add country. Add ISP?
-
-	Just makes it much easier to do country analysis.
-
-	Plus, we don't have to wait for SDK update. It's in the backend right now.
-
-	Deploy to prod.
-
-	Verify we see country code in portal.
-
-	Extend portal to translate from country code to local language country name in javascript.
-
-	Verify we see country names in portal.
-
-	Fix terraform so prod bigquery envolves schema like dev.
-
-	Verify we see match id coming up in bigquery in dev and prod.
-
-	Seems like we might be missing match id in dev session summary?
-
-	Verify we see session summary with ISP, country and match id in prod.
-
-	Portal needs a bit of a cleanup of breakpoints.
-
-	The current version of the portal XL really can't scale down as needed.
-
-	We need a middle version.
-
-	Make preview release.
+	Mispredict is happening thousands of times a day.
 
 TODO
+
+	Best thing I can do is try disabling the mispredict.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	Would be nice if I could get the session counts over to the left a bit so I don't need to include scrollbar in screenshots...
 
