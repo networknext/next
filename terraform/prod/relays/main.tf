@@ -871,7 +871,7 @@ locals {
       public_address  = "103.50.32.156"
     },
 
-    "latitude.memico" = {
+    "latitude.mexico" = {
       datacenter_name = "latitude.mexico"
       public_address  = "103.88.234.141"
     }

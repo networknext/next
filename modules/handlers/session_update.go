@@ -1412,6 +1412,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.Flags = int64(state.Request.Flags)
 
 	// send it

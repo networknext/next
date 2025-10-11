@@ -44,6 +44,7 @@
     {"name": "latency_worse",                         "type": "boolean"},
     {"name": "mispredict",                            "type": "boolean"},
     {"name": "lack_of_diversity",                     "type": "boolean"},
+    {"name": "fallback_to_direct",                    "type": "boolean"},
     {"name": "flags",                                 "type": "long", "default": 0},
     {"name": "server_id",                             "type": "long", "default": 0},
     {"name": "match_id",                              "type": "long", "default": 0},

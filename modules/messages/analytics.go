@@ -91,6 +91,7 @@ type AnalyticsSessionSummaryMessage struct {
 	ISP                            string   `avro:"isp"`
 	Country                        string   `avro:"country"`
 	BestLatencyReduction            int64   `avro:"best_latency_reduction"`
+	FallbackToDirect    bool `avro:"fallback_to_direct"`
 
 	// flags
 
