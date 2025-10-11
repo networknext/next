@@ -20,6 +20,21 @@ TODO
 
 	Best thing I can do is try disabling the mispredict.
 
+	I can also disable the latency worse.
+
+	It would be cool to do this with a new route shader setting "Relax = true"
+
+	This way we can turn off relax whenever and return to old behavior.
+
+	-----------
+
+	I think I can do this with backend changes only. Big deal!
+
+	-----------
+
+	Wait a day and check on the next latency too high metric, it should be coming in now
+
+	-----------
 
 
 
