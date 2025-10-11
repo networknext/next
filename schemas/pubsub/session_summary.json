@@ -50,6 +50,7 @@
     {"name": "match_id",                              "type": "long", "default": 0},
     {"name": "isp",                                   "type": "string", "default": ""},
     {"name": "country",                               "type": "string", "default": ""},
-    {"name": "best_latency_reduction",                "type": "long", "default": 0}
+    {"name": "best_latency_reduction",                "type": "long", "default": 0},
+    {"name": "next_latency_too_high",                 "type": "boolean", "default": false}
   ]
 }

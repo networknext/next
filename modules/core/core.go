@@ -1983,6 +1983,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 
 	// if we mispredict RTT by 10ms or more, 3 slices in a row, leave network next
 
+	// todo: provide a way to disable this
+
 	if !routeShader.ForceNext && predictedLatency > 0 && nextLatency >= predictedLatency+10 {
 		routeState.MispredictCounter++
 		if routeState.MispredictCounter == 3 {
@@ -2021,6 +2023,8 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 			}
 
 		} else {
+
+			// todo: provide a way to disable this codepath. we really don't need to worry about making latency worse in multipath. that's fine.
 
 			// If we are in multipath, only leave network next if we make latency worse three slices in a row
 

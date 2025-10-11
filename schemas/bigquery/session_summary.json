@@ -280,6 +280,12 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if the session fell back to direct."
+  },
+  {
+    "name": "next_latency_too_high",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if network next latency went above the maximum value."
   }
 
 ]

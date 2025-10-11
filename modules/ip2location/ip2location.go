@@ -13,7 +13,6 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 )
 
-
 type City struct {
 	Country struct {
 		ISOCode string `maxminddb:"iso_code"`
@@ -25,7 +24,7 @@ type City struct {
 }
 
 type ISP struct {
-	ISP     string `maxminddb:"isp"`
+	ISP string `maxminddb:"isp"`
 }
 
 func Bash(command string) error {

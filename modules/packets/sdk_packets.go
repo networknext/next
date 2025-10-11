@@ -342,7 +342,7 @@ type SDK_SessionUpdateRequestPacket struct {
 	GameRTT                         float32
 	GameJitter                      float32
 	GamePacketLoss                  float32
-	Flags						    uint32
+	Flags                           uint32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
