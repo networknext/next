@@ -246,12 +246,6 @@
     "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
   },  
   {
-    "name": "fallback_to_direct",
-    "type": "BOOL",
-    "mode": "NULLABLE",
-    "description": "True if the session fell back to direct."
-  },  
-  {
     "name": "flags",
     "type": "INT64",
     "mode": "NULLABLE",
@@ -280,6 +274,12 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "The best latency reduction experienced by this player in milliseconds. 0 if no latency reduction was found."
+  },
+  {
+    "name": "fallback_to_direct",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if the session fell back to direct."
   }
 
 ]
