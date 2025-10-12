@@ -483,6 +483,25 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayRTT
 
+	/*
+		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
+	*/
+
+	foundLowLatency := false
+	for i := 0; i < int(numClientRelays); i++ {
+		if sourceRelayLatency[i] <= 60 {
+			foundLowLatency = true
+			break
+		}
+	}
+
+	if !foundLowLatency {
+		core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
+		state.Output.LikelyVPNOrCrossRegion = true
+	}
+
+	// todo: we could determine "NoClientRelays" here if they are all 255 cost
+
 	return true
 }
 
@@ -1408,6 +1427,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.NextLatencyTooHigh = state.Input.RouteState.NextLatencyTooHigh
+	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
 	message.Flags = int64(state.Request.Flags)
 
 	// send it

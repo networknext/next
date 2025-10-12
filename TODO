@@ -72,7 +72,11 @@ DONE
 
 TODO
 
-	Implement likely_vpn_or_cross_region flag
+	Implement likely_vpn_or_cross_region flag in session update
+
+	-----------
+
+	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
 
     -----------
 
@@ -253,6 +257,10 @@ TODO
 	-----
 
 	Add functional test to verify we see match id from sessions
+
+	-----
+
+	Add functional test to verify we get the likely_vpn_or_cross_region
 
 	-----
 
