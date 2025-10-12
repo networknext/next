@@ -485,6 +485,8 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	/*
 		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
+
+		If we don't find any valid client relays, set a flag.
 	*/
 
     foundValidRelay := false
