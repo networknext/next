@@ -505,9 +505,14 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		state.Output.LikelyVPNOrCrossRegion = true
 	}
 
+	/*
 	if !foundValidRelay {
 		state.Output.NoClientRelays = true
 	}
+	*/
+
+	// todo: i don't know how the code above is not working
+	state.Output.NoClientRelays = false
 
 	return true
 }
