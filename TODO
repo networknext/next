@@ -65,9 +65,22 @@ DONE
 
 	Why not? What's happening?
 
+	Implement a session debugger tool, where I can pass in the session id and see details about it that I care about, then investigate some sessions.
+
+	Implement a user sessions tool, so I can look at session data for a player from user hash.
+
+
 TODO
 
-	Implement a session debugger tool, where I can pass in the session id and see details about it that I care about, then investigate some of these:
+	To save money I should seriously consider downsizing some google cloud and AWS relays.
+
+	At the session counts they have, many do not need more than 2 cores.
+
+	This could save a lot of money!
+
+	-----------
+
+	Sessions to look at:
 
 		-8003309578772432229
 		-2198154435340565541
@@ -138,9 +151,9 @@ TODO
 
 	-----
 
-	Sometimes the very last slice has high latency (probably because the player shut off their console)
+	Sometimes the very last slice has really high latency (lag spike)
 
-	Example session:
+	Example sessions:
 
 		-2198154435340565541
 		4455691751385035519
@@ -149,7 +162,9 @@ TODO
 
 	Did the session have a huge packet loss event, or did the person turn off their console?
 
-	If they turned off their console, then fallback_to_direct wouldn't get set to true, because the client sets this to true, not the server.
+	If they turned off their console, then fallback_to_direct wouldn't get set to true, because it's set to true on the client.
+
+	So I think these are just big packet loss events causing fallback to direct.
 
 	-----
 
@@ -158,6 +173,8 @@ TODO
 		1043069459014661946
 
 	This can happen because people are playing on a VPN.
+
+	We should be able to confirm VPN play by looking at client relays for the session. If all client relays are high, the player is on a VPN and that's why we can't accelerate them.
 
 	-----
 
