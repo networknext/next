@@ -1279,22 +1279,31 @@ func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_r
 
 func FilterSourceRelays(directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, filterSourceRelay []bool) {
 
-	// if direct has high jitter, and *most* source relays have high jitter
-	// it's a temporary jitter spike on the edge, and we should ignore it.
+	if !Relax {
 
-	directHasHighJitter := directJitter >= 10.0
+		directHasHighJitter := directJitter >= 10.0
 
-	numRelaysWithHighJitter := 0
-	for i := range sourceRelayJitter {
-		if sourceRelayJitter[i] >= 10.0 {
-			numRelaysWithHighJitter++
-		}
-	}
-
-	if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId)*2.0/3.0 {
+		numRelaysWithHighJitter := 0
 		for i := range sourceRelayJitter {
-			sourceRelayJitter[i] = 0.0
+			if sourceRelayJitter[i] >= 10.0 {
+				numRelaysWithHighJitter++
+			}
 		}
+
+		if directHasHighJitter && numRelaysWithHighJitter > len(sourceRelayId)*2.0/3.0 {
+			for i := range sourceRelayJitter {
+				sourceRelayJitter[i] = 0.0
+			}
+		}
+
+		// exclude relays with significantly higher jitter than direct
+
+		for i := range sourceRelayJitter {
+			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
+				filterSourceRelay[i] = true
+			}
+		}
+
 	}
 
 	// if direct has high packet loss, and *most* source relays have high packet loss
@@ -1312,14 +1321,6 @@ func FilterSourceRelays(directLatency int32, directJitter int32, directPacketLos
 	if directHasHighPacketLoss && numRelaysWithHighPacketLoss > len(sourceRelayId)*2.0/3.0 {
 		for i := range sourceRelayPacketLoss {
 			sourceRelayPacketLoss[i] = 0.0
-		}
-	}
-
-	// exclude relays with significantly higher jitter than direct
-
-	for i := range sourceRelayJitter {
-		if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
-			filterSourceRelay[i] = true
 		}
 	}
 

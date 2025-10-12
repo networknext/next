@@ -73,9 +73,21 @@ DONE
 
 	Verify that likely VPN or cross region % makes sense. So far it doesn't seem to (?)
 
+	Implement a cool "no_client_relays" bool in the session data and stick it in summary.
+
 TODO
 
-	I could implement a cool "no_client_relays" bool in the session data and stick it in summary.
+	No client relays seems to be really high, like 45%. What's up with that?
+
+		149573189816740698
+		-4818178819083552814
+		-5514822828527156067
+		-1814448505125457653
+		9178974542876531510
+		-5395921700275495363
+		4589978670989030249
+		6588609004629421707
+		4050085726434581346
 
 	-----------
 
