@@ -71,19 +71,17 @@ DONE
 
 	Implement likely_vpn_or_cross_region flag in session update
 
-TODO
-
 	Verify that likely VPN or cross region % makes sense. So far it doesn't seem to (?)
 
-	-----------
+TODO
 
 	I could implement a cool "no_client_relays" bool in the session data and stick it in summary.
-
-	Is this helpful? I don't trust the error flag actually gets set.
 
 	-----------
 
 	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
+
+	I'd feel more comfortable migrating this over to bools instead of flags.
 
     -----------
 

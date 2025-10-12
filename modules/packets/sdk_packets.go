@@ -657,6 +657,7 @@ type SDK_SessionData struct {
 	ExcludeClientRelay                  [SDK_MaxClientRelays]bool
 	ExcludeServerRelay                  [SDK_MaxServerRelays]bool
 	LikelyVPNOrCrossRegion              bool
+	NoClientRelays                      bool
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -751,6 +752,10 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 
 	if sessionData.Version >= 2 {
 		stream.SerializeBool(&sessionData.LikelyVPNOrCrossRegion)
+	}
+
+	if sessionData.Version >= 3 {
+		stream.SerializeBool(&sessionData.NoClientRelays)
 	}
 
 	return stream.Error()

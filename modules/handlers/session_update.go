@@ -505,7 +505,9 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		state.Output.LikelyVPNOrCrossRegion = true
 	}
 
-	// todo: we could determine "NoClientRelays" here if they are all 255 cost
+	if !foundValidRelay {
+		state.Output.NoClientRelays = state.Output.NoClientRelays || true
+	}
 
 	return true
 }
@@ -1433,6 +1435,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.NextLatencyTooHigh = state.Input.RouteState.NextLatencyTooHigh
 	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
+	message.NoClientRelays = state.Input.NoClientRelays
 	message.Flags = int64(state.Request.Flags)
 
 	// send it

@@ -11,8 +11,8 @@ const (
 	SDK_MaxPacketBytes = constants.MaxPacketBytes
 
 	SDK_SessionDataVersion_Min   = 1
-	SDK_SessionDataVersion_Max   = 2
-	SDK_SessionDataVersion_Write = 2
+	SDK_SessionDataVersion_Max   = 3
+	SDK_SessionDataVersion_Write = 3
 
 	SDK_CRYPTO_SIGN_BYTES             = 64
 	SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32

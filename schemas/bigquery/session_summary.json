@@ -292,6 +292,12 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if this session is likely over a VPN or cross-region. True if pings to all client relays are > threshold."
+  },
+  {
+    "name": "no_client_relays",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session has no client relays for routing (this may be because all were excluded due to network performance)."
   }
 
 ]
