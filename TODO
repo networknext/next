@@ -30,15 +30,44 @@ DONE
 
 	Verify we no longer see latency worse
 
+	Look into the abort. Why does it happen? Is it related to fallback to direct?
+
+		// currently taking network next
+
+		if !state.Request.Next {
+
+			// the sdk aborted this session
+
+			core.Debug("aborted")
+			state.Output.RouteState.Next = false
+			state.Output.RouteState.Veto = true
+			state.Error |= constants.SessionError_Aborted
+			if state.Debug != nil {
+				*state.Debug += "aborted\n"
+			}
+			return
+		}
+
+	It's basically the backend going, OK hold on, the previous slice was next, but now we're direct.
+
+	It's effectively a fallback to direct that forgets to set the fallback to direct flag.
+
+	To diagnose what is going on, we need to find where (on the server or client) it might
+	transition from being next to being on direct, without setting the fallback to direct flag.
+
+	Build up one graph "bad stuff" where all the bad stuff we don't want to see is graphed in the last 24 hours by hour.
+
+	This will make it easy to apply fixes and verify they work quickly.
+
 TODO
 
+	Try to identify why abort is triggering.
+
+	It's basically a fallback to direct while forgetting to set the fallback to direct flag.
+
 	-----
 
-	Wait a day and check on the next latency too high metric, it should be coming in now
-
-	-----
-
-	Look into the abort. Why does it happen? Is it related to fallback to direct?
+	The fallback to direct error is not being set in the summary, even though it is set on the bool.
 
 	-----
 
