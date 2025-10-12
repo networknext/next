@@ -286,6 +286,12 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if network next latency went above the maximum value."
+  },
+  {
+    "name": "likely_vpn_or_cross_region",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session is likely over a VPN or cross-region. True if pings to all client relays are > threshold."
   }
 
 ]

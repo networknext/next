@@ -72,6 +72,10 @@ DONE
 
 TODO
 
+	Implement likely_vpn_or_cross_region flag
+
+    -----------
+
 	To save money I should seriously consider downsizing some google cloud and AWS relays.
 
 	At the session counts they have, many do not need more than 2 cores.

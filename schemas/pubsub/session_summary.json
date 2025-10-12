@@ -51,6 +51,7 @@
     {"name": "isp",                                   "type": "string", "default": ""},
     {"name": "country",                               "type": "string", "default": ""},
     {"name": "best_latency_reduction",                "type": "long", "default": 0},
-    {"name": "next_latency_too_high",                 "type": "boolean", "default": false}
+    {"name": "next_latency_too_high",                 "type": "boolean", "default": false},
+    {"name": "likely_vpn_or_cross_region",            "type": "boolean", "default": false}
   ]
 }

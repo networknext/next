@@ -93,6 +93,7 @@ type AnalyticsSessionSummaryMessage struct {
 	BestLatencyReduction            int64   `avro:"best_latency_reduction"`
 	FallbackToDirect                bool    `avro:"fallback_to_direct"`
 	NextLatencyTooHigh              bool    `avro:"next_latency_too_high"`
+	LikelyVPNOrCrossRegion          bool    `avro:"likely_vpn_or_cross_region"`
 
 	// flags
 
