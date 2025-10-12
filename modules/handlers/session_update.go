@@ -487,15 +487,18 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
 	*/
 
+    foundValidRelay := false
 	foundLowLatency := false
 	for i := 0; i < int(numClientRelays); i++ {
-		if outputSourceRelayRTT[i] <= 60 {
+		if outputSourceRelayRTT[i] != 0 && outputSourceRelayRTT[i] <= 60 {
 			foundLowLatency = true
-			break
+		}
+		if outputSourceRelayRTT[i] != 255 {
+			foundValidRelay = true
 		}
 	}
 
-	if !foundLowLatency {
+	if !foundLowLatency && foundValidRelay {
 		core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
 		state.Output.LikelyVPNOrCrossRegion = true
 	}
