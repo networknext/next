@@ -39,7 +39,7 @@ function is_visible(element) {
 
 function getPlatformName(platformId) {
   switch(platformId) {
-  case 1: return "Windows"
+  case 1: return "PC"
   case 2: return "Mac"
   case 3: return "Linux"
   case 4: return "Switch"
