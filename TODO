@@ -281,6 +281,10 @@ TODO
 
 	-----
 
+	If we end up doing source relay filtering for jitter, add some unit tests and func tests around this.
+
+	-----
+
 	Update documentation
 
 	-----

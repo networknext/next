@@ -495,7 +495,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		if outputSourceRelayRTT[i] != 0 && outputSourceRelayRTT[i] <= 60 {
 			foundLowLatency = true
 		}
-		if outputSourceRelayRTT[i] != 255 {
+		if outputSourceRelayRTT[i] != 0 && outputSourceRelayRTT[i] != 255 {
 			foundValidRelay = true
 		}
 	}
@@ -506,7 +506,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 	}
 
 	if !foundValidRelay {
-		state.Output.NoClientRelays = state.Output.NoClientRelays || true
+		state.Output.NoClientRelays = true
 	}
 
 	return true
