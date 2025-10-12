@@ -16,25 +16,79 @@ DONE
 
 	Mispredict is happening thousands of times a day.
 
-TODO
-
 	Best thing I can do is try disabling the mispredict.
 
 	I can also disable the latency worse.
 
-	It would be cool to do this with a new route shader setting "Relax = true"
+	Did this by setting core.Relax = true, easier than doing it in route shader.
 
 	This way we can turn off relax whenever and return to old behavior.
 
-	-----------
+	Verify we no longer see next latency too high
 
-	I think I can do this with backend changes only. Big deal!
+	Verify we no longer see mispredicts
 
-	-----------
+	Verify we no longer see latency worse
+
+TODO
+
+	-----
 
 	Wait a day and check on the next latency too high metric, it should be coming in now
 
-	-----------
+	-----
+
+	Look into the abort. Why does it happen? Is it related to fallback to direct?
+
+	-----
+
+	Things not fixed yet:
+
+		1. Fallback to direct
+
+		2. Abort
+
+		3. Lost route
+
+	-----
+
+	Wait for the patch to go out. We should see a reduction in fallback to direct (longer timeouts).
+
+	Plus, we will see the reasons for fallback to direct. Identify what is happening and think about how it could happen.
+
+	Can we reduce it?
+
+	-----
+
+	Why is lost route happening?
+
+	It could be that the server relay is flaky
+
+	It could be that the client has only one working client relay, and it goes away or becomes not routable?
+
+	But shouldn't the system find other routes? There's usually a lot of route redundancy.
+
+	Drill in on sessions that lost route and see what's happening.
+
+	-----
+
+	Drill in and find brasil sessions above 100ms that aren't being fixed.
+
+	Why not? What's happening?
+
+	Things it could be:
+
+		1. No client relays
+
+		2. No server relays
+
+		3. No route
+
+		4. Fallback to direct
+
+		5. ???
+
+	-----
 
 
 
@@ -56,8 +110,7 @@ TODO
 
 
 
-
-
+	-----
 
 	Would be nice if I could get the session counts over to the left a bit so I don't need to include scrollbar in screenshots...
 
