@@ -61,13 +61,13 @@ DONE
 
 TODO
 
-	Try to identify why abort is triggering.
-
-	It's basically a fallback to direct while forgetting to set the fallback to direct flag.
+	The fallback to direct error is not being set in the summary, even though it is set on the bool.
 
 	-----
 
-	The fallback to direct error is not being set in the summary, even though it is set on the bool.
+	Try to identify why abort is triggering.
+
+	It's basically a fallback to direct while forgetting to set the fallback to direct flag.
 
 	-----
 

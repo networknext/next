@@ -74,9 +74,6 @@ type SessionUpdateState struct {
 	StartTimestamp     uint64
 	StartTimestampNano uint64
 
-	// true if we fellback to direct on this update
-	FallbackToDirect bool
-
 	// if true, only network next sessions are sent to portal
 	PortalNextSessionsOnly bool
 
@@ -189,18 +186,15 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.FallbackToDirect {
-		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
-			if datacenter != nil {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
-			} else {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
-			}
-			state.Error |= constants.SessionError_FallbackToDirect
-			state.FallbackToDirect = true
-			if state.FallbackToDirectChannel != nil {
-				state.FallbackToDirectChannel <- state.Request.SessionId
-			}
+		state.Error |= constants.SessionError_FallbackToDirect
+		datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
+		if datacenter != nil {
+			core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
+		} else {
+			core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
+		}
+		if state.FallbackToDirectChannel != nil {
+			state.FallbackToDirectChannel <- state.Request.SessionId
 		}
 		return true
 	}
@@ -1154,7 +1148,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.BestNextRTT = state.Output.BestNextRTT
 
 	message.Retry = state.Request.RetryNumber != 0
-	message.FallbackToDirect = state.FallbackToDirect
+	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.SendToPortal = !state.PortalNextSessionsOnly || (state.PortalNextSessionsOnly && state.Output.DurationOnNext > 0)
 
 	if state.PortalSessionUpdateMessageChannel != nil {
