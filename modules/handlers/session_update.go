@@ -466,6 +466,34 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 	}
 
 	/*
+		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
+
+		If we don't find any valid client relays, set a flag.
+	*/
+
+    foundValidRelay := false
+	foundLowLatency := false
+	for i := 0; i < int(numClientRelays); i++ {
+		if state.Output.ExcludeClientRelay[i] {
+			continue
+		}
+		foundValidRelay = true
+		if sourceRelayLatency[i] <= 60 {
+			foundLowLatency = true
+		}
+	}
+
+	if !foundLowLatency && foundValidRelay {
+		core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
+		state.Output.LikelyVPNOrCrossRegion = true
+	}
+
+	if !foundValidRelay {
+		core.Debug("session %016x has no client relays", state.Request.SessionId)
+		state.Output.NoClientRelays = true
+	}
+
+	/*
 		Reframe the client relays from relay ids to relay indices relative to the current route matrix.
 
 		The route matrix and the position of relays in it can change over time, thus we need to perform this step each update.
@@ -482,37 +510,6 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	state.SourceRelays = outputSourceRelays
 	state.SourceRelayRTT = outputSourceRelayRTT
-
-	/*
-		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
-
-		If we don't find any valid client relays, set a flag.
-	*/
-
-    foundValidRelay := false
-	foundLowLatency := false
-	for i := 0; i < int(numClientRelays); i++ {
-		if outputSourceRelayRTT[i] != 0 && outputSourceRelayRTT[i] <= 60 {
-			foundLowLatency = true
-		}
-		if outputSourceRelayRTT[i] != 0 && outputSourceRelayRTT[i] != 255 {
-			foundValidRelay = true
-		}
-	}
-
-	if !foundLowLatency && foundValidRelay {
-		core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
-		state.Output.LikelyVPNOrCrossRegion = true
-	}
-
-	/*
-	if !foundValidRelay {
-		state.Output.NoClientRelays = true
-	}
-	*/
-
-	// todo: i don't know how the code above is not working
-	state.Output.NoClientRelays = false
 
 	return true
 }
