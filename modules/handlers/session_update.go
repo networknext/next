@@ -489,7 +489,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	foundLowLatency := false
 	for i := 0; i < int(numClientRelays); i++ {
-		if sourceRelayLatency[i] <= 60 {
+		if outputSourceRelayRTT[i] <= 60 {
 			foundLowLatency = true
 			break
 		}
