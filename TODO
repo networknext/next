@@ -80,64 +80,9 @@ TODO
 
 	-----------
 
-	Sessions to look at:
+	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
 
-		-8003309578772432229
-		-2198154435340565541
-		4455691751385035519
-		-1441849604715854793
-		-8893713270631889324
-		1043069459014661946
-		428870417921553802
-		-8079343205311140378
-		-3147773086764525781
-		-7129124477292008386
-		-4567202628162033718
-		-5634882001556190819
-		-3941993414834069369
-		6536157024088213710
-		-6633077465191186675
-		8670609229972116695
-		3641719633669816223
-		2417178463301127797
-		156189975710988
-		983081899982361578
-		-7047731294649380860
-		8560327377591376115
-		-4327547645019040404
-		-7086141734212354562
-		231475525607693085
-		-403984737721862692
-		3039743475755461855
-		409608075494683598
-		3073525261838943415
-		-4424465432921318146
-		2487808790524640162
-		-4214265392311060780
-		-2715793225429511007
-		-5186463789204744276
-		8675631615792893545
-		-5473578955266836478
-		2017066945909520883
-		-6093939778817070830
-		-3174920187786293718
-		6633073480815668848
-		6439867405407070614
-		-5300094815582476982
-		-7670141798708337608
-		9082004402169554317
-		-7318204436850403823
-		-6443929599391598748
-		-304939386591209377
-		-5123253739640444109
-		696277033156270097
-		-1776092636647349025
-		9044229743424711168
-		6026279906091955814
-		7883766532371512219
-		-8583084117910481453
-		-8714797941159341927
-		26775334483397526
+	Some will only even have a few hundred. These are the ones that can be adjusted down.
 
 	-----
 
@@ -151,12 +96,23 @@ TODO
 
 	-----
 
-	Sometimes the very last slice has really high latency (lag spike)
+	Sometimes the very last slice has high latency (lag spike)
 
 	Example sessions:
 
 		-2198154435340565541
 		4455691751385035519
+		-7129124477292008386
+		-4567202628162033718
+		-5634882001556190819
+		-3941993414834069369
+		6536157024088213710
+		-6633077465191186675
+		3641719633669816223
+		-7047731294649380860
+		3039743475755461855
+		3073525261838943415
+		8675631615792893545
 
 	These sessions also tend to have fallback_to_direct as true on the last slice
 
@@ -168,13 +124,44 @@ TODO
 
 	-----
 
-	Here is an example of a session that had > 100ms, but we couldn't accelerate it:
+	Sessions that had > 100ms in Brasil to Sao Paulo, but we couldn't accelerate:
 
 		1043069459014661946
+		428870417921553802
+		-8079343205311140378
+		-3147773086764525781
+		8670609229972116695
+		2417178463301127797
+		156189975710988
+		983081899982361578
+		231475525607693085
+		409608075494683598
+		2487808790524640162
+		-2715793225429511007
+		-5186463789204744276
+		2017066945909520883
 
-	This can happen because people are playing on a VPN.
+	This can happen because people are playing on a VPN dropping off in Sao Paulo.
 
-	We should be able to confirm VPN play by looking at client relays for the session. If all client relays are high, the player is on a VPN and that's why we can't accelerate them.
+	We should be able to confirm VPN play by looking at client relays for the session. If all client relays are high (>60ms RTT, excluding ones with 100% PL), the player is on a VPN and that's why we can't accelerate them.
+
+	-----
+
+	Would be awesome to detect likely_vpn_or_cross_region and stash it in the session summary!
+
+	This would enable me to quickly exclude these sessions when analyzing playtime hours and average latency.
+
+	We could also do specific analysis like, for cross region or vpn, how much are we able to optimize, on average?
+
+	If we can't optimize, probably VPN.
+
+	If we can optimize, probably cross-region
+
+	-----
+
+	This session is just broken:
+
+		-7086141734212354562
 
 	-----
 
