@@ -59,15 +59,105 @@ DONE
 
 	This will make it easy to apply fixes and verify they work quickly.
 
+	The fallback to direct error is not being set in the summary, even though it is set on the bool.
+
+	Drill in and find brasil sessions above 100ms that aren't being fixed.
+
+	Why not? What's happening?
+
 TODO
 
-	The fallback to direct error is not being set in the summary, even though it is set on the bool.
+	Implement a session debugger tool, where I can pass in the session id and see details about it that I care about, then investigate some of these:
+
+		-8003309578772432229
+		-2198154435340565541
+		4455691751385035519
+		-1441849604715854793
+		-8893713270631889324
+		1043069459014661946
+		428870417921553802
+		-8079343205311140378
+		-3147773086764525781
+		-7129124477292008386
+		-4567202628162033718
+		-5634882001556190819
+		-3941993414834069369
+		6536157024088213710
+		-6633077465191186675
+		8670609229972116695
+		3641719633669816223
+		2417178463301127797
+		156189975710988
+		983081899982361578
+		-7047731294649380860
+		8560327377591376115
+		-4327547645019040404
+		-7086141734212354562
+		231475525607693085
+		-403984737721862692
+		3039743475755461855
+		409608075494683598
+		3073525261838943415
+		-4424465432921318146
+		2487808790524640162
+		-4214265392311060780
+		-2715793225429511007
+		-5186463789204744276
+		8675631615792893545
+		-5473578955266836478
+		2017066945909520883
+		-6093939778817070830
+		-3174920187786293718
+		6633073480815668848
+		6439867405407070614
+		-5300094815582476982
+		-7670141798708337608
+		9082004402169554317
+		-7318204436850403823
+		-6443929599391598748
+		-304939386591209377
+		-5123253739640444109
+		696277033156270097
+		-1776092636647349025
+		9044229743424711168
+		6026279906091955814
+		7883766532371512219
+		-8583084117910481453
+		-8714797941159341927
+		26775334483397526
 
 	-----
 
-	Try to identify why abort is triggering.
+	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
 
-	It's basically a fallback to direct while forgetting to set the fallback to direct flag.
+	What's going on here?!
+
+	Example session:
+
+		-8003309578772432229
+
+	-----
+
+	Sometimes the very last slice has high latency (probably because the player shut off their console)
+
+	Example session:
+
+		-2198154435340565541
+		4455691751385035519
+
+	These sessions also tend to have fallback_to_direct as true on the last slice
+
+	Did the session have a huge packet loss event, or did the person turn off their console?
+
+	If they turned off their console, then fallback_to_direct wouldn't get set to true, because the client sets this to true, not the server.
+
+	-----
+
+	Here is an example of a session that had > 100ms, but we couldn't accelerate it:
+
+		1043069459014661946
+
+	This can happen because people are playing on a VPN.
 
 	-----
 
@@ -89,6 +179,10 @@ TODO
 
 	-----
 
+	Try to identify why abort is triggering.
+
+	-----
+
 	Why is lost route happening?
 
 	It could be that the server relay is flaky
@@ -101,24 +195,13 @@ TODO
 
 	-----
 
-	Drill in and find brasil sessions above 100ms that aren't being fixed.
+	Fallback to direct is counter productive because it remove visibility past the point of fallback.
 
-	Why not? What's happening?
+	Instead, we can rely on veto and abort to say, OK, we shouldn't accelerate this person anymore
 
-	Things it could be:
-
-		1. No client relays
-
-		2. No server relays
-
-		3. No route
-
-		4. Fallback to direct
-
-		5. ???
+	But it's good for them to keep talking to the backend as long as the session exists, so we retain visibility!
 
 	-----
-
 
 
 
