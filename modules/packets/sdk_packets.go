@@ -656,6 +656,7 @@ type SDK_SessionData struct {
 	BestNextRTT                         uint32
 	ExcludeClientRelay                  [SDK_MaxClientRelays]bool
 	ExcludeServerRelay                  [SDK_MaxServerRelays]bool
+	LikelyVPNOrCrossRegion              bool
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -746,6 +747,10 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 
 	for i := 0; i < SDK_MaxServerRelays; i++ {
 		stream.SerializeBool(&sessionData.ExcludeServerRelay[i])
+	}
+
+	if sessionData.Version >= 2 {
+		stream.SerializeBool(&sessionData.LikelyVPNOrCrossRegion)
 	}
 
 	return stream.Error()
