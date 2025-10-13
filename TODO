@@ -75,21 +75,9 @@ DONE
 
 	Implement a cool "no_client_relays" bool in the session data and stick it in summary.
 
+	Fixed the weird stuff with no client relays. It was running when relays hadn't changed, and the entries were empty from SDK -> backend (optimization).
+
 TODO
-
-	No client relays seems to be really high, like 45%. What's up with that?
-
-		149573189816740698
-		-4818178819083552814
-		-5514822828527156067
-		-1814448505125457653
-		9178974542876531510
-		-5395921700275495363
-		4589978670989030249
-		6588609004629421707
-		4050085726434581346
-
-	-----------
 
 	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
 

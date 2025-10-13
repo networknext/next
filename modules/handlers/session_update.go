@@ -463,34 +463,34 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 			}
 			core.Debug("------------------------------------------------------------------------------------------------")
 		}
-	}
 
-	/*
-		If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
+		/*
+			If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
 
-		If we don't find any valid client relays, set a flag.
-	*/
+			If we don't find any valid client relays, set a flag.
+		*/
 
-    foundValidRelay := false
-	foundLowLatency := false
-	for i := 0; i < int(numClientRelays); i++ {
-		if state.Output.ExcludeClientRelay[i] {
-			continue
+	    foundValidRelay := false
+		foundLowLatency := false
+		for i := 0; i < int(numClientRelays); i++ {
+			if state.Output.ExcludeClientRelay[i] {
+				continue
+			}
+			foundValidRelay = true
+			if sourceRelayLatency[i] <= 60 {
+				foundLowLatency = true
+			}
 		}
-		foundValidRelay = true
-		if sourceRelayLatency[i] <= 60 {
-			foundLowLatency = true
+
+		if !foundLowLatency && foundValidRelay {
+			core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
+			state.Output.LikelyVPNOrCrossRegion = true
 		}
-	}
 
-	if !foundLowLatency && foundValidRelay {
-		core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
-		state.Output.LikelyVPNOrCrossRegion = true
-	}
-
-	if !foundValidRelay {
-		core.Debug("session %016x has no client relays", state.Request.SessionId)
-		state.Output.NoClientRelays = true
+		if !foundValidRelay {
+			core.Debug("session %016x has no client relays", state.Request.SessionId)
+			state.Output.NoClientRelays = true
+		}
 	}
 
 	/*
