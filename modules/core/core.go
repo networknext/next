@@ -1279,6 +1279,11 @@ func ReframeRoute(relayIdToIndex map[uint64]int32, routeRelayIds []uint64, out_r
 
 func FilterSourceRelays(directLatency int32, directJitter int32, directPacketLoss float32, sourceRelayId []uint64, sourceRelayLatency []int32, sourceRelayJitter []int32, sourceRelayPacketLoss []float32, filterSourceRelay []bool) {
 
+	// IMPORTANT: Just to be sure...
+	for i := range filterSourceRelay {
+		filterSourceRelay[i] = false
+	}
+
 	if !Relax {
 
 		directHasHighJitter := directJitter >= 10.0

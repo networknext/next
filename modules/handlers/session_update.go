@@ -472,7 +472,7 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
 	    foundValidRelay := false
 		foundLowLatency := false
-		for i := 0; i < int(numClientRelays); i++ {
+		for i := 0; i < len(sourceRelayIds); i++ {
 			if state.Output.ExcludeClientRelay[i] {
 				continue
 			}
