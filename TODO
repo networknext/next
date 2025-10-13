@@ -75,19 +75,53 @@ DONE
 
 	Implement a cool "no_client_relays" bool in the session data and stick it in summary.
 
+	The other class of not improved are the ones with the latency spike at the end
+
+		-8607038412054842491
+
+	Updated the query to exclude these
+
 TODO
 
-	No client relays seems to be really high, like 45%. What's up with that?
+	I'd like to add "no_server_relays" as a flag, just in case, since it's a reason why we would not accelerate, and it's per-server (from pings...)
 
-		149573189816740698
-		-4818178819083552814
-		-5514822828527156067
-		-1814448505125457653
-		9178974542876531510
-		-5395921700275495363
-		4589978670989030249
-		6588609004629421707
-		4050085726434581346
+	So it could be contributing to cases of not accelerating.
+
+	------------
+
+	All client relays are 0,0,0 so we cannot accelerate. What's going on here?!
+
+		-5618685767813459892
+		-1466112885510063509
+		-6531585617792199589
+		8626309331168103250
+		1256175871434182346
+		-3589464958499009427
+		7486276099044843494
+		-9069884948771580693
+		7063449195796243893
+
+	This is common enough that we really need to investigate what's going on here!
+
+	------------------------------------
+
+	Not accelerated, but can't really see why not:
+
+		8117643850499796991
+		1453666514356258270
+
+	------------------------------------
+
+	This one has all client relays at 255
+
+		-4122038815216347266
+		-397611957962678889
+
+	-----------
+
+	What happened here?
+
+	Iterate on "Brasil Sessions Above 100ms Not Fixed" until I identify each class of session not getting fixed, and accelerate them.
 
 	-----------
 

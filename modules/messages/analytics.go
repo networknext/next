@@ -95,6 +95,7 @@ type AnalyticsSessionSummaryMessage struct {
 	NextLatencyTooHigh              bool    `avro:"next_latency_too_high"`
 	LikelyVPNOrCrossRegion          bool    `avro:"likely_vpn_or_cross_region"`
 	NoClientRelays                  bool    `avro:"no_client_relays"`
+	NoServerRelays                  bool    `avro:"no_server_relays"`
 
 	// flags
 

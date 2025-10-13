@@ -298,6 +298,12 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if this session has no client relays for routing (this may be because all were excluded due to network performance)."
-  }
+  },
+  {
+    "name": "no_server_relays",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session has no server relays for routing (this may be because all were excluded due to network performance)."
+  }  
 
 ]
