@@ -81,11 +81,33 @@ DONE
 
 	Updated the query to exclude these
 
-TODO
-
 	I'd like to add "no_server_relays" as a flag, just in case, since it's a reason why we would not accelerate, and it's per-server (from pings...)
 
 	So it could be contributing to cases of not accelerating.
+
+TODO
+
+	Add some analytics to track frequency of no server relays
+
+	------------
+
+	Add "lag_spike" flag in summary. Any slice with direct rtt above 500ms.
+
+	------------
+
+	Add some analytics to track frequency af all_client_relay_pings_are_zero in session_summary.
+
+	------------
+
+	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
+
+	What's going on here?!
+
+	Example session:
+
+		-8003309578772432229
+
+	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
 
 	------------
 
@@ -112,14 +134,12 @@ TODO
 
 	------------------------------------
 
-	This one has all client relays at 255
+	All client relays at 255, clamped or excluded?
 
 		-4122038815216347266
 		-397611957962678889
 
 	-----------
-
-	What happened here?
 
 	Iterate on "Brasil Sessions Above 100ms Not Fixed" until I identify each class of session not getting fixed, and accelerate them.
 
@@ -142,16 +162,6 @@ TODO
 	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
 
 	Some will only even have a few hundred. These are the ones that can be adjusted down.
-
-	-----
-
-	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
-
-	What's going on here?!
-
-	Example session:
-
-		-8003309578772432229
 
 	-----
 
@@ -180,41 +190,6 @@ TODO
 	If they turned off their console, then fallback_to_direct wouldn't get set to true, because it's set to true on the client.
 
 	So I think these are just big packet loss events causing fallback to direct.
-
-	-----
-
-	Sessions that had > 100ms in Brasil to Sao Paulo, but we couldn't accelerate:
-
-		1043069459014661946
-		428870417921553802
-		-8079343205311140378
-		-3147773086764525781
-		8670609229972116695
-		2417178463301127797
-		156189975710988
-		983081899982361578
-		231475525607693085
-		409608075494683598
-		2487808790524640162
-		-2715793225429511007
-		-5186463789204744276
-		2017066945909520883
-
-	This can happen because people are playing on a VPN dropping off in Sao Paulo.
-
-	We should be able to confirm VPN play by looking at client relays for the session. If all client relays are high (>60ms RTT, excluding ones with 100% PL), the player is on a VPN and that's why we can't accelerate them.
-
-	-----
-
-	Would be awesome to detect likely_vpn_or_cross_region and stash it in the session summary!
-
-	This would enable me to quickly exclude these sessions when analyzing playtime hours and average latency.
-
-	We could also do specific analysis like, for cross region or vpn, how much are we able to optimize, on average?
-
-	If we can't optimize, probably VPN.
-
-	If we can optimize, probably cross-region
 
 	-----
 
