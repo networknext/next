@@ -85,85 +85,15 @@ DONE
 
 	So it could be contributing to cases of not accelerating.
 
-TODO
+	Add some queries to track frequency of no server relays
 
-	Add some analytics to track frequency of no server relays
+	They're happening.
 
-	------------
+	Add an hourly one to see how frequent they are in the short term (last 48 hours...)
 
-	Add "lag_spike" flag in summary. Any slice with direct rtt above 500ms.
+	Break down by datacenter, and see if it's only certain datacenters that have this problem.
 
-	------------
-
-	Add some analytics to track frequency af all_client_relay_pings_are_zero in session_summary.
-
-	------------
-
-	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
-
-	What's going on here?!
-
-	Example session:
-
-		-8003309578772432229
-
-	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
-
-	------------
-
-	All client relays are 0,0,0 so we cannot accelerate. What's going on here?!
-
-		-5618685767813459892
-		-1466112885510063509
-		-6531585617792199589
-		8626309331168103250
-		1256175871434182346
-		-3589464958499009427
-		7486276099044843494
-		-9069884948771580693
-		7063449195796243893
-
-	This is common enough that we really need to investigate what's going on here!
-
-	------------------------------------
-
-	Not accelerated, but can't really see why not:
-
-		8117643850499796991
-		1453666514356258270
-
-	------------------------------------
-
-	All client relays at 255, clamped or excluded?
-
-		-4122038815216347266
-		-397611957962678889
-
-	-----------
-
-	Iterate on "Brasil Sessions Above 100ms Not Fixed" until I identify each class of session not getting fixed, and accelerate them.
-
-	-----------
-
-	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
-
-	I'd feel more comfortable migrating this over to bools instead of flags.
-
-    -----------
-
-	To save money I should seriously consider downsizing some google cloud and AWS relays.
-
-	At the session counts they have, many do not need more than 2 cores.
-
-	This could save a lot of money!
-
-	-----------
-
-	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
-
-	Some will only even have a few hundred. These are the ones that can be adjusted down.
-
-	-----
+	Pass over all queries and move the debug ones to start with "Debug " so they are all grouped together.
 
 	Sometimes the very last slice has high latency (lag spike)
 
@@ -191,11 +121,129 @@ TODO
 
 	So I think these are just big packet loss events causing fallback to direct.
 
-	-----
+	uk2group.frankfurt is flaky. Ordered 2 more server relays in this datacenter (a/b/c).
 
-	This session is just broken:
+	latitude.saopaulo is also a bit flaky, but it's VERY RARE. Keep an eye on it, and order a second one in the datacenter with only one relay if a problem.
 
-		-7086141734212354562
+	Fallback to direct (% Daily) I would like to see this...
+
+	Need more data over time to see if I'm actually reducing it.
+
+	It doesn't cost much (179 per-month), so I just ordered a second latitude server in the datacenter with only one relay (SAO)
+
+	Spin up the additional akamai.washingtondc relay
+
+	It would be really good to have an easy way to exclude sessions that are in non-accelerated datacenters when looking for "not fixed" type scenarios
+
+	For the moment, I can do it by excluding datacenter ids
+
+	Wait a day and see if there are flaky datacenters on "Debug No Server Relays by Datacenter". There was... see above.
+
+TODO
+
+	------------
+
+	Verify that "Debug No Server Relays By Datacenter" goes to 0 starting tomorrow (14th Oct).
+
+	------------
+	
+	Break down fallback to direct by region (needs to be % of sessions that fallback to direct...)
+
+	If it is influenced by distance to server backend then it could be that we see the % being higher in regions outside US?
+
+	------------
+
+	Add a server_not_accelerated flag in the session summary. Makes it easy to exclude these.
+
+	------------
+
+	At the end of the week look at "Debug Latency Not Fixed (% Daily)" to see if there is improvement.
+
+	------------
+
+	Also watch "Latency Saves (% Daily)" we will see increases here as we fix more players.
+
+	------------
+
+	Watch "Lost Route (% Hourly)" to see if I can spot some improvement post fixes.
+
+	------------
+
+	Add some analytics to track frequency af all_client_relay_pings_are_zero in session_summary.
+
+	The only way I can see this is if the client just hasn't been able to send client stats packet up to the server yet (due to initial packet loss).
+
+	Maybe we can detect this case and tell the client to try pinging again?
+
+	------------
+
+	Add "lag_spike" flag in summary. Any slice with direct rtt above 500ms.
+
+	This should be broken up into:
+
+		next_lag_spike
+		direct_lag_spike
+
+	------------
+
+	next_jitter_spike
+	direct_jitter_spike
+	real_jitter_spike
+
+	------------
+
+	next_packet_loss_spike
+	direct_packet_loss_spike
+	real_packet_loss_spike
+
+	------------
+
+	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
+
+	What's going on here?!
+
+	Example session:
+
+		-8003309578772432229
+
+	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
+
+	------------------------------------
+
+	All client relays at 255, clamped or excluded?
+
+		-4122038815216347266
+		-397611957962678889
+
+	I think clamped.
+
+	Add new bool: all_client_relays_clamped
+
+	-----------
+
+	Iterate on "Brasil Sessions Above 100ms Not Fixed" until I identify each class of session not getting fixed, and accelerate them.
+
+	-----------
+
+	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
+
+	I'd feel more comfortable migrating this over to bools instead of flags.
+
+	And the bools must be persisted in route state and then set in the session summary.
+
+    -----------
+
+	To save money I should seriously consider downsizing some google cloud and AWS relays.
+
+	At the session counts they have, many do not need more than 2 cores.
+
+	This could save a lot of money!
+
+	-----------
+
+	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
+
+	Some will only even have a few hundred. These are the ones that can be adjusted down.
 
 	-----
 
@@ -241,6 +289,9 @@ TODO
 
 	-----
 
+	Having a multi-region server backend could be the thing that fixes the fallback to directs in middle east, south america?
+
+	-----
 
 
 

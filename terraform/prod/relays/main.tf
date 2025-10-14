@@ -520,13 +520,11 @@ locals {
       image           = "linode/ubuntu22.04"
     },
 
-    /*
     "akamai.washington" = {
       datacenter_name = "akamai.washington"
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
-    */
 
     "akamai.losangeles" = {
       datacenter_name = "akamai.losangeles"
@@ -846,6 +844,11 @@ locals {
       public_address  = "103.88.235.133"
     },
 
+    "latitude.saopaulo.d" = {
+      datacenter_name = "latitude.saopaulo"
+      public_address  = "177.54.147.193"
+    },
+
     "latitude.ashburn" = {
       datacenter_name = "latitude.ashburn"
       public_address  = "103.106.59.205"
@@ -998,6 +1001,16 @@ locals {
     "uk2group.frankfurt" = {
       datacenter_name = "uk2group.frankfurt"
       public_address  = "46.23.74.129"
+    },
+
+    "uk2group.frankfurt.b" = {
+      datacenter_name = "uk2group.frankfurt"
+      public_address  = "46.23.75.213"
+    },
+
+    "uk2group.frankfurt.c" = {
+      datacenter_name = "uk2group.frankfurt"
+      public_address  = "46.23.75.215"
     },
 
     "uk2group.dallas.a" = {
