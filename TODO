@@ -1,155 +1,32 @@
 DONE
 
-	Use queries to look for bad things
+	Also watch "Latency Saves (% Daily)" we will see increases here as we fix more players.
 
-	Fallback to direct is happening a lot (thousands of times a day)
+	These is a signficant increase as I bumped packet loss sensitivity up to 0.1%. 
 
-	Fallback to direct error is not showing up in error code.
+	I think this is because small amounts of packet loss tend to indicate a connection that might need help.
 
-	SessionError_Aborted = (1 << 5) seems to be happening semi-frequently (hundreds of times a day)
-
-	Bad slice number (512) is happening extremely rarely. a few a day...
-
-	A lot of route_no_longer_exists are happening, 1000s a day.
-
-	Latency worse is happening less than 100 times a day.
-
-	Mispredict is happening thousands of times a day.
-
-	Best thing I can do is try disabling the mispredict.
-
-	I can also disable the latency worse.
-
-	Did this by setting core.Relax = true, easier than doing it in route shader.
-
-	This way we can turn off relax whenever and return to old behavior.
-
-	Verify we no longer see next latency too high
-
-	Verify we no longer see mispredicts
-
-	Verify we no longer see latency worse
-
-	Look into the abort. Why does it happen? Is it related to fallback to direct?
-
-		// currently taking network next
-
-		if !state.Request.Next {
-
-			// the sdk aborted this session
-
-			core.Debug("aborted")
-			state.Output.RouteState.Next = false
-			state.Output.RouteState.Veto = true
-			state.Error |= constants.SessionError_Aborted
-			if state.Debug != nil {
-				*state.Debug += "aborted\n"
-			}
-			return
-		}
-
-	It's basically the backend going, OK hold on, the previous slice was next, but now we're direct.
-
-	It's effectively a fallback to direct that forgets to set the fallback to direct flag.
-
-	To diagnose what is going on, we need to find where (on the server or client) it might
-	transition from being next to being on direct, without setting the fallback to direct flag.
-
-	Build up one graph "bad stuff" where all the bad stuff we don't want to see is graphed in the last 24 hours by hour.
-
-	This will make it easy to apply fixes and verify they work quickly.
-
-	The fallback to direct error is not being set in the summary, even though it is set on the bool.
-
-	Drill in and find brasil sessions above 100ms that aren't being fixed.
-
-	Why not? What's happening?
-
-	Implement a session debugger tool, where I can pass in the session id and see details about it that I care about, then investigate some sessions.
-
-	Implement a user sessions tool, so I can look at session data for a player from user hash.
-
-	Implement likely_vpn_or_cross_region flag in session update
-
-	Verify that likely VPN or cross region % makes sense. So far it doesn't seem to (?)
-
-	Implement a cool "no_client_relays" bool in the session data and stick it in summary.
-
-	The other class of not improved are the ones with the latency spike at the end
-
-		-8607038412054842491
-
-	Updated the query to exclude these
-
-	I'd like to add "no_server_relays" as a flag, just in case, since it's a reason why we would not accelerate, and it's per-server (from pings...)
-
-	So it could be contributing to cases of not accelerating.
-
-	Add some queries to track frequency of no server relays
-
-	They're happening.
-
-	Add an hourly one to see how frequent they are in the short term (last 48 hours...)
-
-	Break down by datacenter, and see if it's only certain datacenters that have this problem.
-
-	Pass over all queries and move the debug ones to start with "Debug " so they are all grouped together.
-
-	Sometimes the very last slice has high latency (lag spike)
-
-	Example sessions:
-
-		-2198154435340565541
-		4455691751385035519
-		-7129124477292008386
-		-4567202628162033718
-		-5634882001556190819
-		-3941993414834069369
-		6536157024088213710
-		-6633077465191186675
-		3641719633669816223
-		-7047731294649380860
-		3039743475755461855
-		3073525261838943415
-		8675631615792893545
-
-	These sessions also tend to have fallback_to_direct as true on the last slice
-
-	Did the session have a huge packet loss event, or did the person turn off their console?
-
-	If they turned off their console, then fallback_to_direct wouldn't get set to true, because it's set to true on the client.
-
-	So I think these are just big packet loss events causing fallback to direct.
-
-	uk2group.frankfurt is flaky. Ordered 2 more server relays in this datacenter (a/b/c).
-
-	latitude.saopaulo is also a bit flaky, but it's VERY RARE. Keep an eye on it, and order a second one in the datacenter with only one relay if a problem.
-
-	Fallback to direct (% Daily) I would like to see this...
-
-	Need more data over time to see if I'm actually reducing it.
-
-	It doesn't cost much (179 per-month), so I just ordered a second latitude server in the datacenter with only one relay (SAO)
-
-	Spin up the additional akamai.washingtondc relay
-
-	It would be really good to have an easy way to exclude sessions that are in non-accelerated datacenters when looking for "not fixed" type scenarios
-
-	For the moment, I can do it by excluding datacenter ids
-
-	Wait a day and see if there are flaky datacenters on "Debug No Server Relays by Datacenter". There was... see above.
-
-	Verify that "Debug No Server Relays" goes to 0.
-
-	Add "all_client_relays_are_zero" flag
-
-	I believe this is caused by a session having an initial burst of packet loss and not being able to send up client stats to the server in time, so the pings are defaulted to all zero.
-
-	Break down fallback to direct by region (needs to be % of sessions that fallback to direct...)
-
-	If it is influenced by distance to server backend then it could be that we see the % being higher in regions outside US?
+	Let SLOCLAP know about short sessions.
 
 TODO
+
+	Work up additional queries around short sessions
+
+	------------
+
+	Look at "Debug Latency Not Fixed (% Daily)" to see if there is improvement.
+
+	------------
+
+	Vast majority of "Brasil Sessions Above 100ms Not Fixed" are because "all_client_relays_are_zero"
+
+	This is the thing to fix now.
+
+	no client relays now 100% tracks all client relays are zero
+
+	so this is all the same problem. seems like I should try to fix this today.
+
+	------------
 
 	*** Biggest win by far is fixing fallback to direct!!! ***
 
@@ -170,23 +47,7 @@ TODO
 
 	------------
 
-	How can I debug and reduce "all_client_relays_are_zero"
-
-	The only way I can see this is if the client just hasn't been able to send client stats packet up to the server yet (due to initial packet loss).
-
-	Maybe we can detect this case and tell the client to try pinging again?
-
-	------------
-
 	Add a server_not_accelerated flag in the session summary. Makes it easy to exclude these.
-
-	------------
-
-	At the end of the week look at "Debug Latency Not Fixed (% Daily)" to see if there is improvement.
-
-	------------
-
-	Also watch "Latency Saves (% Daily)" we will see increases here as we fix more players.
 
 	------------
 
@@ -238,10 +99,6 @@ TODO
 
 	-----------
 
-	Iterate on "Brasil Sessions Above 100ms Not Fixed" until I identify each class of session not getting fixed, and accelerate them.
-
-	-----------
-
 	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
 
 	I'd feel more comfortable migrating this over to bools instead of flags.
@@ -261,20 +118,6 @@ TODO
 	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
 
 	Some will only even have a few hundred. These are the ones that can be adjusted down.
-
-	-----
-
-	Things not fixed yet:
-
-		1. Fallback to direct
-
-		2. Abort
-
-		3. Lost route
-
-		4. No client relays
-
-		5. All client relays are zero
 
 	-----
 
