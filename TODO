@@ -24,16 +24,10 @@ DONE
 
 	Write query to calculate max sessions per-relay
 
-TODO
-
 	Create a tool to print out relay ids
 
-	Maybe just on "next database" then grep
+TODO
 
-	Or a new tool, "next relay_ids"
-
-	------------
-	
 	To save money I should seriously consider downsizing some google cloud and AWS relays.
 
 	At the session counts they have, many do not need more than 2 cores.

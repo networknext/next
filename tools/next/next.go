@@ -2478,6 +2478,7 @@ func ssh(env Environment, regexes []string) {
 }
 
 func setupRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just setup that *one* relay
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
@@ -2533,6 +2534,7 @@ func setupRelays(env Environment, regexes []string) {
 }
 
 func startRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just start that *one* relay
 	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -2560,6 +2562,7 @@ func startRelays(env Environment, regexes []string) {
 }
 
 func stopRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just stop that *one* relay
 	quiet = true
 	script := StopRelayScript
 	for _, regex := range regexes {
@@ -2588,6 +2591,7 @@ func stopRelays(env Environment, regexes []string) {
 }
 
 func rebootRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just reboot that *one* relay
 	script := RebootRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -2615,6 +2619,7 @@ func rebootRelays(env Environment, regexes []string) {
 }
 
 func loadRelays(env Environment, regexes []string, version string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just load that *one* relay
 	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
