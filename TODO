@@ -8,15 +8,21 @@ DONE
 
 	Let SLOCLAP know about short sessions.
 
-TODO
-
 	Work up additional queries around short sessions
 
-	------------
+	Seems to be 8-9%, fairly uniform across regions, datacenters.
+
+	There has been a significant reduction in vetos
 
 	Look at "Debug Latency Not Fixed (% Daily)" to see if there is improvement.
 
-	------------
+	Significant reduction over the past few days
+
+	Watch "Lost Route (% Daily)" to see if I can spot some improvement post fixes.
+
+	Yes, there is a significant reduction.
+
+TODO
 
 	Vast majority of "Brasil Sessions Above 100ms Not Fixed" are because "all_client_relays_are_zero"
 
@@ -25,6 +31,10 @@ TODO
 	no client relays now 100% tracks all client relays are zero
 
 	so this is all the same problem. seems like I should try to fix this today.
+
+	------------
+
+	Look close over the next few days to see if recent changes have caused jitter to go up on next.
 
 	------------
 
@@ -48,10 +58,6 @@ TODO
 	------------
 
 	Add a server_not_accelerated flag in the session summary. Makes it easy to exclude these.
-
-	------------
-
-	Watch "Lost Route (% Hourly)" to see if I can spot some improvement post fixes.
 
 	------------
 
@@ -86,25 +92,6 @@ TODO
 
 	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
 
-	------------------------------------
-
-	All client relays at 255, clamped or excluded?
-
-		-4122038815216347266
-		-397611957962678889
-
-	I think clamped.
-
-	Add new bool: all_client_relays_clamped
-
-	-----------
-
-	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
-
-	I'd feel more comfortable migrating this over to bools instead of flags.
-
-	And the bools must be persisted in route state and then set in the session summary.
-
     -----------
 
 	To save money I should seriously consider downsizing some google cloud and AWS relays.
@@ -133,15 +120,33 @@ TODO
 
 	-----
 
-	Why is lost route happening?
+	What is causing the remaining lost routes to happen?
 
-	It could be that the server relay is flaky
+	Dig in on some sessions to see what's causing it...
 
-	It could be that the client has only one working client relay, and it goes away or becomes not routable?
+	It seems to have a strong correlation to datacenter_id
 
-	But shouldn't the system find other routes? There's usually a lot of route redundancy.
+	Highest route lost %:
 
-	Drill in on sessions that lost route and see what's happening.
+		latitude.saopaulo      ->  0.96%
+		datapacket.istanbul    ->  0.66%
+		i3d.dubai              ->  0.53%
+		gcore.ashburn          ->  0.51%
+		hivelocity.losangeles  ->  0.49%
+		uk2group.dallas        ->  0.43%
+
+		...
+
+	Lowest route lost %:
+
+		google.* are all at 0.0
+
+		uk2group.frankfurt     ->  0.14%
+		datapacket.frankfurt   ->  0.28%
+
+		etc...
+
+	What's causing this variation?
 
 	-----
 
@@ -150,10 +155,6 @@ TODO
 	Instead, we can rely on veto and abort to say, OK, we shouldn't accelerate this person anymore
 
 	But it's good for them to keep talking to the backend as long as the session exists, so we retain visibility!
-
-	-----
-
-	Having a multi-region server backend could be the thing that fixes the fallback to directs in middle east, south america?
 
 	-----
 
@@ -220,3 +221,23 @@ TODO
 	Make release
 
 	-----
+
+
+
+
+
+	-----
+
+	Next release:
+
+	-----------
+
+	There's a lot of stuff that sets "state.Error" kinda assuming its persistent, but it's not.
+
+	I'd feel more comfortable migrating this over to bools instead of flags.
+
+	And the bools must be persisted in route state and then set in the session summary.
+
+	Can't make this change live with REMATCH because it will remove some visibility of things going back before this change.
+
+	-----------
