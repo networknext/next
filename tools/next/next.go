@@ -2174,7 +2174,7 @@ func printRelayIds(env Environment, relayCount int64, alphaSort bool, regexName 
 		relayName := adminRelaysResponse.Relays[i].RelayName
 		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
 		relayId := common.HashString(relayAddress)
-		fmt.Printf("%s -> %016x (%d)\n", relayName, relayId, int64(relayId))
+		fmt.Printf("%s %016x (%d)\n", relayName, relayId, int64(relayId))
 	}
 }
 
