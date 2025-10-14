@@ -304,6 +304,12 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if this session has no server relays for routing (this may be because all were excluded due to network performance)."
+  },
+  {
+    "name": "all_client_relays_are_zero",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this all client relays have zero rtt, jitter and pl values. It is hypothesized this is caused by a packet loss spike at the start of sessions."
   }  
 
 ]

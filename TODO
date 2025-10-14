@@ -139,11 +139,17 @@ DONE
 
 	Wait a day and see if there are flaky datacenters on "Debug No Server Relays by Datacenter". There was... see above.
 
+	Verify that "Debug No Server Relays" goes to 0.
+
 TODO
+
+	Add "all_client_relays_are_zero" flag
+
+	I believe this is caused by a session having an initial burst of packet loss and not being able to send up client stats to the server in time, so the pings are defaulted to all zero.
 
 	------------
 
-	Verify that "Debug No Server Relays By Datacenter" goes to 0 starting tomorrow (14th Oct).
+	Is there some way I could work around or fix this on the backend?
 
 	------------
 	

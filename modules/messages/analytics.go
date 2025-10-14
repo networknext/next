@@ -96,6 +96,7 @@ type AnalyticsSessionSummaryMessage struct {
 	LikelyVPNOrCrossRegion          bool    `avro:"likely_vpn_or_cross_region"`
 	NoClientRelays                  bool    `avro:"no_client_relays"`
 	NoServerRelays                  bool    `avro:"no_server_relays"`
+	AllClientRelaysAreZero          bool    `avro:"all_client_relays_are_zero"`
 
 	// flags
 

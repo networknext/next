@@ -468,11 +468,18 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 			If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
 
 			If we don't find any valid client relays, set a flag.
+
+			If we don't find any non-zero client relays, set a flag.
 		*/
 
 	    foundValidRelay := false
 		foundLowLatency := false
+		foundNonZeroRelay := false
+
 		for i := 0; i < len(sourceRelayIds); i++ {
+			if sourceRelayLatency[i] != 0 || sourceRelayPacketLoss[i] != 0 {
+				foundNonZeroRelay = true
+			}
 			if state.Output.ExcludeClientRelay[i] {
 				continue
 			}
@@ -490,6 +497,11 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 		if !foundValidRelay {
 			core.Debug("session %016x has no client relays", state.Request.SessionId)
 			state.Output.NoClientRelays = true
+		}
+
+		if !foundNonZeroRelay {
+			core.Debug("session %016x client relays are all zero", state.Request.SessionId)
+			state.Output.AllClientRelaysAreZero = true;
 		}
 	}
 
@@ -1452,6 +1464,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
 	message.NoClientRelays = state.Input.NoClientRelays
 	message.NoServerRelays = state.Input.NoServerRelays
+	message.AllClientRelaysAreZero = state.Input.AllClientRelaysAreZero
 	message.Flags = int64(state.Request.Flags)
 
 	// send it
