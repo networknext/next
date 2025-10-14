@@ -205,6 +205,24 @@ func main() {
 		},
 	}
 
+	var relayIdsCommand = &ffcli.Command{
+		Name:       "relay_ids",
+		ShortUsage: "next relay_ids <regex>",
+		ShortHelp:  "List relays ids in the current environment",
+		FlagSet:    relaysfs,
+		Exec: func(_ context.Context, args []string) error {
+
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			printRelayIds(env, relaysCount, relaysAlphaSort, regexName)
+
+			return nil
+		},
+	}
+
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <regex>",
@@ -445,6 +463,7 @@ func main() {
 		databaseCommand,
 		commitCommand,
 		relaysCommand,
+		relayIdsCommand,
 		datacentersCommand,
 		sshCommand,
 		logCommand,
@@ -2142,6 +2161,20 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 		fmt.Printf("\n")
 	} else {
 		fmt.Printf("no relays found\n\n")
+	}
+}
+
+func printRelayIds(env Environment, relayCount int64, alphaSort bool, regexName string) {
+
+	adminRelaysResponse := AdminRelaysResponse{}
+
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
+
+	for i := range adminRelaysResponse.Relays {
+		relayName := adminRelaysResponse.Relays[i].RelayName
+		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
+		relayId := common.HashString(relayAddress)
+		fmt.Printf("%s -> %016x (%d)\n", relayName, relayId, int64(relayId))
 	}
 }
 

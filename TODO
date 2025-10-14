@@ -22,7 +22,25 @@ DONE
 
 	Yes, there is a significant reduction.
 
+	Write query to calculate max sessions per-relay
+
 TODO
+
+	Create a tool to print out relay ids
+
+	Maybe just on "next database" then grep
+
+	Or a new tool, "next relay_ids"
+
+	------------
+	
+	To save money I should seriously consider downsizing some google cloud and AWS relays.
+
+	At the session counts they have, many do not need more than 2 cores.
+
+	This could save a lot of money!
+
+	------------
 
 	Vast majority of "Brasil Sessions Above 100ms Not Fixed" are because "all_client_relays_are_zero"
 
@@ -38,6 +56,10 @@ TODO
 
 	------------
 
+	Extend module to have nice helper functions for setting game latency, jitter and PL (static)
+
+	------------
+
 	*** Biggest win by far is fixing fallback to direct!!! ***
 
 	Fallback to direct % does seem to be related to how far away from google cloud server backend.
@@ -45,15 +67,7 @@ TODO
 		i3d.dubai is top (3%+)!!!
 		google.frankfurt.1 is bottom (zero)
 
-	Maybe having different regional server backends will reduce?
-
-	Try one in frankfurt?
-
-	Try one in sao paulo?
-
-	Try one in middle east?
-
-	OVH ashburn has 1.0%. This is pretty bad, it's not just distance, but how well connected servers are to google cloud?
+	But... OVH ashburn has 1.0%. This is pretty bad, it's not just distance, but how well connected servers are to google cloud?
 
 	------------
 
@@ -91,20 +105,6 @@ TODO
 		-8003309578772432229
 
 	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
-
-    -----------
-
-	To save money I should seriously consider downsizing some google cloud and AWS relays.
-
-	At the session counts they have, many do not need more than 2 cores.
-
-	This could save a lot of money!
-
-	-----------
-
-	To work out which relays should be adjusted, look at peak session count on a per-relay basis during October.
-
-	Some will only even have a few hundred. These are the ones that can be adjusted down.
 
 	-----
 
