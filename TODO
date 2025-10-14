@@ -141,21 +141,40 @@ DONE
 
 	Verify that "Debug No Server Relays" goes to 0.
 
-TODO
-
 	Add "all_client_relays_are_zero" flag
 
 	I believe this is caused by a session having an initial burst of packet loss and not being able to send up client stats to the server in time, so the pings are defaulted to all zero.
 
-	------------
-
-	Is there some way I could work around or fix this on the backend?
-
-	------------
-	
 	Break down fallback to direct by region (needs to be % of sessions that fallback to direct...)
 
 	If it is influenced by distance to server backend then it could be that we see the % being higher in regions outside US?
+
+TODO
+
+	*** Biggest win by far is fixing fallback to direct!!! ***
+
+	Fallback to direct % does seem to be related to how far away from google cloud server backend.
+
+		i3d.dubai is top (3%+)!!!
+		google.frankfurt.1 is bottom (zero)
+
+	Maybe having different regional server backends will reduce?
+
+	Try one in frankfurt?
+
+	Try one in sao paulo?
+
+	Try one in middle east?
+
+	OVH ashburn has 1.0%. This is pretty bad, it's not just distance, but how well connected servers are to google cloud?
+
+	------------
+
+	How can I debug and reduce "all_client_relays_are_zero"
+
+	The only way I can see this is if the client just hasn't been able to send client stats packet up to the server yet (due to initial packet loss).
+
+	Maybe we can detect this case and tell the client to try pinging again?
 
 	------------
 
@@ -172,14 +191,6 @@ TODO
 	------------
 
 	Watch "Lost Route (% Hourly)" to see if I can spot some improvement post fixes.
-
-	------------
-
-	Add some analytics to track frequency af all_client_relay_pings_are_zero in session_summary.
-
-	The only way I can see this is if the client just hasn't been able to send client stats packet up to the server yet (due to initial packet loss).
-
-	Maybe we can detect this case and tell the client to try pinging again?
 
 	------------
 
@@ -260,6 +271,10 @@ TODO
 		2. Abort
 
 		3. Lost route
+
+		4. No client relays
+
+		5. All client relays are zero
 
 	-----
 
