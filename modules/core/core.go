@@ -1304,7 +1304,7 @@ func FilterSourceRelays(directLatency int32, directJitter int32, directPacketLos
 		// exclude relays with significantly higher jitter than direct
 
 		for i := range sourceRelayJitter {
-			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter {
+			if sourceRelayJitter[i] > 10 && sourceRelayJitter[i] > directJitter + 10 {
 				filterSourceRelay[i] = true
 			}
 		}

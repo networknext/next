@@ -1440,7 +1440,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 
 	// calculate best latency reduction for this session
 
-	if message.DurationOnNext > 0 {
+	if message.DurationOnNext > 0 && state.Output.BestNextRTT > 0 {
 		message.BestLatencyReduction = int64(state.Output.BestDirectRTT - state.Output.BestNextRTT)
 	}
 

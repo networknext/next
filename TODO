@@ -26,13 +26,177 @@ DONE
 
 	Create a tool to print out relay ids
 
+	Downsize google cloud.
+
+	Google cloud billing looks like it is on a good trend, despite increased accel %. This is good!
+
+	Fallback to direct % is really high overnight. This is super bad. What's going on?!
+
+	What did I change in the evening that could be causing this?!
+
+	Is it the server backend? Increased to 6 instances, don't see any improvement...
+
+	Does the new hotfix include stuff related to network next?
+
+	Hotfix was deployed after this started happening, so it's not related at all.
+
+	But maybe it has some more data, like why the fallback to directs are happening.
+
+	Is it the google relays?
+
+	Stopping all google relays to see if they are contributing to the fallback to direct
+
+	Wait a while and see if this improves it...
+
+	Did not fix it. It's not the google cloud relays?
+
+	Stopping all relays. If it's caused by a relay, then it will cease. If it's not caused by relays, but is related to the backend then it will keep happening (even though no acceleration is happening...)
+
+	Fallback to direct has ceased. This means it is being caused by DDoS protection tripping on some relays. The pings between relays say the route is good, but when traffic goes through it, it is not being allowed through.
+
+	Now I need to work out which relay or relays are causing this...
+
+	Turning on datapacket...
+
+	I'm getting some small amount of fallback to direct, but not a massive amount.
+
+	Turning on google... it's fine
+
+	Turning on amazon... it's fine
+
+	Turning on zenlayer... it's fine
+
+	Turning on akamai... seems fine
+
+	Turning on i3d... seems fine
+
+	Turning on latitude... seems fine
+
+	Starting hivelocity and velia... seems fine, although I did see some fallback to direct spikes as new relays came on...
+
+	Starting ovh and servers.com... seems fine
+
+	Starting uk2group... seems fine
+
+	Starting gcore... seems fine
+
+	*sigh*
+
+	No SDK update is seen, so there is no now data to look at regarding fallback to direct (yet)
+
+	Finish reviewing analytics today and then stop. There is nothing urgent that needs to be done right now.
+
 TODO
 
-	To save money I should seriously consider downsizing some google cloud and AWS relays.
+	*** Clean up and simplify SLOCLAP facing queries in bigquery ahead of sharing ***
 
-	At the session counts they have, many do not need more than 2 cores.
+	I don't really trust the latency saves metric. It seems too good. It can't be 20% of sessions daily, re-implement it looking at per-slice data and double check it
 
-	This could save a lot of money!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	------------
+
+	Fallback to direct by seller would be an awesome split.
+
+	To do this I need the mapping from relay id -> relay info table, and this is in Postgres.
+
+	------------
+	
+	Client should know user_hash, match_id (post-upgrade)
+
+	------------
+
+	Fallback to direct is *not* caused by server <-> backend comms, because when acceleration was fully disabled, fallbacks stopped happening too.
+
+	Fallback to direct is being caused by relays not carrying traffic properly, when we send traffic across them.
+
+	Most likely when we send a session request packet across, we are not getting the session response back...
+
+	------------
+
+	Add a server_not_accelerated flag in the session summary. Makes it easy to exclude these.
+
+	------------
+
+	Add "packet_loss_save" to the session summary and route state as a bool.
+
+	A packet loss save happens when direct packet loss is > 10%, and next_rtt>0 and next packet loss is < 1% 
+
+	Update packet loss saves graph to look for this bool in summary.
+
+	------------
+
+	Add lag spike flags to session summary.
+
+		next_lag_spike
+		direct_lag_spike
+
+	------------
+
+	Add jitter spike flags to session summary.
+
+		next_jitter_spike
+		direct_jitter_spike
+		real_jitter_spike
+
+	------------
+
+	Add packet loss spike flags to session summary
+
+		next_packet_loss_spike
+		direct_packet_loss_spike
+		real_packet_loss_spike
+
+	------------
+
+	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
+
+	Find this bug and fix it.
+
+	Example session:
+
+		-8003309578772432229
+
+	------------
+
+	Downsize amazon
 
 	------------
 
@@ -42,7 +206,7 @@ TODO
 
 	no client relays now 100% tracks all client relays are zero
 
-	so this is all the same problem. seems like I should try to fix this today.
+	so this is all the same problem...
 
 	------------
 
@@ -50,63 +214,19 @@ TODO
 
 	------------
 
-	Extend module to have nice helper functions for setting game latency, jitter and PL (static)
+	*** Extend Redpoint EOS module to have nice helper functions for setting game latency, jitter and PL (static) ***
 
 	------------
 
-	*** Biggest win by far is fixing fallback to direct!!! ***
+	Is it possible to widen the 90th percentile of jitter separation between next and direct with better selection of near relays? Maybe!
 
-	Fallback to direct % does seem to be related to how far away from google cloud server backend.
+	Idea, have two modes. One for most of jitter is < 10ms, and another for most of jitter is above 10ms, and a third mode where almost all jitter is high.
 
-		i3d.dubai is top (3%+)!!!
-		google.frankfurt.1 is bottom (zero)
+	One is about minimization and not picking bad when there are good options.
 
-	But... OVH ashburn has 1.0%. This is pretty bad, it's not just distance, but how well connected servers are to google cloud?
+	The other mode is about, picking from the better ones.
 
-	------------
-
-	Add a server_not_accelerated flag in the session summary. Makes it easy to exclude these.
-
-	------------
-
-	Add "lag_spike" flag in summary. Any slice with direct rtt above 500ms.
-
-	This should be broken up into:
-
-		next_lag_spike
-		direct_lag_spike
-
-	------------
-
-	next_jitter_spike
-	direct_jitter_spike
-	real_jitter_spike
-
-	------------
-
-	next_packet_loss_spike
-	direct_packet_loss_spike
-	real_packet_loss_spike
-
-	------------
-
-	It seems that duration_on_next is sometimes zero, even though a session has spent time on network next.
-
-	What's going on here?!
-
-	Example session:
-
-		-8003309578772432229
-
-	Add some analytics to track this case, and see how frequently it occurs. I think it's a pretty rare bug, but I'd like to be able to rely 100% on duration_on_next in queries
-
-	-----
-
-	Wait for the patch to go out. We should see a reduction in fallback to direct (longer timeouts).
-
-	Plus, we will see the reasons for fallback to direct. Identify what is happening and think about how it could happen.
-
-	Can we reduce it?
+	The last mode is about, look we're in a jitter spike, so... whatever!
 
 	-----
 
@@ -143,17 +263,6 @@ TODO
 	What's causing this variation?
 
 	-----
-
-	Fallback to direct is counter productive because it remove visibility past the point of fallback.
-
-	Instead, we can rely on veto and abort to say, OK, we shouldn't accelerate this person anymore
-
-	But it's good for them to keep talking to the backend as long as the session exists, so we retain visibility!
-
-	-----
-
-
-
 
 
 
