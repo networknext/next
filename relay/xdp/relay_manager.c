@@ -45,11 +45,14 @@ void relay_manager_update( struct relay_manager_t * manager, struct relay_set * 
     if ( new_relays->num_relays == 0 && delete_relays->num_relays == 0 )
         return;
 
+    // todo: go back to constant time for the moment, there is a bug in the hash table
+    /*
     // create a hash of deleted relays, for constant time lookup by relay id
 
     struct relay_hash delete_hash;
 
     relay_hash_initialize( &delete_hash, (uint64_t*)delete_relays->id, delete_relays->num_relays );
+    */
 
     // copy the current set of relays, sans any deletes to a new array
 
