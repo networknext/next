@@ -1,113 +1,41 @@
 DONE
 
-	Also watch "Latency Saves (% Daily)" we will see increases here as we fix more players.
-
-	These is a signficant increase as I bumped packet loss sensitivity up to 0.1%. 
-
-	I think this is because small amounts of packet loss tend to indicate a connection that might need help.
-
-	Let SLOCLAP know about short sessions.
-
-	Work up additional queries around short sessions
-
-	Seems to be 8-9%, fairly uniform across regions, datacenters.
-
-	There has been a significant reduction in vetos
-
-	Look at "Debug Latency Not Fixed (% Daily)" to see if there is improvement.
-
-	Significant reduction over the past few days
-
-	Watch "Lost Route (% Daily)" to see if I can spot some improvement post fixes.
-
-	Yes, there is a significant reduction.
-
-	Write query to calculate max sessions per-relay
-
-	Create a tool to print out relay ids
-
-	Downsize google cloud.
-
-	Google cloud billing looks like it is on a good trend, despite increased accel %. This is good!
-
-	Fallback to direct % is really high overnight. This is super bad. What's going on?!
-
-	What did I change in the evening that could be causing this?!
-
-	Is it the server backend? Increased to 6 instances, don't see any improvement...
-
-	Does the new hotfix include stuff related to network next?
-
-	Hotfix was deployed after this started happening, so it's not related at all.
-
-	But maybe it has some more data, like why the fallback to directs are happening.
-
-	Is it the google relays?
-
-	Stopping all google relays to see if they are contributing to the fallback to direct
-
-	Wait a while and see if this improves it...
-
-	Did not fix it. It's not the google cloud relays?
-
-	Stopping all relays. If it's caused by a relay, then it will cease. If it's not caused by relays, but is related to the backend then it will keep happening (even though no acceleration is happening...)
-
-	Fallback to direct has ceased. This means it is being caused by DDoS protection tripping on some relays. The pings between relays say the route is good, but when traffic goes through it, it is not being allowed through.
-
-	Now I need to work out which relay or relays are causing this...
-
-	Turning on datapacket...
-
-	I'm getting some small amount of fallback to direct, but not a massive amount.
-
-	Turning on google... it's fine
-
-	Turning on amazon... it's fine
-
-	Turning on zenlayer... it's fine
-
-	Turning on akamai... seems fine
-
-	Turning on i3d... seems fine
-
-	Turning on latitude... seems fine
-
-	Starting hivelocity and velia... seems fine, although I did see some fallback to direct spikes as new relays came on...
-
-	Starting ovh and servers.com... seems fine
-
-	Starting uk2group... seems fine
-
-	Starting gcore... seems fine
-
-	*sigh*
-
-	No SDK update is seen, so there is no now data to look at regarding fallback to direct (yet)
-
-	Finish reviewing analytics today and then stop. There is nothing urgent that needs to be done right now.
-
-	I don't really trust the latency saves metric. It seems too good. It can't be 20% of sessions daily, re-implement it looking at per-slice data and double check it
-
-	Pushed a fix. It was being calculated wrong in the session update handler.
-
-	Verify fix for the latency saves metric.
-
-	Nope. Still high. Implement another method that finds the maximum latency reduction per-session and then uses that.
-
-	Confirmed, it's wrong. I'll need to create a new logic in session_update to track latency saves, the score based method seems flawed.
-
-	Clean up and simplify SLOCLAP facing queries in bigquery ahead of sharing
-
-	Finish converting across remaining queries to use rematch_* tables
-
-	Work out how to share the SQL queries with sloclap (repository?)
-
-	Share the queries
-
 TODO
 
+	Downsize AWS
+
+	Fix GCORE MAC address issue
 
 	*** STOP ***
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
