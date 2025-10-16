@@ -65,7 +65,20 @@ void relay_manager_update( struct relay_manager_t * manager, struct relay_set * 
 
     for ( int i = 0; i < manager->num_relays; i++ )
     {
-        if ( !relay_hash_exists( &delete_hash, (uint64_t) manager->relay_ids[i] ) )
+        // todo
+        // if ( !relay_hash_exists( &delete_hash, (uint64_t) manager->relay_ids[i] ) )
+
+        bool found = false;
+        for ( int j = 0; j < delete_relays->num_relays; j++ )
+        {
+            if ( delete_relays->id[j] == manager->relay_ids[i] )
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if ( !found )
         {
             relay_ids[num_relays] = manager->relay_ids[i];
             relay_addresses[num_relays] = manager->relay_addresses[i];
