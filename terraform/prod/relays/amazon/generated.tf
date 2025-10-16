@@ -1763,11 +1763,9 @@ locals {
     "amazon.dallas.1" = { datacenter_name = "amazon.dallas.1" },
     "amazon.frankfurt.1" = { datacenter_name = "amazon.frankfurt.1" },
     "amazon.ireland.1" = { datacenter_name = "amazon.ireland.1" },
-    "amazon.lima.1" = { datacenter_name = "amazon.lima.1" },
     "amazon.london.1" = { datacenter_name = "amazon.london.1" },
     "amazon.losangeles.1" = { datacenter_name = "amazon.losangeles.1" },
     "amazon.miami.1" = { datacenter_name = "amazon.miami.1" },
-    "amazon.oman.1" = { datacenter_name = "amazon.oman.1" },
     "amazon.paris.1" = { datacenter_name = "amazon.paris.1" },
     "amazon.queretaro.1" = { datacenter_name = "amazon.queretaro.1" },
     "amazon.santiago.1" = { datacenter_name = "amazon.santiago.1" },
@@ -1824,7 +1822,7 @@ module "relay_amazon_bahrain_1" {
 	  name              = "amazon.frankfurt.1"
 	  zone              = local.datacenter_map["amazon.frankfurt.1"].zone
 	  region            = local.datacenter_map["amazon.frankfurt.1"].region
-	  type              = "m5a.xlarge"
+	  type              = "m5a.large"
 	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 	  security_group_id = module.region_eu_central_1.security_group_id
 	  vpn_address       = var.vpn_address
@@ -1843,19 +1841,6 @@ module "relay_amazon_bahrain_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.eu-west-1
-	  }
-	}
-	module "relay_amazon_lima_1" {
-	  source            = "./relay"
-	  name              = "amazon.lima.1"
-	  zone              = local.datacenter_map["amazon.lima.1"].zone
-	  region            = local.datacenter_map["amazon.lima.1"].region
-	  type              = "r5.xlarge"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_us_east_1.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.us-east-1
 	  }
 	}
 	module "relay_amazon_london_1" {
@@ -1895,19 +1880,6 @@ module "relay_amazon_bahrain_1" {
 	  vpn_address       = var.vpn_address
 	  providers = {
 	    aws = aws.us-east-1
-	  }
-	}
-	module "relay_amazon_oman_1" {
-	  source            = "./relay"
-	  name              = "amazon.oman.1"
-	  zone              = local.datacenter_map["amazon.oman.1"].zone
-	  region            = local.datacenter_map["amazon.oman.1"].region
-	  type              = "t3.xlarge"
-	  ami               = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-	  security_group_id = module.region_me_south_1.security_group_id
-	  vpn_address       = var.vpn_address
-	  providers = {
-	    aws = aws.me-south-1
 	  }
 	}
 	module "relay_amazon_paris_1" {
@@ -2100,22 +2072,6 @@ module "relay_amazon_bahrain_1" {
 	      "bandwidth_price"  = 2
 	    }
 
-	    "amazon.lima.1" = {
-	      "relay_name"       = "amazon.lima.1"
-	      "datacenter_name"  = "amazon.lima.1"
-	      "seller_name"      = "Amazon"
-	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_lima_1.public_address
-	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_lima_1.internal_address
-	      "internal_port"    = 40000
-	      "internal_group"   = "amazon.lima.1"
-	      "ssh_ip"           = module.relay_amazon_lima_1.public_address
-	      "ssh_port"         = 22
-	      "ssh_user"         = "ubuntu"
-	      "bandwidth_price"  = 2
-	    }
-
 	    "amazon.london.1" = {
 	      "relay_name"       = "amazon.london.1"
 	      "datacenter_name"  = "amazon.london.1"
@@ -2159,22 +2115,6 @@ module "relay_amazon_bahrain_1" {
 	      "internal_port"    = 40000
 	      "internal_group"   = "amazon.miami.1"
 	      "ssh_ip"           = module.relay_amazon_miami_1.public_address
-	      "ssh_port"         = 22
-	      "ssh_user"         = "ubuntu"
-	      "bandwidth_price"  = 2
-	    }
-
-	    "amazon.oman.1" = {
-	      "relay_name"       = "amazon.oman.1"
-	      "datacenter_name"  = "amazon.oman.1"
-	      "seller_name"      = "Amazon"
-	      "seller_code"      = "amazon"
-	      "public_ip"        = module.relay_amazon_oman_1.public_address
-	      "public_port"      = 40000
-	      "internal_ip"      = module.relay_amazon_oman_1.internal_address
-	      "internal_port"    = 40000
-	      "internal_group"   = "amazon.oman.1"
-	      "ssh_ip"           = module.relay_amazon_oman_1.public_address
 	      "ssh_port"         = 22
 	      "ssh_user"         = "ubuntu"
 	      "bandwidth_price"  = 2
