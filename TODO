@@ -86,12 +86,28 @@ DONE
 
 	Finish reviewing analytics today and then stop. There is nothing urgent that needs to be done right now.
 
-TODO
-
-	*** Clean up and simplify SLOCLAP facing queries in bigquery ahead of sharing ***
-
 	I don't really trust the latency saves metric. It seems too good. It can't be 20% of sessions daily, re-implement it looking at per-slice data and double check it
 
+	Pushed a fix. It was being calculated wrong in the session update handler.
+
+	Verify fix for the latency saves metric.
+
+	Nope. Still high. Implement another method that finds the maximum latency reduction per-session and then uses that.
+
+	Confirmed, it's wrong. I'll need to create a new logic in session_update to track latency saves, the score based method seems flawed.
+
+	Clean up and simplify SLOCLAP facing queries in bigquery ahead of sharing
+
+	Finish converting across remaining queries to use rematch_* tables
+
+	Work out how to share the SQL queries with sloclap (repository?)
+
+	Share the queries
+
+TODO
+
+
+	*** STOP ***
 
 
 
@@ -128,18 +144,40 @@ TODO
 
 
 
+NEXT MINOR SDK UPDATE:
 
-
-
-	------------
-
-	Fallback to direct by seller would be an awesome split.
-
-	To do this I need the mapping from relay id -> relay info table, and this is in Postgres.
-
-	------------
-	
 	Client should know user_hash, match_id (post-upgrade)
+
+	Make sure GetUserHash is implemented for client socket
+
+	Extend Redpoint EOS module to have nice helper functions for setting game latency, jitter and PL (static)
+
+	Is there anything we can add to help diagnose all client relays are zero?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+NEXT ITERATION:
+
+	------------
+
+	Safety todo in next.go for "next stop <pattern>"
 
 	------------
 
@@ -148,6 +186,14 @@ TODO
 	Fallback to direct is being caused by relays not carrying traffic properly, when we send traffic across them.
 
 	Most likely when we send a session request packet across, we are not getting the session response back...
+
+	------------
+
+	Remove best_latency_reduction (it's wrong...)
+
+	------------
+
+	Add latency_save, jitter_save, packet_loss_save to the session summary.
 
 	------------
 
@@ -194,9 +240,7 @@ TODO
 
 		-8003309578772432229
 
-	------------
-
-	Downsize amazon
+	ps. Maybe this was a desync on session state read? If it's super rare and no longer happens, just ignore...
 
 	------------
 
@@ -210,11 +254,7 @@ TODO
 
 	------------
 
-	Look close over the next few days to see if recent changes have caused jitter to go up on next.
-
-	------------
-
-	*** Extend Redpoint EOS module to have nice helper functions for setting game latency, jitter and PL (static) ***
+	Look close look at data in a few weeks to see if recent changes have caused jitter to go up on next since ~Oct 12-14th
 
 	------------
 
@@ -329,9 +369,9 @@ TODO
 
 
 
-	-----
+	-----------
 
-	Next release:
+	Next release
 
 	-----------
 
@@ -342,5 +382,17 @@ TODO
 	And the bools must be persisted in route state and then set in the session summary.
 
 	Can't make this change live with REMATCH because it will remove some visibility of things going back before this change.
+
+	-----------
+
+	Remove multipath. We'd never operate without it.
+
+	Remove mispredict.
+
+	Remove latency worse.
+
+    -----------
+
+    Replace fallback to direct with trying again.
 
 	-----------
