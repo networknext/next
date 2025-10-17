@@ -10,9 +10,9 @@ Network Next accelerates players by sending game traffic across an optimized rou
 
 Network Next is source available and free to use when you host the software for your own game with less than 10k peak CCU. 
 
-For games with more than 10k peak CCU, the license fee is $25k USD per-game, per-year.
+For games with 10k-100k peak CCU, the license fee is $25k USD per-game, per-year.
 
-For games with more than 100k peak CCU the license fee is $100k USD per-game, per-year.
+For games with more than 100k peak CCU, the license fee is $100k USD per-game, per-year.
 
 Network Next, Inc. also offers a hosted solution with commercial support. Please [contact us](mailto:glenn@networknext.com) for details.
 
