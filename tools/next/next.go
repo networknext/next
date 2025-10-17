@@ -337,6 +337,23 @@ func main() {
 		},
 	}
 
+	var restartCommand = &ffcli.Command{
+		Name:       "restart",
+		ShortUsage: "next restart [regex...]",
+		ShortHelp:  "Stop and then start the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			stopRelays(env, regexes)
+			startRelays(env, regexes)
+
+			return nil
+		},
+	}
+
 	var rebootCommand = &ffcli.Command{
 		Name:       "reboot",
 		ShortUsage: "next reboot [regex...]",
@@ -468,9 +485,10 @@ func main() {
 		sshCommand,
 		logCommand,
 		setupCommand,
+		loadCommand,
 		startCommand,
 		stopCommand,
-		loadCommand,
+		restartCommand,
 		rebootCommand,
 		costCommand,
 		optimizeCommand,
