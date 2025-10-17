@@ -350,3 +350,7 @@ NEXT ITERATION:
 	Waiting until the backend acknowledges the relay is shutting down + 15 seconds should be sufficient.
 
 	-----------
+
+	Not being able to lookup a relay from the same relay_id (name) when it is resized/recreated with a new IP address is a real bummer.
+
+	-----------
