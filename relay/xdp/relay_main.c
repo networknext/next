@@ -17,6 +17,7 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 #include <inttypes.h>
+#include <math.h>
 
 int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bpf )
 {
