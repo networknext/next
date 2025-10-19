@@ -99,6 +99,8 @@ int main_init( struct main_t * main, struct config_t * config, struct bpf_t * bp
     relay_config.relay_internal_address = htonl( config->relay_internal_address );
     memcpy( relay_config.relay_secret_key, config->relay_secret_key, RELAY_SECRET_KEY_BYTES );
     memcpy( relay_config.relay_backend_public_key, config->relay_backend_public_key, RELAY_BACKEND_PUBLIC_KEY_BYTES );
+    memcpy( relay_config.gateway_ethernet_address, config->gateway_ethernet_address, RELAY_ETHERNET_ADDRESS_BYTES );
+    relay_config.use_gateway_ethernet_address = config->use_gateway_ethernet_address;
 
     __u32 key = 0;
     int err = bpf_map_update_elem( bpf->config_fd, &key, &relay_config, BPF_ANY );
