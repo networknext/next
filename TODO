@@ -364,3 +364,15 @@ NEXT ITERATION:
 	XDP relay could have some config removed, and just have it compiled in to the xdp program, esp. the gateway address and anything we branch on
 
 	-----------
+
+	Can get gateway IP address like this:
+
+		ip route show default | awk '/default/ {print $3}'
+
+	And then can look into ARP cache, and look up for that IP address what MAC address it is.
+
+	
+
+	We could periodically do this on the relay, to look up the default gateway IP address?
+
+	-----------
