@@ -4,9 +4,11 @@
 
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
-Network Next is a **network accelerator** for multiplayer games. It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com).
+Network Next is a **network accelerator** for multiplayer games. 
 
-Network Next accelerates players by sending game traffic across an optimized route on a relay network when the default internet route has high latency, jitter or packet loss.
+It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com).
+
+Network Next accelerates players by sending game traffic across relay network when the default internet route has high latency, jitter or packet loss.
 
 Network Next is source available and free to use when you host the software for your own game with less than 10k peak CCU. 
 
