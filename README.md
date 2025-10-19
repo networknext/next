@@ -8,9 +8,9 @@ Network Next is a **network accelerator** for multiplayer games.
 
 It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com).
 
-Network Next accelerates players by sending game traffic across relay network when the default internet route has high latency, jitter or packet loss.
+Network Next accelerates players by sending game traffic across relay network when the default internet route has high latency or packet loss.
 
-Network Next is source available and free to use when you host the software for your own game with less than 10k peak CCU. 
+It's source available and free to use when you host the software for your own game with less than 10k peak CCU. 
 
 For games with 10k-100k peak CCU, the license fee is $25k USD per-game, per-year.
 
