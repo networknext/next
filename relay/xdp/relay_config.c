@@ -159,7 +159,7 @@ int read_config( struct config_t * config )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
-    const char * relay_gateway_ethernet_address = getenv( "RELAY_GATEWAY_ETHERNET_ADDRESS" );
+    char * relay_gateway_ethernet_address = getenv( "RELAY_GATEWAY_ETHERNET_ADDRESS" );
     if ( relay_gateway_ethernet_address )
     {
         printf( "Relay gateway ethernet address is '%s'\n", relay_gateway_ethernet_address );
