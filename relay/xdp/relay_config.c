@@ -192,7 +192,7 @@ int read_config( struct config_t * config )
             config->gateway_ethernet_address[2], 
             config->gateway_ethernet_address[3], 
             config->gateway_ethernet_address[4], 
-            config->gateway_ethernet_address[5], 
+            config->gateway_ethernet_address[5]
         );
     }
 
