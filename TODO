@@ -360,3 +360,7 @@ NEXT ITERATION:
 	pass in initial data on upgrade per-client
 
 	-----------
+
+	XDP relay could have some config removed, and just have it compiled in to the xdp program, esp. the gateway address and anything we branch on
+
+	-----------

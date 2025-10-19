@@ -98,7 +98,7 @@
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_WRONG_SIZE                                          41
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_COULD_NOT_FIND_SESSION                              42
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_SESSION_EXPIRED                                     43
-#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_ALREADY_RECEIVED                                    44
+#define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_READY_RECEIVED                                      44
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_HEADER_DID_NOT_VERIFY                               45
 #define RELAY_COUNTER_ROUTE_RESPONSE_PACKET_FORWARD_TO_PREVIOUS_HOP                             46
 
@@ -177,5 +177,7 @@
 #define RELAY_VERSION_LENGTH                                                                    32
 
 #define WHITELIST_TIMEOUT                                                                     1000
+
+#define RELAY_ETHERNET_ADDRESS_BYTES                                                             6
 
 #endif // #ifndef RELAY_CONSTANTS_H

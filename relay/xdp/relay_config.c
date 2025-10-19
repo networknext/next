@@ -6,6 +6,8 @@
 #include "relay_platform.h"
 #include "relay_base64.h"
 
+#include <linux/if_ether.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
