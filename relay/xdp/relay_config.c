@@ -159,5 +159,35 @@ int read_config( struct config_t * config )
 
     // -----------------------------------------------------------------------------------------------------------------------------
 
+    const char * relay_gateway_ethernet_address = getenv( "RELAY_GATEWAY_ETHERNET_ADDRESS" );
+    if ( relay_gateway_ethernet_address )
+    {
+        printf( "Relay gateway ethernet address is %s\n", relay_gateway_ethernet_address );
+
+        char * token = strtok( relay_gateway_ethernet_address, ":" );
+
+        char ethernet_address[RELAY_ETHERNET_ADDRESS_BYTES];
+
+        int num_bytes_read = 0;        
+
+        while ( token != NULL ) 
+        {
+            ethernet_address[num_bytes_read] = (uint8_t) strtol( token, NULL, 16 );
+            num_bytes_read++;
+            token = strtok( NULL, ":" );
+        }
+
+        if ( num_bytes_read != RELAY_ETHERNET_ADDRESS_BYTES )
+        {
+            printf( "\nerror: invalid RELAY_GATEWAY_ETHERNET_ADDRESS\n\n" );
+            return RELAY_ERROR;
+        }
+
+        config->use_gateway_ethernet_address = 1;
+        memcpy( config->gateway_ethernet_address, ethernet_address, RELAY_ETHERNET_ADDRESS_BYTES );
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
     return RELAY_OK;
 }

@@ -13,6 +13,8 @@ struct config_t
     uint8_t relay_private_key[RELAY_PRIVATE_KEY_BYTES];
     uint8_t relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
     uint8_t relay_secret_key[RELAY_SECRET_KEY_BYTES];
+    uint8_t gateway_ethernet_address[RELAY_ETHERNET_ADDRESS_BYTES];
+    uint8_t use_gateway_ethernet_address;
     char relay_backend_url[256];
 };
 
