@@ -6,7 +6,7 @@
 
 Network Next is a **network accelerator** for multiplayer games. 
 
-It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com). More details [https://mas-bandwidth.com/rematch-accelerated-by-network-next/](here).
+It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com). More details [here](https://mas-bandwidth.com/rematch-accelerated-by-network-next/).
 
 Network Next is source available and free to use when you host the software for your own game with less than 10k peak CCU. For games with 10k-100k peak CCU, the license fee is $25k USD per-game, per-year. For games with more than 100k peak CCU, the license fee is $100k USD per-game, per-year.
 
