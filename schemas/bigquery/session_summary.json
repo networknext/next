@@ -268,6 +268,48 @@
     "type": "STRING",
     "mode": "NULLABLE",
     "description": "The player's ISO country code from ip2location"
-  }
+  },
+  {
+    "name": "best_latency_reduction",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "The best latency reduction experienced by this player in milliseconds. 0 if no latency reduction was found."
+  },
+  {
+    "name": "fallback_to_direct",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if the session fell back to direct."
+  },
+  {
+    "name": "next_latency_too_high",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if network next latency went above the maximum value."
+  },
+  {
+    "name": "likely_vpn_or_cross_region",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session is likely over a VPN or cross-region. True if pings to all client relays are > threshold."
+  },
+  {
+    "name": "no_client_relays",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session has no client relays for routing (this may be because all were excluded due to network performance)."
+  },
+  {
+    "name": "no_server_relays",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this session has no server relays for routing (this may be because all were excluded due to network performance)."
+  },
+  {
+    "name": "all_client_relays_are_zero",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this all client relays have zero rtt, jitter and pl values. It is hypothesized this is caused by a packet loss spike at the start of sessions."
+  }  
 
 ]

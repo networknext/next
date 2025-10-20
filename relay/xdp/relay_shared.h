@@ -16,6 +16,8 @@ struct relay_config
     __u16 relay_port;                                                       // big endian
     __u8 relay_secret_key[RELAY_SECRET_KEY_BYTES];
     __u8 relay_backend_public_key[RELAY_BACKEND_PUBLIC_KEY_BYTES];
+    __u8 gateway_ethernet_address[RELAY_ETHERNET_ADDRESS_BYTES];
+    __u8 use_gateway_ethernet_address;
 };
 
 struct relay_state

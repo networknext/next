@@ -1,4 +1,4 @@
-mess// -----------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------------------
 
 <template>
 
@@ -29,18 +29,18 @@ mess// -------------------------------------------------------------------------
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>ISP</th>
-            <th class="right_align">Direct RTT</th>
-            <th class="right_align">Accelerated RTT</th>
+            <th>Platform</th>
+            <th>Connection</th>
+            <th>Country</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td> {{ item["ISP"] }} </td>
-            <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
+            <td> {{ item["Platform"] }} </td>
+            <td> {{ item["Connection"] }} </td>
+            <td> {{ item["Country"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -50,31 +50,55 @@ mess// -------------------------------------------------------------------------
       </table>
     </div>
 
-    <div class="d-none d-lg-block">
+    <div class="d-none d-lg-block d-xl-none d-xxl-none">
       <table id="sessions_table" class="table table-striped table-hover">
         <thead>
           <tr>
             <th>Session ID</th>
-            <th>Country</th>
             <th>Platform</th>
             <th>Connection</th>
-            <th>ISP</th>
+            <th>Country</th>
             <th>Datacenter</th>
-            <th class="right_align">Direct RTT</th>
-            <th class="right_align">Accelerated RTT</th>
             <th class="right_align">Improvement</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in data" :key='item'>
             <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
-            <td> {{ item["Country"] }} </td>
             <td> {{ item["Platform"] }} </td>
             <td> {{ item["Connection"] }} </td>
+            <td> {{ item["Country"] }} </td>
+            <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
+            <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
+            <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
+            <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
+            <td class="nada" v-else> -- </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-none d-xl-block d-xxl-block">
+      <table id="sessions_table" class="table table-striped table-hover">
+        <thead>
+          <tr>
+            <th>Session ID</th>
+            <th>Platform</th>
+            <th>Connection</th>
+            <th>Country</th>
+            <th>ISP</th>
+            <th>Datacenter</th>
+            <th class="right_align">Improvement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in data" :key='item'>
+            <td class="fixed"> <router-link :to='"/session/" + item["Session ID"]'> {{ item["Session ID"] }} </router-link> </td>
+            <td> {{ item["Platform"] }} </td>
+            <td> {{ item["Connection"] }} </td>
+            <td> {{ item["Country"] }} </td>
             <td> {{ item["ISP"] }} </td>
             <td> <router-link :to='item["Datacenter Link"]'> {{ item["Datacenter"] }} </router-link> </td>
-            <td class="right_align"> {{ item["Direct RTT"] }} </td>
-            <td class="right_align"> {{ item["Accelerated RTT"] }} </td>
             <td class="green" v-if="item['Improvement'] != '--' && item['Improvement'] >= 10"> {{ item["Improvement"] }} ms</td>
             <td class="orange" v-else-if="item['Improvement'] != '--' && item['Improvement'] >= 5"> {{ item["Improvement"] }} ms</td>
             <td class="red" v-else-if="item['Improvement'] != '--' && item['Improvement'] > 0"> {{ item["Improvement"] }} ms</td>
@@ -112,7 +136,7 @@ async function getData(page) {
       const connection = getConnectionName(v.connection_type)
       const platform = getPlatformName(v.platform_type)
       const country = getCountryName(v.country)
-      const next_rtt = v.next_rtt > 0.0 ? v.next_rtt + " ms" : ""
+      const latency = (v.next_rtt != 0 && v.next_rtt < v.direct_rtt) ? v.next_rtt : v.direct_rtt
       const improvement = ( v.next_rtt != 0 && v.next_rtt < v.direct_rtt ) ? ( v.direct_rtt - v.next_rtt ) : "--"
       let row = {
         "Session ID":session_id,
@@ -124,8 +148,7 @@ async function getData(page) {
         "Buyer Link":"/buyer/" + v.buyer_code,
         "Datacenter":v.datacenter_name,
         "Datacenter Link": "/datacenter/" + v.datacenter_name,
-        "Direct RTT":v.direct_rtt + " ms",
-        "Accelerated RTT":next_rtt,
+        "Latency":latency,
         "Improvement":improvement,
       }
       data.push(row)

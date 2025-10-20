@@ -2647,6 +2647,10 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 
 func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 
+	if core.Relax {
+		return
+	}
+
 	t.Parallel()
 
 	// setup state

@@ -142,7 +142,7 @@ static int relay_decrypt_continue_token( struct decrypt_continue_token_data * da
     return 1;
  }
 
-static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
+static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic, __u8 * gateway_ethernet_address )
 {
     struct ethhdr * eth = data;
     struct iphdr  * ip  = data + sizeof( struct ethhdr );
@@ -164,6 +164,13 @@ static void relay_reflect_packet( void * data, int payload_bytes, __u8 * magic )
     memcpy( c, eth->h_source, ETH_ALEN );
     memcpy( eth->h_source, eth->h_dest, ETH_ALEN );
     memcpy( eth->h_dest, c, ETH_ALEN );
+
+    // IMPORTANT: Sometimes reflecting the ethernet address doesn't work
+    // In this case let the config specify the gateway ethernet address
+    if ( gateway_ethernet_address != NULL )
+    {
+        memcpy( eth->h_dest, gateway_ethernet_address, ETH_ALEN );
+    }
 
     __u16 * p = (__u16*) ip;
     __u32 checksum = p[0];
@@ -350,6 +357,7 @@ struct redirect_args_t
     __u16 source_port;
     __u16 dest_port;
     __u8 * magic;
+    __u8 * gateway_ethernet_address;
 };
 
 static int relay_redirect_packet( struct redirect_args_t * args )
@@ -380,6 +388,13 @@ static int relay_redirect_packet( struct redirect_args_t * args )
 
     memcpy( eth->h_source, whitelist_value->dest_address, 6 );
     memcpy( eth->h_dest, whitelist_value->source_address, 6 );
+
+    // IMPORTANT: Sometimes reflecting the ethernet address doesn't work
+    // In this case let the config specify the gateway ethernet address
+    if ( args->gateway_ethernet_address != NULL )
+    {
+        memcpy( eth->h_dest, args->gateway_ethernet_address, ETH_ALEN );
+    }
 
     __u16 * p = (__u16*) ip;
     __u32 checksum = p[0];
@@ -1342,7 +1357,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 const int payload_bytes = 18 + 8;
 
-                                relay_reflect_packet( data, payload_bytes, state->current_magic );
+                                relay_reflect_packet( data, payload_bytes, state->current_magic, config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL );
 
                                 bpf_xdp_adjust_tail( ctx, -( 8 + 1 + RELAY_PING_TOKEN_BYTES ) );
 
@@ -1467,7 +1482,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 const int payload_bytes = 18 + 8 + 8;
 
-                                relay_reflect_packet( data, payload_bytes, state->current_magic );
+                                relay_reflect_packet( data, payload_bytes, state->current_magic, config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL );
 
                                 bpf_xdp_adjust_tail( ctx, -( 8 + RELAY_PING_TOKEN_BYTES ) );
 
@@ -1595,7 +1610,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
 
                                 ip->daddr = config->relay_public_address;       // IMPORTANT: We must respond from the relay public address or it will get filtered out
 
-                                relay_reflect_packet( data, payload_bytes, state->current_magic );
+                                relay_reflect_packet( data, payload_bytes, state->current_magic, config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL );
 
                                 bpf_xdp_adjust_tail( ctx, -( 8 + RELAY_PING_TOKEN_BYTES ) );
 
@@ -1763,6 +1778,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session.next_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 relay_printf( "route request forward to next hop: %x:%d -> %x.%d", args.source_address, args.source_port, args.dest_address, args.dest_port );
 
@@ -1904,6 +1920,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2001,6 +2018,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2149,6 +2167,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2296,6 +2315,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2443,6 +2463,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2587,6 +2608,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->next_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )
@@ -2733,6 +2755,7 @@ SEC("relay_xdp") int relay_xdp_filter( struct xdp_md *ctx )
                                 args.source_port = config->relay_port;
                                 args.dest_port = session->prev_port;
                                 args.magic = state->current_magic;
+                                args.gateway_ethernet_address = config->use_gateway_ethernet_address ? config->gateway_ethernet_address : NULL;
 
                                 int result = relay_redirect_packet( &args );
                                 if ( result == XDP_DROP )

@@ -6,6 +6,8 @@
 #include "relay_platform.h"
 #include "relay_base64.h"
 
+#include <linux/if_ether.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -154,6 +156,45 @@ int read_config( struct config_t * config )
     strncpy( config->relay_backend_url, relay_backend_url, sizeof(config->relay_backend_url) - 1 );
 
 #endif // #if !RELAY_DEBUG
+
+    // -----------------------------------------------------------------------------------------------------------------------------
+
+    char * relay_gateway_ethernet_address = getenv( "RELAY_GATEWAY_ETHERNET_ADDRESS" );
+    if ( relay_gateway_ethernet_address )
+    {
+        printf( "Relay gateway ethernet address is '%s'\n", relay_gateway_ethernet_address );
+
+        char * token = strtok( relay_gateway_ethernet_address, ":" );
+
+        char ethernet_address[RELAY_ETHERNET_ADDRESS_BYTES];
+
+        int num_bytes_read = 0;        
+
+        while ( token != NULL ) 
+        {
+            ethernet_address[num_bytes_read] = (uint8_t) strtol( token, NULL, 16 );
+            num_bytes_read++;
+            token = strtok( NULL, ":" );
+        }
+
+        if ( num_bytes_read != RELAY_ETHERNET_ADDRESS_BYTES )
+        {
+            printf( "\nerror: invalid RELAY_GATEWAY_ETHERNET_ADDRESS\n\n" );
+            return RELAY_ERROR;
+        }
+
+        config->use_gateway_ethernet_address = 1;
+        memcpy( config->gateway_ethernet_address, ethernet_address, RELAY_ETHERNET_ADDRESS_BYTES );
+
+        printf( "Parsed to %02x:%02x:%02x:%02x:%02x:%02x\n", 
+            config->gateway_ethernet_address[0], 
+            config->gateway_ethernet_address[1], 
+            config->gateway_ethernet_address[2], 
+            config->gateway_ethernet_address[3], 
+            config->gateway_ethernet_address[4], 
+            config->gateway_ethernet_address[5]
+        );
+    }
 
     // -----------------------------------------------------------------------------------------------------------------------------
 

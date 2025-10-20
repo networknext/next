@@ -205,6 +205,24 @@ func main() {
 		},
 	}
 
+	var relayIdsCommand = &ffcli.Command{
+		Name:       "relay_ids",
+		ShortUsage: "next relay_ids <regex>",
+		ShortHelp:  "List relays ids in the current environment",
+		FlagSet:    relaysfs,
+		Exec: func(_ context.Context, args []string) error {
+
+			var regexName string
+			if len(args) > 0 {
+				regexName = args[0]
+			}
+
+			printRelayIds(env, relaysCount, relaysAlphaSort, regexName)
+
+			return nil
+		},
+	}
+
 	var datacentersCommand = &ffcli.Command{
 		Name:       "datacenters",
 		ShortUsage: "next datacenters <regex>",
@@ -314,6 +332,23 @@ func main() {
 			}
 
 			stopRelays(env, regexes)
+
+			return nil
+		},
+	}
+
+	var restartCommand = &ffcli.Command{
+		Name:       "restart",
+		ShortUsage: "next restart [regex...]",
+		ShortHelp:  "Stop and then start the specified relay(s)",
+		Exec: func(_ context.Context, args []string) error {
+			regexes := []string{".*"}
+			if len(args) > 0 {
+				regexes = args
+			}
+
+			stopRelays(env, regexes)
+			startRelays(env, regexes)
 
 			return nil
 		},
@@ -445,13 +480,15 @@ func main() {
 		databaseCommand,
 		commitCommand,
 		relaysCommand,
+		relayIdsCommand,
 		datacentersCommand,
 		sshCommand,
 		logCommand,
 		setupCommand,
+		loadCommand,
 		startCommand,
 		stopCommand,
-		loadCommand,
+		restartCommand,
 		rebootCommand,
 		costCommand,
 		optimizeCommand,
@@ -2145,6 +2182,22 @@ func printRelays(env Environment, relayCount int64, alphaSort bool, regexName st
 	}
 }
 
+func printRelayIds(env Environment, relayCount int64, alphaSort bool, regexName string) {
+
+	adminRelaysResponse := AdminRelaysResponse{}
+
+	GetJSON(getAdminAPIKey(), fmt.Sprintf("%s/admin/relays", env.API_URL), &adminRelaysResponse)
+
+	for i := range adminRelaysResponse.Relays {
+		relayName := adminRelaysResponse.Relays[i].RelayName
+		relayAddress := fmt.Sprintf("%s:%d", adminRelaysResponse.Relays[i].PublicIP, adminRelaysResponse.Relays[i].PublicPort)
+		relayId := common.HashString(relayAddress)
+		fmt.Printf("%s %016x (%d)\n", relayName, relayId, int64(relayId))
+	}
+
+	fmt.Printf("\n")
+}
+
 // ----------------------------------------------------------------
 
 type AdminDatacentersResponse struct {
@@ -2443,6 +2496,7 @@ func ssh(env Environment, regexes []string) {
 }
 
 func setupRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just setup that *one* relay
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
 		if len(relays) == 0 {
@@ -2498,6 +2552,7 @@ func setupRelays(env Environment, regexes []string) {
 }
 
 func startRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just start that *one* relay
 	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -2525,6 +2580,7 @@ func startRelays(env Environment, regexes []string) {
 }
 
 func stopRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just stop that *one* relay
 	quiet = true
 	script := StopRelayScript
 	for _, regex := range regexes {
@@ -2553,6 +2609,7 @@ func stopRelays(env Environment, regexes []string) {
 }
 
 func rebootRelays(env Environment, regexes []string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just reboot that *one* relay
 	script := RebootRelayScript
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)
@@ -2580,6 +2637,7 @@ func rebootRelays(env Environment, regexes []string) {
 }
 
 func loadRelays(env Environment, regexes []string, version string) {
+	// todo: if we find an exact relay string match, don't apply pattern match, just load that *one* relay
 	quiet = true
 	for _, regex := range regexes {
 		relays := getRelayInfo(env, regex)

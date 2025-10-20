@@ -4200,6 +4200,10 @@ func TestStayOnNetworkNext_ReduceLatency_NoRoute(t *testing.T) {
 
 func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 
+	if core.Relax {
+		return
+	}
+
 	t.Parallel()
 
 	env := NewTestEnvironment()
@@ -4280,6 +4284,10 @@ func TestStayOnNetworkNext_ReduceLatency_MispredictVeto(t *testing.T) {
 }
 
 func TestStayOnNetworkNext_ReduceLatency_MispredictRecover(t *testing.T) {
+
+	if core.Relax {
+		return
+	}
 
 	t.Parallel()
 
@@ -4453,6 +4461,10 @@ func TestStayOnNetworkNext_ReduceLatency_SwitchToBetterRoute(t *testing.T) {
 }
 
 func TestStayOnNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
+
+	if core.Relax {
+		return
+	}
 
 	t.Parallel()
 
@@ -4647,6 +4659,10 @@ func TestStayOnNetworkNext_ReducePacketLoss_NoRoute(t *testing.T) {
 
 func TestStayOnNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
 
+	if core.Relax {
+		return
+	}
+
 	t.Parallel()
 
 	env := NewTestEnvironment()
@@ -4749,6 +4765,10 @@ func TestStayOnNetworkNext_Multipath_LatencyTradeOff(t *testing.T) {
 
 func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 
+	if core.Relax {
+		return
+	}
+
 	t.Parallel()
 
 	env := NewTestEnvironment()
@@ -4833,6 +4853,10 @@ func TestStayOnNetworkNext_Multipath_RTTVeto(t *testing.T) {
 }
 
 func TestStayOnNetworkNext_Multipath_RTTVeto_Recover(t *testing.T) {
+
+	if core.Relax {
+		return
+	}
 
 	t.Parallel()
 

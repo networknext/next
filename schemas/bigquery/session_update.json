@@ -51,7 +51,7 @@
     "name": "direct_rtt",
     "type": "FLOAT64",
     "mode": "REQUIRED",
-    "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds. IMPORTANT: Will be 0.0 on slice 0 always. Ignore. Not known yet"
+    "description": "Latency between client and server as measured by direct pings (unaccelerated path). Milliseconds."
   },
   {
     "name": "direct_jitter",

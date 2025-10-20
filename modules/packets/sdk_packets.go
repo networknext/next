@@ -342,7 +342,7 @@ type SDK_SessionUpdateRequestPacket struct {
 	GameRTT                         float32
 	GameJitter                      float32
 	GamePacketLoss                  float32
-	Flags						    uint32
+	Flags                           uint32
 }
 
 func (packet *SDK_SessionUpdateRequestPacket) Serialize(stream encoding.Stream) error {
@@ -656,6 +656,10 @@ type SDK_SessionData struct {
 	BestNextRTT                         uint32
 	ExcludeClientRelay                  [SDK_MaxClientRelays]bool
 	ExcludeServerRelay                  [SDK_MaxServerRelays]bool
+	LikelyVPNOrCrossRegion              bool
+	NoClientRelays                      bool
+	NoServerRelays                      bool
+	AllClientRelaysAreZero              bool
 }
 
 func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
@@ -746,6 +750,22 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 
 	for i := 0; i < SDK_MaxServerRelays; i++ {
 		stream.SerializeBool(&sessionData.ExcludeServerRelay[i])
+	}
+
+	if sessionData.Version >= 2 {
+		stream.SerializeBool(&sessionData.LikelyVPNOrCrossRegion)
+	}
+
+	if sessionData.Version >= 3 {
+		stream.SerializeBool(&sessionData.NoClientRelays)
+	}
+
+	if sessionData.Version >= 4 {
+		stream.SerializeBool(&sessionData.NoServerRelays)
+	}
+
+	if sessionData.Version >= 5 {
+		stream.SerializeBool(&sessionData.AllClientRelaysAreZero)
 	}
 
 	return stream.Error()

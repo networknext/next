@@ -74,9 +74,6 @@ type SessionUpdateState struct {
 	StartTimestamp     uint64
 	StartTimestampNano uint64
 
-	// true if we fellback to direct on this update
-	FallbackToDirect bool
-
 	// if true, only network next sessions are sent to portal
 	PortalNextSessionsOnly bool
 
@@ -189,18 +186,15 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 	*/
 
 	if state.Request.FallbackToDirect {
-		if (state.Error & constants.SessionError_FallbackToDirect) == 0 {
-			datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
-			if datacenter != nil {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
-			} else {
-				core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
-			}
-			state.Error |= constants.SessionError_FallbackToDirect
-			state.FallbackToDirect = true
-			if state.FallbackToDirectChannel != nil {
-				state.FallbackToDirectChannel <- state.Request.SessionId
-			}
+		state.Error |= constants.SessionError_FallbackToDirect
+		datacenter := state.Database.GetDatacenter(state.Request.DatacenterId)
+		if datacenter != nil {
+			core.Debug("fallback to direct: session_id = %016x, datacenter = %s [%016x]", state.Request.SessionId, datacenter.Name, state.Request.DatacenterId)
+		} else {
+			core.Debug("fallback to direct: session_id = %016x, datacenter = %016x", state.Request.SessionId, state.Request.DatacenterId)
+		}
+		if state.FallbackToDirectChannel != nil {
+			state.FallbackToDirectChannel <- state.Request.SessionId
 		}
 		return true
 	}
@@ -469,6 +463,46 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 			}
 			core.Debug("------------------------------------------------------------------------------------------------")
 		}
+
+		/*
+			If all client relays are > 60ms RTT, this is likely a VPN or cross-region session
+
+			If we don't find any valid client relays, set a flag.
+
+			If we don't find any non-zero client relays, set a flag.
+		*/
+
+	    foundValidRelay := false
+		foundLowLatency := false
+		foundNonZeroRelay := false
+
+		for i := 0; i < len(sourceRelayIds); i++ {
+			if sourceRelayLatency[i] != 0 || sourceRelayPacketLoss[i] != 0 {
+				foundNonZeroRelay = true
+			}
+			if state.Output.ExcludeClientRelay[i] {
+				continue
+			}
+			foundValidRelay = true
+			if sourceRelayLatency[i] <= 60 {
+				foundLowLatency = true
+			}
+		}
+
+		if !foundLowLatency && foundValidRelay {
+			core.Debug("session %016x is likely vpn or cross region", state.Request.SessionId)
+			state.Output.LikelyVPNOrCrossRegion = true
+		}
+
+		if !foundValidRelay {
+			core.Debug("session %016x has no client relays", state.Request.SessionId)
+			state.Output.NoClientRelays = true
+		}
+
+		if !foundNonZeroRelay {
+			core.Debug("session %016x client relays are all zero", state.Request.SessionId)
+			state.Output.AllClientRelaysAreZero = true;
+		}
 	}
 
 	/*
@@ -540,6 +574,19 @@ func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
 				}
 			}
 			core.Debug("------------------------------------------------------------------------------------------------")
+		}
+
+	    foundValidRelay := false
+		for i := 0; i < len(destRelayIds); i++ {
+			if !state.Output.ExcludeServerRelay[i] {
+				foundValidRelay = true
+				break
+			}
+		}
+
+		if !foundValidRelay {
+			core.Debug("session %016x has no server relays", state.Request.SessionId)
+			state.Output.NoServerRelays = true
 		}
 	}
 
@@ -1154,7 +1201,7 @@ func sendPortalSessionUpdateMessage(state *SessionUpdateState) {
 	message.BestNextRTT = state.Output.BestNextRTT
 
 	message.Retry = state.Request.RetryNumber != 0
-	message.FallbackToDirect = state.FallbackToDirect
+	message.FallbackToDirect = state.Request.FallbackToDirect
 	message.SendToPortal = !state.PortalNextSessionsOnly || (state.PortalNextSessionsOnly && state.Output.DurationOnNext > 0)
 
 	if state.PortalSessionUpdateMessageChannel != nil {
@@ -1382,13 +1429,19 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.DurationOnNext = int32(state.Input.DurationOnNext)           // seconds
 	message.StartTimestamp = int64(state.Input.StartTimestamp * 1000000) // seconds -> microseconds
 	message.Error = int64(state.Input.Error)
-	
+
 	// get isp and country from client IP address via ip2location db (optional)
 
 	if state.GetISPAndCountry != nil {
 		isp, country := state.GetISPAndCountry(state.Request.ClientAddress.IP)
 		message.ISP = isp
 		message.Country = country
+	}
+
+	// calculate best latency reduction for this session
+
+	if message.DurationOnNext > 0 && state.Output.BestNextRTT > 0 {
+		message.BestLatencyReduction = int64(state.Output.BestDirectRTT - state.Output.BestNextRTT)
 	}
 
 	// flags
@@ -1406,6 +1459,12 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.LatencyWorse = state.Input.RouteState.LatencyWorse
 	message.Mispredict = state.Input.RouteState.Mispredict
 	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
+	message.FallbackToDirect = state.Request.FallbackToDirect
+	message.NextLatencyTooHigh = state.Input.RouteState.NextLatencyTooHigh
+	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
+	message.NoClientRelays = state.Input.NoClientRelays
+	message.NoServerRelays = state.Input.NoServerRelays
+	message.AllClientRelaysAreZero = state.Input.AllClientRelaysAreZero
 	message.Flags = int64(state.Request.Flags)
 
 	// send it

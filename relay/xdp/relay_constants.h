@@ -178,4 +178,6 @@
 
 #define WHITELIST_TIMEOUT                                                                     1000
 
+#define RELAY_ETHERNET_ADDRESS_BYTES                                                             6
+
 #endif // #ifndef RELAY_CONSTANTS_H

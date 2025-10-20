@@ -37,22 +37,22 @@ type AnalyticsSessionUpdateMessage struct {
 
 	// flags
 
-	Next                bool `avro:"next"`
-	FallbackToDirect    bool `avro:"fallback_to_direct"`
-	Reported            bool `avro:"reported"`
-	LatencyReduction    bool `avro:"latency_reduction"`
-	PacketLossReduction bool `avro:"packet_loss_reduction"`
-	ForceNext           bool `avro:"force_next"`
-	LongSessionUpdate   bool `avro:"long_session_update"`
-	Veto                bool `avro:"veto"`
-	Disabled            bool `avro:"disabled"`
-	NotSelected         bool `avro:"not_selected"`
-	A                   bool `avro:"a"`
-	B                   bool `avro:"b"`
-	LatencyWorse        bool `avro:"latency_worse"`
-	Mispredict          bool `avro:"mispredict"`
-	LackOfDiversity     bool `avro:"lack_of_diversity"`
-	Flags              int64 `avro:"flags"`
+	Next                bool  `avro:"next"`
+	FallbackToDirect    bool  `avro:"fallback_to_direct"`
+	Reported            bool  `avro:"reported"`
+	LatencyReduction    bool  `avro:"latency_reduction"`
+	PacketLossReduction bool  `avro:"packet_loss_reduction"`
+	ForceNext           bool  `avro:"force_next"`
+	LongSessionUpdate   bool  `avro:"long_session_update"`
+	Veto                bool  `avro:"veto"`
+	Disabled            bool  `avro:"disabled"`
+	NotSelected         bool  `avro:"not_selected"`
+	A                   bool  `avro:"a"`
+	B                   bool  `avro:"b"`
+	LatencyWorse        bool  `avro:"latency_worse"`
+	Mispredict          bool  `avro:"mispredict"`
+	LackOfDiversity     bool  `avro:"lack_of_diversity"`
+	Flags               int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -88,25 +88,32 @@ type AnalyticsSessionSummaryMessage struct {
 	SessionDuration                 int32   `avro:"session_duration"`
 	StartTimestamp                  int64   `avro:"start_timestamp"`
 	Error                           int64   `avro:"error"`
-	ISP                            string   `avro:"isp"`
-	Country                        string   `avro:"country"`
+	ISP                             string  `avro:"isp"`
+	Country                         string  `avro:"country"`
+	BestLatencyReduction            int64   `avro:"best_latency_reduction"`
+	FallbackToDirect                bool    `avro:"fallback_to_direct"`
+	NextLatencyTooHigh              bool    `avro:"next_latency_too_high"`
+	LikelyVPNOrCrossRegion          bool    `avro:"likely_vpn_or_cross_region"`
+	NoClientRelays                  bool    `avro:"no_client_relays"`
+	NoServerRelays                  bool    `avro:"no_server_relays"`
+	AllClientRelaysAreZero          bool    `avro:"all_client_relays_are_zero"`
 
 	// flags
 
-	Reported            bool `avro:"reported"`
-	LatencyReduction    bool `avro:"latency_reduction"`
-	PacketLossReduction bool `avro:"packet_loss_reduction"`
-	ForceNext           bool `avro:"force_next"`
-	LongSessionUpdate   bool `avro:"long_session_update"`
-	Veto                bool `avro:"veto"`
-	Disabled            bool `avro:"disabled"`
-	NotSelected         bool `avro:"not_selected"`
-	A                   bool `avro:"a"`
-	B                   bool `avro:"b"`
-	LatencyWorse        bool `avro:"latency_worse"`
-	Mispredict          bool `avro:"mispredict"`
-	LackOfDiversity     bool `avro:"lack_of_diversity"`
-	Flags              int64 `avro:"flags"`
+	Reported            bool  `avro:"reported"`
+	LatencyReduction    bool  `avro:"latency_reduction"`
+	PacketLossReduction bool  `avro:"packet_loss_reduction"`
+	ForceNext           bool  `avro:"force_next"`
+	LongSessionUpdate   bool  `avro:"long_session_update"`
+	Veto                bool  `avro:"veto"`
+	Disabled            bool  `avro:"disabled"`
+	NotSelected         bool  `avro:"not_selected"`
+	A                   bool  `avro:"a"`
+	B                   bool  `avro:"b"`
+	LatencyWorse        bool  `avro:"latency_worse"`
+	Mispredict          bool  `avro:"mispredict"`
+	LackOfDiversity     bool  `avro:"lack_of_diversity"`
+	Flags               int64 `avro:"flags"`
 }
 
 // ----------------------------------------------------------------------------------------
@@ -132,7 +139,7 @@ type AnalyticsServerUpdateMessage struct {
 	SDKVersion_Minor int32   `avro:"sdk_version_minor"`
 	SDKVersion_Patch int32   `avro:"sdk_version_patch"`
 	BuyerId          int64   `avro:"buyer_id"`
-	MatchId          int64  `avro:"match_id"`
+	MatchId          int64   `avro:"match_id"`
 	DatacenterId     int64   `avro:"datacenter_id"`
 	NumSessions      int32   `avro:"num_sessions"`
 	ServerId         int64   `avro:"server_id"`
