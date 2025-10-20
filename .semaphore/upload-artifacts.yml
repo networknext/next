@@ -29,7 +29,7 @@ blocks:
             - tar xzf /home/semaphore/secrets/secrets.tar.gz -C /home/semaphore/secrets
             - ls /home/semaphore/secrets
             - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-storage.json
-            - export ARTIFACT_BUCKET=gs://sloclap_network_next_backend_artifacts
+            - export ARTIFACT_BUCKET=gs://next_network_next_backend_artifacts
             - echo $ARTIFACT_BUCKET
             - echo $SEMAPHORE_GIT_TAG_NAME
             - echo $SEMAPHORE_GIT_BRANCH

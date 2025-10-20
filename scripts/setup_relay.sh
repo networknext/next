@@ -81,7 +81,7 @@ sudo cp /sys/kernel/btf/vmlinux /usr/lib/modules/`uname -r`/build/
 sudo rm -rf ~/relay_module
 mkdir -p ~/relay_module
 cd ~/relay_module
-wget https://storage.googleapis.com/sloclap_network_next_relay_artifacts/relay_module.tar.gz
+wget https://storage.googleapis.com/next_network_next_relay_artifacts/relay_module.tar.gz
 tar -zxf relay_module.tar.gz
 make
 sudo mkdir -p /lib/modules/`uname -r`/kernel/net/relay_module

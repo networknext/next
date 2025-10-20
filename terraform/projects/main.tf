@@ -12,7 +12,7 @@ terraform {
 locals {
   org_id = "434699063105"
   billing_account = "018C15-D3C7AC-4722E8"
-  company_name = "sloclap"
+  company_name = "next"
 }
 
 # ----------------------------------------------------------------------------------------

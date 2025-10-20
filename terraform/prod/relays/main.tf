@@ -9,7 +9,7 @@ locals {
   ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-142"
-  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
+  relay_artifacts_bucket      = "next_network_next_relay_artifacts"
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
   relay_backend_url           = "relay.virtualgo.net"
 
@@ -128,7 +128,7 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "sloclap_network_next_terraform"
+    bucket  = "next_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
