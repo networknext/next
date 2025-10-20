@@ -8,7 +8,7 @@ locals {
   vpn_address                 = "45.79.157.168"
   ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
-  relay_version               = "relay-142"
+  relay_version               = "relay-144"
   relay_artifacts_bucket      = "next_network_next_relay_artifacts"
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
   relay_backend_url           = "relay.virtualgo.net"
