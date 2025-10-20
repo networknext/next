@@ -28,7 +28,7 @@ blocks:
               fi          
             - tar xzf /home/semaphore/secrets/secrets.tar.gz -C /home/semaphore/secrets
             - gcloud auth activate-service-account --key-file=/home/semaphore/secrets/terraform-storage.json
-            - export RELAY_BUCKET=gs://next_network_next_relay_artifacts
+            - export RELAY_BUCKET=gs://sloclap_network_next_relay_artifacts
 
       jobs:
 
