@@ -10,9 +10,9 @@ DONE
 
 	Debug sharing of bigquery tables between Network Next and Mas Bandwidth google cloud accounts
 
-TODO
-
 	Fix GCORE MAC address issue
+
+TODO
 
 	*** STOP ***
 
@@ -371,8 +371,25 @@ NEXT ITERATION:
 
 	And then can look into ARP cache, and look up for that IP address what MAC address it is.
 
-	
+		grep "$(ip route show default | awk '/default/ {print $3}')" /proc/net/arp | awk '{print $4}'
+
+	A better way is to get the IP, and then check it vs "ip neigh"
+
+		ip neigh
+
+	Can also just look into the arp cache:
+
+		arp -a
+
+		_gateway (213.156.152.1) at 00:1c:73:00:20:ff [ether] on bond0
+		? (213.156.152.107) at d4:f5:ef:a2:f1:4c [ether] on bond0
 
 	We could periodically do this on the relay, to look up the default gateway IP address?
+
+	We could pump the arp cache -a, match IP -> gateway, and default to the gateway if we don't find an entry.
+
+	This could be passed up to the relay XDP program via a bpf map.
+
+	I think this is the best solution, because it requires no manual configuration.
 
 	-----------
