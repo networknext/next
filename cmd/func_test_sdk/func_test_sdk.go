@@ -1506,6 +1506,8 @@ func test_multipath_next_packet_loss() {
 
 }
 
+// todo: we should do the inverse test here, 100% PL on direct make sure that next compensates for it
+
 /*
    Make sure that fallback to direct works if the backend goes down while in multipath.
 */

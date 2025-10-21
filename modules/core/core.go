@@ -1611,7 +1611,6 @@ type RouteShader struct {
 	RouteSelectThreshold          int32   `json:"route_select_threshold"`
 	RouteSwitchThreshold          int32   `json:"route_switch_threshold"`
 	MaxLatencyTradeOff            int32   `json:"max_latency_trade_off"`
-	RTTVeto                       int32   `json:"rtt_veto"`
 	ForceNext                     bool    `json:"force_next"`
 }
 
@@ -1629,7 +1628,6 @@ func NewRouteShader() RouteShader {
 		RouteSelectThreshold:          5,
 		RouteSwitchThreshold:          10,
 		MaxLatencyTradeOff:            20,
-		RTTVeto:                       10,
 		ForceNext:                     false,
 	}
 }
@@ -1907,18 +1905,9 @@ func MakeRouteDecision_StayOnNetworkNext_Internal(userId uint64, routeMatrix []R
 		}
 	}
 
-	// if we make rtt significantly worse leave network next
-
 	maxCost := int32(math.MaxInt32)
 
 	if !routeShader.ForceNext {
-
-		rttVeto := routeShader.RTTVeto
-
-		if routeState.ReducePacketLoss {
-			rttVeto += routeShader.MaxLatencyTradeOff
-		}
-
 		maxCost = directLatency - routeShader.LatencyReductionThreshold
 		if routeState.ReducePacketLoss {
 			maxCost += routeShader.MaxLatencyTradeOff

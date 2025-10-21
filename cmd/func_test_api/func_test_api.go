@@ -1022,7 +1022,6 @@ func test_route_shader() {
 		MaxLatencyTradeOff:            20,
 		RouteSwitchThreshold:          10,
 		RouteSelectThreshold:          5,
-		RTTVeto:                       10,
 		ForceNext:                     true,
 	}
 
@@ -1157,7 +1156,6 @@ func test_buyer() {
 			MaxLatencyTradeOff:            20,
 			RouteSwitchThreshold:          10,
 			RouteSelectThreshold:          5,
-			RTTVeto:                       10,
 			ForceNext:                     true,
 		}
 
@@ -1315,7 +1313,6 @@ func test_buyer_datacenter_settings() {
 			MaxLatencyTradeOff:            20,
 			RouteSwitchThreshold:          10,
 			RouteSelectThreshold:          5,
-			RTTVeto:                       10,
 			ForceNext:                     true,
 		}
 
@@ -1645,7 +1642,6 @@ func test_database() {
 			MaxLatencyTradeOff:            20,
 			RouteSwitchThreshold:          10,
 			RouteSelectThreshold:          5,
-			RTTVeto:                       10,
 			ForceNext:                     true,
 		}
 

@@ -649,7 +649,6 @@ func (database *Database) String() string {
 		properties = append(properties, PropertyRow{"Route Select Threshold", fmt.Sprintf("%dms", routeShader.RouteSelectThreshold)})
 		properties = append(properties, PropertyRow{"Route Switch Threshold", fmt.Sprintf("%dms", routeShader.RouteSwitchThreshold)})
 		properties = append(properties, PropertyRow{"Max Latency Trade Off", fmt.Sprintf("%dms", routeShader.MaxLatencyTradeOff)})
-		properties = append(properties, PropertyRow{"RTT Veto", fmt.Sprintf("%dms", routeShader.RTTVeto)})
 
 		output += table.Table(properties)
 	}
@@ -900,7 +899,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Select Threshold", routeShader.RouteSelectThreshold)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Switch Threshold", routeShader.RouteSwitchThreshold)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Latency Trade Off", routeShader.MaxLatencyTradeOff)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto", routeShader.RTTVeto)
 		fmt.Fprintf(w, "</table>\n")
 	}
 
@@ -1108,18 +1106,16 @@ func ExtractDatabase(config string) (*Database, error) {
 		bandwidth_envelope_up_kbps       int
 		disable_network_next             bool
 		latency_reduction_threshold      int
-		multipath                        bool
 		selection_percent                int
 		max_latency_trade_off            int
 		route_switch_threshold           int
 		route_select_threshold           int
-		rtt_veto                         int
 		force_next                       bool
 	}
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, route_switch_threshold, route_select_threshold, rtt_veto, force_next, FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, selection_percent, max_latency_trade_off, route_switch_threshold, route_select_threshold, force_next FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -1128,7 +1124,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.selection_percent, &row.max_latency_trade_off, &row.route_switch_threshold, &row.route_select_threshold, &row.force_next); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
@@ -1185,7 +1181,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %v, %d, %.1f, %.1f, %d, %d, %v, %d, %v, %d, %d, %d, %d, %v, %v\n",
+		fmt.Printf("%d: %v, %d, %.1f, %.1f, %d, %d, %v, %d, %d, %d, %d, %d, %v\n",
 			row.route_shader_id,
 			row.ab_test,
 			row.acceptable_latency,
@@ -1195,12 +1191,10 @@ func ExtractDatabase(config string) (*Database, error) {
 			row.bandwidth_envelope_up_kbps,
 			row.disable_network_next,
 			row.latency_reduction_threshold,
-			row.multipath,
 			row.selection_percent,
 			row.max_latency_trade_off,
 			row.route_switch_threshold,
 			row.route_select_threshold,
-			row.rtt_veto,
 			row.force_next)
 	}
 
@@ -1302,7 +1296,6 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.RouteSelectThreshold = int32(route_shader_row.route_select_threshold)
 		buyer.RouteShader.RouteSwitchThreshold = int32(route_shader_row.route_switch_threshold)
 		buyer.RouteShader.MaxLatencyTradeOff = int32(route_shader_row.max_latency_trade_off)
-		buyer.RouteShader.RTTVeto = int32(route_shader_row.rtt_veto)
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
 
 		database.BuyerMap[buyer.Id] = &buyer

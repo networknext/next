@@ -46,7 +46,6 @@ type RouteShaderData struct {
 	MaxLatencyTradeOff            int     `json:"max_latency_trade_off"`
 	RouteSwitchThreshold          int     `json:"route_switch_threshold"`
 	RouteSelectThreshold          int     `json:"route_select_threshold"`
-	RTTVeto                       int     `json:"rtt_veto"`
 	ForceNext                     bool    `json:"force_next"`
 }
 
@@ -65,7 +64,6 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
 	data.RouteSwitchThreshold = int(routeShader.RouteSwitchThreshold)
 	data.RouteSelectThreshold = int(routeShader.RouteSelectThreshold)
-	data.RTTVeto = int(routeShader.RTTVeto)
 	data.ForceNext = routeShader.ForceNext
 	return &data
 }
@@ -87,7 +85,6 @@ INSERT INTO route_shaders
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
 	force_next,
 )
 VALUES
@@ -104,9 +101,7 @@ VALUES
 	$10,
 	$11,
 	$12,
-	$13,
-	$14,
-	$15
+	$13
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -123,7 +118,6 @@ RETURNING route_shader_id;`
 		routeShaderData.MaxLatencyTradeOff,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
-		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
 	)
 	routeShaderId := uint64(0)
@@ -151,7 +145,6 @@ SELECT
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
 	force_next
 FROM
 	route_shaders;`
@@ -177,7 +170,6 @@ FROM
 			&row.MaxLatencyTradeOff,
 			&row.RouteSwitchThreshold,
 			&row.RouteSelectThreshold,
-			&row.RTTVeto,
 			&row.ForceNext,
 		)
 		if err != nil {
@@ -206,7 +198,6 @@ SELECT
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
 	force_next,
 FROM
 	route_shaders
@@ -233,7 +224,6 @@ WHERE
 			&routeShader.MaxLatencyTradeOff,
 			&routeShader.RouteSwitchThreshold,
 			&routeShader.RouteSelectThreshold,
-			&routeShader.RTTVeto,
 			&routeShader.ForceNext,
 		)
 		if err != nil {
@@ -263,10 +253,9 @@ SET
 	max_latency_trade_off = $11,
 	route_switch_threshold = $13,
 	route_select_threshold = $14,
-	rtt_veto = $15,
-	force_next = $16,
+	force_next = $15,
 WHERE
-	route_shader_id = $17;`
+	route_shader_id = $16;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
@@ -281,7 +270,6 @@ WHERE
 		routeShaderData.MaxLatencyTradeOff,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
-		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
 		routeShaderData.RouteShaderId,
 	)

@@ -10,12 +10,10 @@ CREATE TABLE route_shaders (
   bandwidth_envelope_up_kbps integer not null default 1024,
   disable_network_next boolean not null default false,
   latency_reduction_threshold integer not null default 10,
-  multipath boolean not null default true,
   selection_percent integer not null default 100,
   max_latency_trade_off integer not null default 20,
   route_switch_threshold integer not null default 10,
   route_select_threshold integer not null default 5,
-  rtt_veto integer not null default 10,
   force_next boolean not null default false,
   primary key (route_shader_id),
   constraint route_shader_short_name_constraint unique(route_shader_name)
