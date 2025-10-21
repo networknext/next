@@ -139,20 +139,6 @@ func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
 	assert.True(t, (state.Error&constants.SessionError_FallbackToDirect) != 0)
 }
 
-func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Buyer.RouteShader.AnalysisOnly = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.AnalysisOnly)
-}
-
 func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 
 	t.Parallel()
@@ -1351,7 +1337,6 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -1565,7 +1550,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -1794,7 +1778,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2077,7 +2060,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2301,7 +2283,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_ClientRelays(t *te
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2519,7 +2500,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2752,7 +2732,6 @@ func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2897,7 +2876,6 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.Multipath = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
@@ -2942,20 +2920,6 @@ func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
 }
 
 // --------------------------------------------------------------
-
-func Test_SessionUpdate_UpdateClientRelays_AnalysisOnly(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Buyer.RouteShader.AnalysisOnly = true
-
-	result := handlers.SessionUpdate_UpdateClientRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, state.NotUpdatingClientRelaysAnalysisOnly)
-}
 
 func Test_SessionUpdate_UpdateClientRelays_DatacenterNotEnabled(t *testing.T) {
 
@@ -3062,7 +3026,6 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 	// validate
 
 	assert.True(t, result)
-	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
 	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.SourceRelays), 3)
@@ -3170,7 +3133,6 @@ func Test_SessionUpdate_UpdateServerRelays(t *testing.T) {
 	// validate
 
 	assert.True(t, result)
-	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
 	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.SourceRelays), 3)

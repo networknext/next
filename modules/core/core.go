@@ -1640,7 +1640,6 @@ func GetBestRoute_Update(routeMatrix []RouteEntry, sourceRelays []int32, sourceR
 
 type RouteShader struct {
 	DisableNetworkNext            bool    `json:"disable_network_next"`
-	AnalysisOnly                  bool    `json:"analysis_only"`
 	SelectionPercent              int     `json:"selection_percentage"`
 	ABTest                        bool    `json:"ab_test"`
 	Multipath                     bool    `json:"multipath"`
@@ -1662,7 +1661,6 @@ type RouteShader struct {
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:            false,
-		AnalysisOnly:                  false,
 		SelectionPercent:              100,
 		ABTest:                        false,
 		Multipath:                     true,
@@ -1742,14 +1740,6 @@ func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteSt
 	if routeShader.DisableNetworkNext {
 		if debug != nil {
 			*debug += "network next is disabled\n"
-		}
-		routeState.Disabled = true
-		return true
-	}
-
-	if routeShader.AnalysisOnly {
-		if debug != nil {
-			*debug += "analysis only\n"
 		}
 		routeState.Disabled = true
 		return true

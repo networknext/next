@@ -2482,7 +2482,6 @@ func TestEarlyOutDirect(t *testing.T) {
 	assert.True(t, routeState.Disabled)
 
 	routeShader = core.NewRouteShader()
-	routeShader.AnalysisOnly = true
 	routeState = core.RouteState{}
 	assert.True(t, core.EarlyOutDirect(userId, &routeShader, &routeState, &debug))
 	assert.True(t, routeState.Disabled)

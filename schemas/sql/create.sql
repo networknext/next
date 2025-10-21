@@ -6,7 +6,6 @@ CREATE TABLE route_shaders (
   acceptable_latency integer not null default 0,
   acceptable_packet_loss_instant numeric not null default 0.0,
   acceptable_packet_loss_sustained numeric not null default 0.0,
-  analysis_only boolean not null default false,
   bandwidth_envelope_down_kbps integer not null default 1024,
   bandwidth_envelope_up_kbps integer not null default 1024,
   disable_network_next boolean not null default false,

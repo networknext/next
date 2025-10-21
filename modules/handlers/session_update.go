@@ -79,16 +79,13 @@ type SessionUpdateState struct {
 
 	// codepath flags (for unit testing etc...)
 	ClientPingTimedOut                          bool
-	AnalysisOnly                                bool
 	RouteChanged                                bool
 	RouteContinued                              bool
 	TakeNetworkNext                             bool
 	StayDirect                                  bool
 	FirstUpdate                                 bool
 	ReadSessionData                             bool
-	NotUpdatingClientRelaysAnalysisOnly         bool
 	NotUpdatingClientRelaysDatacenterNotEnabled bool
-	NotUpdatingServerRelaysAnalysisOnly         bool
 	NotUpdatingServerRelaysDatacenterNotEnabled bool
 	SentPortalSessionUpdateMessage              bool
 	SentPortalClientRelayUpdateMessage          bool
@@ -196,18 +193,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		if state.FallbackToDirectChannel != nil {
 			state.FallbackToDirectChannel <- state.Request.SessionId
 		}
-		return true
-	}
-
-	/*
-		If the route shader is in analysis only mode, set the analysis only flag in the state
-
-		We don't acceleration sessions in analysis only mode.
-	*/
-
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only")
-		state.AnalysisOnly = true
 		return true
 	}
 
@@ -409,12 +394,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating client relays")
-		state.NotUpdatingClientRelaysAnalysisOnly = true
-		return false
-	}
-
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating client relays")
 		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
@@ -527,12 +506,6 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 }
 
 func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
-
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating server relay stats")
-		state.NotUpdatingServerRelaysAnalysisOnly = true
-		return false
-	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating server relay stats")

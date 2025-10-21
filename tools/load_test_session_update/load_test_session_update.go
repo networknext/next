@@ -153,7 +153,6 @@ func RunHandlerThreads(threadCount int, updateChannels []chan *Update, numSessio
 	buyer.Debug = false
 	buyer.PublicKey = BuyerPublicKey[:]
 	buyer.RouteShader = core.NewRouteShader()
-	buyer.RouteShader.AnalysisOnly = false
 
 	datacenters := make([]db.Datacenter, NumRelays)
 	for i := range datacenters {

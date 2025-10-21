@@ -637,7 +637,6 @@ func (database *Database) String() string {
 		properties := []PropertyRow{}
 
 		properties = append(properties, PropertyRow{"Disable Network Next", fmt.Sprintf("%v", routeShader.DisableNetworkNext)})
-		properties = append(properties, PropertyRow{"Analysis Only", fmt.Sprintf("%v", routeShader.AnalysisOnly)})
 		properties = append(properties, PropertyRow{"AB Test", fmt.Sprintf("%v", routeShader.ABTest)})
 		properties = append(properties, PropertyRow{"Multipath", fmt.Sprintf("%v", routeShader.Multipath)})
 		properties = append(properties, PropertyRow{"Force Next", fmt.Sprintf("%v", routeShader.ForceNext)})
@@ -892,7 +891,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<table>\n")
 		fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%v</b></td>\n", "Property", "Value")
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Disable Network Next", routeShader.DisableNetworkNext)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Analysis Only", routeShader.AnalysisOnly)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "AB Test", routeShader.ABTest)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Multipath", routeShader.Multipath)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Force Next", routeShader.ForceNext)
@@ -1112,7 +1110,6 @@ func ExtractDatabase(config string) (*Database, error) {
 		acceptable_latency               int
 		acceptable_packet_loss_instant   float32
 		acceptable_packet_loss_sustained float32
-		analysis_only                    bool
 		bandwidth_envelope_down_kbps     int
 		bandwidth_envelope_up_kbps       int
 		disable_network_next             bool
@@ -1130,7 +1127,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto, force_next, route_diversity FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto, force_next, route_diversity FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -1139,7 +1136,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next, &row.route_diversity); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next, &row.route_diversity); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
@@ -1196,13 +1193,12 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %v, %d, %.1f, %.1f, %v, %d, %d, %v, %d, %v, %d, %d, %d, %d, %d, %v, %v\n",
+		fmt.Printf("%d: %v, %d, %.1f, %.1f, %d, %d, %v, %d, %v, %d, %d, %d, %d, %d, %v, %v\n",
 			row.route_shader_id,
 			row.ab_test,
 			row.acceptable_latency,
 			row.acceptable_packet_loss_instant,
 			row.acceptable_packet_loss_sustained,
-			row.analysis_only,
 			row.bandwidth_envelope_down_kbps,
 			row.bandwidth_envelope_up_kbps,
 			row.disable_network_next,
@@ -1304,7 +1300,6 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		buyer.RouteShader.DisableNetworkNext = route_shader_row.disable_network_next
-		buyer.RouteShader.AnalysisOnly = route_shader_row.analysis_only
 		buyer.RouteShader.SelectionPercent = route_shader_row.selection_percent
 		buyer.RouteShader.ABTest = route_shader_row.ab_test
 		buyer.RouteShader.Multipath = route_shader_row.multipath

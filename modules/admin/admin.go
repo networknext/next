@@ -38,7 +38,6 @@ type RouteShaderData struct {
 	AcceptableLatency             int     `json:"acceptable_latency"`
 	AcceptablePacketLossInstant   float64 `json:"acceptable_packet_loss_instant"`
 	AcceptablePacketLossSustained float64 `json:"acceptable_packet_loss_sustained"`
-	AnalysisOnly                  bool    `json:"analysis_only"`
 	BandwidthEnvelopeUpKbps       int     `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps     int     `json:"bandwidth_envelope_down_kbps"`
 	DisableNetworkNext            bool    `json:"disable_network_next"`
@@ -61,7 +60,6 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.AcceptableLatency = int(routeShader.AcceptableLatency)
 	data.AcceptablePacketLossInstant = float64(routeShader.AcceptablePacketLossInstant)
 	data.AcceptablePacketLossSustained = float64(routeShader.AcceptablePacketLossSustained)
-	data.AnalysisOnly = routeShader.AnalysisOnly
 	data.BandwidthEnvelopeUpKbps = int(routeShader.BandwidthEnvelopeUpKbps)
 	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
 	data.DisableNetworkNext = routeShader.DisableNetworkNext
@@ -87,7 +85,6 @@ INSERT INTO route_shaders
 	acceptable_latency,
 	acceptable_packet_loss_instant,
 	acceptable_packet_loss_sustained,
-	analysis_only,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -121,8 +118,7 @@ VALUES
 	$15,
 	$16,
 	$17,
-	$18,
-	$19
+	$18
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -131,7 +127,6 @@ RETURNING route_shader_id;`
 		routeShaderData.AcceptableLatency,
 		routeShaderData.AcceptablePacketLossInstant,
 		routeShaderData.AcceptablePacketLossSustained,
-		routeShaderData.AnalysisOnly,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
@@ -163,7 +158,6 @@ SELECT
 	acceptable_latency,
 	acceptable_packet_loss_instant,
 	acceptable_packet_loss_sustained,
-	analysis_only,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -193,7 +187,6 @@ FROM
 			&row.AcceptableLatency,
 			&row.AcceptablePacketLossInstant,
 			&row.AcceptablePacketLossSustained,
-			&row.AnalysisOnly,
 			&row.BandwidthEnvelopeUpKbps,
 			&row.BandwidthEnvelopeDownKbps,
 			&row.DisableNetworkNext,
@@ -226,7 +219,6 @@ SELECT
 	acceptable_latency,
 	acceptable_packet_loss_instant,
 	acceptable_packet_loss_sustained,
-	analysis_only,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -257,7 +249,6 @@ WHERE
 			&routeShader.AcceptableLatency,
 			&routeShader.AcceptablePacketLossInstant,
 			&routeShader.AcceptablePacketLossSustained,
-			&routeShader.AnalysisOnly,
 			&routeShader.BandwidthEnvelopeUpKbps,
 			&routeShader.BandwidthEnvelopeDownKbps,
 			&routeShader.DisableNetworkNext,
@@ -291,29 +282,27 @@ SET
 	acceptable_latency = $3,
 	acceptable_packet_loss_instant = $4,
 	acceptable_packet_loss_sustained = $5,
-	analysis_only = $6,
-	bandwidth_envelope_up_kbps = $7,
-	bandwidth_envelope_down_kbps = $8,
-	disable_network_next = $9,
-	latency_reduction_threshold = $10,
-	multipath = $11,
-	selection_percent = $12,
-	max_latency_trade_off = $13,
-	max_next_rtt = $14,
-	route_switch_threshold = $15,
-	route_select_threshold = $16,
-	rtt_veto = $17,
-	force_next = $18,
-	route_diversity = $19
+	bandwidth_envelope_up_kbps = $6,
+	bandwidth_envelope_down_kbps = $7,
+	disable_network_next = $8,
+	latency_reduction_threshold = $9,
+	multipath = $10,
+	selection_percent = $11,
+	max_latency_trade_off = $12,
+	max_next_rtt = $13,
+	route_switch_threshold = $14,
+	route_select_threshold = $15,
+	rtt_veto = $16,
+	force_next = $17,
+	route_diversity = $18
 WHERE
-	route_shader_id = $20;`
+	route_shader_id = $19;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
 		routeShaderData.AcceptablePacketLossInstant,
 		routeShaderData.AcceptablePacketLossSustained,
-		routeShaderData.AnalysisOnly,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
