@@ -1612,7 +1612,6 @@ type RouteShader struct {
 	RouteSwitchThreshold          int32   `json:"route_switch_threshold"`
 	MaxLatencyTradeOff            int32   `json:"max_latency_trade_off"`
 	RTTVeto                       int32   `json:"rtt_veto"`
-	MaxNextRTT                    int32   `json:"max_next_rtt"`
 	ForceNext                     bool    `json:"force_next"`
 }
 
@@ -1631,7 +1630,6 @@ func NewRouteShader() RouteShader {
 		RouteSwitchThreshold:          10,
 		MaxLatencyTradeOff:            20,
 		RTTVeto:                       10,
-		MaxNextRTT:                    250,
 		ForceNext:                     false,
 	}
 }
@@ -1854,15 +1852,6 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 	if !hasRoute {
 		if debug != nil {
 			*debug += "not taking network next. no network next route is available\n"
-		}
-		return false
-	}
-
-	// if the next route RTT is too high, don't take it
-
-	if routeShader.MaxNextRTT > 0 && bestRouteCost > routeShader.MaxNextRTT {
-		if debug != nil {
-			*debug += fmt.Sprintf("not taking network next. best route is higher than max allowable next rtt %d\n", routeShader.MaxNextRTT)
 		}
 		return false
 	}

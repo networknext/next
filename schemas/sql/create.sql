@@ -13,7 +13,6 @@ CREATE TABLE route_shaders (
   multipath boolean not null default true,
   selection_percent integer not null default 100,
   max_latency_trade_off integer not null default 20,
-  max_next_rtt integer not null default 300,
   route_switch_threshold integer not null default 10,
   route_select_threshold integer not null default 5,
   rtt_veto integer not null default 10,

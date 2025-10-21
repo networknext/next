@@ -3236,37 +3236,6 @@ func TestTakeNetworkNext_ReduceLatency_NotEnoughReduction(t *testing.T) {
 	assert.Equal(t, expectedRouteState, test.routeState)
 }
 
-func TestTakeNetworkNext_ReduceLatency_MaxRTT(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 251)
-
-	test := NewTestData(env)
-
-	test.directLatency = int32(252)
-
-	test.sourceRelays = []int32{0}
-	test.sourceRelayCosts = []int32{1}
-
-	test.destRelays = []int32{1}
-
-	test.sliceNumber = 1
-
-	result := test.TakeNetworkNext()
-
-	assert.False(t, result)
-
-	expectedRouteState := core.RouteState{}
-
-	assert.Equal(t, expectedRouteState, test.routeState)
-}
-
 // -----------------------------------------------------------------------------
 
 func TestTakeNetworkNext_ReducePacketLoss_Simple(t *testing.T) {
@@ -3410,42 +3379,6 @@ func TestTakeNetworkNext_ReducePacketLoss_ReducePacketLossAndLatency(t *testing.
 	expectedRouteState.Next = true
 	expectedRouteState.ReduceLatency = true
 	expectedRouteState.ReducePacketLoss = true
-
-	assert.Equal(t, expectedRouteState, test.routeState)
-}
-
-func TestTakeNetworkNext_ReducePacketLoss_MaxRTT(t *testing.T) {
-
-	t.Parallel()
-
-	env := NewTestEnvironment()
-
-	env.AddRelay("losangeles", "10.0.0.1")
-	env.AddRelay("chicago", "10.0.0.2")
-
-	env.SetCost("losangeles", "chicago", 250)
-
-	test := NewTestData(env)
-
-	test.directLatency = int32(251)
-	test.directPacketLoss = float32(5.0)
-
-	test.sourceRelays = []int32{0}
-	test.sourceRelayCosts = []int32{10}
-
-	test.destRelays = []int32{1}
-
-	test.routeShader.AcceptableLatency = 100
-
-	test.routeShader.AcceptablePacketLossSustained = float32(10.0)
-
-	test.sliceNumber = 1
-
-	result := test.TakeNetworkNext()
-
-	assert.False(t, result)
-
-	expectedRouteState := core.RouteState{}
 
 	assert.Equal(t, expectedRouteState, test.routeState)
 }

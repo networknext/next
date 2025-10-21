@@ -44,7 +44,6 @@ type RouteShaderData struct {
 	LatencyReductionThreshold     int     `json:"latency_reduction_threshold"`
 	SelectionPercent              float64 `json:"selection_percent"`
 	MaxLatencyTradeOff            int     `json:"max_latency_trade_off"`
-	MaxNextRTT                    int     `json:"max_next_rtt"`
 	RouteSwitchThreshold          int     `json:"route_switch_threshold"`
 	RouteSelectThreshold          int     `json:"route_select_threshold"`
 	RTTVeto                       int     `json:"rtt_veto"`
@@ -64,7 +63,6 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.LatencyReductionThreshold = int(routeShader.LatencyReductionThreshold)
 	data.SelectionPercent = float64(routeShader.SelectionPercent)
 	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
-	data.MaxNextRTT = int(routeShader.MaxNextRTT)
 	data.RouteSwitchThreshold = int(routeShader.RouteSwitchThreshold)
 	data.RouteSelectThreshold = int(routeShader.RouteSelectThreshold)
 	data.RTTVeto = int(routeShader.RTTVeto)
@@ -87,7 +85,6 @@ INSERT INTO route_shaders
 	latency_reduction_threshold,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
 	rtt_veto,
@@ -109,8 +106,7 @@ VALUES
 	$12,
 	$13,
 	$14,
-	$15,
-	$16
+	$15
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -125,7 +121,6 @@ RETURNING route_shader_id;`
 		routeShaderData.LatencyReductionThreshold,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
-		routeShaderData.MaxNextRTT,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
 		routeShaderData.RTTVeto,
@@ -154,7 +149,6 @@ SELECT
 	latency_reduction_threshold,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
 	rtt_veto,
@@ -181,7 +175,6 @@ FROM
 			&row.LatencyReductionThreshold,
 			&row.SelectionPercent,
 			&row.MaxLatencyTradeOff,
-			&row.MaxNextRTT,
 			&row.RouteSwitchThreshold,
 			&row.RouteSelectThreshold,
 			&row.RTTVeto,
@@ -211,7 +204,6 @@ SELECT
 	latency_reduction_threshold,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
 	rtt_veto,
@@ -239,7 +231,6 @@ WHERE
 			&routeShader.LatencyReductionThreshold,
 			&routeShader.SelectionPercent,
 			&routeShader.MaxLatencyTradeOff,
-			&routeShader.MaxNextRTT,
 			&routeShader.RouteSwitchThreshold,
 			&routeShader.RouteSelectThreshold,
 			&routeShader.RTTVeto,
@@ -270,7 +261,6 @@ SET
 	latency_reduction_threshold = $9,
 	selection_percent = $10,
 	max_latency_trade_off = $11,
-	max_next_rtt = $12,
 	route_switch_threshold = $13,
 	route_select_threshold = $14,
 	rtt_veto = $15,
@@ -289,7 +279,6 @@ WHERE
 		routeShaderData.LatencyReductionThreshold,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
-		routeShaderData.MaxNextRTT,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
 		routeShaderData.RTTVeto,
