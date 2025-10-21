@@ -82,7 +82,7 @@ INSERT INTO route_shaders
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	force_next,
+	force_next
 )
 VALUES
 (
@@ -98,6 +98,7 @@ VALUES
 	$10,
 	$11,
 	$12,
+	$13
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
