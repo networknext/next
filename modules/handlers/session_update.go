@@ -861,20 +861,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 					*state.Debug += "route no longer exists\n"
 				}
 			}
-
-			if state.Output.RouteState.Mispredict {
-				core.Debug("mispredict")
-				if state.Debug != nil {
-					*state.Debug += "mispredict\n"
-				}
-			}
-
-			if state.Output.RouteState.LatencyWorse {
-				core.Debug("latency worse")
-				if state.Debug != nil {
-					*state.Debug += "latency worse\n"
-				}
-			}
 		}
 	}
 
@@ -1349,9 +1335,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.NotSelected = state.Input.RouteState.NotSelected
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
-	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.Mispredict = state.Input.RouteState.Mispredict
-	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 	message.Flags = int64(state.Request.Flags)
 
 	// send message
@@ -1425,11 +1408,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.NotSelected = state.Input.RouteState.NotSelected
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
-	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.Mispredict = state.Input.RouteState.Mispredict
-	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 	message.FallbackToDirect = state.Request.FallbackToDirect
-	message.NextLatencyTooHigh = state.Input.RouteState.NextLatencyTooHigh
 	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
 	message.NoClientRelays = state.Input.NoClientRelays
 	message.NoServerRelays = state.Input.NoServerRelays

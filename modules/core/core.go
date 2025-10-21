@@ -1633,7 +1633,6 @@ func NewRouteShader() RouteShader {
 	}
 }
 
-// todo: remove old concepts
 type RouteState struct {
 	Next                bool
 	Veto                bool
@@ -1645,15 +1644,8 @@ type RouteState struct {
 	ForcedNext          bool
 	ReduceLatency       bool
 	ReducePacketLoss    bool
-	LatencyWorse        bool
-	NoRoute             bool
-	NextLatencyTooHigh  bool
 	RouteLost           bool
-	Mispredict          bool
-	LackOfDiversity     bool
-	MispredictCounter   uint32
-	LatencyWorseCounter uint32
-	PLSustainedCounter  uint32
+	NoRoute             bool
 }
 
 func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteState, debug *string) bool {
