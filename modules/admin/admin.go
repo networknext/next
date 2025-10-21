@@ -191,7 +191,7 @@ SELECT
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	force_next,
+	force_next
 FROM
 	route_shaders
 WHERE
