@@ -97,7 +97,7 @@ VALUES
 	$9,
 	$10,
 	$11,
-	$12
+	$12,
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -139,7 +139,7 @@ SELECT
 	max_latency_trade_off,
 	route_switch_threshold,
 	route_select_threshold,
-	force_next
+	force_next,
 FROM
 	route_shaders;`
 	rows, err := controller.pgsql.Query(sql)
