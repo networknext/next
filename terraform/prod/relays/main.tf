@@ -1449,8 +1449,7 @@ resource "networknext_route_shader" test {
   force_next = true
   latency_reduction_threshold = 1
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
+  acceptable_packet_loss = 100
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
   route_select_threshold = 1
@@ -1483,8 +1482,7 @@ resource "networknext_route_shader" rematch {
   force_next = false
   latency_reduction_threshold = 10
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 0.1 # 1.0
-  acceptable_packet_loss_sustained = 0.05 # 0.25
+  acceptable_packet_loss = 0.1
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
   route_select_threshold = 5
