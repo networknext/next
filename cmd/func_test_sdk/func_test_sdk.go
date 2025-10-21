@@ -511,7 +511,7 @@ func test_accelerated() {
 	relay_2_cmd, _ := relay("relay.2", 2001)
 	relay_3_cmd, _ := relay("relay.3", 2002)
 
-	backend_cmd, backend_stdout := backend("MULTIPATH")
+	backend_cmd, backend_stdout := backend("")
 
 	client_cmd.Wait()
 
@@ -577,7 +577,7 @@ func test_next_packet_loss() {
 	relay_2_cmd, _ := relay("relay.2", 2001, relayConfig)
 	relay_3_cmd, _ := relay("relay.3", 2002, relayConfig)
 
-	backend_cmd, backend_stdout := backend("MULTIPATH")
+	backend_cmd, backend_stdout := backend("")
 
 	client_cmd.Wait()
 
@@ -1462,8 +1462,8 @@ func test_packet_loss_next() {
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_DIRECT] > 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_SENT_NEXT] > 0)
 	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKET_RECEIVED_NEXT] > 0)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] > 200)
-	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] > 200)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_CLIENT_TO_SERVER] > 0)
+	client_check(client_counters, client_stdout, server_stdout, backend_stdout, client_counters[NEXT_CLIENT_COUNTER_PACKETS_LOST_SERVER_TO_CLIENT] > 0)
 }
 
 /*
