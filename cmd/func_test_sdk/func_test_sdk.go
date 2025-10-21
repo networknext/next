@@ -1708,7 +1708,7 @@ func test_packet_loss() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
-   clientConfig.direct_packet_loss = 10.0
+   clientConfig.fake_direct_packet_loss = 10.0
 	clientConfig.duration = 60.0
 	clientConfig.buyer_public_key = TestBuyerPublicKey
 
