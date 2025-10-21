@@ -876,8 +876,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	// run various checks and prints for special func test modes
 
-	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
-
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
 		if requestPacket.SliceNumber >= 2 && requestPacket.SessionEvents != 0x123 {
 			panic("session events not set on session update")
@@ -902,6 +900,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:   int32(packets.SDK_RouteTypeDirect),
 			NumTokens:   0,
 			Tokens:      nil,
+			Multipath:   true,
 		}
 
 	} else {
@@ -985,7 +984,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			SessionId:   requestPacket.SessionId,
 			SliceNumber: requestPacket.SliceNumber,
 			RouteType:   routeType,
-			Multipath:   multipath,
+			Multipath:   true,
 			NumTokens:   int32(numTokens),
 			Tokens:      tokenData,
 		}

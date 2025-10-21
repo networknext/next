@@ -547,7 +547,6 @@ func GenerateRandomSessionData() SDK_SessionData {
 	sessionData.RouteState.ForcedNext = common.RandomBool()
 	sessionData.RouteState.ReduceLatency = common.RandomBool()
 	sessionData.RouteState.ReducePacketLoss = common.RandomBool()
-	sessionData.RouteState.Multipath = common.RandomBool()
 	sessionData.RouteState.LatencyWorse = common.RandomBool()
 	sessionData.RouteState.NoRoute = common.RandomBool()
 	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
@@ -713,7 +712,12 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
 	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
-	stream.SerializeBool(&sessionData.RouteState.Multipath)
+
+	if sessionData.Version < 6 {
+		var multipath bool
+		stream.SerializeBool(&multipath)
+	}
+
 	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
 	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)

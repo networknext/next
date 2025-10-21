@@ -42,7 +42,6 @@ type RouteShaderData struct {
 	BandwidthEnvelopeDownKbps     int     `json:"bandwidth_envelope_down_kbps"`
 	DisableNetworkNext            bool    `json:"disable_network_next"`
 	LatencyReductionThreshold     int     `json:"latency_reduction_threshold"`
-	Multipath                     bool    `json:"multipath"`
 	SelectionPercent              float64 `json:"selection_percent"`
 	MaxLatencyTradeOff            int     `json:"max_latency_trade_off"`
 	MaxNextRTT                    int     `json:"max_next_rtt"`
@@ -64,7 +63,6 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
 	data.DisableNetworkNext = routeShader.DisableNetworkNext
 	data.LatencyReductionThreshold = int(routeShader.LatencyReductionThreshold)
-	data.Multipath = routeShader.Multipath
 	data.SelectionPercent = float64(routeShader.SelectionPercent)
 	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
 	data.MaxNextRTT = int(routeShader.MaxNextRTT)
@@ -89,7 +87,6 @@ INSERT INTO route_shaders
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
 	max_next_rtt,
@@ -117,8 +114,7 @@ VALUES
 	$14,
 	$15,
 	$16,
-	$17,
-	$18
+	$17
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -131,7 +127,6 @@ RETURNING route_shader_id;`
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
 		routeShaderData.LatencyReductionThreshold,
-		routeShaderData.Multipath,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
 		routeShaderData.MaxNextRTT,
@@ -162,7 +157,6 @@ SELECT
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
 	max_next_rtt,
@@ -191,7 +185,6 @@ FROM
 			&row.BandwidthEnvelopeDownKbps,
 			&row.DisableNetworkNext,
 			&row.LatencyReductionThreshold,
-			&row.Multipath,
 			&row.SelectionPercent,
 			&row.MaxLatencyTradeOff,
 			&row.MaxNextRTT,
@@ -223,7 +216,6 @@ SELECT
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
 	max_next_rtt,
@@ -253,7 +245,6 @@ WHERE
 			&routeShader.BandwidthEnvelopeDownKbps,
 			&routeShader.DisableNetworkNext,
 			&routeShader.LatencyReductionThreshold,
-			&routeShader.Multipath,
 			&routeShader.SelectionPercent,
 			&routeShader.MaxLatencyTradeOff,
 			&routeShader.MaxNextRTT,
@@ -286,17 +277,16 @@ SET
 	bandwidth_envelope_down_kbps = $7,
 	disable_network_next = $8,
 	latency_reduction_threshold = $9,
-	multipath = $10,
-	selection_percent = $11,
-	max_latency_trade_off = $12,
-	max_next_rtt = $13,
-	route_switch_threshold = $14,
-	route_select_threshold = $15,
-	rtt_veto = $16,
-	force_next = $17,
-	route_diversity = $18
+	selection_percent = $10,
+	max_latency_trade_off = $11,
+	max_next_rtt = $12,
+	route_switch_threshold = $13,
+	route_select_threshold = $14,
+	rtt_veto = $15,
+	force_next = $16,
+	route_diversity = $17
 WHERE
-	route_shader_id = $19;`
+	route_shader_id = $18;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
@@ -307,7 +297,6 @@ WHERE
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
 		routeShaderData.LatencyReductionThreshold,
-		routeShaderData.Multipath,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
 		routeShaderData.MaxNextRTT,

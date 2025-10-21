@@ -638,7 +638,6 @@ func (database *Database) String() string {
 
 		properties = append(properties, PropertyRow{"Disable Network Next", fmt.Sprintf("%v", routeShader.DisableNetworkNext)})
 		properties = append(properties, PropertyRow{"AB Test", fmt.Sprintf("%v", routeShader.ABTest)})
-		properties = append(properties, PropertyRow{"Multipath", fmt.Sprintf("%v", routeShader.Multipath)})
 		properties = append(properties, PropertyRow{"Force Next", fmt.Sprintf("%v", routeShader.ForceNext)})
 		properties = append(properties, PropertyRow{"Selection Percent", fmt.Sprintf("%d%%", routeShader.SelectionPercent)})
 		properties = append(properties, PropertyRow{"Acceptable Latency", fmt.Sprintf("%dms", routeShader.AcceptableLatency)})
@@ -892,7 +891,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%v</b></td>\n", "Property", "Value")
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Disable Network Next", routeShader.DisableNetworkNext)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "AB Test", routeShader.ABTest)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Multipath", routeShader.Multipath)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Force Next", routeShader.ForceNext)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%d%%</td>\n", "Selection Percent", routeShader.SelectionPercent)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Acceptable Latency", routeShader.AcceptableLatency)
@@ -1302,7 +1300,6 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.DisableNetworkNext = route_shader_row.disable_network_next
 		buyer.RouteShader.SelectionPercent = route_shader_row.selection_percent
 		buyer.RouteShader.ABTest = route_shader_row.ab_test
-		buyer.RouteShader.Multipath = route_shader_row.multipath
 		buyer.RouteShader.AcceptableLatency = int32(route_shader_row.acceptable_latency)
 		buyer.RouteShader.LatencyReductionThreshold = int32(route_shader_row.latency_reduction_threshold)
 		buyer.RouteShader.AcceptablePacketLossInstant = route_shader_row.acceptable_packet_loss_instant

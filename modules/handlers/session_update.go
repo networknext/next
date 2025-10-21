@@ -887,7 +887,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		next route at the same time, which reduces packet loss.
 	*/
 
-	state.Response.Multipath = state.Output.RouteState.Multipath
+	state.Response.Multipath = true
 
 	/*
 		Stick the route cost, whether the route changed, and the route relay data
