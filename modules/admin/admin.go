@@ -49,7 +49,6 @@ type RouteShaderData struct {
 	RouteSelectThreshold          int     `json:"route_select_threshold"`
 	RTTVeto                       int     `json:"rtt_veto"`
 	ForceNext                     bool    `json:"force_next"`
-	RouteDiversity                int     `json:"route_diversity"`
 }
 
 func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
@@ -70,7 +69,6 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data.RouteSelectThreshold = int(routeShader.RouteSelectThreshold)
 	data.RTTVeto = int(routeShader.RTTVeto)
 	data.ForceNext = routeShader.ForceNext
-	data.RouteDiversity = int(routeShader.RouteDiversity)
 	return &data
 }
 
@@ -94,7 +92,6 @@ INSERT INTO route_shaders
 	route_select_threshold,
 	rtt_veto,
 	force_next,
-	route_diversity
 )
 VALUES
 (
@@ -113,8 +110,7 @@ VALUES
 	$13,
 	$14,
 	$15,
-	$16,
-	$17
+	$16
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
@@ -134,7 +130,6 @@ RETURNING route_shader_id;`
 		routeShaderData.RouteSelectThreshold,
 		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
-		routeShaderData.RouteDiversity,
 	)
 	routeShaderId := uint64(0)
 	if err := result.Scan(&routeShaderId); err != nil {
@@ -163,8 +158,7 @@ SELECT
 	route_switch_threshold,
 	route_select_threshold,
 	rtt_veto,
-	force_next,
-	route_diversity
+	force_next
 FROM
 	route_shaders;`
 	rows, err := controller.pgsql.Query(sql)
@@ -192,7 +186,6 @@ FROM
 			&row.RouteSelectThreshold,
 			&row.RTTVeto,
 			&row.ForceNext,
-			&row.RouteDiversity,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not scan route shader row: %v\n", err)
@@ -223,7 +216,6 @@ SELECT
 	route_select_threshold,
 	rtt_veto,
 	force_next,
-	route_diversity
 FROM
 	route_shaders
 WHERE
@@ -252,7 +244,6 @@ WHERE
 			&routeShader.RouteSelectThreshold,
 			&routeShader.RTTVeto,
 			&routeShader.ForceNext,
-			&routeShader.RouteDiversity,
 		)
 		if err != nil {
 			return routeShader, fmt.Errorf("could not scan route shader row: %v\n", err)
@@ -284,9 +275,8 @@ SET
 	route_select_threshold = $14,
 	rtt_veto = $15,
 	force_next = $16,
-	route_diversity = $17
 WHERE
-	route_shader_id = $18;`
+	route_shader_id = $17;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
@@ -304,7 +294,6 @@ WHERE
 		routeShaderData.RouteSelectThreshold,
 		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
-		routeShaderData.RouteDiversity,
 		routeShaderData.RouteShaderId,
 	)
 	return err

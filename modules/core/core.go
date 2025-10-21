@@ -1190,7 +1190,7 @@ type BestRoute struct {
 	NeedToReverse bool
 }
 
-func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, bestRoutes []BestRoute, numBestRoutes *int, routeDiversity *int32) {
+func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, bestRoutes []BestRoute, numBestRoutes *int) {
 
 	if len(routeMatrix) == 0 {
 		*numBestRoutes = 0
@@ -1245,7 +1245,6 @@ func GetBestRoutes(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCo
 				numRoutes++
 
 				if firstRouteFromThisRelay {
-					*routeDiversity++
 					firstRouteFromThisRelay = false
 				}
 
@@ -1414,13 +1413,10 @@ func ReframeDestRelays(relayIdToIndex map[uint64]int32, destRelayId []uint64, ex
 
 // ----------------------------------------------
 
-func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (foundRoute bool, routeDiversity int32) {
-
-	foundRoute = false
-	routeDiversity = 0
+func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) bool {
 
 	if maxCost == -1 {
-		return
+		return false
 	}
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
@@ -1433,17 +1429,17 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 			*debug += fmt.Sprintf("could not find any next route <= max cost %d\n", maxCost)
 		}
 		*out_bestRouteCost = bestRouteCost
-		return
+		return false
 	}
 
 	numBestRoutes := 0
 	bestRoutes := make([]BestRoute, 1024)
-	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
+	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes)
 	if numBestRoutes == 0 {
 		if debug != nil {
 			*debug += "could not find any next routes\n"
 		}
-		return
+		return false
 	}
 
 	if debug != nil {
@@ -1470,18 +1466,13 @@ func GetRandomBestRoute(routeMatrix []RouteEntry, sourceRelays []int32, sourceRe
 		}
 	}
 
-	foundRoute = true
-
-	return
+	return true
 }
 
-func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (foundRoute bool, routeDiversity int32) {
-
-	foundRoute = false
-	routeDiversity = 0
+func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, threshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) bool {
 
 	if maxCost == -1 {
-		return
+		return false
 	}
 
 	bestRouteCost := GetBestRouteCost(routeMatrix, sourceRelays, sourceRelayCost, destRelays)
@@ -1494,17 +1485,17 @@ func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int
 			*debug += fmt.Sprintf("could not find any next route <= max cost %d\n", maxCost)
 		}
 		*out_bestRouteCost = bestRouteCost
-		return
+		return false
 	}
 
 	numBestRoutes := 0
 	bestRoutes := make([]BestRoute, 1024)
-	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes, &routeDiversity)
+	GetBestRoutes(routeMatrix, sourceRelays, sourceRelayCost, destRelays, bestRouteCost+threshold, bestRoutes, &numBestRoutes)
 	if numBestRoutes == 0 {
 		if debug != nil {
 			*debug += "could not find any next routes\n"
 		}
-		return
+		return false
 	}
 
 	bestRoutes = bestRoutes[:numBestRoutes]
@@ -1541,7 +1532,7 @@ func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int
 
 	if lowestPrice >= 255 {
 		*debug += fmt.Sprintf("lowest price is >= 255, found no selectable routes")
-		return
+		return false
 	}
 
 	// randomly select between lowest price routes
@@ -1560,14 +1551,12 @@ func GetRandomBestRoute_LowestPrice(routeMatrix []RouteEntry, sourceRelays []int
 		}
 	}
 
-	foundRoute = true
-
-	return
+	return true
 }
 
 // --------------------------------------------------------------------------------------------------------------------
 
-func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) (hasRoute bool, routeDiversity int32) {
+func GetBestRoute_Initial(routeMatrix []RouteEntry, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, maxCost int32, selectThreshold int32, out_bestRouteCost *int32, out_bestRouteNumRelays *int32, out_bestRouteRelays *[constants.MaxRouteRelays]int32, debug *string) bool {
 
 	return GetRandomBestRoute_LowestPrice(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, out_bestRouteCost, out_bestRouteNumRelays, out_bestRouteRelays, debug)
 }
@@ -1625,7 +1614,6 @@ type RouteShader struct {
 	RTTVeto                       int32   `json:"rtt_veto"`
 	MaxNextRTT                    int32   `json:"max_next_rtt"`
 	ForceNext                     bool    `json:"force_next"`
-	RouteDiversity                int32   `json:"route_diversity"`
 }
 
 func NewRouteShader() RouteShader {
@@ -1645,7 +1633,6 @@ func NewRouteShader() RouteShader {
 		RTTVeto:                       10,
 		MaxNextRTT:                    250,
 		ForceNext:                     false,
-		RouteDiversity:                0,
 	}
 }
 
@@ -1745,7 +1732,7 @@ func EarlyOutDirect(userId uint64, routeShader *RouteShader, routeState *RouteSt
 	return false
 }
 
-func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, out_routeDiversity *int32, debug *string, sliceNumber int32) bool {
+func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, routeShader *RouteShader, routeState *RouteState, directLatency int32, directPacketLoss float32, sourceRelays []int32, sourceRelayCost []int32, destRelays []int32, out_routeCost *int32, out_routeNumRelays *int32, out_routeRelays []int32, debug *string, sliceNumber int32) bool {
 
 	if EarlyOutDirect(userId, routeShader, routeState, debug) {
 		if debug != nil {
@@ -1856,26 +1843,11 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 	selectThreshold := routeShader.RouteSelectThreshold
 
-	hasRoute, routeDiversity := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
+	hasRoute := GetBestRoute_Initial(routeMatrix, sourceRelays, sourceRelayCost, destRelays, maxCost, selectThreshold, &bestRouteCost, &bestRouteNumRelays, &bestRouteRelays, debug)
 
 	*out_routeCost = bestRouteCost
 	*out_routeNumRelays = bestRouteNumRelays
-	*out_routeDiversity = routeDiversity
 	copy(out_routeRelays, bestRouteRelays[:bestRouteNumRelays])
-
-	if debug != nil && hasRoute {
-		*debug += fmt.Sprintf("route diversity is %d\n", routeDiversity)
-	}
-
-	// if we don't have enough route diversity, we can't take network next
-
-	if routeDiversity < routeShader.RouteDiversity {
-		if debug != nil {
-			*debug += fmt.Sprintf("not enough route diversity. %d < %d\n", routeDiversity, routeShader.RouteDiversity)
-		}
-		routeState.LackOfDiversity = true
-		return false
-	}
 
 	// if we don't have a network next route, we can't take network next
 

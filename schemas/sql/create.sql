@@ -18,7 +18,6 @@ CREATE TABLE route_shaders (
   route_select_threshold integer not null default 5,
   rtt_veto integer not null default 10,
   force_next boolean not null default false,
-  route_diversity int not null default 0,
   primary key (route_shader_id),
   constraint route_shader_short_name_constraint unique(route_shader_name)
 );

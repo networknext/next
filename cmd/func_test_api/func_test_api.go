@@ -1025,7 +1025,6 @@ func test_route_shader() {
 		RouteSelectThreshold:          5,
 		RTTVeto:                       10,
 		ForceNext:                     true,
-		RouteDiversity:                5,
 	}
 
 	routeShaderId := uint64(0)
@@ -1162,7 +1161,6 @@ func test_buyer() {
 			RouteSelectThreshold:          5,
 			RTTVeto:                       10,
 			ForceNext:                     true,
-			RouteDiversity:                5,
 		}
 
 		var response CreateRouteShaderResponse
@@ -1322,7 +1320,6 @@ func test_buyer_datacenter_settings() {
 			RouteSelectThreshold:          5,
 			RTTVeto:                       10,
 			ForceNext:                     true,
-			RouteDiversity:                5,
 		}
 
 		var response CreateRouteShaderResponse
@@ -1654,7 +1651,6 @@ func test_database() {
 			RouteSelectThreshold:          5,
 			RTTVeto:                       10,
 			ForceNext:                     true,
-			RouteDiversity:                5,
 		}
 
 		var response CreateRouteShaderResponse

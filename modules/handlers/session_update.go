@@ -55,9 +55,6 @@ type SessionUpdateState struct {
 	RealJitter     float32
 	RealOutOfOrder float32
 
-	// route diversity is the number of unique client relays with viable routes
-	RouteDiversity int32
-
 	// for route planning
 	DestRelayIds   []uint64
 	DestRelays     []int32
@@ -730,7 +727,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			&routeCost,
 			&routeNumRelays,
 			routeRelays[:],
-			&state.RouteDiversity,
 			state.Debug,
 			sliceNumber) {
 

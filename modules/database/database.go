@@ -651,7 +651,6 @@ func (database *Database) String() string {
 		properties = append(properties, PropertyRow{"Max Latency Trade Off", fmt.Sprintf("%dms", routeShader.MaxLatencyTradeOff)})
 		properties = append(properties, PropertyRow{"RTT Veto", fmt.Sprintf("%dms", routeShader.RTTVeto)})
 		properties = append(properties, PropertyRow{"Max Next RTT", fmt.Sprintf("%dms", routeShader.MaxNextRTT)})
-		properties = append(properties, PropertyRow{"Route Diversity", fmt.Sprintf("%d", routeShader.RouteDiversity)})
 
 		output += table.Table(properties)
 	}
@@ -904,7 +903,6 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Latency Trade Off", routeShader.MaxLatencyTradeOff)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto", routeShader.RTTVeto)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Next RTT", routeShader.MaxNextRTT)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td>\n", "Route Diversity", routeShader.RouteDiversity)
 		fmt.Fprintf(w, "</table>\n")
 	}
 
@@ -1120,12 +1118,11 @@ func ExtractDatabase(config string) (*Database, error) {
 		route_select_threshold           int
 		rtt_veto                         int
 		force_next                       bool
-		route_diversity                  int
 	}
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto, force_next, route_diversity FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto, force_next, FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -1134,7 +1131,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next, &row.route_diversity); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
@@ -1312,7 +1309,6 @@ func ExtractDatabase(config string) (*Database, error) {
 		buyer.RouteShader.RTTVeto = int32(route_shader_row.rtt_veto)
 		buyer.RouteShader.MaxNextRTT = int32(route_shader_row.max_next_rtt)
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
-		buyer.RouteShader.RouteDiversity = int32(route_shader_row.route_diversity)
 
 		database.BuyerMap[buyer.Id] = &buyer
 
