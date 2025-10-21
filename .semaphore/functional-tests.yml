@@ -98,9 +98,13 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_direct_upgraded
 
-        - name: "test_network_next_route"
+        - name: "test_accelerated"
           commands:
-            - cd ./dist && ./func_test_sdk test_network_next_route
+            - cd ./dist && ./func_test_sdk test_accelerated
+
+        - name: "test_next_packet_loss"
+          commands:
+            - cd ./dist && ./func_test_sdk test_next_packet_loss
 
         - name: "test_fallback_to_direct_backend"
           commands:
@@ -153,18 +157,6 @@ blocks:
         - name: "test_connect_to_another_server_next"
           commands:
             - cd ./dist && ./func_test_sdk test_connect_to_another_server_next
-
-        - name: "test_multipath"
-          commands:
-            - cd ./dist && ./func_test_sdk test_multipath
-
-        - name: "test_multipath_next_packet_loss"
-          commands:
-            - cd ./dist && ./func_test_sdk test_multipath_next_packet_loss
-
-        - name: "test_multipath_fallback_to_direct"
-          commands:
-            - cd ./dist && ./func_test_sdk test_multipath_fallback_to_direct
 
         - name: "test_packet_loss_direct"
           commands:
