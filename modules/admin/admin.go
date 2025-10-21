@@ -36,8 +36,7 @@ type RouteShaderData struct {
 	RouteShaderName               string  `json:"route_shader_name"`
 	ABTest                        bool    `json:"ab_test"`
 	AcceptableLatency             int     `json:"acceptable_latency"`
-	AcceptablePacketLossInstant   float64 `json:"acceptable_packet_loss_instant"`
-	AcceptablePacketLossSustained float64 `json:"acceptable_packet_loss_sustained"`
+	AcceptablePacketLoss          float64 `json:"acceptable_packet_loss"`
 	BandwidthEnvelopeUpKbps       int     `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps     int     `json:"bandwidth_envelope_down_kbps"`
 	DisableNetworkNext            bool    `json:"disable_network_next"`
@@ -54,8 +53,7 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data := RouteShaderData{}
 	data.ABTest = routeShader.ABTest
 	data.AcceptableLatency = int(routeShader.AcceptableLatency)
-	data.AcceptablePacketLossInstant = float64(routeShader.AcceptablePacketLossInstant)
-	data.AcceptablePacketLossSustained = float64(routeShader.AcceptablePacketLossSustained)
+	data.AcceptablePacketLoss = float64(routeShader.AcceptablePacketLoss)
 	data.BandwidthEnvelopeUpKbps = int(routeShader.BandwidthEnvelopeUpKbps)
 	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
 	data.DisableNetworkNext = routeShader.DisableNetworkNext
@@ -75,8 +73,7 @@ INSERT INTO route_shaders
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -100,16 +97,14 @@ VALUES
 	$9,
 	$10,
 	$11,
-	$12,
-	$13
+	$12
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
-		routeShaderData.AcceptablePacketLossInstant,
-		routeShaderData.AcceptablePacketLossSustained,
+		routeShaderData.AcceptablePacketLoss,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
@@ -135,8 +130,7 @@ SELECT
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -160,8 +154,7 @@ FROM
 			&row.RouteShaderName,
 			&row.ABTest,
 			&row.AcceptableLatency,
-			&row.AcceptablePacketLossInstant,
-			&row.AcceptablePacketLossSustained,
+			&row.AcceptablePacketLoss,
 			&row.BandwidthEnvelopeUpKbps,
 			&row.BandwidthEnvelopeDownKbps,
 			&row.DisableNetworkNext,
@@ -188,8 +181,7 @@ SELECT
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
@@ -214,8 +206,7 @@ WHERE
 			&routeShader.RouteShaderName,
 			&routeShader.ABTest,
 			&routeShader.AcceptableLatency,
-			&routeShader.AcceptablePacketLossInstant,
-			&routeShader.AcceptablePacketLossSustained,
+			&routeShader.AcceptablePacketLoss,
 			&routeShader.BandwidthEnvelopeUpKbps,
 			&routeShader.BandwidthEnvelopeDownKbps,
 			&routeShader.DisableNetworkNext,
@@ -243,25 +234,23 @@ SET
 	route_shader_name = $1, 
 	ab_test = $2,
 	acceptable_latency = $3,
-	acceptable_packet_loss_instant = $4,
-	acceptable_packet_loss_sustained = $5,
-	bandwidth_envelope_up_kbps = $6,
-	bandwidth_envelope_down_kbps = $7,
-	disable_network_next = $8,
-	latency_reduction_threshold = $9,
-	selection_percent = $10,
-	max_latency_trade_off = $11,
-	route_switch_threshold = $13,
-	route_select_threshold = $14,
-	force_next = $15,
+	acceptable_packet_loss = $4,
+	bandwidth_envelope_up_kbps = $5,
+	bandwidth_envelope_down_kbps = $6,
+	disable_network_next = $7,
+	latency_reduction_threshold = $8,
+	selection_percent = $9,
+	max_latency_trade_off = $10,	
+	route_switch_threshold = $11,
+	route_select_threshold = $12,
+	force_next = $13
 WHERE
-	route_shader_id = $16;`
+	route_shader_id = $14;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
-		routeShaderData.AcceptablePacketLossInstant,
-		routeShaderData.AcceptablePacketLossSustained,
+		routeShaderData.AcceptablePacketLoss,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,

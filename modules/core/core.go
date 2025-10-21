@@ -1604,8 +1604,7 @@ type RouteShader struct {
 	ABTest                        bool    `json:"ab_test"`
 	AcceptableLatency             int32   `json:"acceptable_latency"`
 	LatencyReductionThreshold     int32   `json:"latency_reduction_threshold"`
-	AcceptablePacketLossInstant   float32 `json:"acceptable_packet_loss_instant"`
-	AcceptablePacketLossSustained float32 `json:"acceptable_packet_loss_sustained"`
+	AcceptablePacketLoss          float32 `json:"acceptable_packet_loss"`
 	BandwidthEnvelopeUpKbps       int32   `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps     int32   `json:"bandwidth_envelope_down_kbps"`
 	RouteSelectThreshold          int32   `json:"route_select_threshold"`
@@ -1614,6 +1613,9 @@ type RouteShader struct {
 	ForceNext                     bool    `json:"force_next"`
 }
 
+// todo: i really want to make sure that when we are on network next to reduce packet loss
+// that we are allowing routes up to MaxLatencyTradeoff, but we prefer routes that are within best latency + RouteSelectThreshold
+
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:            false,
@@ -1621,8 +1623,7 @@ func NewRouteShader() RouteShader {
 		ABTest:                        false,
 		AcceptableLatency:             0,
 		LatencyReductionThreshold:     10,
-		AcceptablePacketLossInstant:   0.1,
-		AcceptablePacketLossSustained: 0.01,
+		AcceptablePacketLoss:          0.1,
 		BandwidthEnvelopeUpKbps:       1024,
 		BandwidthEnvelopeDownKbps:     1024,
 		RouteSelectThreshold:          5,
@@ -1632,6 +1633,7 @@ func NewRouteShader() RouteShader {
 	}
 }
 
+// todo: remove old concepts
 type RouteState struct {
 	Next                bool
 	Veto                bool
@@ -1806,25 +1808,9 @@ func MakeRouteDecision_TakeNetworkNext(userId uint64, routeMatrix []RouteEntry, 
 
 		// should we try to reduce packet loss?
 
-		if directPacketLoss >= routeShader.AcceptablePacketLossSustained {
-			if routeState.PLSustainedCounter < 3 {
-				routeState.PLSustainedCounter = routeState.PLSustainedCounter + 1
-			}
-		}
-
-		if directPacketLoss < routeShader.AcceptablePacketLossSustained {
-			routeState.PLSustainedCounter = 0
-		}
-
-		if directPacketLoss > routeShader.AcceptablePacketLossInstant {
+		if directPacketLoss > routeShader.AcceptablePacketLoss {
 			if debug != nil {
-				*debug += fmt.Sprintf("packet loss is > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLossInstant)
-			}
-			maxCost = directLatency + routeShader.MaxLatencyTradeOff
-			reducePacketLoss = true
-		} else if routeState.PLSustainedCounter == 3 {
-			if debug != nil {
-				*debug += fmt.Sprintf("sustained packet loss > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLossSustained)
+				*debug += fmt.Sprintf("packet loss is > %.2f%%. try to reduce it\n", routeShader.AcceptablePacketLoss)
 			}
 			maxCost = directLatency + routeShader.MaxLatencyTradeOff
 			reducePacketLoss = true
