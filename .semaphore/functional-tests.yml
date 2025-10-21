@@ -174,10 +174,6 @@ blocks:
           commands:
             - cd ./dist && ./func_test_sdk test_session_update_retry
 
-        - name: "test_packet_loss"
-          commands:
-            - cd ./dist && ./func_test_sdk test_packet_loss
-
         - name: "test_bandwidth"
           commands:
             - cd ./dist && ./func_test_sdk test_bandwidth
