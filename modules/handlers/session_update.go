@@ -1390,12 +1390,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		message.Country = country
 	}
 
-	// calculate best latency reduction for this session
-
-	if message.DurationOnNext > 0 && state.Output.BestNextRTT > 0 {
-		message.BestLatencyReduction = int64(state.Output.BestDirectRTT - state.Output.BestNextRTT)
-	}
-
 	// flags
 
 	message.Reported = state.Request.Reported
