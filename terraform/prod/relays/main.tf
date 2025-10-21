@@ -124,7 +124,7 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0.13"
+      version = "~> 5.0.14"
     }
   }
   backend "gcs" {
