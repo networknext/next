@@ -1708,6 +1708,7 @@ func test_packet_loss() {
 
 	clientConfig := &ClientConfig{}
 	clientConfig.stop_sending_packets_time = 50.0
+   clientConfig.direct_packet_loss = 10.0
 	clientConfig.duration = 60.0
 	clientConfig.buyer_public_key = TestBuyerPublicKey
 
@@ -1719,7 +1720,7 @@ func test_packet_loss() {
 	server_cmd, server_stdout := server(serverConfig)
 
 	relayConfig := RelayConfig{
-		fake_packet_loss_percent:    1.0,
+		fake_packet_loss_percent:    10.0,
 		fake_packet_loss_start_time: 10.0,
 	}
 
