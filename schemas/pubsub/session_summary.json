@@ -34,8 +34,6 @@
     {"name": "packet_loss_reduction",                 "type": "boolean"},
     {"name": "force_next",                            "type": "boolean"},
     {"name": "long_session_update",                   "type": "boolean"},
-    {"name": "client_next_bandwidth_over_limit",      "type": "boolean", "default": false},
-    {"name": "server_next_bandwidth_over_limit",      "type": "boolean", "default": false},
     {"name": "veto",                                  "type": "boolean"},
     {"name": "disabled",                              "type": "boolean"},
     {"name": "not_selected",                          "type": "boolean"},
@@ -50,6 +48,13 @@
     {"name": "likely_vpn_or_cross_region",            "type": "boolean", "default": false},
     {"name": "no_client_relays",                      "type": "boolean", "default": false},
     {"name": "no_server_relays",                      "type": "boolean", "default": false},
-    {"name": "all_client_relays_are_zero",            "type": "boolean", "default": false}
+    {"name": "all_client_relays_are_zero",            "type": "boolean", "default": false},
+
+    {"name": "latency_worse",                         "type": "boolean", "default": false},
+    {"name": "mispredict",                            "type": "boolean", "default": false},
+    {"name": "lack_of_diversity",                     "type": "boolean", "default": false},
+    {"name": "client_next_bandwidth_over_limit",      "type": "boolean", "default": false},
+    {"name": "server_next_bandwidth_over_limit",      "type": "boolean", "default": false},
+    {"name": "best_latency_reduction",                "type": "float", "default": 0.0}
   ]
 }

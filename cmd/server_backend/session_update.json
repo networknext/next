@@ -44,6 +44,12 @@
     {"name": "game_packet_loss",                      "type": "float", "default": 0.0},
     {"name": "bandwidth_kbps_up",                     "type": "int", "default": 0},
     {"name": "bandwidth_kbps_down",                   "type": "int", "default": 0},
-    {"name": "flags",                                 "type": "long", "default": 0}
+    {"name": "flags",                                 "type": "long", "default": 0},
+
+    {"name": "latency_worse",                         "type": "boolean", "default": false},
+    {"name": "mispredict",                            "type": "boolean", "default": false},
+    {"name": "lack_of_diversity",                     "type": "boolean", "default": false},
+    {"name": "client_next_bandwidth_over_limit",      "type": "boolean", "default": false},
+    {"name": "server_next_bandwidth_over_limit",      "type": "boolean", "default": false}
   ]
 }
