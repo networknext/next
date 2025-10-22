@@ -49,16 +49,11 @@ Session updates contain network performance data once every 10 seconds for a ses
 | packet_loss_reduction | BOOL | True if this session took network next this slice to reduce packet loss |
 | force_next | BOOL | True if this session took network next this slice because it was forced to |
 | long_session_update | BOOL | True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded. |
-| client_next_bandwidth_over_limit | BOOL | client_next_bandwidth_over_limitTrue if the client to server next bandwidth went over the envelope limit this slice and was sent over direct. |
-| server_next_bandwidth_over_limit | BOOL | True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct. |
 | veto | BOOL | True if the routing logic decided that this session should no longer be accelerated for some reason. |
 | disabled | BOOL | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group. (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the B group. (never accelerated) |
-| latency_worse | BOOL | True if we made significantly latency worse. In this case the session is told to stop acceleration immediately. |
-| mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
-| lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
 ## Session Summary
 
@@ -86,7 +81,8 @@ A session summary is written at the end of each session, with the intent that if
 | server_to_client_packets_lost | INT64 | The total number of game packets lost from server to client in this session |
 | client_to_server_packets_out_of_order | INT64 | The total number of game packets received out of order from client to server in this session |
 | server_to_client_packets_out_of_order | INT64 | The total number of game packets received out of order from server to client in this session | INT64 | The total number of envelope bytes sent across network next in the client to server direction for this session |
-| total_next_envelope_bytes_down | INT64 | The total number of envelope bytes sent across netwnork next in the server to client direction for this session |
+| total_next_envelope_bytes_up | INT64 | The total number of envelope bytes sent across network next in the client to server direction for this session |
+| total_next_envelope_bytes_down | INT64 | The total number of envelope bytes sent across network next in the server to client direction for this session |
 | duration_on_next | INT64 | Total time spent on network next in this session (time accelerated). Seconds |
 | session_duration | INT64 | Length of this session in seconds |
 | start_timestamp | TIMESTAMP | The time when this session started |
@@ -96,16 +92,11 @@ A session summary is written at the end of each session, with the intent that if
 | packet_loss_reduction | BOOL | True if this session took network next to reduce packet loss |
 | force_next | BOOL | True if this session took network next because it was forced to |
 | long_session_update | BOOL | True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded. |
-| client_next_bandwidth_over_limit | BOOL | True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct. |
-| server_next_bandwidth_over_limit | BOOL | True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct. |
 | veto | BOOL | True if the routing logic decided that this session should no longer be accelerated for some reason. |
 | disabled | BOOL | True if the buyer is disabled. Disabled buyers don't perform any acceleration or analytics on network next. |
 | not_selected | BOOL | If the route shader selection % is any value other than 100%, then this is true for sessions that were not selected for acceleration. |
 | a | BOOL | This session was part of an AB test, and is in the A group (potentially accelerated) |
 | b | BOOL | This session was part of an AB test, and is in the B group (never accelerated) |
-| latency_worse | BOOL | True if we made latency worse. |
-| mispredict | BOOL | True if we significantly mispredicted the latency reduction we could provide for this session. |
-| lack_of_diversity | BOOL | True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session. |
 
 ## Server Init
 
