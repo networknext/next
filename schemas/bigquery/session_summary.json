@@ -186,18 +186,6 @@
     "description": "True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded."
   },
   {
-    "name": "client_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
-    "name": "server_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
     "name": "veto",
     "type": "BOOL",
     "mode": "REQUIRED",
@@ -280,6 +268,52 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if this all client relays have zero rtt, jitter and pl values. It is hypothesized this is caused by a packet loss spike at the start of sessions."
-  }  
+  },
+
+  {
+    "name": "all_client_relays_are_zero",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "True if this all client relays have zero rtt, jitter and pl values. It is hypothesized this is caused by a packet loss spike at the start of sessions."
+  },
+
+
+
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "best_latency_reduction",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  }
 
 ]

@@ -198,18 +198,6 @@
     "description": "True if the processing for this slice on the server backend took a long time. This may indicate that the server backend is overloaded."
   },
   {
-    "name": "client_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the client to server next bandwidth went over the envelope limit this slice and was sent over direct."
-  },
-  {
-    "name": "server_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the server to client next bandwidth went over the envelope limit this slice and was sent over direct."
-  },
-  {
     "name": "veto",
     "type": "BOOL",
     "mode": "REQUIRED",
@@ -240,24 +228,6 @@
     "description": "This session was part of an AB test, and is in the B group (never accelerated)."
   },
   {
-    "name": "latency_worse",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we made latency worse."
-  },
-  {
-    "name": "mispredict",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
-  },
-  {
-    "name": "lack_of_diversity",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
-  },
-  {
     "name": "server_id",
     "type": "INT64",
     "mode": "NULLABLE",
@@ -280,5 +250,39 @@
     "type": "INT64",
     "mode": "NULLABLE",
     "description": "Flags passed up from the SDK client. Useful for debugging."
+  },
+
+
+
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "REQUIRED",
+    "description": "DEPRECATED"
   }
+
 ]
