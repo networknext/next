@@ -55,6 +55,6 @@
     {"name": "lack_of_diversity",                     "type": "boolean", "default": false},
     {"name": "client_next_bandwidth_over_limit",      "type": "boolean", "default": false},
     {"name": "server_next_bandwidth_over_limit",      "type": "boolean", "default": false},
-    {"name": "best_latency_reduction",                "type": "float", "default": 0.0}
+    {"name": "best_latency_reduction",                "type": "long", "default": 0}
   ]
 }
