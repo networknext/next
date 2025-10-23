@@ -165,7 +165,7 @@ void client_thread_function( void * data )
 
             if ( session_id != 0 && current_session_id == 0 )
             {
-                next_printf( NEXT_LOG_LEVEL_INFO, "session id is %" PRIx64, session_id );
+                next_printf( NEXT_LOG_LEVEL_INFO, "session id is %016" PRIx64, session_id );
                 current_session_id = session_id;
             }
 

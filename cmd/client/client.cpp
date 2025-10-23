@@ -67,7 +67,7 @@ int main()
 
         if ( current_session_id == 0 && session_id != 0 )
         {
-            printf( "session id is %" PRIx64 "\n", session_id );
+            printf( "session id is %016" PRIx64 "\n", session_id );
             current_session_id = session_id;
         }
 
