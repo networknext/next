@@ -1485,8 +1485,8 @@ resource "networknext_route_shader" rematch {
   acceptable_packet_loss = 1.0
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
-  route_select_threshold = 5
-  route_switch_threshold = 10
+  route_select_threshold = 1
+  route_switch_threshold = 5
 }
 
 resource "networknext_buyer" rematch {
