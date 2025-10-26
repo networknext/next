@@ -111,16 +111,6 @@ func main() {
 		},
 	}
 
-	var unrealCommand = &ffcli.Command{
-		Name:       "unreal",
-		ShortUsage: "next unreal",
-		ShortHelp:  "Copy SDK source to unreal plugin",
-		Exec: func(ctx context.Context, args []string) error {
-			unreal()
-			return nil
-		},
-	}
-
 	var cleanCommand = &ffcli.Command{
 		Name:       "clean",
 		ShortUsage: "next clean",
@@ -471,7 +461,6 @@ func main() {
 		keygenCommand,
 		configCommand,
 		exampleCommand,
-		unrealCommand,
 		cleanCommand,
 		secretsCommand,
 		selectCommand,
@@ -920,27 +909,8 @@ func generateExampleDir() {
 
 // ------------------------------------------------------------------------------
 
-func unreal() {
-	bash("rm -rf unreal/NetworkNext/Source/Private/include")
-	bash("rm -rf unreal/NetworkNext/Source/Private/source")
-	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
-	bash("mkdir -p unreal/NetworkNext/Source/Private/include")
-	bash("mkdir -p unreal/NetworkNext/Source/Private/source")
-	bash("mkdir -p unreal/NetworkNext/Source/Private/sodium")
-	bash("cp -f sdk/include/* unreal/NetworkNext/Source/Private/include")
-	bash("cp -f sdk/source/* unreal/NetworkNext/Source/Private/source")
-	bash("cp -f sdk/sodium/* unreal/NetworkNext/Source/Private/sodium")
-
-	fmt.Printf("copied sdk source to unreal plugin\n\n")
-}
-
-// ------------------------------------------------------------------------------
-
 func clean() {
 	bash("rm -rf example")
-	bash("rm -rf unreal/NetworkNext/Source/Private/include")
-	bash("rm -rf unreal/NetworkNext/Source/Private/source")
-	bash("rm -rf unreal/NetworkNext/Source/Private/sodium")
 	bash("rm -rf dist")
 	bash("rm -f secrets.tar.gz")
 	bash("make clean")
