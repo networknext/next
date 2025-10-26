@@ -3,7 +3,6 @@
 */
 
 #include "relay_ping.h"
-#include "relay_hash.h"
 #include "relay_queue.h"
 #include "relay_messages.h"
 #include "relay_platform.h"

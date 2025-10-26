@@ -1450,11 +1450,8 @@ void next_server_internal_update_pending_upgrades( next_server_internal_t * serv
     if ( server->flushing )
         return;
 
-    // todo
-    /*
     if ( server->state == NEXT_SERVER_STATE_DIRECT_ONLY )
         return;
-    */
 
     const double current_time = next_platform_time();
 

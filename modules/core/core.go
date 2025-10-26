@@ -1613,9 +1613,6 @@ type RouteShader struct {
 	ForceNext                     bool    `json:"force_next"`
 }
 
-// todo: i really want to make sure that when we are on network next to reduce packet loss
-// that we are allowing routes up to MaxLatencyTradeoff, but we prefer routes that are within best latency + RouteSelectThreshold
-
 func NewRouteShader() RouteShader {
 	return RouteShader{
 		DisableNetworkNext:            false,

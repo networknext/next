@@ -775,19 +775,9 @@ int main_update( struct main_t * main )
 
     // find relays to delete
 
-    // todo
-    /*
-    struct relay_hash relay_ping_hash;
-    relay_hash_initialize( &relay_ping_hash, (uint64_t*)relay_ping_set.id, relay_ping_set.num_relays );
-    */
-
     message->delete_relays.num_relays = 0;
     for ( int i = 0; i < main->relay_ping_set.num_relays; i++ )
     {
-        /*
-        relay_hash_exists( &relay_ping_hash, main->relay_ping_set.id[i] );
-        */
-
         bool found = false;
         for ( int j = 0; j < relay_ping_set.num_relays; j++ )
         {
@@ -825,11 +815,9 @@ int main_update( struct main_t * main )
         return RELAY_OK;
     }
 
-    // stash relay ping set and hash for next update
+    // stash relay ping set for next update
 
     memcpy( &main->relay_ping_set, &relay_ping_set, sizeof(struct relay_set) );
-    // todo
-    // memcpy( &main->relay_ping_hash, &relay_ping_hash, sizeof(struct relay_hash) );
 
     return RELAY_OK;
 }
