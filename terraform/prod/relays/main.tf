@@ -600,11 +600,6 @@ locals {
       public_address   = "98.98.142.118"
     },
 
-    "zenlayer.london.b" = {
-      datacenter_name  = "zenlayer.london"
-      public_address   = "98.98.142.126"
-    },
-
     "zenlayer.istanbul" = {
       datacenter_name  = "zenlayer.istanbul"
       public_address   = "104.166.176.246"
