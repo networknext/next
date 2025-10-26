@@ -22,10 +22,10 @@
 
 #if !NEXT_DEVELOPMENT
 
-    #define NEXT_VERSION_FULL                              "1.2.11"
+    #define NEXT_VERSION_FULL                              "1.2.12"
     #define NEXT_VERSION_MAJOR_INT                                1
     #define NEXT_VERSION_MINOR_INT                                2
-    #define NEXT_VERSION_PATCH_INT                               11
+    #define NEXT_VERSION_PATCH_INT                               12
 
 #else // !NEXT_DEVELOPMENT
 
