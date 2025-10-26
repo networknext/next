@@ -186,18 +186,6 @@
     "description": "True if the processing for any slices in this session took a long time. This may indicate that the server backend is overloaded."
   },
   {
-    "name": "client_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the client to server next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
-    "name": "server_next_bandwidth_over_limit",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if the server to client next bandwidth went over the envelope limit at some point and was sent over direct."
-  },
-  {
     "name": "veto",
     "type": "BOOL",
     "mode": "REQUIRED",
@@ -228,24 +216,6 @@
     "description": "This session was part of an AB test, and is in the B group (never accelerated)."
   },
   {
-    "name": "latency_worse",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we made latency worse."
-  },
-  {
-    "name": "mispredict",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if we significantly mispredicted the latency reduction we could provide for this session."
-  },
-  {
-    "name": "lack_of_diversity",
-    "type": "BOOL",
-    "mode": "REQUIRED",
-    "description": "True if route diversity is set in the route shader, and we don't have enough route diversity to accelerate this session."
-  },  
-  {
     "name": "flags",
     "type": "INT64",
     "mode": "NULLABLE",
@@ -270,22 +240,10 @@
     "description": "The player's ISO country code from ip2location"
   },
   {
-    "name": "best_latency_reduction",
-    "type": "INT64",
-    "mode": "NULLABLE",
-    "description": "The best latency reduction experienced by this player in milliseconds. 0 if no latency reduction was found."
-  },
-  {
     "name": "fallback_to_direct",
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if the session fell back to direct."
-  },
-  {
-    "name": "next_latency_too_high",
-    "type": "BOOL",
-    "mode": "NULLABLE",
-    "description": "True if network next latency went above the maximum value."
   },
   {
     "name": "likely_vpn_or_cross_region",
@@ -310,6 +268,43 @@
     "type": "BOOL",
     "mode": "NULLABLE",
     "description": "True if this all client relays have zero rtt, jitter and pl values. It is hypothesized this is caused by a packet loss spike at the start of sessions."
-  }  
+  },
+
+  {
+    "name": "latency_worse",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "mispredict",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "lack_of_diversity",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "client_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "server_next_bandwidth_over_limit",
+    "type": "BOOL",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  },
+  {
+    "name": "best_latency_reduction",
+    "type": "INT64",
+    "mode": "NULLABLE",
+    "description": "DEPRECATED"
+  }
 
 ]

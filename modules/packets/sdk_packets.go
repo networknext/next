@@ -547,15 +547,8 @@ func GenerateRandomSessionData() SDK_SessionData {
 	sessionData.RouteState.ForcedNext = common.RandomBool()
 	sessionData.RouteState.ReduceLatency = common.RandomBool()
 	sessionData.RouteState.ReducePacketLoss = common.RandomBool()
-	sessionData.RouteState.Multipath = common.RandomBool()
-	sessionData.RouteState.LatencyWorse = common.RandomBool()
 	sessionData.RouteState.NoRoute = common.RandomBool()
-	sessionData.RouteState.NextLatencyTooHigh = common.RandomBool()
-	sessionData.RouteState.Mispredict = common.RandomBool()
 	sessionData.RouteState.RouteLost = common.RandomBool()
-	sessionData.RouteState.LackOfDiversity = common.RandomBool()
-	sessionData.RouteState.MispredictCounter = uint32(common.RandomInt(0, 3))
-	sessionData.RouteState.LatencyWorseCounter = uint32(common.RandomInt(0, 3))
 
 	for i := range sessionData.ExcludeClientRelay {
 		sessionData.ExcludeClientRelay[i] = common.RandomBool()
@@ -713,16 +706,36 @@ func (sessionData *SDK_SessionData) Serialize(stream encoding.Stream) error {
 	stream.SerializeBool(&sessionData.RouteState.ForcedNext)
 	stream.SerializeBool(&sessionData.RouteState.ReduceLatency)
 	stream.SerializeBool(&sessionData.RouteState.ReducePacketLoss)
-	stream.SerializeBool(&sessionData.RouteState.Multipath)
-	stream.SerializeBool(&sessionData.RouteState.LatencyWorse)
+
+	if sessionData.Version < 6 {
+		var multipath bool
+		stream.SerializeBool(&multipath)
+	}
+
+	if sessionData.Version < 7 {
+		var latencyWorse bool
+		stream.SerializeBool(&latencyWorse)
+	}
+
 	stream.SerializeBool(&sessionData.RouteState.NoRoute)
-	stream.SerializeBool(&sessionData.RouteState.NextLatencyTooHigh)
-	stream.SerializeBool(&sessionData.RouteState.Mispredict)
+
+	if sessionData.Version < 7 {
+		var mispredict bool
+		stream.SerializeBool(&mispredict)
+	}
+
 	stream.SerializeBool(&sessionData.RouteState.RouteLost)
-	stream.SerializeBool(&sessionData.RouteState.LackOfDiversity)
-	stream.SerializeBits(&sessionData.RouteState.MispredictCounter, 2)
-	stream.SerializeBits(&sessionData.RouteState.LatencyWorseCounter, 2)
-	stream.SerializeBits(&sessionData.RouteState.PLSustainedCounter, 2)
+
+	if sessionData.Version < 7 {
+		var lackOfDiversity bool
+		var mispredictCounter uint32
+		var latencyWorseCounter uint32
+		var plSustainedCounter uint32
+		stream.SerializeBool(&lackOfDiversity)
+		stream.SerializeBits(&mispredictCounter, 2)
+		stream.SerializeBits(&latencyWorseCounter, 2)
+		stream.SerializeBits(&plSustainedCounter, 2)
+	}
 
 	stream.SerializeUint64(&sessionData.PrevPacketsSentClientToServer)
 	stream.SerializeUint64(&sessionData.PrevPacketsSentServerToClient)

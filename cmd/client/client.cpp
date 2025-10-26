@@ -37,6 +37,8 @@ int main()
 {
     signal( SIGINT, interrupt_handler ); signal( SIGTERM, interrupt_handler );
 
+    uint64_t current_session_id = 0;
+
     next_init( NULL, NULL );
 
     next_client_t * client = next_client_create( NULL, "0.0.0.0:0", client_packet_received );
@@ -60,6 +62,14 @@ int main()
     while ( !quit )
     {
         next_client_update( client );
+
+        uint64_t session_id = next_client_session_id( client );
+
+        if ( current_session_id == 0 && session_id != 0 )
+        {
+            printf( "session id is %016" PRIx64 "\n", session_id );
+            current_session_id = session_id;
+        }
 
         if ( next_client_ready( client ) ) 
         {

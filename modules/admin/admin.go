@@ -36,22 +36,16 @@ type RouteShaderData struct {
 	RouteShaderName               string  `json:"route_shader_name"`
 	ABTest                        bool    `json:"ab_test"`
 	AcceptableLatency             int     `json:"acceptable_latency"`
-	AcceptablePacketLossInstant   float64 `json:"acceptable_packet_loss_instant"`
-	AcceptablePacketLossSustained float64 `json:"acceptable_packet_loss_sustained"`
-	AnalysisOnly                  bool    `json:"analysis_only"`
+	AcceptablePacketLoss          float64 `json:"acceptable_packet_loss"`
 	BandwidthEnvelopeUpKbps       int     `json:"bandwidth_envelope_up_kbps"`
 	BandwidthEnvelopeDownKbps     int     `json:"bandwidth_envelope_down_kbps"`
 	DisableNetworkNext            bool    `json:"disable_network_next"`
 	LatencyReductionThreshold     int     `json:"latency_reduction_threshold"`
-	Multipath                     bool    `json:"multipath"`
 	SelectionPercent              float64 `json:"selection_percent"`
 	MaxLatencyTradeOff            int     `json:"max_latency_trade_off"`
-	MaxNextRTT                    int     `json:"max_next_rtt"`
 	RouteSwitchThreshold          int     `json:"route_switch_threshold"`
 	RouteSelectThreshold          int     `json:"route_select_threshold"`
-	RTTVeto                       int     `json:"rtt_veto"`
 	ForceNext                     bool    `json:"force_next"`
-	RouteDiversity                int     `json:"route_diversity"`
 }
 
 func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
@@ -59,22 +53,16 @@ func (controller *Controller) RouteShaderDefaults() *RouteShaderData {
 	data := RouteShaderData{}
 	data.ABTest = routeShader.ABTest
 	data.AcceptableLatency = int(routeShader.AcceptableLatency)
-	data.AcceptablePacketLossInstant = float64(routeShader.AcceptablePacketLossInstant)
-	data.AcceptablePacketLossSustained = float64(routeShader.AcceptablePacketLossSustained)
-	data.AnalysisOnly = routeShader.AnalysisOnly
+	data.AcceptablePacketLoss = float64(routeShader.AcceptablePacketLoss)
 	data.BandwidthEnvelopeUpKbps = int(routeShader.BandwidthEnvelopeUpKbps)
 	data.BandwidthEnvelopeDownKbps = int(routeShader.BandwidthEnvelopeDownKbps)
 	data.DisableNetworkNext = routeShader.DisableNetworkNext
 	data.LatencyReductionThreshold = int(routeShader.LatencyReductionThreshold)
-	data.Multipath = routeShader.Multipath
 	data.SelectionPercent = float64(routeShader.SelectionPercent)
 	data.MaxLatencyTradeOff = int(routeShader.MaxLatencyTradeOff)
-	data.MaxNextRTT = int(routeShader.MaxNextRTT)
 	data.RouteSwitchThreshold = int(routeShader.RouteSwitchThreshold)
 	data.RouteSelectThreshold = int(routeShader.RouteSelectThreshold)
-	data.RTTVeto = int(routeShader.RTTVeto)
 	data.ForceNext = routeShader.ForceNext
-	data.RouteDiversity = int(routeShader.RouteDiversity)
 	return &data
 }
 
@@ -85,22 +73,16 @@ INSERT INTO route_shaders
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
-	analysis_only,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
-	force_next,
-	route_diversity
+	force_next
 )
 VALUES
 (
@@ -116,35 +98,23 @@ VALUES
 	$10,
 	$11,
 	$12,
-	$13,
-	$14,
-	$15,
-	$16,
-	$17,
-	$18,
-	$19
+	$13
 )
 RETURNING route_shader_id;`
 	result := controller.pgsql.QueryRow(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
-		routeShaderData.AcceptablePacketLossInstant,
-		routeShaderData.AcceptablePacketLossSustained,
-		routeShaderData.AnalysisOnly,
+		routeShaderData.AcceptablePacketLoss,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
 		routeShaderData.LatencyReductionThreshold,
-		routeShaderData.Multipath,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
-		routeShaderData.MaxNextRTT,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
-		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
-		routeShaderData.RouteDiversity,
 	)
 	routeShaderId := uint64(0)
 	if err := result.Scan(&routeShaderId); err != nil {
@@ -161,22 +131,16 @@ SELECT
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
-	analysis_only,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
-	force_next,
-	route_diversity
+	force_next
 FROM
 	route_shaders;`
 	rows, err := controller.pgsql.Query(sql)
@@ -191,22 +155,16 @@ FROM
 			&row.RouteShaderName,
 			&row.ABTest,
 			&row.AcceptableLatency,
-			&row.AcceptablePacketLossInstant,
-			&row.AcceptablePacketLossSustained,
-			&row.AnalysisOnly,
+			&row.AcceptablePacketLoss,
 			&row.BandwidthEnvelopeUpKbps,
 			&row.BandwidthEnvelopeDownKbps,
 			&row.DisableNetworkNext,
 			&row.LatencyReductionThreshold,
-			&row.Multipath,
 			&row.SelectionPercent,
 			&row.MaxLatencyTradeOff,
-			&row.MaxNextRTT,
 			&row.RouteSwitchThreshold,
 			&row.RouteSelectThreshold,
-			&row.RTTVeto,
 			&row.ForceNext,
-			&row.RouteDiversity,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not scan route shader row: %v\n", err)
@@ -224,22 +182,16 @@ SELECT
 	route_shader_name,
 	ab_test,
 	acceptable_latency,
-	acceptable_packet_loss_instant,
-	acceptable_packet_loss_sustained,
-	analysis_only,
+	acceptable_packet_loss,
 	bandwidth_envelope_up_kbps,
 	bandwidth_envelope_down_kbps,
 	disable_network_next,
 	latency_reduction_threshold,
-	multipath,
 	selection_percent,
 	max_latency_trade_off,
-	max_next_rtt,
 	route_switch_threshold,
 	route_select_threshold,
-	rtt_veto,
-	force_next,
-	route_diversity
+	force_next
 FROM
 	route_shaders
 WHERE
@@ -255,22 +207,16 @@ WHERE
 			&routeShader.RouteShaderName,
 			&routeShader.ABTest,
 			&routeShader.AcceptableLatency,
-			&routeShader.AcceptablePacketLossInstant,
-			&routeShader.AcceptablePacketLossSustained,
-			&routeShader.AnalysisOnly,
+			&routeShader.AcceptablePacketLoss,
 			&routeShader.BandwidthEnvelopeUpKbps,
 			&routeShader.BandwidthEnvelopeDownKbps,
 			&routeShader.DisableNetworkNext,
 			&routeShader.LatencyReductionThreshold,
-			&routeShader.Multipath,
 			&routeShader.SelectionPercent,
 			&routeShader.MaxLatencyTradeOff,
-			&routeShader.MaxNextRTT,
 			&routeShader.RouteSwitchThreshold,
 			&routeShader.RouteSelectThreshold,
-			&routeShader.RTTVeto,
 			&routeShader.ForceNext,
-			&routeShader.RouteDiversity,
 		)
 		if err != nil {
 			return routeShader, fmt.Errorf("could not scan route shader row: %v\n", err)
@@ -289,44 +235,32 @@ SET
 	route_shader_name = $1, 
 	ab_test = $2,
 	acceptable_latency = $3,
-	acceptable_packet_loss_instant = $4,
-	acceptable_packet_loss_sustained = $5,
-	analysis_only = $6,
-	bandwidth_envelope_up_kbps = $7,
-	bandwidth_envelope_down_kbps = $8,
-	disable_network_next = $9,
-	latency_reduction_threshold = $10,
-	multipath = $11,
-	selection_percent = $12,
-	max_latency_trade_off = $13,
-	max_next_rtt = $14,
-	route_switch_threshold = $15,
-	route_select_threshold = $16,
-	rtt_veto = $17,
-	force_next = $18,
-	route_diversity = $19
+	acceptable_packet_loss = $4,
+	bandwidth_envelope_up_kbps = $5,
+	bandwidth_envelope_down_kbps = $6,
+	disable_network_next = $7,
+	latency_reduction_threshold = $8,
+	selection_percent = $9,
+	max_latency_trade_off = $10,	
+	route_switch_threshold = $11,
+	route_select_threshold = $12,
+	force_next = $13
 WHERE
-	route_shader_id = $20;`
+	route_shader_id = $14;`
 	_, err := controller.pgsql.Exec(sql,
 		routeShaderData.RouteShaderName,
 		routeShaderData.ABTest,
 		routeShaderData.AcceptableLatency,
-		routeShaderData.AcceptablePacketLossInstant,
-		routeShaderData.AcceptablePacketLossSustained,
-		routeShaderData.AnalysisOnly,
+		routeShaderData.AcceptablePacketLoss,
 		routeShaderData.BandwidthEnvelopeUpKbps,
 		routeShaderData.BandwidthEnvelopeDownKbps,
 		routeShaderData.DisableNetworkNext,
 		routeShaderData.LatencyReductionThreshold,
-		routeShaderData.Multipath,
 		routeShaderData.SelectionPercent,
 		routeShaderData.MaxLatencyTradeOff,
-		routeShaderData.MaxNextRTT,
 		routeShaderData.RouteSwitchThreshold,
 		routeShaderData.RouteSelectThreshold,
-		routeShaderData.RTTVeto,
 		routeShaderData.ForceNext,
-		routeShaderData.RouteDiversity,
 		routeShaderData.RouteShaderId,
 	)
 	return err

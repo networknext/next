@@ -139,20 +139,6 @@ func Test_SessionUpdate_Pre_FallbackToDirect(t *testing.T) {
 	assert.True(t, (state.Error&constants.SessionError_FallbackToDirect) != 0)
 }
 
-func Test_SessionUpdate_Pre_AnalysisOnly(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Buyer.RouteShader.AnalysisOnly = true
-
-	result := handlers.SessionUpdate_Pre(state)
-
-	assert.True(t, result)
-	assert.True(t, state.AnalysisOnly)
-}
-
 func Test_SessionUpdate_Pre_ClientPingTimedOut(t *testing.T) {
 
 	t.Parallel()
@@ -1351,7 +1337,6 @@ func Test_SessionUpdate_MakeRouteDecision_TakeNetworkNext(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -1565,7 +1550,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteContinued(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -1794,7 +1778,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteChanged(t *testing.T) {
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2077,7 +2060,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteRelayNoLongerExists(t *testing.T)
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2301,7 +2283,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_ClientRelays(t *te
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2519,7 +2500,6 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	state.Buyer.RouteShader = core.NewRouteShader()
 
 	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
 	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
 	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
 
@@ -2645,317 +2625,7 @@ func Test_SessionUpdate_MakeRouteDecision_RouteNoLongerExists_MidRelay(t *testin
 	assert.False(t, state.Output.RouteState.Next)
 }
 
-func Test_SessionUpdate_MakeRouteDecision_Mispredict(t *testing.T) {
-
-	if core.Relax {
-		return
-	}
-
-	t.Parallel()
-
-	// setup state
-
-	state := CreateState()
-
-	state.Input.RouteState.Next = false
-	state.Request.DirectRTT = 100
-	state.Request.SliceNumber = 100
-	state.Debug = new(string)
-
-	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
-
-	clientPublicKey, _ := crypto.Box_KeyPair()
-
-	serverPublicKey, _ := crypto.Box_KeyPair()
-
-	state.RelayBackendPublicKey = routingPublicKey
-	state.RelayBackendPrivateKey = routingPrivateKey
-	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
-	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
-
-	serverAddress := core.ParseAddress("127.0.0.1:50000")
-
-	state.From = &serverAddress
-
-	state.Output.SessionId = 0x123457
-	state.Output.SessionVersion = 100
-
-	// initialize database with three relays
-
-	seller_a := &db.Seller{Id: 1, Name: "a"}
-	seller_b := &db.Seller{Id: 2, Name: "b"}
-	seller_c := &db.Seller{Id: 3, Name: "c"}
-
-	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
-
-	relay_address_a := core.ParseAddress("127.0.0.1:40000")
-	relay_address_b := core.ParseAddress("127.0.0.1:40001")
-	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-
-	relay_public_key_a, _ := crypto.Box_KeyPair()
-	relay_public_key_b, _ := crypto.Box_KeyPair()
-	relay_public_key_c, _ := crypto.Box_KeyPair()
-
-	state.Database.Relays = make([]db.Relay, 3)
-	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
-
-	state.Database.SellerMap[1] = seller_a
-	state.Database.SellerMap[2] = seller_b
-	state.Database.SellerMap[3] = seller_c
-
-	state.Database.DatacenterMap[1] = datacenter_a
-	state.Database.DatacenterMap[2] = datacenter_b
-	state.Database.DatacenterMap[3] = datacenter_c
-
-	state.Database.RelayMap[1] = &state.Database.Relays[0]
-	state.Database.RelayMap[2] = &state.Database.Relays[1]
-	state.Database.RelayMap[3] = &state.Database.Relays[2]
-
-	state.Database.GenerateRelaySecretKeys(routingPublicKey, routingPrivateKey)
-
-	// setup cost matrix with route through relays a -> b -> c
-
-	const NumRelays = 3
-
-	entryCount := core.TriMatrixLength(NumRelays)
-
-	costMatrix := make([]uint8, entryCount)
-
-	for i := range costMatrix {
-		costMatrix[i] = 255
-	}
-
-	costMatrix[core.TriMatrixIndex(0, 1)] = 10
-	costMatrix[core.TriMatrixIndex(1, 2)] = 10
-	costMatrix[core.TriMatrixIndex(0, 2)] = 100
-
-	// generate route matrix
-
-	relayIds := make([]uint64, 3)
-	relayIds[0] = 1
-	relayIds[1] = 2
-	relayIds[2] = 3
-
-	relayDatacenters := make([]uint64, 3)
-	relayDatacenters[0] = 1
-	relayDatacenters[1] = 2
-	relayDatacenters[2] = 3
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
-
-	// setup route shader
-
-	state.Buyer.RouteShader = core.NewRouteShader()
-
-	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
-	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
-	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
-
-	// setup source relays
-
-	state.SourceRelays = []int32{0, 1, 2}
-	state.SourceRelayRTT = []int32{1, 100, 100}
-
-	// setup dest relays
-
-	state.DestRelays = []int32{2}
-
-	// make the route decision
-
-	handlers.SessionUpdate_MakeRouteDecision(state)
-
-	// verify output state (we should be on next now)
-
-	assert.True(t, state.TakeNetworkNext)
-	assert.True(t, state.Output.RouteState.Next)
-	assert.True(t, state.Response.Multipath)
-
-	// mispredict 3 times
-
-	state.Request.Next = true
-	state.Request.NextRTT = 100
-
-	for i := 0; i < 3; i++ {
-		state.Input = state.Output
-		handlers.SessionUpdate_MakeRouteDecision(state)
-		if i < 2 {
-			assert.False(t, state.Output.RouteState.Mispredict)
-		}
-	}
-
-	// validate that we tripped "mispredict"
-
-	assert.True(t, state.Output.RouteState.Mispredict)
-	assert.False(t, state.Output.RouteState.Next)
-}
-
-func Test_SessionUpdate_MakeRouteDecision_LatencyWorse(t *testing.T) {
-
-	t.Parallel()
-
-	// setup state
-
-	state := CreateState()
-
-	state.Input.RouteState.Next = false
-	state.Request.DirectRTT = 100
-	state.Request.SliceNumber = 100
-	state.Debug = new(string)
-
-	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
-
-	clientPublicKey, _ := crypto.Box_KeyPair()
-
-	serverPublicKey, _ := crypto.Box_KeyPair()
-
-	state.RelayBackendPublicKey = routingPublicKey
-	state.RelayBackendPrivateKey = routingPrivateKey
-	copy(state.Request.ClientRoutePublicKey[:], clientPublicKey)
-	copy(state.Request.ServerRoutePublicKey[:], serverPublicKey)
-
-	serverAddress := core.ParseAddress("127.0.0.1:50000")
-
-	state.From = &serverAddress
-
-	state.Output.SessionId = 0x123457
-	state.Output.SessionVersion = 100
-
-	// initialize database with three relays
-
-	seller_a := &db.Seller{Id: 1, Name: "a"}
-	seller_b := &db.Seller{Id: 2, Name: "b"}
-	seller_c := &db.Seller{Id: 3, Name: "c"}
-
-	datacenter_a := &db.Datacenter{Id: 1, Name: "a"}
-	datacenter_b := &db.Datacenter{Id: 2, Name: "b"}
-	datacenter_c := &db.Datacenter{Id: 3, Name: "c"}
-
-	relay_address_a := core.ParseAddress("127.0.0.1:40000")
-	relay_address_b := core.ParseAddress("127.0.0.1:40001")
-	relay_address_c := core.ParseAddress("127.0.0.1:40002")
-
-	relay_public_key_a, _ := crypto.Box_KeyPair()
-	relay_public_key_b, _ := crypto.Box_KeyPair()
-	relay_public_key_c, _ := crypto.Box_KeyPair()
-
-	state.Database.Relays = make([]db.Relay, 3)
-	state.Database.Relays[0] = db.Relay{Id: 1, Name: "a", PublicAddress: relay_address_a, Seller: seller_a, PublicKey: relay_public_key_a}
-	state.Database.Relays[1] = db.Relay{Id: 2, Name: "b", PublicAddress: relay_address_b, Seller: seller_b, PublicKey: relay_public_key_b}
-	state.Database.Relays[2] = db.Relay{Id: 3, Name: "c", PublicAddress: relay_address_c, Seller: seller_c, PublicKey: relay_public_key_c}
-
-	state.Database.SellerMap[1] = seller_a
-	state.Database.SellerMap[2] = seller_b
-	state.Database.SellerMap[3] = seller_c
-
-	state.Database.DatacenterMap[1] = datacenter_a
-	state.Database.DatacenterMap[2] = datacenter_b
-	state.Database.DatacenterMap[3] = datacenter_c
-
-	state.Database.RelayMap[1] = &state.Database.Relays[0]
-	state.Database.RelayMap[2] = &state.Database.Relays[1]
-	state.Database.RelayMap[3] = &state.Database.Relays[2]
-
-	state.Database.GenerateRelaySecretKeys(routingPublicKey, routingPrivateKey)
-
-	// setup cost matrix with route through relays a -> b -> c
-
-	const NumRelays = 3
-
-	entryCount := core.TriMatrixLength(NumRelays)
-
-	costMatrix := make([]uint8, entryCount)
-
-	for i := range costMatrix {
-		costMatrix[i] = 255
-	}
-
-	costMatrix[core.TriMatrixIndex(0, 1)] = 10
-	costMatrix[core.TriMatrixIndex(1, 2)] = 10
-	costMatrix[core.TriMatrixIndex(0, 2)] = 100
-
-	// generate route matrix
-
-	relayIds := make([]uint64, 3)
-	relayIds[0] = 1
-	relayIds[1] = 2
-	relayIds[2] = 3
-
-	relayDatacenters := make([]uint64, 3)
-	relayDatacenters[0] = 1
-	relayDatacenters[1] = 2
-	relayDatacenters[2] = 3
-
-	state.RouteMatrix = generateRouteMatrix(relayIds[:], costMatrix, relayDatacenters[:], state.Database)
-
-	// setup route shader
-
-	state.Buyer.RouteShader = core.NewRouteShader()
-
-	state.Buyer.RouteShader.DisableNetworkNext = false
-	state.Buyer.RouteShader.AnalysisOnly = false
-	state.Buyer.RouteShader.Multipath = false
-	state.Buyer.RouteShader.BandwidthEnvelopeUpKbps = 256
-	state.Buyer.RouteShader.BandwidthEnvelopeDownKbps = 1024
-
-	// setup source relays
-
-	state.SourceRelays = []int32{0, 1, 2}
-	state.SourceRelayRTT = []int32{1, 100, 100}
-
-	// setup dest relays
-
-	state.DestRelays = []int32{2}
-
-	// make the route decision
-
-	handlers.SessionUpdate_MakeRouteDecision(state)
-
-	// verify output state (we should be on next now)
-
-	assert.True(t, state.TakeNetworkNext)
-	assert.True(t, state.Output.RouteState.Next)
-	assert.False(t, state.Response.Multipath)
-
-	// make all source relays very expensive
-
-	state.SourceRelayRTT = []int32{100, 100, 100}
-
-	// make route decision
-
-	state.Request.Next = true
-	state.Request.NextRTT = 100
-	state.Request.DirectRTT = 1
-
-	state.Input = state.Output
-
-	handlers.SessionUpdate_MakeRouteDecision(state)
-
-	// validate that we tripped "latency worse"
-
-	assert.True(t, state.Output.RouteState.LatencyWorse)
-	assert.False(t, state.Output.RouteState.Next)
-}
-
 // --------------------------------------------------------------
-
-func Test_SessionUpdate_UpdateClientRelays_AnalysisOnly(t *testing.T) {
-
-	t.Parallel()
-
-	state := CreateState()
-
-	state.Buyer.RouteShader.AnalysisOnly = true
-
-	result := handlers.SessionUpdate_UpdateClientRelays(state)
-
-	assert.False(t, result)
-	assert.True(t, state.NotUpdatingClientRelaysAnalysisOnly)
-}
 
 func Test_SessionUpdate_UpdateClientRelays_DatacenterNotEnabled(t *testing.T) {
 
@@ -3062,7 +2732,6 @@ func Test_SessionUpdate_UpdateClientRelays(t *testing.T) {
 	// validate
 
 	assert.True(t, result)
-	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
 	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.SourceRelays), 3)
@@ -3170,7 +2839,6 @@ func Test_SessionUpdate_UpdateServerRelays(t *testing.T) {
 	// validate
 
 	assert.True(t, result)
-	assert.False(t, state.NotUpdatingClientRelaysAnalysisOnly)
 	assert.False(t, state.NotUpdatingClientRelaysDatacenterNotEnabled)
 
 	assert.Equal(t, len(state.SourceRelays), 3)

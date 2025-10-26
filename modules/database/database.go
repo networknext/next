@@ -637,23 +637,17 @@ func (database *Database) String() string {
 		properties := []PropertyRow{}
 
 		properties = append(properties, PropertyRow{"Disable Network Next", fmt.Sprintf("%v", routeShader.DisableNetworkNext)})
-		properties = append(properties, PropertyRow{"Analysis Only", fmt.Sprintf("%v", routeShader.AnalysisOnly)})
 		properties = append(properties, PropertyRow{"AB Test", fmt.Sprintf("%v", routeShader.ABTest)})
-		properties = append(properties, PropertyRow{"Multipath", fmt.Sprintf("%v", routeShader.Multipath)})
 		properties = append(properties, PropertyRow{"Force Next", fmt.Sprintf("%v", routeShader.ForceNext)})
 		properties = append(properties, PropertyRow{"Selection Percent", fmt.Sprintf("%d%%", routeShader.SelectionPercent)})
 		properties = append(properties, PropertyRow{"Acceptable Latency", fmt.Sprintf("%dms", routeShader.AcceptableLatency)})
 		properties = append(properties, PropertyRow{"Latency Threshold", fmt.Sprintf("%dms", routeShader.LatencyReductionThreshold)})
-		properties = append(properties, PropertyRow{"Acceptable Packet Loss Instant", fmt.Sprintf("%.1f%%", routeShader.AcceptablePacketLossInstant)})
-		properties = append(properties, PropertyRow{"Acceptable Packet Loss Sustained", fmt.Sprintf("%.1f%%", routeShader.AcceptablePacketLossSustained)})
+		properties = append(properties, PropertyRow{"Acceptable Packet Loss", fmt.Sprintf("%.1f%%", routeShader.AcceptablePacketLoss)})
 		properties = append(properties, PropertyRow{"Bandwidth Envelope Up", fmt.Sprintf("%dkbps", routeShader.BandwidthEnvelopeUpKbps)})
 		properties = append(properties, PropertyRow{"Bandwidth Envelope Down", fmt.Sprintf("%dkbps", routeShader.BandwidthEnvelopeDownKbps)})
 		properties = append(properties, PropertyRow{"Route Select Threshold", fmt.Sprintf("%dms", routeShader.RouteSelectThreshold)})
 		properties = append(properties, PropertyRow{"Route Switch Threshold", fmt.Sprintf("%dms", routeShader.RouteSwitchThreshold)})
 		properties = append(properties, PropertyRow{"Max Latency Trade Off", fmt.Sprintf("%dms", routeShader.MaxLatencyTradeOff)})
-		properties = append(properties, PropertyRow{"RTT Veto", fmt.Sprintf("%dms", routeShader.RTTVeto)})
-		properties = append(properties, PropertyRow{"Max Next RTT", fmt.Sprintf("%dms", routeShader.MaxNextRTT)})
-		properties = append(properties, PropertyRow{"Route Diversity", fmt.Sprintf("%d", routeShader.RouteDiversity)})
 
 		output += table.Table(properties)
 	}
@@ -892,23 +886,17 @@ func (database *Database) WriteHTML(w io.Writer) {
 		fmt.Fprintf(w, "<table>\n")
 		fmt.Fprintf(w, "<tr><td><b>%s</b></td><td><b>%v</b></td>\n", "Property", "Value")
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Disable Network Next", routeShader.DisableNetworkNext)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Analysis Only", routeShader.AnalysisOnly)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "AB Test", routeShader.ABTest)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Multipath", routeShader.Multipath)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%v</td>\n", "Force Next", routeShader.ForceNext)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%d%%</td>\n", "Selection Percent", routeShader.SelectionPercent)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Acceptable Latency", routeShader.AcceptableLatency)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Latency Threshold", routeShader.LatencyReductionThreshold)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%.1f%%</td>\n", "Acceptable Packet Loss Instant", routeShader.AcceptablePacketLossInstant)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%.1f%%</td>\n", "Acceptable Packet Loss Sustained", routeShader.AcceptablePacketLossSustained)
+		fmt.Fprintf(w, "<tr><td>%s</td><td>%.1f%%</td>\n", "Acceptable Packet Loss", routeShader.AcceptablePacketLoss)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dkbps</td>\n", "Bandwidth Envelope Up", routeShader.BandwidthEnvelopeUpKbps)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dkbps</td>\n", "Bandwidth Envelope Down", routeShader.BandwidthEnvelopeDownKbps)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Select Threshold", routeShader.RouteSelectThreshold)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Route Switch Threshold", routeShader.RouteSwitchThreshold)
 		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Latency Trade Off", routeShader.MaxLatencyTradeOff)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "RTT Veto", routeShader.RTTVeto)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%dms</td>\n", "Max Next RTT", routeShader.MaxNextRTT)
-		fmt.Fprintf(w, "<tr><td>%s</td><td>%d</td>\n", "Route Diversity", routeShader.RouteDiversity)
 		fmt.Fprintf(w, "</table>\n")
 	}
 
@@ -1110,27 +1098,21 @@ func ExtractDatabase(config string) (*Database, error) {
 		route_shader_id                  uint64
 		ab_test                          bool
 		acceptable_latency               int
-		acceptable_packet_loss_instant   float32
-		acceptable_packet_loss_sustained float32
-		analysis_only                    bool
+		acceptable_packet_loss           float32
 		bandwidth_envelope_down_kbps     int
 		bandwidth_envelope_up_kbps       int
 		disable_network_next             bool
 		latency_reduction_threshold      int
-		multipath                        bool
 		selection_percent                int
 		max_latency_trade_off            int
-		max_next_rtt                     int
 		route_switch_threshold           int
 		route_select_threshold           int
-		rtt_veto                         int
 		force_next                       bool
-		route_diversity                  int
 	}
 
 	routeShaderRows := make([]RouteShaderRow, 0)
 	{
-		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss_instant, acceptable_packet_loss_sustained, analysis_only, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, multipath, selection_percent, max_latency_trade_off, max_next_rtt, route_switch_threshold, route_select_threshold, rtt_veto, force_next, route_diversity FROM route_shaders")
+		rows, err := pgsql.Query("SELECT route_shader_id, ab_test, acceptable_latency, acceptable_packet_loss, bandwidth_envelope_down_kbps, bandwidth_envelope_up_kbps, disable_network_next, latency_reduction_threshold, selection_percent, max_latency_trade_off, route_switch_threshold, route_select_threshold, force_next FROM route_shaders")
 		if err != nil {
 			return nil, fmt.Errorf("could not extract route shaders: %v\n", err)
 		}
@@ -1139,7 +1121,7 @@ func ExtractDatabase(config string) (*Database, error) {
 
 		for rows.Next() {
 			row := RouteShaderRow{}
-			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss_instant, &row.acceptable_packet_loss_sustained, &row.analysis_only, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.multipath, &row.selection_percent, &row.max_latency_trade_off, &row.max_next_rtt, &row.route_switch_threshold, &row.route_select_threshold, &row.rtt_veto, &row.force_next, &row.route_diversity); err != nil {
+			if err := rows.Scan(&row.route_shader_id, &row.ab_test, &row.acceptable_latency, &row.acceptable_packet_loss, &row.bandwidth_envelope_down_kbps, &row.bandwidth_envelope_up_kbps, &row.disable_network_next, &row.latency_reduction_threshold, &row.selection_percent, &row.max_latency_trade_off, &row.route_switch_threshold, &row.route_select_threshold, &row.force_next); err != nil {
 				return nil, fmt.Errorf("failed to scan route shader row: %v\n", err)
 			}
 			routeShaderRows = append(routeShaderRows, row)
@@ -1196,24 +1178,19 @@ func ExtractDatabase(config string) (*Database, error) {
 
 	fmt.Printf("\nroute shaders:\n")
 	for _, row := range routeShaderRows {
-		fmt.Printf("%d: %v, %d, %.1f, %.1f, %v, %d, %d, %v, %d, %v, %d, %d, %d, %d, %d, %v, %v\n",
+		fmt.Printf("%d: %v, %d, %.1f, %d, %d, %v, %d, %d, %d, %d, %d, %v\n",
 			row.route_shader_id,
 			row.ab_test,
 			row.acceptable_latency,
-			row.acceptable_packet_loss_instant,
-			row.acceptable_packet_loss_sustained,
-			row.analysis_only,
+			row.acceptable_packet_loss,
 			row.bandwidth_envelope_down_kbps,
 			row.bandwidth_envelope_up_kbps,
 			row.disable_network_next,
 			row.latency_reduction_threshold,
-			row.multipath,
 			row.selection_percent,
 			row.max_latency_trade_off,
-			row.max_next_rtt,
 			row.route_switch_threshold,
 			row.route_select_threshold,
-			row.rtt_veto,
 			row.force_next)
 	}
 
@@ -1304,23 +1281,17 @@ func ExtractDatabase(config string) (*Database, error) {
 		}
 
 		buyer.RouteShader.DisableNetworkNext = route_shader_row.disable_network_next
-		buyer.RouteShader.AnalysisOnly = route_shader_row.analysis_only
 		buyer.RouteShader.SelectionPercent = route_shader_row.selection_percent
 		buyer.RouteShader.ABTest = route_shader_row.ab_test
-		buyer.RouteShader.Multipath = route_shader_row.multipath
 		buyer.RouteShader.AcceptableLatency = int32(route_shader_row.acceptable_latency)
 		buyer.RouteShader.LatencyReductionThreshold = int32(route_shader_row.latency_reduction_threshold)
-		buyer.RouteShader.AcceptablePacketLossInstant = route_shader_row.acceptable_packet_loss_instant
-		buyer.RouteShader.AcceptablePacketLossSustained = route_shader_row.acceptable_packet_loss_sustained
+		buyer.RouteShader.AcceptablePacketLoss = route_shader_row.acceptable_packet_loss
 		buyer.RouteShader.BandwidthEnvelopeUpKbps = int32(route_shader_row.bandwidth_envelope_up_kbps)
 		buyer.RouteShader.BandwidthEnvelopeDownKbps = int32(route_shader_row.bandwidth_envelope_down_kbps)
 		buyer.RouteShader.RouteSelectThreshold = int32(route_shader_row.route_select_threshold)
 		buyer.RouteShader.RouteSwitchThreshold = int32(route_shader_row.route_switch_threshold)
 		buyer.RouteShader.MaxLatencyTradeOff = int32(route_shader_row.max_latency_trade_off)
-		buyer.RouteShader.RTTVeto = int32(route_shader_row.rtt_veto)
-		buyer.RouteShader.MaxNextRTT = int32(route_shader_row.max_next_rtt)
 		buyer.RouteShader.ForceNext = route_shader_row.force_next
-		buyer.RouteShader.RouteDiversity = int32(route_shader_row.route_diversity)
 
 		database.BuyerMap[buyer.Id] = &buyer
 

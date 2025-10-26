@@ -49,9 +49,6 @@ type AnalyticsSessionUpdateMessage struct {
 	NotSelected         bool  `avro:"not_selected"`
 	A                   bool  `avro:"a"`
 	B                   bool  `avro:"b"`
-	LatencyWorse        bool  `avro:"latency_worse"`
-	Mispredict          bool  `avro:"mispredict"`
-	LackOfDiversity     bool  `avro:"lack_of_diversity"`
 	Flags               int64 `avro:"flags"`
 }
 
@@ -90,9 +87,7 @@ type AnalyticsSessionSummaryMessage struct {
 	Error                           int64   `avro:"error"`
 	ISP                             string  `avro:"isp"`
 	Country                         string  `avro:"country"`
-	BestLatencyReduction            int64   `avro:"best_latency_reduction"`
 	FallbackToDirect                bool    `avro:"fallback_to_direct"`
-	NextLatencyTooHigh              bool    `avro:"next_latency_too_high"`
 	LikelyVPNOrCrossRegion          bool    `avro:"likely_vpn_or_cross_region"`
 	NoClientRelays                  bool    `avro:"no_client_relays"`
 	NoServerRelays                  bool    `avro:"no_server_relays"`
@@ -110,9 +105,6 @@ type AnalyticsSessionSummaryMessage struct {
 	NotSelected         bool  `avro:"not_selected"`
 	A                   bool  `avro:"a"`
 	B                   bool  `avro:"b"`
-	LatencyWorse        bool  `avro:"latency_worse"`
-	Mispredict          bool  `avro:"mispredict"`
-	LackOfDiversity     bool  `avro:"lack_of_diversity"`
 	Flags               int64 `avro:"flags"`
 }
 

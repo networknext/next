@@ -53,19 +53,18 @@ const NEXT_SERVER_BACKEND_PORT = 45000
 
 const BACKEND_MODE_FORCE_DIRECT = 1
 const BACKEND_MODE_RANDOM = 2
-const BACKEND_MODE_MULTIPATH = 3
-const BACKEND_MODE_ON_OFF = 4
-const BACKEND_MODE_ON_ON_OFF = 5
-const BACKEND_MODE_ROUTE_SWITCHING = 6
-const BACKEND_MODE_SERVER_EVENTS = 9
-const BACKEND_MODE_FORCE_RETRY = 10
-const BACKEND_MODE_BANDWIDTH = 11
-const BACKEND_MODE_JITTER = 12
-const BACKEND_MODE_DIRECT_STATS = 13
-const BACKEND_MODE_NEXT_STATS = 14
-const BACKEND_MODE_CLIENT_RELAY_STATS = 15
-const BACKEND_MODE_SERVER_RELAY_STATS = 16
-const BACKEND_MODE_ZERO_MAGIC = 17
+const BACKEND_MODE_ON_OFF = 3
+const BACKEND_MODE_ON_ON_OFF = 4
+const BACKEND_MODE_ROUTE_SWITCHING = 5
+const BACKEND_MODE_SERVER_EVENTS = 6
+const BACKEND_MODE_FORCE_RETRY = 7
+const BACKEND_MODE_BANDWIDTH = 8
+const BACKEND_MODE_JITTER = 9
+const BACKEND_MODE_DIRECT_STATS = 10
+const BACKEND_MODE_NEXT_STATS = 11
+const BACKEND_MODE_CLIENT_RELAY_STATS = 12
+const BACKEND_MODE_SERVER_RELAY_STATS = 13
+const BACKEND_MODE_ZERO_MAGIC = 14
 
 type Backend struct {
 	mutex        sync.RWMutex
@@ -876,8 +875,6 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 
 	// run various checks and prints for special func test modes
 
-	multipath := len(relayIds) > 0 && backend.mode == BACKEND_MODE_MULTIPATH
-
 	if backend.mode == BACKEND_MODE_SERVER_EVENTS {
 		if requestPacket.SliceNumber >= 2 && requestPacket.SessionEvents != 0x123 {
 			panic("session events not set on session update")
@@ -902,6 +899,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			RouteType:   int32(packets.SDK_RouteTypeDirect),
 			NumTokens:   0,
 			Tokens:      nil,
+			Multipath:   true,
 		}
 
 	} else {
@@ -985,7 +983,7 @@ func ProcessSessionUpdateRequestPacket(conn *net.UDPConn, from *net.UDPAddr, req
 			SessionId:   requestPacket.SessionId,
 			SliceNumber: requestPacket.SliceNumber,
 			RouteType:   routeType,
-			Multipath:   multipath,
+			Multipath:   true,
 			NumTokens:   int32(numTokens),
 			Tokens:      tokenData,
 		}
@@ -1022,10 +1020,6 @@ func main() {
 
 	if os.Getenv("BACKEND_MODE") == "RANDOM" {
 		backend.mode = BACKEND_MODE_RANDOM
-	}
-
-	if os.Getenv("BACKEND_MODE") == "MULTIPATH" {
-		backend.mode = BACKEND_MODE_MULTIPATH
 	}
 
 	if os.Getenv("BACKEND_MODE") == "ON_OFF" {

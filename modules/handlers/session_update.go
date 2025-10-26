@@ -55,9 +55,6 @@ type SessionUpdateState struct {
 	RealJitter     float32
 	RealOutOfOrder float32
 
-	// route diversity is the number of unique client relays with viable routes
-	RouteDiversity int32
-
 	// for route planning
 	DestRelayIds   []uint64
 	DestRelays     []int32
@@ -79,16 +76,13 @@ type SessionUpdateState struct {
 
 	// codepath flags (for unit testing etc...)
 	ClientPingTimedOut                          bool
-	AnalysisOnly                                bool
 	RouteChanged                                bool
 	RouteContinued                              bool
 	TakeNetworkNext                             bool
 	StayDirect                                  bool
 	FirstUpdate                                 bool
 	ReadSessionData                             bool
-	NotUpdatingClientRelaysAnalysisOnly         bool
 	NotUpdatingClientRelaysDatacenterNotEnabled bool
-	NotUpdatingServerRelaysAnalysisOnly         bool
 	NotUpdatingServerRelaysDatacenterNotEnabled bool
 	SentPortalSessionUpdateMessage              bool
 	SentPortalClientRelayUpdateMessage          bool
@@ -196,18 +190,6 @@ func SessionUpdate_Pre(state *SessionUpdateState) bool {
 		if state.FallbackToDirectChannel != nil {
 			state.FallbackToDirectChannel <- state.Request.SessionId
 		}
-		return true
-	}
-
-	/*
-		If the route shader is in analysis only mode, set the analysis only flag in the state
-
-		We don't acceleration sessions in analysis only mode.
-	*/
-
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only")
-		state.AnalysisOnly = true
 		return true
 	}
 
@@ -409,12 +391,6 @@ func SessionUpdate_ExistingSession(state *SessionUpdateState) {
 
 func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating client relays")
-		state.NotUpdatingClientRelaysAnalysisOnly = true
-		return false
-	}
-
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating client relays")
 		state.NotUpdatingClientRelaysDatacenterNotEnabled = true
@@ -527,12 +503,6 @@ func SessionUpdate_UpdateClientRelays(state *SessionUpdateState) bool {
 }
 
 func SessionUpdate_UpdateServerRelays(state *SessionUpdateState) bool {
-
-	if state.Buyer.RouteShader.AnalysisOnly {
-		core.Debug("analysis only, not updating server relay stats")
-		state.NotUpdatingServerRelaysAnalysisOnly = true
-		return false
-	}
 
 	if (state.Error & constants.SessionError_DatacenterNotEnabled) != 0 {
 		core.Debug("datacenter not enabled, not updating server relay stats")
@@ -757,7 +727,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 			&routeCost,
 			&routeNumRelays,
 			routeRelays[:],
-			&state.RouteDiversity,
 			state.Debug,
 			sliceNumber) {
 
@@ -892,20 +861,6 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 					*state.Debug += "route no longer exists\n"
 				}
 			}
-
-			if state.Output.RouteState.Mispredict {
-				core.Debug("mispredict")
-				if state.Debug != nil {
-					*state.Debug += "mispredict\n"
-				}
-			}
-
-			if state.Output.RouteState.LatencyWorse {
-				core.Debug("latency worse")
-				if state.Debug != nil {
-					*state.Debug += "latency worse\n"
-				}
-			}
 		}
 	}
 
@@ -914,7 +869,7 @@ func SessionUpdate_MakeRouteDecision(state *SessionUpdateState) {
 		next route at the same time, which reduces packet loss.
 	*/
 
-	state.Response.Multipath = state.Output.RouteState.Multipath
+	state.Response.Multipath = true
 
 	/*
 		Stick the route cost, whether the route changed, and the route relay data
@@ -1380,9 +1335,6 @@ func sendAnalyticsSessionUpdateMessage(state *SessionUpdateState) {
 	message.NotSelected = state.Input.RouteState.NotSelected
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
-	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.Mispredict = state.Input.RouteState.Mispredict
-	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 	message.Flags = int64(state.Request.Flags)
 
 	// send message
@@ -1438,12 +1390,6 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 		message.Country = country
 	}
 
-	// calculate best latency reduction for this session
-
-	if message.DurationOnNext > 0 && state.Output.BestNextRTT > 0 {
-		message.BestLatencyReduction = int64(state.Output.BestDirectRTT - state.Output.BestNextRTT)
-	}
-
 	// flags
 
 	message.Reported = state.Request.Reported
@@ -1456,11 +1402,7 @@ func sendAnalyticsSessionSummaryMessage(state *SessionUpdateState) {
 	message.NotSelected = state.Input.RouteState.NotSelected
 	message.A = state.Input.RouteState.A
 	message.B = state.Input.RouteState.B
-	message.LatencyWorse = state.Input.RouteState.LatencyWorse
-	message.Mispredict = state.Input.RouteState.Mispredict
-	message.LackOfDiversity = state.Input.RouteState.LackOfDiversity
 	message.FallbackToDirect = state.Request.FallbackToDirect
-	message.NextLatencyTooHigh = state.Input.RouteState.NextLatencyTooHigh
 	message.LikelyVPNOrCrossRegion = state.Input.LikelyVPNOrCrossRegion
 	message.NoClientRelays = state.Input.NoClientRelays
 	message.NoServerRelays = state.Input.NoServerRelays

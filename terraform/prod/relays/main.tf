@@ -9,7 +9,7 @@ locals {
   ssh_public_key_file         = "~/secrets/next_ssh.pub"
   ssh_private_key_file        = "~/secrets/next_ssh"
   relay_version               = "relay-144"
-  relay_artifacts_bucket      = "next_network_next_relay_artifacts"
+  relay_artifacts_bucket      = "sloclap_network_next_relay_artifacts"
   relay_backend_public_key    = "TINP/TnYY/0W7JvLFlYGrB0MUw+b4aIrN20Vq7g5bhU="
   relay_backend_url           = "relay.virtualgo.net"
 
@@ -124,11 +124,11 @@ terraform {
   required_providers {
     networknext = {
       source = "networknext/networknext"
-      version = "~> 5.0.12"
+      version = "~> 5.0.14"
     }
   }
   backend "gcs" {
-    bucket  = "next_network_next_terraform"
+    bucket  = "sloclap_network_next_terraform"
     prefix  = "prod_relays"
   }
 }
@@ -598,11 +598,6 @@ locals {
     "zenlayer.london.a" = {
       datacenter_name  = "zenlayer.london"
       public_address   = "98.98.142.118"
-    },
-
-    "zenlayer.london.b" = {
-      datacenter_name  = "zenlayer.london"
-      public_address   = "98.98.142.126"
     },
 
     "zenlayer.istanbul" = {
@@ -1449,8 +1444,7 @@ resource "networknext_route_shader" test {
   force_next = true
   latency_reduction_threshold = 1
   acceptable_latency = 0
-  acceptable_packet_loss_instant = 100
-  acceptable_packet_loss_sustained = 100
+  acceptable_packet_loss = 100
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
   route_select_threshold = 1
@@ -1482,13 +1476,12 @@ resource "networknext_route_shader" rematch {
   name = "rematch"
   force_next = false
   latency_reduction_threshold = 10
-  acceptable_latency = 0
-  acceptable_packet_loss_instant = 0.1 # 1.0
-  acceptable_packet_loss_sustained = 0.05 # 0.25
+  acceptable_latency = 20
+  acceptable_packet_loss = 1.0
   bandwidth_envelope_up_kbps = 1024
   bandwidth_envelope_down_kbps = 1024
-  route_select_threshold = 5
-  route_switch_threshold = 10
+  route_select_threshold = 1
+  route_switch_threshold = 5
 }
 
 resource "networknext_buyer" rematch {

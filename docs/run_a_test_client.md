@@ -119,8 +119,7 @@ resource "networknext_route_shader" test {
   latency_reduction_threshold = 10
   route_select_threshold = 0
   route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
+  acceptable_packet_loss = 0.1
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
 }
@@ -138,8 +137,7 @@ resource "networknext_route_shader" test {
   latency_reduction_threshold = 10
   route_select_threshold = 0
   route_switch_threshold = 5
-  acceptable_packet_loss_instant = 0.25
-  acceptable_packet_loss_sustained = 0.1
+  acceptable_packet_loss = 0.1
   bandwidth_envelope_up_kbps = 256
   bandwidth_envelope_down_kbps = 256
 }

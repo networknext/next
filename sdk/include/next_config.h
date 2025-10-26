@@ -35,7 +35,7 @@
 
 #endif // #if !NEXT_DEVELOPMENT
 
-#define NEXT_CONFIG_BUCKET_NAME "next_network_next_sdk_config"
+#define NEXT_CONFIG_BUCKET_NAME "sloclap_network_next_sdk_config"
 
 extern uint8_t next_server_backend_public_key[];
 
