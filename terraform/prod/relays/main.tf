@@ -876,6 +876,11 @@ locals {
       public_address  = "103.88.234.141"
     }
 
+    "latitude.frankfurt" = {
+      datacenter_name = "latitude.frankfurt"
+      public_address  = "189.1.171.153"
+    }
+
   }
 }
 
