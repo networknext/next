@@ -111,8 +111,7 @@ var prodRelayMap = map[string][]string{
 // Exclude regions
 
 var excludedRegions = map[string]bool{
-	// "il-central-1": true,
-	// "mx-central-1": true,
+	"ap-southeast-6": true,
 }
 
 // ===========================================================================================================================================
