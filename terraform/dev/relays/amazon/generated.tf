@@ -1739,17 +1739,6 @@ locals {
       seller_code = "amazon"
     }
 
-    "amazon.chicago.1" = {
-      azid        = "use1-chi2-az1"
-      zone        = "us-east-1-chi-2a"
-      region      = "us-east-1"
-      native_name = "use1-chi2-az1 (us-east-1-chi-2a)"
-      latitude    = 41.88
-      longitude   = -87.63
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
     "amazon.dallas.1" = {
       azid        = "use1-dfw2-az1"
       zone        = "us-east-1-dfw-2a"
@@ -1801,17 +1790,6 @@ locals {
       native_name = "use1-msp1-az1 (us-east-1-msp-1a)"
       latitude    = 44.98
       longitude   = -93.26
-      seller_name = "Amazon"
-      seller_code = "amazon"
-    }
-
-    "amazon.newyork.1" = {
-      azid        = "use1-nyc2-az1"
-      zone        = "us-east-1-nyc-2a"
-      region      = "us-east-1"
-      native_name = "use1-nyc2-az1 (us-east-1-nyc-2a)"
-      latitude    = 40.71
-      longitude   = -74.01
       seller_name = "Amazon"
       seller_code = "amazon"
     }

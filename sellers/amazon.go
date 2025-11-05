@@ -31,10 +31,6 @@ var prodRelayMap = map[string][]string{
 
 	"amazon.seattle.1": {"amazon.seattle.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.chicago.1": {"amazon.chicago.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-
-	"amazon.newyork.1": {"amazon.newyork.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-
 	"amazon.denver.1": {"amazon.denver.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
 	"amazon.montreal.1": {"amazon.montreal.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
@@ -172,16 +168,14 @@ var datacenterMap = map[string]*Datacenter{
 	"atl1": {"atlanta", 33.7488, -84.3877},
 	"bos1": {"boston", 42.3601, -71.0589},
 	"bue1": {"buenosaires", -34.6037, -58.3816},
-	"chi1": {"chicago", 41.8781, -87.6298},
-	"chi2": {"chicago", 41.8781, -87.6298},
+//	"chi1": {"chicago", 41.8781, -87.6298},
 	"dfw2": {"dallas", 32.7767, -96.7970},
 	"iah1": {"houston", 29.7604, -95.3698},
 	"lim1": {"lima", -12.0464, -77.0428},
 	"mci1": {"kansas", 39.0997, -94.5786},
 	"mia2": {"miami", 25.7617, -80.1918},
 	"msp1": {"minneapolis", 44.9778, -93.2650},
-	"nyc1": {"newyork", 40.7128, -74.0060},
-	"nyc2": {"newyork", 40.7128, -74.0060},
+// "nyc1": {"newyork", 40.7128, -74.0060},
 	"phl1": {"philadelphia", 39.9526, -75.1652},
 	"qro1": {"queretaro", 23.6345, -102.5528},
 	"scl1": {"santiago", -33.4489, -70.6693},
