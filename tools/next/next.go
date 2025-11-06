@@ -91,6 +91,19 @@ func main() {
 		},
 	}
 
+	var signedCommand = &ffcli.Command{
+		Name:       "signed",
+		ShortUsage: "next signed",
+		ShortHelp:  "Convert an unsigned 64bit integer value into a signed one for bigquery",
+		Exec: func(ctx context.Context, args []string) error {
+			if len(args) != 1 {
+				handleRunTimeError(fmt.Sprintln("you must supply at least one argument"), 0)
+			}
+			signed(args[0])
+			return nil
+		},
+	}
+
 	var configCommand = &ffcli.Command{
 		Name:       "config",
 		ShortUsage: "next config",
@@ -484,6 +497,7 @@ func main() {
 		analyzeCommand,
 		routesCommand,
 		hashCommand,
+		signedCommand,
 	}
 
 	root := &ffcli.Command{
@@ -3230,4 +3244,9 @@ func getKeyValue(envFile string, keyName string) string {
 func hash(s string) {
 	h := common.HashString(s)
 	fmt.Printf("\"%s\" -> %016x (%d)\n\n", s, h, int64(h))
+}
+
+func signed(s string) {
+	unsigned, _ := strconv.ParseUint(s, 10, 64)
+	fmt.Printf("\"%s\" -> %d (0x%x)\n\n", s, int64(unsigned), unsigned)
 }
