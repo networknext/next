@@ -178,32 +178,8 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.toronto.2" = {
-      datacenter_name = "google.toronto.2"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.toronto.3" = {
-      datacenter_name = "google.toronto.3"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
     "google.montreal.1" = {
       datacenter_name = "google.montreal.1"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.montreal.2" = {
-      datacenter_name = "google.montreal.2"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.montreal.3" = {
-      datacenter_name = "google.montreal.3"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
@@ -214,32 +190,8 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
-    "google.ohio.2" = {
-      datacenter_name = "google.ohio.2"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.ohio.3" = {
-      datacenter_name = "google.ohio.3"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
     "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.2" = {
-      datacenter_name = "google.iowa.2"
-      type            = "n2-highcpu-2"
-      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
-    },
-
-    "google.iowa.3" = {
-      datacenter_name = "google.iowa.3"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
