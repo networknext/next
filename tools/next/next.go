@@ -2999,7 +2999,7 @@ func routes(src string, dest string) {
 	}
 
 	if dest_index == -1 {
-		handleRunTimeError(fmt.Sprintf("could not find destination relay: %s\n", src), 1)
+		handleRunTimeError(fmt.Sprintf("could not find destination relay: %s\n", dest), 1)
 	}
 
 	index := core.TriMatrixIndex(src_index, dest_index)
