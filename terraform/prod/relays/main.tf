@@ -687,11 +687,6 @@ locals {
       public_address   = "128.14.73.78"
     },
 
-    "zenlayer.losangeles.b" = {
-      datacenter_name  = "zenlayer.losangeles"
-      public_address   = "128.14.73.82"
-    },
-
   }
 }
 
@@ -877,6 +872,16 @@ module "i3d_relays" {
 locals {
 
   latitude_relays = {
+
+    "latitude.buenosaires" = {
+      datacenter_name = "latitude.buenosaires"
+      public_address  = "103.106.58.223"
+    },
+
+    "latitude.dallas" = {
+      datacenter_name = "latitude.dallas"
+      public_address  = "64.34.82.189"
+    },
 
     "latitude.chicago" = {
       datacenter_name = "latitude.chicago"
