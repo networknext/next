@@ -45,9 +45,9 @@ blocks:
       jobs:
         - name: "Build libsodium.so"
           commands:
-            - wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.20.tar.gz
+            - wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.19.tar.gz
             - tar -zxf libsodium*
-            - cd libsodium-1.0.20
+            - cd libsodium-1.0.19
             - ./configure
             - make -j
             - sudo make install
