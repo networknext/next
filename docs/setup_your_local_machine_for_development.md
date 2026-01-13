@@ -201,7 +201,7 @@ Next step: [Setup Prerequisites](setup_prerequisites.md).
 
 5. Configure postgres
 
-   `psql -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
+   `psql -d postgres -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
    `brew services start postgresql@14`
 
