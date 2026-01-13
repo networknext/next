@@ -43,6 +43,7 @@ locals {
     "google.doha.2",
     "google.doha.3",
 
+    "zenlayer.istanbul",
     "datapacket.istanbul",
     "gcore.istanbul",
 
@@ -55,6 +56,9 @@ locals {
     "google.frankfurt.1",
     "google.frankfurt.2",
     "google.frankfurt.3",
+    "amazon.frankfurt.1",
+    "amazon.frankfurt.2",
+    "amazon.frankfurt.3",
 
     "i3d.losangeles",
     "datapacket.losangeles",
@@ -150,12 +154,55 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
+    "google.lasvegas.1" = {
+      datacenter_name = "google.lasvegas.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.saltlakecity.1" = {
+      datacenter_name = "google.saltlakecity.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.oregon.1" = {
+      datacenter_name = "google.oregon.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.toronto.1" = {
+      datacenter_name = "google.toronto.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.montreal.1" = {
+      datacenter_name = "google.montreal.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.ohio.1" = {
+      datacenter_name = "google.ohio.1"      
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
+    "google.iowa.1" = {
+      datacenter_name = "google.iowa.1"
+      type            = "n2-highcpu-2"
+      image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
+    },
+
     "google.saopaulo.1" = {
       datacenter_name = "google.saopaulo.1"
       type            = "n2-highcpu-2" # "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.saopaulo.2" = {
       datacenter_name = "google.saopaulo.2"
       type            = "n2-highcpu-2" # c2-standard-4"
@@ -167,6 +214,7 @@ locals {
       type            = "n2-highcpu-2" # "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.santiago.1" = {
       datacenter_name = "google.santiago.1"
@@ -212,6 +260,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.dallas.2" = {
       datacenter_name = "google.dallas.2"
       type            = "n2-highcpu-2"
@@ -223,6 +272,7 @@ locals {
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
   /*
     "google.losangeles.1" = {
@@ -238,11 +288,13 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.losangeles.3" = {
       datacenter_name = "google.losangeles.3"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.virginia.1" = {
       datacenter_name = "google.virginia.1"
@@ -250,6 +302,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.virginia.2" = {
       datacenter_name = "google.virginia.2"
       type            = "n2-highcpu-2"
@@ -261,6 +314,7 @@ locals {
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.queretaro.1" = {
       datacenter_name = "google.queretaro.1"
@@ -288,6 +342,7 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.doha.2" = {
       datacenter_name = "google.doha.2"
       type            = "n2-highcpu-2" # c4-highcpu-4"
@@ -299,6 +354,7 @@ locals {
       type            = "n2-highcpu-2" # "e2-standard-8"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.dammam.1" = {
       datacenter_name = "google.dammam.1"
@@ -496,19 +552,24 @@ locals {
 
   akamai_relays = {
 
+  /*
+    "akamai.chicago" = {
+      datacenter_name = "akamai.chicago"
+      type            = "g7-premium-16"
+      image           = "linode/ubuntu22.04"
+    },
+
     "akamai.saopaulo" = {
       datacenter_name = "akamai.saopaulo"
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
 
-    /*
     "akamai.frankfurt.1" = {
       datacenter_name = "akamai.frankfurt.1"
       type            = "g6-dedicated-16"
       image           = "linode/ubuntu22.04"
     },
-    */
 
     "akamai.frankfurt.2" = {
       datacenter_name = "akamai.frankfurt.2"
@@ -534,13 +595,12 @@ locals {
       image           = "linode/ubuntu22.04"
     },    
 
-    /*
     "akamai.london" = {
       datacenter_name = "akamai.london"
       type            = "g7-premium-16"
       image           = "linode/ubuntu22.04"
     },
-    */
+  */
   }
 }
 
@@ -633,11 +693,6 @@ locals {
     "zenlayer.losangeles.a" = {
       datacenter_name  = "zenlayer.losangeles"
       public_address   = "128.14.73.78"
-    },
-
-    "zenlayer.losangeles.b" = {
-      datacenter_name  = "zenlayer.losangeles"
-      public_address   = "128.14.73.82"
     },
 
   }
@@ -826,6 +881,21 @@ locals {
 
   latitude_relays = {
 
+    "latitude.buenosaires" = {
+      datacenter_name = "latitude.buenosaires"
+      public_address  = "103.106.58.67"
+    },
+
+    "latitude.dallas" = {
+      datacenter_name = "latitude.dallas"
+      public_address  = "64.34.82.189"
+    },
+
+    "latitude.chicago" = {
+      datacenter_name = "latitude.chicago"
+      public_address  = "186.233.187.217"
+    },
+
     "latitude.saopaulo.a" = {
       datacenter_name = "latitude.saopaulo"
       public_address  = "189.1.173.223"
@@ -874,6 +944,11 @@ locals {
     "latitude.mexico" = {
       datacenter_name = "latitude.mexico"
       public_address  = "103.88.234.141"
+    }
+
+    "latitude.frankfurt" = {
+      datacenter_name = "latitude.frankfurt"
+      public_address  = "189.1.171.153"
     }
 
   }
