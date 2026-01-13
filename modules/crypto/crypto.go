@@ -131,3 +131,41 @@ func SecretKey_GenerateRemote(remotePublicKey []byte, remotePrivateKey []byte, l
 }
 
 // ----------------------------------------------------
+
+const 
+(
+	SDK_CRYPTO_SIGN_BYTES             = 64
+	SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES  = 32
+	SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES = 64
+)
+
+func SDK_SignKeypair(publicKey []byte, privateKey []byte) int {
+	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
+	return int(result)
+}
+
+func SDK_SignPacket(packetData []byte, privateKey []byte) bool {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
+	if result != 0 {
+		return false
+	}
+	return true
+}
+
+func SDK_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
+	var state C.crypto_sign_state
+	C.crypto_sign_init(&state)
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
+	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
+	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
+	if result != 0 {
+		return false
+	}
+	return true
+}
+
+// ----------------------------------------------------

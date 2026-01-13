@@ -5,10 +5,6 @@
 
 package main
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
-import "C"
-
 import (
 	"bytes"
 	"context"

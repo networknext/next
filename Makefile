@@ -5,13 +5,13 @@ RELAY_VERSION := "relay-debug"
 CXX_FLAGS := -g -Wall -Wextra -DRELAY_VERSION=\"$(RELAY_VERSION)\"
 
 OS := $(shell uname -s | tr A-Z a-z)
+SDK_LDFLAGS = -lsodium -lpthread -lm -lcurl
 ifeq ($(OS),darwin)
-	LDFLAGS = -lsodium -lcurl -lpthread -lm -framework CoreFoundation -framework SystemConfiguration
-	CXX = g++
+APP_LDFLAGS = -framework CoreFoundation -framework SystemConfiguration
 else
-	LDFLAGS = -lsodium -lcurl -lpthread -lm
-	CXX = g++
+APP_LDFLAGS = 
 endif
+CXX = g++
 
 SDKNAME5 = libnext
 
@@ -45,7 +45,7 @@ update-schemas:
 
 .PHONY: build
 build: update-schemas
-	@make -s build-fast
+	@make -sj build-fast
 
 .PHONY: build-fast
 build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
@@ -85,43 +85,43 @@ format:
 SDK_FLAGS := -DNEXT_DEVELOPMENT=1 -DNEXT_COMPILE_WITH_TESTS=1 
 
 dist/$(SDKNAME5).so: $(shell find sdk -type f)
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk/include -shared -o $(SDKNAME5).so ../sdk/source/*.cpp $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -fPIC -I../sdk/include -shared -o $(SDKNAME5).so ../sdk/source/*.cpp $(SDK_LDFLAGS) $(APP_LDFLAGS)
 	@echo $@
 
 dist/client: dist/$(SDKNAME5).so cmd/client/client.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o client ../cmd/client/client.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 dist/server: dist/$(SDKNAME5).so cmd/server/server.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o server ../cmd/server/server.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 dist/test: dist/$(SDKNAME5).so sdk/test.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o test ../sdk/test.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) $(SDK_FLAGS) -I../sdk/include -o test ../sdk/test.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 # Build relay
 
 dist/relay-debug: relay/reference/*
-	@$(CXX) $(CXX_FLAGS) -DRELAY_TEST=1 -DRELAY_LOGS=1 -o dist/relay-debug relay/reference/*.cpp $(LDFLAGS)
+	@$(CXX) $(CXX_FLAGS) -DRELAY_TEST=1 -DRELAY_LOGS=1 -o dist/relay-debug relay/reference/*.cpp $(SDK_LDFLAGS) $(APP_LDFLAGS)
 	@echo $@
 
 # Functional tests (sdk)
 
 dist/func_server: dist/$(SDKNAME5).so cmd/func_server/*
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_server ../cmd/func_server/func_server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_server ../cmd/func_server/func_server.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 dist/func_client: dist/$(SDKNAME5).so cmd/func_client/*
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_client ../cmd/func_client/func_client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o func_client ../cmd/func_client/func_client.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 # Raspberry
 
 dist/raspberry_client: dist/$(SDKNAME5).so cmd/raspberry_client/raspberry_client.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_client ../cmd/raspberry_client/raspberry_client.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_client ../cmd/raspberry_client/raspberry_client.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@
 
 dist/raspberry_server: dist/$(SDKNAME5).so cmd/raspberry_server/raspberry_server.cpp
-	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_server ../cmd/raspberry_server/raspberry_server.cpp $(SDKNAME5).so $(LDFLAGS)
+	@cd dist && $(CXX) $(CXX_FLAGS) -I../sdk/include -o raspberry_server ../cmd/raspberry_server/raspberry_server.cpp $(SDKNAME5).so $(APP_LDFLAGS)
 	@echo $@

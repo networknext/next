@@ -11,6 +11,7 @@ import (
 	"github.com/networknext/next/modules/encoding"
 	"github.com/networknext/next/modules/messages"
 	"github.com/networknext/next/modules/packets"
+	"github.com/networknext/next/modules/crypto"
 )
 
 const (
@@ -148,7 +149,7 @@ func SDK_PacketHandler(handler *SDK_Handler, conn *net.UDPConn, from *net.UDPAdd
 
 	publicKey := buyer.PublicKey
 
-	if !packets.SDK_CheckPacketSignature(packetData, publicKey) {
+	if !crypto.SDK_CheckPacketSignature(packetData, publicKey) {
 		core.Debug("packet signature check failed")
 		handler.Events[SDK_HandlerEvent_SignatureCheckFailed] = true
 		return
