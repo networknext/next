@@ -45,7 +45,7 @@ update-schemas:
 
 .PHONY: build
 build: update-schemas
-	@make -sj build-fast
+	@make -s build-fast
 
 .PHONY: build-fast
 build-fast: dist/$(SDKNAME5).so dist/relay-debug dist/client dist/server dist/test dist/raspberry_server dist/raspberry_client dist/func_server dist/func_client $(shell ./scripts/all_commands.sh)
