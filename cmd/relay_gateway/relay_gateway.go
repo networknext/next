@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 	"time"
+	"context"
 
 	"github.com/redis/go-redis/v9"
 
@@ -314,8 +315,8 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// forward the decrypted relay update to the relay backends
 
-		addresses := []string{}
 		mutex.Lock()
+		addresses := make([]string, len(relayBackendAddresses))
 		copy(addresses, relayBackendAddresses)
 		mutex.Unlock()
 
@@ -339,6 +340,11 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 func RelayBackendsHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	mutex.Lock()
+	for i := range relayBackendAddresses {
+		fmt.Fprintf(w, "%s\n", relayBackendAddresses[i])		
+	}
+	mutex.Unlock()
 }
 
 func TrackRelayBackendInstances(service *common.Service) {
@@ -350,12 +356,11 @@ func TrackRelayBackendInstances(service *common.Service) {
 		redisClient = common.CreateRedisClient(redisHostname)
 	}
 
-	// todo: redis stuff
-	_ = redisClient
-
 	go func() {
 
 		ticker := time.NewTicker(10 * time.Second)
+
+		updateRelayBackendInstances(service, redisClient)
 
 		for {
 			select {
@@ -364,149 +369,34 @@ func TrackRelayBackendInstances(service *common.Service) {
 				return
 
 			case <-ticker.C:
-
-				core.Log("updating relay backend instances")
-
-				// todo: get from redis
-
-				// todo: HGET on a key gets the set of key/values from relay backends, eg "IP:port" -> "1"
-
-				/*
-				mutex.Lock()
-				relayBackendAddresses = addresses
-				mutex.Unlock()
-				*/
+				updateRelayBackendInstances(service, redisClient)
 			}
 		}
 	}()
 }
 
-// todo: add handler to return set of relay backend addresses
+func updateRelayBackendInstances(service *common.Service, redisClient redis.Cmdable) {
 
-/*
-	// grab google cloud instance name from metadata
+	ctx := context.Background()
 
-	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
-	if !result {
-		return // not in google cloud
+	core.Debug("updating relay backend instances")
+
+	keys, err := redisClient.HKeys(ctx, "relay-backends").Result()
+	if err != nil {
+		core.Warn("could not get relay backends from redis: %v", err)
+		return
 	}
 
-	instanceName = strings.TrimSuffix(instanceName, "\n")
-
-	tokens := strings.Split(instanceName, ".")
-
-	instanceName = tokens[0]
-
-	core.Log("google cloud instance name is '%s'", instanceName)
-
-	// grab google cloud zone from metadata
-
-	var zone string
-	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
-	if !result {
-		return // not in google cloud
+	if len(keys) == 0 {
+		core.Warn("(no relay backends)")
+	} else {
+		core.Debug("relay backends: %v", keys)
 	}
 
-	zone = strings.TrimSuffix(zone, "\n")
-
-	tokens = strings.Split(zone, "/")
-
-	zone = tokens[len(tokens)-1]
-
-	core.Log("google cloud zone is '%s'", zone)
-
-	// turn zone into region
-
-	tokens = strings.Split(zone, "-")
-
-	region := strings.Join(tokens[:len(tokens)-1], "-")
-
-	core.Log("google cloud region is '%s'", region)
-
-	go func() {
-
-		ticker := time.NewTicker(10 * time.Second)
-
-		for {
-			select {
-
-			case <-service.Context.Done():
-				return
-
-			case <-ticker.C:
-
-				core.Debug("=====================================")
-				core.Debug("updating relay backend VMs")
-
-				_, list_output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
-
-				list_lines := strings.Split(list_output, "\n")
-
-				instanceIds := make([]string, 0)
-				zones := make([]string, 0)
-				for i := range list_lines {
-					if strings.Contains(list_lines[i], "relay-backend-") {
-						values := strings.Fields(list_lines[i])
-						instanceId := values[0]
-						zone := values[1]
-						instanceIds = append(instanceIds, instanceId)
-						zones = append(zones, zone)
-					}
-				}
-
-				core.Debug("instance ids: %v", instanceIds)
-				core.Debug("zones: %v", zones)
-
-				addresses := make([]string, len(instanceIds))
-				waitGroup := sync.WaitGroup{}
-				waitGroup.Add(len(addresses))
-				for i := range instanceIds {
-					go func(index int) {
-						_, describe_output := common.Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
-						describe_lines := strings.Split(describe_output, "\n")
-						address := ""
-						for j := range describe_lines {
-							if strings.Contains(describe_lines[j], "networkIP: ") {
-								values := strings.Fields(describe_lines[j])
-								address = values[1]
-							}
-						}
-						addresses[index] = address
-						waitGroup.Done()
-					}(i)
-				}
-				waitGroup.Wait()
-
-				core.Debug("addresses: %v", addresses)
-
-				ok := make([]bool, len(addresses))
-				waitGroup.Add(len(addresses))
-				for i := range addresses {
-					go func(index int) {
-						ok[index], _ = common.Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
-						waitGroup.Done()
-					}(i)
-				}
-				waitGroup.Wait()
-
-				verified := []string{}
-				for i := range addresses {
-					if ok[i] {
-						verified = append(verified, addresses[i])
-					}
-				}
-
-				core.Debug("verified: %v", verified)
-
-				core.Debug("=====================================")
-
-				mutex.Lock()
-				relayBackendAddresses = verified
-				mutex.Unlock()
-			}
-		}
-	}()
-*/
+	mutex.Lock()
+	relayBackendAddresses = keys
+	mutex.Unlock()
+}
 
 func GetRelayData(service *common.Service) func() *common.RelayData {
 	return func() *common.RelayData {

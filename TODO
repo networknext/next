@@ -14,20 +14,40 @@ DONE
 
 	For example, by checking # of goroutines, memory allocated etc.
 
-TODO
-
 	Actually call into redis with "HSET" and set "HEXPIRE" so the key expires (It's O(n) but it's fine... small n)
 
 	Read the hash with "HGET" and extract the set of relay backends from the keys
 
-	Very carefully look over the code that forwards relay updates and make sure it has timeout set and is safe
-
-    I should now be able to run and test the code locally, at first by running each service manually, and then as a part of happy path, and it should pass.
-
-    Update both the dev, staging and prod terraforms to pass in the redis hostname/cluster for relay_backend and relay_gateway.
+	Verify that I can view the set of relay backends via "relay_backend" endpoint.
 
     Move the update logs for the relay backend set to debug logs.
 
+    I should now be able to run and test the code locally, at first by running each service manually, and then as a part of happy path, and it should pass.
+
+	Very carefully look over the code that forwards relay updates and make sure it has timeout set and is safe
+
+	Yes, it is already setup correctly with a 5 second timeout.
+
+TODO
+
+	Need a way to get the local internal address for the VM from google cloud. I feel like I've done this before already somewhere... but not sure?
+
+	There is a decent enough google metadata package for go that I should probably use: 
+
+		cloud.google.com/go/compute/metadata
+
+	I could run this on startup, if I don't have an address passed in to the relay backend, and then make happy path pass in that address.
+
+	"INTERNAL_ADDRESS"
+	
+    ----------
+
+    Update both the dev, staging and prod terraforms to pass in the redis hostname/cluster for relay_backend and relay_gateway.
+
+    ----------
+
     Setup a dev environment again, and deploy the code there, verifying it is working, and stable for a few days.
 
-    Then it is time for us to deploy to prod.
+    ----------
+
+    Then it is time for us to deploy to prod...

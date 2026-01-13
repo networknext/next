@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"context"
 
 	"github.com/gorilla/mux"
 
@@ -402,7 +403,16 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 
 func UpdateRelayBackendInstance(service *common.Service) {
 
+	var redisClient redis.Cmdable
+	if len(redisCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisHostname)
+	}
+
 	go func() {
+
+		ctx := context.Background()
 
 		ticker := time.NewTicker(time.Second)
 
@@ -414,11 +424,20 @@ func UpdateRelayBackendInstance(service *common.Service) {
 
 			case <-ticker.C:
 
-				core.Log("updating relay backend instance")
+				core.Debug("updated relay backend instance")
 
-				// todo: add to set in redis
+				// todo: we need to be able to look up our local IP address and port here
+				address := "127.0.0.1:30001"
 
-				// todo: HSET with HEXPIRE (supported since redis 7) easily gives us what we need
+				err := redisClient.HSet(ctx, "relay-backends", address, "1").Err()
+				if err != nil {
+					core.Warn("failed to update relay backend field in redis: %v", err)
+				}
+
+				err = redisClient.HExpire(ctx, "relay-backends", 30 * time.Second, address).Err()
+				if err != nil {
+					core.Warn("failed to set hexpire on relay backend field in redis: %v", err)
+				}
 			}
 		}
 	}()
