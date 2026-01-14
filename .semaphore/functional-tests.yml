@@ -5,7 +5,7 @@ name: Functional Tests
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2404
+    os_image: ubuntu2004
 
 blocks:
 
@@ -18,7 +18,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -49,7 +49,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -246,7 +246,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -308,7 +308,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -336,7 +336,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -572,7 +572,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -739,7 +739,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Soak"
@@ -772,7 +772,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -801,12 +801,14 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
 
-            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev redis-server
+            - sem-service start redis 8
+
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - mkdir -p dist
             - cd dist
@@ -869,7 +871,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -896,7 +898,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -944,7 +946,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -972,7 +974,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -1035,13 +1037,15 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "test_portal"
           commands:
 
-            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev redis
+            - sem-service start redis 8
+
+            - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
 
             - cache restore golang
 
@@ -1065,7 +1069,7 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       jobs:
         - name: "Build"
@@ -1093,7 +1097,7 @@ blocks:
       agent:
         machine:
           type: e1-standard-2
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
@@ -1132,11 +1136,11 @@ blocks:
       agent:
         machine:
           type: f1-standard-4
-          os_image: ubuntu2404
+          os_image: ubuntu2004
 
       prologue:
         commands:
-            - sem-service start redis 7
+            - sem-service start redis 8
             - cache restore golang
             - sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libsodium-dev
             - checkout
