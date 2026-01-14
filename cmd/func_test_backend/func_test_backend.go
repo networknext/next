@@ -823,6 +823,7 @@ func test_relay_backend() {
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PUBLIC_KEY=%s", TestRelayBackendPublicKey))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, fmt.Sprintf("RELAY_BACKEND_PRIVATE_KEY=%s", TestRelayBackendPrivateKey))
 	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "DEBUG_LOGS=0")
+	relay_backend_cmd.Env = append(relay_backend_cmd.Env, "INTERNAL_ADDRESS=127.0.0.1")
 
 	relay_backend_cmd.Stdout = os.Stdout
 	relay_backend_cmd.Stderr = os.Stderr
