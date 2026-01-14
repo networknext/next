@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"context"
 
 	"github.com/gorilla/mux"
 
@@ -25,13 +26,17 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/redis/go-redis/v9"
+	"cloud.google.com/go/compute/metadata"
 )
 
 var maxJitter int32
 var maxPacketLoss float32
 var routeMatrixInterval time.Duration
 
-var redisHostName string
+var redisHostname string
+var redisCluster []string
+
+var internalAddress string
 
 var analyticsRelayUpdateGooglePubsubTopic string
 var analyticsRelayUpdateGooglePubsubChannelSize int
@@ -111,7 +116,10 @@ func main() {
 	maxPacketLoss = float32(envvar.GetFloat("MAX_PACKET_LOSS", 100.0))
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
-	redisHostName = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
+
+	internalAddress = envvar.GetString("INTERNAL_ADDRESS", "")
 
 	analyticsRelayUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
 	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
@@ -162,10 +170,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(redisCluster) > 0 {
+		core.Debug("redis cluster: %v", redisCluster)
+	} else {
+		core.Debug("redis hostname: %s", redisHostname)
+	}
+
+	if internalAddress == "" {
+		var err error
+		internalAddress, err = metadata.InternalIPWithContext(context.Background())
+		if err != nil {
+			core.Error("could not get google cloud internal address: %v", err)
+			os.Exit(1)
+		}
+	}
+
 	core.Debug("max jitter: %d", maxJitter)
 	core.Debug("max packet loss: %.1f", maxPacketLoss)
 	core.Debug("route matrix interval: %s", routeMatrixInterval)
-	core.Debug("redis host name: %s", redisHostName)
+	core.Debug("redis host name: %s", redisHostname)
 
 	core.Debug("analytics relay update google pubsub topic: %s", analyticsRelayUpdateGooglePubsubTopic)
 	core.Debug("analytics relay update google pubsub channel size: %d", analyticsRelayUpdateGooglePubsubChannelSize)
@@ -279,7 +302,6 @@ func main() {
 	relayManager := common.CreateRelayManager(enableRelayHistory)
 
 	service.Router.HandleFunc("/relay_update", relayUpdateHandler(service, relayManager)).Methods("POST")
-	service.Router.HandleFunc("/health_fanout", healthFanoutHandler)
 	service.Router.HandleFunc("/relays", relaysHandler)
 	service.Router.HandleFunc("/relay_data", relayDataHandler(service))
 	service.Router.HandleFunc("/cost_matrix", costMatrixHandler)
@@ -295,6 +317,8 @@ func main() {
 	service.StartWebServer()
 
 	service.LeaderElection(initialDelay)
+
+	UpdateRelayBackendInstance(service)
 
 	UpdateRouteMatrix(service, relayManager)
 
@@ -389,6 +413,48 @@ func relayUpdateHandler(service *common.Service, relayManager *common.RelayManag
 			postRelayUpdateRequestChannel <- &relayUpdateRequest
 		}()
 	}
+}
+
+func UpdateRelayBackendInstance(service *common.Service) {
+
+	var redisClient redis.Cmdable
+	if len(redisCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisHostname)
+	}
+
+	go func() {
+
+		ctx := context.Background()
+
+		ticker := time.NewTicker(time.Second)
+
+		for {
+			select {
+
+			case <-service.Context.Done():
+				return
+
+			case <-ticker.C:
+
+				core.Debug("updated relay backend instance")
+
+				// todo: we need to be able to look up our local IP address and port here
+				address := "127.0.0.1:30001"
+
+				err := redisClient.HSet(ctx, "relay-backends", address, "1").Err()
+				if err != nil {
+					core.Warn("failed to update relay backend field in redis: %v", err)
+				}
+
+				err = redisClient.HExpire(ctx, "relay-backends", 30 * time.Second, address).Err()
+				if err != nil {
+					core.Warn("failed to set hexpire on relay backend field in redis: %v", err)
+				}
+			}
+		}
+	}()
 }
 
 func PostRelayUpdateRequest(service *common.Service) {
@@ -585,10 +651,6 @@ func PostRelayUpdateRequest(service *common.Service) {
 			}
 		}
 	}
-}
-
-func healthFanoutHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
 }
 
 func activeRelaysHandler(service *common.Service, relayManager *common.RelayManager) func(w http.ResponseWriter, r *http.Request) {

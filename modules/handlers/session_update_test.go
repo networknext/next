@@ -2863,9 +2863,9 @@ func Test_SessionUpdate_Post_SliceZero(t *testing.T) {
 
 	routingPublicKey, routingPrivateKey := crypto.Box_KeyPair()
 
-	var serverBackendPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var serverBackendPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
+	var serverBackendPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var serverBackendPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(serverBackendPublicKey[:], serverBackendPublicKey[:])
 
 	state.RelayBackendPublicKey = routingPublicKey
 	state.RelayBackendPrivateKey = routingPrivateKey
