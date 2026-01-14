@@ -830,6 +830,8 @@ func test_relay_backend() {
 
 	relay_backend_cmd.Start()
 
+	time.Sleep(time.Second*15)
+
 	// hammer the relay backend with relay updates
 
 	var waitGroup sync.WaitGroup
