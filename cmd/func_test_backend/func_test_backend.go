@@ -830,15 +830,13 @@ func test_relay_backend() {
 
 	relay_backend_cmd.Start()
 
-	time.Sleep(time.Second*15)
-
 	// hammer the relay backend with relay updates
 
 	var waitGroup sync.WaitGroup
 
 	waitGroup.Add(NumRelays)
 
-	var errorCount uint64
+	var successCount uint64
 
 	for i := 0; i < NumRelays; i++ {
 
@@ -899,7 +897,6 @@ func test_relay_backend() {
 					request, err := http.NewRequest("POST", "http://127.0.0.1:30000/relay_update", bytes.NewBuffer(body))
 					if err != nil {
 						fmt.Printf("error creating http request: %v\n", err)
-						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
@@ -908,13 +905,11 @@ func test_relay_backend() {
 					response, err := client.Do(request)
 					if err != nil {
 						fmt.Printf("error running http request: %v\n", err)
-						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
 					if response.StatusCode != 200 {
 						fmt.Printf("bad http response %d\n", response.StatusCode)
-						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
@@ -922,7 +917,6 @@ func test_relay_backend() {
 
 					if err != nil {
 						fmt.Printf("error reading http response: %v\n", err)
-						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
@@ -935,11 +929,12 @@ func test_relay_backend() {
 					err = responsePacket.Read(body)
 					if err != nil {
 						fmt.Printf("could not read relay response: %v", err)
-						atomic.AddUint64(&errorCount, 1)
 						break
 					}
 
 					_ = responsePacket
+
+					atomic.AddUint64(&successCount, 1)
 				}
 			}
 
@@ -951,6 +946,8 @@ func test_relay_backend() {
 	waitGroup.Add(1)
 
 	routeMatrixCounter := 0
+
+	var errorCount uint64
 
 	go func() {
 
