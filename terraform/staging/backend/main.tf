@@ -299,6 +299,7 @@ resource "google_redis_cluster" "portal" {
   }
   region = "us-central1"
   replica_count = 1
+  major_version = "REDIS_7_2"
   transit_encryption_mode = "TRANSIT_ENCRYPTION_MODE_DISABLED"
   authorization_mode = "AUTH_MODE_DISABLED"
   depends_on = [
@@ -330,7 +331,7 @@ resource "google_redis_instance" "redis_relay_backend" {
   tier                    = "STANDARD_HA"
   memory_size_gb          = 1
   region                  = "us-central1"
-  redis_version           = "REDIS_7_0"
+  redis_version           = "REDIS_7_2"
   authorized_network      = google_compute_network.staging.id
 }
 
