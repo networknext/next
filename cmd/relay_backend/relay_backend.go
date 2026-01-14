@@ -26,6 +26,7 @@ import (
 
 	"github.com/hamba/avro"
 	"github.com/redis/go-redis/v9"
+	"cloud.google.com/go/compute/metadata"
 )
 
 var maxJitter int32
@@ -34,6 +35,8 @@ var routeMatrixInterval time.Duration
 
 var redisHostname string
 var redisCluster []string
+
+var internalAddress string
 
 var analyticsRelayUpdateGooglePubsubTopic string
 var analyticsRelayUpdateGooglePubsubChannelSize int
@@ -114,7 +117,9 @@ func main() {
 	routeMatrixInterval = envvar.GetDuration("ROUTE_MATRIX_INTERVAL", time.Second)
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisCluster := envvar.GetStringArray("REDIS_CLUSTER", []string{})
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
+
+	internalAddress = envvar.GetString("INTERNAL_ADDRESS", "")
 
 	analyticsRelayUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
 	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
@@ -169,6 +174,15 @@ func main() {
 		core.Debug("redis cluster: %v", redisCluster)
 	} else {
 		core.Debug("redis hostname: %s", redisHostname)
+	}
+
+	if internalAddress == "" {
+		var err error
+		internalAddress, err = metadata.InternalIPWithContext(context.Background())
+		if err != nil {
+			core.Error("could not get google cloud internal address: %v", err)
+			os.Exit(1)
+		}
 	}
 
 	core.Debug("max jitter: %d", maxJitter)

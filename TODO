@@ -28,8 +28,6 @@ DONE
 
 	Yes, it is already setup correctly with a 5 second timeout.
 
-TODO
-
 	Need a way to get the local internal address for the VM from google cloud. I feel like I've done this before already somewhere... but not sure?
 
 	There is a decent enough google metadata package for go that I should probably use: 
@@ -39,15 +37,11 @@ TODO
 	I could run this on startup, if I don't have an address passed in to the relay backend, and then make happy path pass in that address.
 
 	"INTERNAL_ADDRESS"
-	
-    ----------
 
-    Update both the dev, staging and prod terraforms to pass in the redis hostname/cluster for relay_backend and relay_gateway.
+	Looks like dev, staging and prod terraform already create a redis instances specifically for relay backend and is setup correctly via REDIS_HOSTNAME env var for services.
 
-    ----------
+TODO
 
-    Setup a dev environment again, and deploy the code there, verifying it is working, and stable for a few days.
+    Setup a dev environment again, and deploy the code there, verifying it is working, and stable.
 
-    ----------
-
-    Then it is time for us to deploy to prod...
+    Deploy updated code to prod.

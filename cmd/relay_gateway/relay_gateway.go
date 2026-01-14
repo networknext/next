@@ -38,7 +38,7 @@ func main() {
 	service := common.CreateService("relay_gateway")
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisCluster := envvar.GetStringArray("REDIS_CLUSTER", []string{})
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
