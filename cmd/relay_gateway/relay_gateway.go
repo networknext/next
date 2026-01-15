@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 	"context"
+	"slices"
+	"maps"
+	"sort"
 
 	"github.com/redis/go-redis/v9"
 
@@ -381,20 +384,43 @@ func updateRelayBackendInstances(service *common.Service, redisClient redis.Cmda
 
 	core.Debug("updating relay backend instances")
 
-	keys, err := redisClient.HKeys(ctx, "relay-backends").Result()
+	currentMinutes := time.Now().Unix() / 60
+	previousMinutes := currentMinutes - 1
+
+	currentKeys, err := redisClient.HKeys(ctx, fmt.Sprintf("relay-backends-%d", currentMinutes)).Result()
 	if err != nil {
-		core.Warn("could not get relay backends from redis: %v", err)
+		core.Warn("could not get current relay backends from redis: %v", err)
 		return
 	}
 
-	if len(keys) == 0 {
+	previousKeys, err := redisClient.HKeys(ctx, fmt.Sprintf("relay-backends-%d", previousMinutes)).Result()
+	if err != nil {
+		core.Warn("could not get previous relay backends from redis: %v", err)
+		return
+	}
+
+	addressMap := map[string]int{}
+
+	for i := range currentKeys {
+	    addressMap[currentKeys[i]] = 1
+	}
+
+	for i := range previousKeys {
+		addressMap[previousKeys[i]] = 1
+	}
+
+	addresses := slices.Collect(maps.Keys(addressMap))
+
+	sort.Strings(addresses)
+
+	if len(addresses) == 0 {
 		core.Warn("(no relay backends)")
 	} else {
-		core.Debug("relay backends: %v", keys)
+		core.Debug("relay backends: %v", addresses)
 	}
 
 	mutex.Lock()
-	relayBackendAddresses = keys
+	relayBackendAddresses = addresses
 	mutex.Unlock()
 }
 

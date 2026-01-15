@@ -37,6 +37,7 @@ var redisHostname string
 var redisCluster []string
 
 var internalAddress string
+var internalPort string
 
 var analyticsRelayUpdateGooglePubsubTopic string
 var analyticsRelayUpdateGooglePubsubChannelSize int
@@ -120,6 +121,7 @@ func main() {
 	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 
 	internalAddress = envvar.GetString("INTERNAL_ADDRESS", "")
+	internalPort = envvar.GetString("HTTP_PORT", "80")
 
 	analyticsRelayUpdateGooglePubsubTopic = envvar.GetString("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_TOPIC", "relay_update")
 	analyticsRelayUpdateGooglePubsubChannelSize = envvar.GetInt("ANALYTICS_RELAY_UPDATE_GOOGLE_PUBSUB_CHANNEL_SIZE", 10*1024*1024)
@@ -440,17 +442,11 @@ func UpdateRelayBackendInstance(service *common.Service) {
 
 				core.Debug("updated relay backend instance")
 
-				// todo: we need to be able to look up our local IP address and port here
-				address := "127.0.0.1:30001"
+				minutes := time.Now().Unix() / 60
 
-				err := redisClient.HSet(ctx, "relay-backends", address, "1").Err()
+				err := redisClient.HSet(ctx, fmt.Sprintf("relay-backends-%d", minutes), fmt.Sprintf("%s:%s", internalAddress, internalPort), "1").Err()
 				if err != nil {
 					core.Warn("failed to update relay backend field in redis: %v", err)
-				}
-
-				err = redisClient.HExpire(ctx, "relay-backends", 30 * time.Second, address).Err()
-				if err != nil {
-					core.Warn("failed to set hexpire on relay backend field in redis: %v", err)
 				}
 			}
 		}

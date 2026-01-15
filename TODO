@@ -42,13 +42,17 @@ DONE
 
     Setup a dev environment again, and deploy the code there plus relays.
 
-TODO
-
 	It very much seems like the relay backend is not properly getting the internal address.
 
 	Checking via logs...
 
 	It's failing because we don't have HEXPIRE. So it's an old, pre-redis 7.
+
+	Even updating to 7.2 doesn't support HEXPIRE so I'm going to have to do a minute table.
+
+TODO
+	
+	Update relay gateway and relay backend to use a current minute value in the key
 
 	-------
 
