@@ -50,16 +50,12 @@ DONE
 
 	Even updating to 7.2 doesn't support HEXPIRE so I'm going to have to do a minute table.
 
-TODO
-	
 	Update relay gateway and relay backend to use a current minute value in the key
 
-	-------
-
-	Verify that we have all relays online.
+	Deploy to dev and verify we have all relays online.
 
 	Verify that we generate a valid cost matrix in dev.
 
-	-------
+TODO
 
     Deploy to prod.
