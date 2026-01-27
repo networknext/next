@@ -7,9 +7,14 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 	"time"
+	"context"
+	"slices"
+	"maps"
+	"sort"
+
+	"github.com/redis/go-redis/v9"
 
 	"github.com/networknext/next/modules/common"
 	"github.com/networknext/next/modules/constants"
@@ -21,14 +26,10 @@ import (
 )
 
 var redisHostname string
-var redisPubsubChannelName string
-var relayUpdateBatchSize int
-var relayUpdateBatchDuration time.Duration
-var relayUpdateChannelSize int
+var redisCluster []string
 var pingKey []byte
 var relayBackendPublicKey []byte
 var relayBackendPrivateKey []byte
-var relayBackendAddress string
 
 var mutex sync.Mutex
 var relayBackendAddresses []string
@@ -40,21 +41,16 @@ func main() {
 	service := common.CreateService("relay_gateway")
 
 	redisHostname = envvar.GetString("REDIS_HOSTNAME", "127.0.0.1:6379")
-	redisPubsubChannelName = envvar.GetString("REDIS_PUBSUB_CHANNEL_NAME", "relay_update")
-	relayUpdateBatchSize = envvar.GetInt("RELAY_UPDATE_BATCH_SIZE", 1)
-	relayUpdateBatchDuration = envvar.GetDuration("RELAY_UPDATE_BATCH_DURATION", 1000*time.Millisecond)
-	relayUpdateChannelSize = envvar.GetInt("RELAY_UPDATE_CHANNEL_SIZE", 1024*1024)
+	redisCluster = envvar.GetStringArray("REDIS_CLUSTER", []string{})
 	pingKey = envvar.GetBase64("PING_KEY", []byte{})
 	relayBackendPublicKey = envvar.GetBase64("RELAY_BACKEND_PUBLIC_KEY", []byte{})
 	relayBackendPrivateKey = envvar.GetBase64("RELAY_BACKEND_PRIVATE_KEY", []byte{})
-	relayBackendAddress = envvar.GetString("RELAY_BACKEND_ADDRESS", "127.0.0.1:30001")
 
-	core.Debug("redis hostname: %s", redisHostname)
-	core.Debug("redis pubsub channel name: %s", redisPubsubChannelName)
-	core.Debug("relay update batch size: %d", relayUpdateBatchSize)
-	core.Debug("relay update batch duration: %v", relayUpdateBatchDuration)
-	core.Debug("relay update channel size: %d", relayUpdateChannelSize)
-	core.Debug("relay backend address: %s", relayBackendAddress)
+	if len(redisCluster) > 0 {
+		core.Debug("redis cluster: %v", redisCluster)
+	} else {
+		core.Debug("redis hostname: %s", redisHostname)
+	}
 
 	if len(pingKey) == 0 {
 		core.Error("You must supply PING_KEY")
@@ -119,6 +115,8 @@ func main() {
 	service.StartWebServer()
 
 	service.Router.HandleFunc("/relay_update", RelayUpdateHandler(GetRelayData(service), GetMagicValues(service))).Methods("POST")
+
+	service.Router.HandleFunc("/relay_backends", RelayBackendsHandler)
 
 	service.WaitForShutdown()
 }
@@ -320,14 +318,10 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 
 		// forward the decrypted relay update to the relay backends
 
-		addresses := []string{}
-		if relayBackendAddress != "" {
-			addresses = []string{relayBackendAddress}
-		} else {
-			mutex.Lock()
-			addresses = relayBackendAddresses
-			mutex.Unlock()
-		}
+		mutex.Lock()
+		addresses := make([]string, len(relayBackendAddresses))
+		copy(addresses, relayBackendAddresses)
+		mutex.Unlock()
 
 		for i := range addresses {
 			core.Debug("forwarding relay update to %s", addresses[i])
@@ -347,50 +341,29 @@ func RelayUpdateHandler(getRelayData func() *common.RelayData, getMagicValues fu
 	}
 }
 
+func RelayBackendsHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	mutex.Lock()
+	for i := range relayBackendAddresses {
+		fmt.Fprintf(w, "%s\n", relayBackendAddresses[i])		
+	}
+	mutex.Unlock()
+}
+
 func TrackRelayBackendInstances(service *common.Service) {
 
-	// grab google cloud instance name from metadata
-
-	result, instanceName := common.Bash("curl -s http://metadata/computeMetadata/v1/instance/hostname -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
-	if !result {
-		return // not in google cloud
+	var redisClient redis.Cmdable
+	if len(redisCluster) > 0 {
+		redisClient = common.CreateRedisClusterClient(redisCluster)
+	} else {
+		redisClient = common.CreateRedisClient(redisHostname)
 	}
-
-	instanceName = strings.TrimSuffix(instanceName, "\n")
-
-	tokens := strings.Split(instanceName, ".")
-
-	instanceName = tokens[0]
-
-	core.Log("google cloud instance name is '%s'", instanceName)
-
-	// grab google cloud zone from metadata
-
-	var zone string
-	result, zone = common.Bash("curl -s http://metadata/computeMetadata/v1/instance/zone -H \"Metadata-Flavor: Google\" --max-time 5 -s 2>/dev/null")
-	if !result {
-		return // not in google cloud
-	}
-
-	zone = strings.TrimSuffix(zone, "\n")
-
-	tokens = strings.Split(zone, "/")
-
-	zone = tokens[len(tokens)-1]
-
-	core.Log("google cloud zone is '%s'", zone)
-
-	// turn zone into region
-
-	tokens = strings.Split(zone, "-")
-
-	region := strings.Join(tokens[:len(tokens)-1], "-")
-
-	core.Log("google cloud region is '%s'", region)
 
 	go func() {
 
 		ticker := time.NewTicker(10 * time.Second)
+
+		updateRelayBackendInstances(service, redisClient)
 
 		for {
 			select {
@@ -399,78 +372,56 @@ func TrackRelayBackendInstances(service *common.Service) {
 				return
 
 			case <-ticker.C:
-
-				core.Debug("=====================================")
-				core.Debug("updating relay backend VMs")
-
-				_, list_output := common.Bash(fmt.Sprintf("gcloud compute instance-groups managed list-instances relay-backend --region %s", region))
-
-				list_lines := strings.Split(list_output, "\n")
-
-				instanceIds := make([]string, 0)
-				zones := make([]string, 0)
-				for i := range list_lines {
-					if strings.Contains(list_lines[i], "relay-backend-") {
-						values := strings.Fields(list_lines[i])
-						instanceId := values[0]
-						zone := values[1]
-						instanceIds = append(instanceIds, instanceId)
-						zones = append(zones, zone)
-					}
-				}
-
-				core.Debug("instance ids: %v", instanceIds)
-				core.Debug("zones: %v", zones)
-
-				addresses := make([]string, len(instanceIds))
-				waitGroup := sync.WaitGroup{}
-				waitGroup.Add(len(addresses))
-				for i := range instanceIds {
-					go func(index int) {
-						_, describe_output := common.Bash(fmt.Sprintf("gcloud compute instances describe %s --zone %s", instanceIds[index], zones[index]))
-						describe_lines := strings.Split(describe_output, "\n")
-						address := ""
-						for j := range describe_lines {
-							if strings.Contains(describe_lines[j], "networkIP: ") {
-								values := strings.Fields(describe_lines[j])
-								address = values[1]
-							}
-						}
-						addresses[index] = address
-						waitGroup.Done()
-					}(i)
-				}
-				waitGroup.Wait()
-
-				core.Debug("addresses: %v", addresses)
-
-				ok := make([]bool, len(addresses))
-				waitGroup.Add(len(addresses))
-				for i := range addresses {
-					go func(index int) {
-						ok[index], _ = common.Bash(fmt.Sprintf("curl http://%s/health_fanout --max-time 5", addresses[index]))
-						waitGroup.Done()
-					}(i)
-				}
-				waitGroup.Wait()
-
-				verified := []string{}
-				for i := range addresses {
-					if ok[i] {
-						verified = append(verified, addresses[i])
-					}
-				}
-
-				core.Debug("verified: %v", verified)
-
-				core.Debug("=====================================")
-
-				mutex.Lock()
-				relayBackendAddresses = verified
-				mutex.Unlock()
+				updateRelayBackendInstances(service, redisClient)
 			}
 		}
 	}()
+}
+
+func updateRelayBackendInstances(service *common.Service, redisClient redis.Cmdable) {
+
+	ctx := context.Background()
+
+	core.Debug("updating relay backend instances")
+
+	currentMinutes := time.Now().Unix() / 60
+	previousMinutes := currentMinutes - 1
+
+	currentKeys, err := redisClient.HKeys(ctx, fmt.Sprintf("relay-backends-%d", currentMinutes)).Result()
+	if err != nil {
+		core.Warn("could not get current relay backends from redis: %v", err)
+		return
+	}
+
+	previousKeys, err := redisClient.HKeys(ctx, fmt.Sprintf("relay-backends-%d", previousMinutes)).Result()
+	if err != nil {
+		core.Warn("could not get previous relay backends from redis: %v", err)
+		return
+	}
+
+	addressMap := map[string]int{}
+
+	for i := range currentKeys {
+	    addressMap[currentKeys[i]] = 1
+	}
+
+	for i := range previousKeys {
+		addressMap[previousKeys[i]] = 1
+	}
+
+	addresses := slices.Collect(maps.Keys(addressMap))
+
+	sort.Strings(addresses)
+
+	if len(addresses) == 0 {
+		core.Warn("(no relay backends)")
+	} else {
+		core.Debug("relay backends: %v", addresses)
+	}
+
+	mutex.Lock()
+	relayBackendAddresses = addresses
+	mutex.Unlock()
 }
 
 func GetRelayData(service *common.Service) func() *common.RelayData {

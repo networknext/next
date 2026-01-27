@@ -25,19 +25,35 @@ var devRelayMap = map[string][]string{
 
 var prodRelayMap = map[string][]string{
 
+	"amazon.calgary.1": {"amazon.calgary.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.portland.1": {"amazon.portland.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.seattle.1": {"amazon.seattle.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.denver.1": {"amazon.denver.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.montreal.1": {"amazon.montreal.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.oregon.1": {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
+	"amazon.ohio.1": {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+
 	"amazon.saopaulo.1": {"amazon.saopaulo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.saopaulo.2": {"amazon.saopaulo.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.saopaulo.3": {"amazon.saopaulo.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	
 	"amazon.buenosaires.1": {"amazon.buenosaires.1", "t3.medium" /*"r5.large"*/, "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	
+
 	"amazon.lima.1":        {"amazon.lima.1", "t3.medium", "ubuntu-minimal/images/hvm-ssd/ubuntu-jammy-22.04-amd64-minimal-*"},
 	
 	"amazon.santiago.1":    {"amazon.santiago.1", "t3.medium" /*"t3.large"*/, "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	
 	"amazon.frankfurt.1":   {"amazon.frankfurt.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	// "amazon.frankfurt.2": {"amazon.frankfurt.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	// "amazon.frankfurt.3": {"amazon.frankfurt.3", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.frankfurt.2": {"amazon.frankfurt.2", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.frankfurt.3": {"amazon.frankfurt.3", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
 
 	"amazon.virginia.1": {"amazon.virginia.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.virginia.2": {"amazon.virginia.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
@@ -56,8 +72,10 @@ var prodRelayMap = map[string][]string{
 	// "amazon.losangeles.2": {"amazon.losangeles.2", "c5.2xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
 	"amazon.bahrain.1": {"amazon.bahrain.1", "c5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	// "amazon.bahrain.2": {"amazon.bahrain.2", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
-	// "amazon.bahrain.3": {"amazon.bahrain.3", "c5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	/*
+	"amazon.bahrain.2": {"amazon.bahrain.2", "c5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	"amazon.bahrain.3": {"amazon.bahrain.3", "c5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	*/
 
 	"amazon.uae.1": {"amazon.uae.1", "c5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.uae.2": {"amazon.uae.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
@@ -75,7 +93,7 @@ var prodRelayMap = map[string][]string{
 	// "amazon.london.2": {"amazon.london.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.london.3": {"amazon.london.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.ireland.1": {"amazon.ireland.1", "c5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.ireland.1": {"amazon.ireland.1", "c5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.ireland.2": {"amazon.ireland.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.ireland.3": {"amazon.ireland.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
@@ -93,8 +111,7 @@ var prodRelayMap = map[string][]string{
 // Exclude regions
 
 var excludedRegions = map[string]bool{
-	// "il-central-1": true,
-	// "mx-central-1": true,
+	"ap-southeast-6": true,
 }
 
 // ===========================================================================================================================================
@@ -116,6 +133,9 @@ var datacenterMap = map[string]*Datacenter{
 	"apse2": {"sydney", -33.8688, 151.2093},
 	"apse3": {"jakarta", -6.2088, 106.8456},
 	"apse4": {"melbourne", -37.8136, 144.9631},
+	"apse5": {"malaysia", 4.2105, 101.9758},
+	"apse6": {"newzealand", -36.8509, 174.7645},
+	"apse7": {"thailand", 15.8700, 100.9925},
 	"cac1":  {"montreal", 45.5019, -73.5674},
 	"euc1":  {"frankfurt", 50.1109, 8.6821},
 	"euc2":  {"zurich", 47.3769, 8.5417},
@@ -134,6 +154,7 @@ var datacenterMap = map[string]*Datacenter{
 	"usw2":  {"oregon", 45.8399, -119.7006},
 	"mxc1":  {"mexico", 23.6345, -102.5528},
 	"ilc1":  {"telaviv", 32.0853, 34.7818},
+	"caw1":  {"calgary", 51.0447, -114.0719},
 
 	// local zones (AZID)
 
@@ -151,14 +172,14 @@ var datacenterMap = map[string]*Datacenter{
 	"atl1": {"atlanta", 33.7488, -84.3877},
 	"bos1": {"boston", 42.3601, -71.0589},
 	"bue1": {"buenosaires", -34.6037, -58.3816},
-	"chi1": {"chicago", 41.8781, -87.6298},
+//	"chi1": {"chicago", 41.8781, -87.6298},
 	"dfw2": {"dallas", 32.7767, -96.7970},
 	"iah1": {"houston", 29.7604, -95.3698},
 	"lim1": {"lima", -12.0464, -77.0428},
 	"mci1": {"kansas", 39.0997, -94.5786},
 	"mia2": {"miami", 25.7617, -80.1918},
 	"msp1": {"minneapolis", 44.9778, -93.2650},
-	"nyc1": {"newyork", 40.7128, -74.0060},
+// "nyc1": {"newyork", 40.7128, -74.0060},
 	"phl1": {"philadelphia", 39.9526, -75.1652},
 	"qro1": {"queretaro", 23.6345, -102.5528},
 	"scl1": {"santiago", -33.4489, -70.6693},
