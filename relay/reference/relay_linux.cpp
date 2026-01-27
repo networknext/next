@@ -7,6 +7,8 @@
 
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 #include <assert.h>
 #include <netdb.h>
 #include <sys/types.h>
@@ -63,7 +65,7 @@ uint16_t relay_platform_htons( uint16_t in )
 
 int relay_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
-    sockaddr_in sockaddr4;
+    sockaddr_in sockaddr4 = {0};
     bool success = inet_pton( AF_INET, address_string, &sockaddr4.sin_addr ) == 1;
     *address_out = sockaddr4.sin_addr.s_addr;
     return success ? RELAY_OK : RELAY_ERROR;
@@ -180,8 +182,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
 
     if ( address->type == RELAY_ADDRESS_IPV6 )
     {
-        sockaddr_in6 socket_address;
-        memset( &socket_address, 0, sizeof( sockaddr_in6 ) );
+        sockaddr_in6 socket_address = {0};
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
@@ -198,8 +199,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
     }
     else
     {
-        sockaddr_in socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        sockaddr_in socket_address = {0};
         socket_address.sin_family = AF_INET;
         socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      | 
                                          ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  | 
@@ -221,7 +221,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
     {
         if ( address->type == RELAY_ADDRESS_IPV6 )
         {
-            sockaddr_in6 sin;
+            sockaddr_in6 sin = {0};
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
@@ -233,7 +233,7 @@ relay_platform_socket_t * relay_platform_socket_create( relay_address_t * addres
         }
         else
         {
-            sockaddr_in sin;
+            sockaddr_in sin = {0};
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
@@ -297,8 +297,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
 
     if ( to->type == RELAY_ADDRESS_IPV6 )
     {
-        sockaddr_in6 socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        sockaddr_in6 socket_address = {0};
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
@@ -309,8 +308,7 @@ void relay_platform_socket_send_packet( relay_platform_socket_t * socket, const 
     }
     else if ( to->type == RELAY_ADDRESS_IPV4 )
     {
-        sockaddr_in socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        sockaddr_in socket_address = {0};
         socket_address.sin_family = AF_INET;
         socket_address.sin_addr.s_addr = ( ( (uint32_t) to->data.ipv4[0] ) )        | 
                                          ( ( (uint32_t) to->data.ipv4[1] ) << 8 )   | 
@@ -328,7 +326,7 @@ int relay_platform_socket_receive_packet( relay_platform_socket_t * socket, rela
     assert( packet_data );
     assert( max_packet_size > 0 );
 
-    sockaddr_storage sockaddr_from;
+    sockaddr_storage sockaddr_from = {0};
     socklen_t from_length = sizeof( sockaddr_from );
 
     int result = int( recvfrom( socket->handle, (char*) packet_data, max_packet_size, socket->type == RELAY_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0, (sockaddr*) &sockaddr_from, &from_length ) );
