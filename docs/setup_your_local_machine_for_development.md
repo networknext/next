@@ -203,8 +203,6 @@ Next step: [Setup Prerequisites](setup_prerequisites.md).
 
    `psql -c "CREATE USER developer; ALTER USER developer WITH SUPERUSER;"`
 
-   `brew services start postgresql@14`
-
 6. Add . to your path
 
    Modify ~/.zshrc to include:
