@@ -1,5 +1,5 @@
 /*
-    Network Next. Copyright 2017 - 2025 Network Next, Inc.
+    Network Next. Copyright 2017 - 2026 Network Next, Inc.
     Licensed under the Network Next Source Available License 1.0
 */
 
@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdarg.h>
-#include <sodium.h>
 #include <math.h>
 #include <map>
 #include <float.h>
@@ -20,6 +19,8 @@
 #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
 #include <sys/sysinfo.h>
 #endif // #if RELAY_PLATFORM == RELAY_PLATFORM_LINUX
+
+#include <sodium.h>
 
 #ifndef RELAY_VERSION
 #define RELAY_VERSION "relay-debug"

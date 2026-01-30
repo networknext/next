@@ -1,11 +1,13 @@
 /*
-    Network Next. Copyright 2017 - 2025 Network Next, Inc.  
+    Network Next. Copyright 2017 - 2026 Network Next, Inc.  
     Licensed under the Network Next Source Available License 1.0
 */
 
 #include "next_platform_linux.h"
 
 #if NEXT_PLATFORM == NEXT_PLATFORM_LINUX
+
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 #include "next_platform.h"
 #include "next_address.h"
@@ -81,7 +83,7 @@ uint16_t next_platform_htons( uint16_t in )
 
 int next_platform_inet_pton4( const char * address_string, uint32_t * address_out )
 {
-    sockaddr_in sockaddr4;
+    sockaddr_in sockaddr4 = {0};
     bool success = inet_pton( AF_INET, address_string, &sockaddr4.sin_addr ) == 1;
     *address_out = sockaddr4.sin_addr.s_addr;
     return success ? NEXT_OK : NEXT_ERROR;
@@ -231,8 +233,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
 
     if ( address->type == NEXT_ADDRESS_IPV6 )
     {
-        sockaddr_in6 socket_address;
-        memset( &socket_address, 0, sizeof( sockaddr_in6 ) );
+        sockaddr_in6 socket_address = {0};
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
@@ -249,8 +250,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     }
     else
     {
-        sockaddr_in socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        sockaddr_in socket_address = {0};
         socket_address.sin_family = AF_INET;
         socket_address.sin_addr.s_addr = ( ( (uint32_t) address->data.ipv4[0] ) )      | 
                                          ( ( (uint32_t) address->data.ipv4[1] ) << 8 )  | 
@@ -272,7 +272,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
     {
         if ( address->type == NEXT_ADDRESS_IPV6 )
         {
-            sockaddr_in6 sin;
+            sockaddr_in6 sin = {0};
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
@@ -284,7 +284,7 @@ next_platform_socket_t * next_platform_socket_create( void * context, next_addre
         }
         else
         {
-            sockaddr_in sin;
+            sockaddr_in sin = {0};
             socklen_t len = sizeof( sin );
             if ( getsockname( socket->handle, (sockaddr*)( &sin ), &len ) == -1 )
             {
@@ -393,8 +393,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
             next_address_convert_ipv4_to_ipv6( &to );
         }
 
-        sockaddr_in6 socket_address;
-        memset( &socket_address, 0, sizeof( socket_address ) );
+        sockaddr_in6 socket_address = {0};
         socket_address.sin6_family = AF_INET6;
         for ( int i = 0; i < 8; ++i )
         {
@@ -413,8 +412,7 @@ void next_platform_socket_send_packet( next_platform_socket_t * socket, const ne
     {
         if ( to.type == NEXT_ADDRESS_IPV4 )
         {
-            sockaddr_in socket_address;
-            memset( &socket_address, 0, sizeof( socket_address ) );
+            sockaddr_in socket_address = {0};
             socket_address.sin_family = AF_INET;
             socket_address.sin_addr.s_addr = ( ( (uint32_t) to.data.ipv4[0] ) )        | 
                                              ( ( (uint32_t) to.data.ipv4[1] ) << 8 )   | 
@@ -443,7 +441,7 @@ int next_platform_socket_receive_packet( next_platform_socket_t * socket, next_a
     next_assert( packet_data );
     next_assert( max_packet_size > 0 );
 
-    sockaddr_storage sockaddr_from;
+    sockaddr_storage sockaddr_from = {0};
     socklen_t from_length = sizeof( sockaddr_from );
 
     int result = int( recvfrom( socket->handle, (char*) packet_data, max_packet_size, socket->type == NEXT_PLATFORM_SOCKET_NON_BLOCKING ? MSG_DONTWAIT : 0, (sockaddr*) &sockaddr_from, &from_length ) );

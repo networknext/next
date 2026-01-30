@@ -1,0 +1,61 @@
+DONE
+
+	Pass over and understand existing code
+
+	Remove a bunch of dead code in the relay backend and relay gateway
+
+	Update to pass in both redis hostname and redis cluster, and create redis client instance
+
+	Mock up new approach with redis on a timer event
+
+	Add a http handler to relay gateway to return the set of relay backends known
+
+	In the future, if the relay gateway still breaks in the same way, I can inspect it by looking at the "/status" endpoint. 
+
+	For example, by checking # of goroutines, memory allocated etc.
+
+	Actually call into redis with "HSET" and set "HEXPIRE" so the key expires (It's O(n) but it's fine... small n)
+
+	Read the hash with "HGET" and extract the set of relay backends from the keys
+
+	Verify that I can view the set of relay backends via "relay_backend" endpoint.
+
+    Move the update logs for the relay backend set to debug logs.
+
+    I should now be able to run and test the code locally, at first by running each service manually, and then as a part of happy path, and it should pass.
+
+	Very carefully look over the code that forwards relay updates and make sure it has timeout set and is safe
+
+	Yes, it is already setup correctly with a 5 second timeout.
+
+	Need a way to get the local internal address for the VM from google cloud. I feel like I've done this before already somewhere... but not sure?
+
+	There is a decent enough google metadata package for go that I should probably use: 
+
+		cloud.google.com/go/compute/metadata
+
+	I could run this on startup, if I don't have an address passed in to the relay backend, and then make happy path pass in that address.
+
+	"INTERNAL_ADDRESS"
+
+	Looks like dev, staging and prod terraform already create a redis instances specifically for relay backend and is setup correctly via REDIS_HOSTNAME env var for services.
+
+    Setup a dev environment again, and deploy the code there plus relays.
+
+	It very much seems like the relay backend is not properly getting the internal address.
+
+	Checking via logs...
+
+	It's failing because we don't have HEXPIRE. So it's an old, pre-redis 7.
+
+	Even updating to 7.2 doesn't support HEXPIRE so I'm going to have to do a minute table.
+
+	Update relay gateway and relay backend to use a current minute value in the key
+
+	Deploy to dev and verify we have all relays online.
+
+	Verify that we generate a valid cost matrix in dev.
+
+TODO
+
+    Deploy to prod.

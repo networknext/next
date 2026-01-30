@@ -1,4 +1,4 @@
-br-gru,akamai.saopaulo
+nl-ams,akamai.amsterdam
 jp-tyo-3,akamai.tokyo.2
 sg-sin-2,akamai.singapore.2
 de-fra-2,akamai.frankfurt.2
@@ -13,7 +13,7 @@ jp-osa,akamai.osaka
 in-maa,akamai.chennai
 es-mad,akamai.madrid
 se-sto,akamai.stockholm
-nl-ams,akamai.amsterdam
+br-gru,akamai.saopaulo
 us-sea,akamai.seattle
 fr-par,akamai.paris
 us-ord,akamai.chicago

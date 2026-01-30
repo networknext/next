@@ -1,7 +1,5 @@
 package packets
 
-// #cgo pkg-config: libsodium
-// #include <sodium.h>
 import "C"
 
 import (
@@ -19,32 +17,6 @@ import (
 
 // ------------------------------------------------------------
 
-func SDK_SignKeypair(publicKey []byte, privateKey []byte) int {
-	result := C.crypto_sign_keypair((*C.uchar)(&publicKey[0]), (*C.uchar)(&privateKey[0]))
-	return int(result)
-}
-
-func SDK_SignPacket(packetData []byte, privateKey []byte) {
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
-	C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
-}
-
-func SDK_CheckPacketSignature(packetData []byte, publicKey []byte) bool {
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_verify(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), (*C.uchar)(&publicKey[0]))
-	if result != 0 {
-		core.Error("signed packet did not verify")
-		return false
-	}
-	return true
-}
-
 func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from *net.UDPAddr, to *net.UDPAddr, privateKey []byte) ([]byte, error) {
 
 	buffer := make([]byte, maxPacketSize)
@@ -61,20 +33,14 @@ func SDK_WritePacket[P Packet](packet P, packetType int, maxPacketSize int, from
 
 	writeStream.Flush()
 
-	packetBytes := writeStream.GetBytesProcessed() + SDK_CRYPTO_SIGN_BYTES
+	packetBytes := writeStream.GetBytesProcessed() + crypto.SDK_CRYPTO_SIGN_BYTES
 
 	packetData := buffer[:packetBytes]
 
 	packetData[0] = uint8(packetType)
 
-	var state C.crypto_sign_state
-	C.crypto_sign_init(&state)
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[0]), C.ulonglong(1))
-	C.crypto_sign_update(&state, (*C.uchar)(&packetData[18]), C.ulonglong(len(packetData)-18-SDK_CRYPTO_SIGN_BYTES))
-	result := C.crypto_sign_final_create(&state, (*C.uchar)(&packetData[len(packetData)-SDK_CRYPTO_SIGN_BYTES]), nil, (*C.uchar)(&privateKey[0]))
-
-	if result != 0 {
-		return nil, fmt.Errorf("failed to sign response packet: %d", result)
+	if !crypto.SDK_SignPacket(packetData, privateKey) {
+		return nil, fmt.Errorf("failed to sign packet")
 	}
 
 	var magic [8]byte

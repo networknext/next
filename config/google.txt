@@ -89,6 +89,7 @@ southamerica-west1-a,google.santiago.1
 southamerica-west1-b,google.santiago.2
 southamerica-west1-c,google.santiago.3
 us-central1-a,google.iowa.1
+us-central1-ai1a,google.iowa.1
 us-central1-b,google.iowa.2
 us-central1-c,google.iowa.3
 us-central1-f,google.iowa.6
@@ -102,6 +103,7 @@ us-east5-a,google.ohio.1
 us-east5-b,google.ohio.2
 us-east5-c,google.ohio.3
 us-south1-a,google.dallas.1
+us-south1-ai1b,google.dallas.1
 us-south1-b,google.dallas.2
 us-south1-c,google.dallas.3
 us-west1-a,google.oregon.1

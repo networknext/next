@@ -913,6 +913,16 @@ locals {
       seller_code = "google"
     }
 
+    "google.iowa.1" = {
+      zone        = "us-central1-ai1a"
+      region      = "us-central1"
+      native_name = "us-central1-ai1a"
+      latitude    = 41.88
+      longitude   = -93.10
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
     "google.iowa.2" = {
       zone        = "us-central1-b"
       region      = "us-central1"
@@ -1037,6 +1047,16 @@ locals {
       zone        = "us-south1-a"
       region      = "us-south1"
       native_name = "us-south1-a"
+      latitude    = 32.78
+      longitude   = -96.80
+      seller_name = "Google"
+      seller_code = "google"
+    }
+
+    "google.dallas.1" = {
+      zone        = "us-south1-ai1b"
+      region      = "us-south1"
+      native_name = "us-south1-ai1b"
       latitude    = 32.78
       longitude   = -96.80
       seller_name = "Google"

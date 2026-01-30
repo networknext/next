@@ -118,8 +118,7 @@ struct relay_platform_socket_t * relay_platform_socket_create( uint32_t address,
 
     // bind to port
 
-    struct sockaddr_in socket_address;
-    memset( &socket_address, 0, sizeof( socket_address ) );
+    struct sockaddr_in socket_address = {0};
     socket_address.sin_family = AF_INET;
     socket_address.sin_addr.s_addr = htonl( address );
     socket_address.sin_port = htons( port );
@@ -184,8 +183,7 @@ void relay_platform_socket_send_packet( struct relay_platform_socket_t * socket,
     assert( packet_data );
     assert( packet_bytes > 0 );
 
-    struct sockaddr_in socket_address;
-    memset( &socket_address, 0, sizeof( socket_address ) );
+    struct sockaddr_in socket_address = {0};
     socket_address.sin_family = AF_INET;
     socket_address.sin_addr.s_addr = htonl( to_address );
     socket_address.sin_port = htons( to_port );
@@ -201,7 +199,7 @@ int relay_platform_socket_receive_packet( struct relay_platform_socket_t * socke
     assert( packet_data );
     assert( max_packet_size > 0 );
 
-    struct sockaddr_storage sockaddr_from;
+    struct sockaddr_storage sockaddr_from = {0};
 
     socklen_t from_length = sizeof( sockaddr_from );
 

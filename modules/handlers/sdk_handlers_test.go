@@ -41,8 +41,8 @@ type TestHarness struct {
 	handler                             SDK_Handler
 	conn                                *net.UDPConn
 	from                                net.UDPAddr
-	signPublicKey                       [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	signPrivateKey                      [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	signPublicKey                       [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	signPrivateKey                      [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
 	analyticsServerInitMessageChannel   chan *messages.AnalyticsServerInitMessage
 	analyticsServerUpdateMessageChannel chan *messages.AnalyticsServerUpdateMessage
 }
@@ -73,7 +73,7 @@ func CreateTestHarness() *TestHarness {
 
 	harness.from = core.ParseAddress("127.0.0.1:10000")
 
-	packets.SDK_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
+	crypto.SDK_SignKeypair(harness.signPublicKey[:], harness.signPrivateKey[:])
 
 	harness.handler.ServerBackendPrivateKey = harness.signPrivateKey[:]
 
@@ -266,9 +266,9 @@ func TestSignatureCheckFailed_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
@@ -324,9 +324,9 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
@@ -341,7 +341,7 @@ func Test_ServerInitHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -393,9 +393,9 @@ func Test_ServerInitHandler_SDKTooOld_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -417,7 +417,7 @@ func Test_ServerInitHandler_SDKTooOld_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see that the SDK is too old
 
@@ -469,9 +469,9 @@ func Test_ServerInitHandler_DatacenterNotEnabled_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -487,7 +487,7 @@ func Test_ServerInitHandler_DatacenterNotEnabled_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see the datacenter is not enabled for the buyer
 
@@ -539,9 +539,9 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -622,7 +622,7 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+crypto.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -648,14 +648,14 @@ func Test_ServerInitHandler_ServerInitResponse_SDK(t *testing.T) {
 
 			// make sure packet signature check passes
 
-			if !packets.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+			if !crypto.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
 				core.Debug("packet signature check failed")
 				return
 			}
 
 			// read packet
 
-			packetData = packetData[18 : len(packetData)-(packets.SDK_CRYPTO_SIGN_BYTES)]
+			packetData = packetData[18 : len(packetData)-(crypto.SDK_CRYPTO_SIGN_BYTES)]
 
 			responsePacket := packets.SDK_ServerInitResponsePacket{}
 			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
@@ -754,9 +754,9 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
@@ -771,7 +771,7 @@ func Test_ServerUpdateHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -822,9 +822,9 @@ func Test_ServerUpdateHandler_SDKTooOld_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -846,7 +846,7 @@ func Test_ServerUpdateHandler_SDKTooOld_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see that the SDK is too old
 
@@ -897,9 +897,9 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -915,7 +915,7 @@ func Test_ServerUpdateHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
@@ -967,9 +967,9 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1043,7 +1043,7 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+crypto.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -1069,14 +1069,14 @@ func Test_ServerUpdateHandler_ServerUpdateResponse_SDK(t *testing.T) {
 
 			// make sure packet signature check passes
 
-			if !packets.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+			if !crypto.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
 				core.Debug("packet signature check failed")
 				return
 			}
 
 			// read packet
 
-			packetData = packetData[18 : len(packetData)-(packets.SDK_CRYPTO_SIGN_BYTES)]
+			packetData = packetData[18 : len(packetData)-(crypto.SDK_CRYPTO_SIGN_BYTES)]
 
 			responsePacket := packets.SDK_ServerUpdateResponsePacket{}
 			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
@@ -1171,9 +1171,9 @@ func Test_ClientRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
@@ -1188,7 +1188,7 @@ func Test_ClientRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -1230,9 +1230,9 @@ func Test_ClientRelayRequestHandler_SDKTooOld_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1254,7 +1254,7 @@ func Test_ClientRelayRequestHandler_SDKTooOld_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see that the SDK is too old
 
@@ -1296,9 +1296,9 @@ func Test_ClientRelayRequestHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1314,7 +1314,7 @@ func Test_ClientRelayRequestHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
@@ -1412,9 +1412,9 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1543,7 +1543,7 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+crypto.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -1569,14 +1569,14 @@ func Test_ClientRelayRequestResponse_SDK(t *testing.T) {
 
 			// make sure packet signature check passes
 
-			if !packets.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+			if !crypto.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
 				core.Debug("packet signature check failed")
 				return
 			}
 
 			// read packet
 
-			packetData = packetData[18 : len(packetData)-(packets.SDK_CRYPTO_SIGN_BYTES)]
+			packetData = packetData[18 : len(packetData)-(crypto.SDK_CRYPTO_SIGN_BYTES)]
 
 			responsePacket := packets.SDK_ClientRelayResponsePacket{}
 			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
@@ -1673,9 +1673,9 @@ func Test_ServerRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.PublicKey = buyerPublicKey[:]
@@ -1690,7 +1690,7 @@ func Test_ServerRelayRequestHandler_BuyerNotLive_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, it should pass the signature check then fail on buyer not live
 
@@ -1732,9 +1732,9 @@ func Test_ServerRelayRequestHandler_SDKTooOld_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1756,7 +1756,7 @@ func Test_ServerRelayRequestHandler_SDKTooOld_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see that the SDK is too old
 
@@ -1798,9 +1798,9 @@ func Test_ServerRelayRequestHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1816,7 +1816,7 @@ func Test_ServerRelayRequestHandler_UnknownDatacenter_SDK(t *testing.T) {
 
 	// actually sign the packet, so it passes the signature check
 
-	packets.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
+	crypto.SDK_SignPacket(packetData[:], buyerPrivateKey[:])
 
 	// run the packet through the handler, we should see the datacenter is unknown
 
@@ -1859,9 +1859,9 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 
 	buyerId := uint64(0x1111111122222222)
 
-	var buyerPublicKey [packets.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
-	var buyerPrivateKey [packets.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
-	packets.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
+	var buyerPublicKey [crypto.SDK_CRYPTO_SIGN_PUBLIC_KEY_BYTES]byte
+	var buyerPrivateKey [crypto.SDK_CRYPTO_SIGN_PRIVATE_KEY_BYTES]byte
+	crypto.SDK_SignKeypair(buyerPublicKey[:], buyerPrivateKey[:])
 
 	buyer := &database.Buyer{}
 	buyer.Live = true
@@ -1992,7 +1992,7 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 
 			// ignore any packets that are too small
 
-			if len(packetData) < 18+3+4+packets.SDK_CRYPTO_SIGN_BYTES+2 {
+			if len(packetData) < 18+3+4+crypto.SDK_CRYPTO_SIGN_BYTES+2 {
 				core.Debug("too small")
 				continue
 			}
@@ -2018,14 +2018,14 @@ func Test_ServerRelayRequestResponse_SDK(t *testing.T) {
 
 			// make sure packet signature check passes
 
-			if !packets.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
+			if !crypto.SDK_CheckPacketSignature(packetData, harness.signPublicKey[:]) {
 				core.Debug("packet signature check failed")
 				return
 			}
 
 			// read packet
 
-			packetData = packetData[18 : len(packetData)-(packets.SDK_CRYPTO_SIGN_BYTES)]
+			packetData = packetData[18 : len(packetData)-(crypto.SDK_CRYPTO_SIGN_BYTES)]
 
 			responsePacket := packets.SDK_ServerRelayResponsePacket{}
 			if err := packets.ReadPacket(packetData, &responsePacket); err != nil {
