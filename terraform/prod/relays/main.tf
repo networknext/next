@@ -154,47 +154,61 @@ locals {
   google_project     = file("~/secrets/prod-relays-project-id.txt")
   google_relays = {
 
+    /*
     "google.lasvegas.1" = {
       datacenter_name = "google.lasvegas.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.saltlakecity.1" = {
       datacenter_name = "google.saltlakecity.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.oregon.1" = {
       datacenter_name = "google.oregon.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.toronto.1" = {
       datacenter_name = "google.toronto.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.montreal.1" = {
       datacenter_name = "google.montreal.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.ohio.1" = {
       datacenter_name = "google.ohio.1"      
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
+    /*
     "google.iowa.1" = {
       datacenter_name = "google.iowa.1"
       type            = "n2-highcpu-2"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     "google.saopaulo.1" = {
       datacenter_name = "google.saopaulo.1"
@@ -254,11 +268,13 @@ locals {
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
 
+    /*
     "google.dallas.1" = {
       datacenter_name = "google.dallas.1"
       type            = "n2-highcpu-2" # "c3-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     /*
     "google.dallas.2" = {
@@ -274,13 +290,13 @@ locals {
     },
     */
 
-  /*
+    /*
     "google.losangeles.1" = {
       datacenter_name = "google.losangeles.1"
       type            = "n2-highcpu-2" # "c2-standard-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
-  */
+    */
 
     "google.losangeles.2" = {
       datacenter_name = "google.losangeles.2"
@@ -376,11 +392,13 @@ locals {
     },
     */
 
+    /*
     "google.telaviv.1" = {
       datacenter_name = "google.telaviv.1"
       type            = "n2-highcpu-2" # "c4-highmem-4"
       image           = "ubuntu-os-cloud/ubuntu-minimal-2204-lts"
     },
+    */
 
     /*
     "google.telaviv.2" = {

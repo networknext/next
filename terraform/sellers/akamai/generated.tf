@@ -3,11 +3,11 @@ locals {
 
   datacenter_map = {
 
-    "akamai.saopaulo" = {
-      zone        = "br-gru"
-      native_name = "br-gru"
-      latitude    = -23.56
-      longitude   = -46.64
+    "akamai.amsterdam" = {
+      zone        = "nl-ams"
+      native_name = "nl-ams"
+      latitude    = 52.37
+      longitude   = 4.90
       seller_name = "Akamai"
       seller_code = "akamai"
     }
@@ -138,11 +138,11 @@ locals {
       seller_code = "akamai"
     }
 
-    "akamai.amsterdam" = {
-      zone        = "nl-ams"
-      native_name = "nl-ams"
-      latitude    = 52.37
-      longitude   = 4.90
+    "akamai.saopaulo" = {
+      zone        = "br-gru"
+      native_name = "br-gru"
+      latitude    = -23.56
+      longitude   = -46.64
       seller_name = "Akamai"
       seller_code = "akamai"
     }

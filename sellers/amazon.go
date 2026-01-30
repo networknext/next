@@ -25,19 +25,19 @@ var devRelayMap = map[string][]string{
 
 var prodRelayMap = map[string][]string{
 
-	"amazon.calgary.1": {"amazon.calgary.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.calgary.1": {"amazon.calgary.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.portland.1": {"amazon.portland.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.portland.1": {"amazon.portland.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.seattle.1": {"amazon.seattle.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.seattle.1": {"amazon.seattle.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.denver.1": {"amazon.denver.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.denver.1": {"amazon.denver.1", "t3.medium", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.montreal.1": {"amazon.montreal.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.montreal.1": {"amazon.montreal.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.oregon.1": {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.oregon.1": {"amazon.oregon.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.ohio.1": {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.ohio.1": {"amazon.ohio.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
 	"amazon.saopaulo.1": {"amazon.saopaulo.1", "m5a.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.saopaulo.2": {"amazon.saopaulo.2", "m5a.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
@@ -81,7 +81,7 @@ var prodRelayMap = map[string][]string{
 	// "amazon.uae.2": {"amazon.uae.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.uae.3": {"amazon.uae.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
-	"amazon.telaviv.1": {"amazon.telaviv.1", "c5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
+	// "amazon.telaviv.1": {"amazon.telaviv.1", "c5.large", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.telaviv.2": {"amazon.telaviv.2", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 	// "amazon.telaviv.3": {"amazon.telaviv.3", "c5.xlarge", "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"},
 
