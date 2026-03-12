@@ -8,7 +8,7 @@ Network Next is a **network accelerator** for multiplayer games.
 
 You can learn all about how it all works by watching this video:
 
-[![How Network Next network acceleration works]([http://img.youtube.com/vi//0jxlWu_PA7E/0.jpg](https://github.com/user-attachments/assets/d9bce4c9-7b8a-48b3-9eb2-e4dcbee0bcd9))](http://www.youtube.com/watch?v=/0jxlWu_PA7E "How Network Next network acceleration works")
+[![How Network Next network acceleration works](https://github.com/user-attachments/assets/d9bce4c9-7b8a-48b3-9eb2-e4dcbee0bcd9)](http://www.youtube.com/watch?v=/0jxlWu_PA7E "How Network Next network acceleration works")
 
 It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com). More details [here](https://mas-bandwidth.com/rematch-accelerated-by-network-next/).
 
