@@ -4,9 +4,9 @@
 
 [![Build Status](https://networknext.semaphoreci.com/badges/next/branches/main.svg?style=shields&key=b74eb8a5-60a2-4044-a0db-cfeab84798dc)](https://networknext.semaphoreci.com/projects/next)
 
-Network Next is a **network accelerator** for multiplayer games. 
+Network Next is a **network accelerator** for multiplayer games.
 
-[https://youtu.be/0jxlWu_PA7E]
+[![How Network Next network acceleration works](http://img.youtube.com/vi//0jxlWu_PA7E/0.jpg)](http://www.youtube.com/watch?v=/0jxlWu_PA7E "How Network Next network acceleration works")
 
 It's currently live worldwide with the football game [REMATCH](https://www.playrematch.com). More details [here](https://mas-bandwidth.com/rematch-accelerated-by-network-next/).
 
