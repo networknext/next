@@ -599,16 +599,18 @@ void next_platform_thread_destroy( next_platform_thread_t * thread )
 void next_platform_client_thread_priority( next_platform_thread_t * thread )
 {
     // IMPORTANT: If you are developing for mac or ios you can adjust the affinity and priority for the client thread here.
+    // the SCHED_RR range on macOS is 15..47 and ordinary threads sit at 31, so the minimum would demote this thread
     struct sched_param param;
-    param.sched_priority = sched_get_priority_min( SCHED_RR );
+    param.sched_priority = sched_get_priority_max( SCHED_RR );
     pthread_setschedparam( thread->handle, SCHED_RR, &param );
 }
 
 void next_platform_server_thread_priority( next_platform_thread_t * thread )
 {
     // IMPORTANT: If you are developing for mac or ios you can adjust the affinity and priority for the server thread here.
+    // the SCHED_RR range on macOS is 15..47 and ordinary threads sit at 31, so the minimum would demote this thread
     struct sched_param param;
-    param.sched_priority = sched_get_priority_min( SCHED_RR );
+    param.sched_priority = sched_get_priority_max( SCHED_RR );
     pthread_setschedparam( thread->handle, SCHED_RR, &param );
 }
 
